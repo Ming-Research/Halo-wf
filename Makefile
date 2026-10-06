@@ -27,7 +27,7 @@ check: compiler oracle design-lint
 
 # The end-to-end comparison: research/experiments/halo-e2e builds a test
 # program that runs scripts through pkg::embed and an in-memory host, and its
-# runner compares the 80 scripts of research/experiments/halo-oracle at
+# runner compares every script of research/experiments/halo-oracle at
 # budgets 1, 7 and 1000, in ordinary and collector-stress modes, byte for
 # byte with Redis 7.0.15's recorded replies. It exits nonzero on any
 # difference in either mode, after running both, and keeps each mode's

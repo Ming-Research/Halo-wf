@@ -42,7 +42,7 @@ example apart from the engine code that exposed it
 ## Engine
 
 - **The gate runs the oracle corpus only.** `make check` builds the
-  end-to-end test program and compares the 80 oracle scripts at budgets 1,
+  end-to-end test program and compares every oracle script at budgets 1,
   7 and 1000 in ordinary and collector-stress modes. Not in the gate: the
   JSON and MessagePack comparisons (`research/experiments/json`,
   `research/experiments/msgpack`, the latter needing its C reference), the
