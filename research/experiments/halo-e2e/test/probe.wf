@@ -663,7 +663,8 @@ fn pending_probe() -> r: u8 pure {
     }
   }
   let first = probe_run(engine: &engine, env: &env, script: top);
-  if outcome_code(outcome: first) != 4_u8 {
+  let first_code = outcome_code(outcome: first);
+  if first_code != 4_u8 {
     return 74_u8;
   }
   match halo::embed::pending_call(engine: &engine) {
@@ -692,14 +693,16 @@ fn pending_probe() -> r: u8 pure {
     }
   }
   let past = halo::embed::pending_argument(engine: &engine, index: 2_u64);
-  if bnot(is_nil(v: past)) {
+  let absent = is_nil(v: past);
+  if bnot(absent) {
     return 78_u8;
   }
   let answer = Value::Num(n: 41.0_f64);
   let results = array_filled::<Value, 1>(value: answer);
   let completed = halo::embed::complete_call::<ProbeHost>(engine: &engine, env: &env, results: &results[0_u64..1_u64], budget: 1_u64);
   let settled = probe_settle(engine: &engine, env: &env, outcome: completed);
-  if outcome_code(outcome: settled) != 0_u8 {
+  let settled_code = outcome_code(outcome: settled);
+  if settled_code != 0_u8 {
     return 79_u8;
   }
   let sum = returned(engine: &engine, expected: 42.0_f64);
@@ -707,11 +710,13 @@ fn pending_probe() -> r: u8 pure {
     return 80_u8;
   }
   let again = halo::embed::complete_call::<ProbeHost>(engine: &engine, env: &env, results: &results[0_u64..1_u64], budget: 1_u64);
-  if outcome_code(outcome: again) != 1_u8 {
+  let again_code = outcome_code(outcome: again);
+  if again_code != 1_u8 {
     return 81_u8;
   }
   let inner = probe_run(engine: &engine, env: &env, script: nested);
-  if outcome_code(outcome: inner) != 4_u8 {
+  let inner_code = outcome_code(outcome: inner);
+  if inner_code != 4_u8 {
     return 82_u8;
   }
   match halo::embed::pending_call(engine: &engine) {
@@ -727,7 +732,8 @@ fn pending_probe() -> r: u8 pure {
   let error = halo::embed::intern(engine: &engine, bytes: &pending_error[0_u64..4_u64]);
   let failed = halo::embed::fail_call::<ProbeHost>(engine: &engine, env: &env, error: error, budget: 1_u64);
   let caught = probe_settle(engine: &engine, env: &env, outcome: failed);
-  if outcome_code(outcome: caught) != 0_u8 {
+  let caught_code = outcome_code(outcome: caught);
+  if caught_code != 0_u8 {
     return 84_u8;
   }
   match halo::embed::result(engine: &engine, index: 0_u64) {
@@ -748,15 +754,18 @@ fn pending_probe() -> r: u8 pure {
     }
   }
   let refused = probe_run(engine: &engine, env: &env, script: top);
-  if outcome_code(outcome: refused) != 4_u8 {
+  let refused_code = outcome_code(outcome: refused);
+  if refused_code != 4_u8 {
     return 86_u8;
   }
   let resumed = halo::embed::resume::<ProbeHost>(engine: &engine, env: &env, budget: 1_u64);
-  if outcome_code(outcome: resumed) != 1_u8 {
+  let resumed_code = outcome_code(outcome: resumed);
+  if resumed_code != 1_u8 {
     return 87_u8;
   }
   let late = halo::embed::complete_call::<ProbeHost>(engine: &engine, env: &env, results: &results[0_u64..1_u64], budget: 1_u64);
-  if outcome_code(outcome: late) != 1_u8 {
+  let late_code = outcome_code(outcome: late);
+  if late_code != 1_u8 {
     return 88_u8;
   }
   return 0_u8;
