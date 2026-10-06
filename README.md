@@ -44,7 +44,9 @@ semantics, the scripting API, the codec libraries and application scripts.
 Halo builds with a released Whitefoot compiler, never with Whitefoot's
 source. `whitefoot.pin` names the release, and `make compiler` downloads
 that release's `whitefootc` for the host (Linux x86-64 or macOS arm64) and
-checks it against the release's checksums.
+checks it against the release's checksums, through the `whitefoot-kit`
+submodule that the projects written in Whitefoot share
+([its rules](whitefoot-kit/downstream.md)).
 
 ```sh
 git clone --recurse-submodules https://github.com/Ming-Research/Halo-wf.git

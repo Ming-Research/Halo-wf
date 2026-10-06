@@ -6,8 +6,8 @@ its codec libraries bind. Firn (Ming-Research/Firn-wf) hosts it to run Redis
 scripts, but Halo's own source never names Redis: the host supplies
 `redis.call`, `KEYS`, `ARGV`, the reply conversions and the script cache.
 Whitefoot, the language and its compiler, is pinned as a compiler release
-named in `whitefoot.pin`, and the `design-tree` skill as the `design/skill/`
-submodule.
+named in `whitefoot.pin` and fetched through the `whitefoot-kit/` submodule,
+and the `design-tree` skill is the `design/skill/` submodule.
 
 ## Project goal
 
@@ -45,23 +45,10 @@ glibc. The oracle corpus in `research/experiments/halo-oracle/` records that
 reference's replies; PUC's own sources and Lua 5.1's test suite are further
 oracles.
 
-**The language.** The pinned Whitefoot commit defines the language. Releases
-carry only the compiler, so read the language in the Whitefoot repository at
-that commit: the specification `spec/kernel-spec.md`, which is normative, the
-maintained programs under `tests/programs/`, `docs/patterns.md` and the
-standard library's interfaces `lib/std/**/module.wfm`. The commit is the
-`commit` field of the release manifest that `make compiler` keeps as
-`build/whitefoot/<release>/whitefoot-release.json`. Read a file with, for
-example,
-
-```sh
-gh api 'repos/Ming-Research/Whitefoot/contents/spec/kernel-spec.md?ref=<commit>' \
-  -H 'Accept: application/vnd.github.raw'
-```
-
-or `git show <commit>:<path>` in a local Whitefoot clone. The compiler's
-diagnostics and repairs are the other source. Halo never vendors Whitefoot
-source; see [The Whitefoot boundary](#the-whitefoot-boundary).
+**The language.** The pinned Whitefoot commit defines the language; read its
+specification, maintained programs and standard-library interfaces at that
+commit as [whitefoot-kit/downstream.md](whitefoot-kit/downstream.md#reading-the-language)
+describes. The compiler's diagnostics and repairs are the other source.
 
 A finished task is not evidence: a claim cites a design-tree decision, an
 investigation, a measurement with its workload, environment and comparison,
@@ -165,8 +152,8 @@ These are the complete approval and merge rules:
    revision to be merged.
 3. The exact revision merged into `main` must pass `make check` before the
    merge.
-4. A change that moves `whitefoot.pin` or the `design/skill/` submodule names
-   the revisions it adopts and why. A revision merged into `main` pins a
+4. A change that moves `whitefoot.pin` or the `design/skill/` or
+   `whitefoot-kit/` submodule names the revisions it adopts and why. A revision merged into `main` pins a
    commit on that repository's `main`: for Whitefoot, a release
    `wf-<12 hex>`, never an experiment release.
 
@@ -180,9 +167,10 @@ merge precondition.
 - `make check`, the gate, in CI on every push and on the revision to merge.
   It downloads the pinned compiler (`make compiler`) and runs every Halo
   check and the design lint. It needs git, curl, Python 3, the
-  `design/skill` submodule (`git clone --recurse-submodules` or
-  `git submodule update --init`) and the toolchain the compiler links with:
-  `/usr/bin/clang`, and on Linux LLD, which CI installs.
+  `design/skill` and `whitefoot-kit` submodules
+  (`git clone --recurse-submodules` or `git submodule update --init`) and the
+  toolchain the compiler links with: `/usr/bin/clang`, and on Linux LLD,
+  which CI installs.
 - `make design-ready` and `make pin-ready`, before marking ready and in CI
   on ready PRs and main: every design-tree change is approved in the log, and
   `whitefoot.pin` names no experiment release.
@@ -206,50 +194,20 @@ records or other prose changed. Fix every finding and review again as the
 `design-tree` skill's workflow describes, push, verify that the remote head
 is the reviewed revision, and fill the PR's review section.
 
-## Upgrading Whitefoot
+## Building with Whitefoot
 
-The owner periodically has an agent move every downstream project to the
-latest Whitefoot. For Halo:
+Halo builds with the Whitefoot compiler release `whitefoot.pin` names,
+through the `whitefoot-kit` submodule
+([Whitefoot-kit](https://github.com/Ming-Research/Whitefoot-kit)) that every
+project written in Whitefoot shares. Its
+[downstream.md](whitefoot-kit/downstream.md) holds the rules: the pin and its
+checks, trying an unmerged Whitefoot change with an experiment release or
+`make WHITEFOOTC=<path>`, upgrading Whitefoot, and where a Whitefoot gap is
+recorded (*Whitefoot requirements* in `docs/todo.md`). A change to those rules
+is made in Whitefoot-kit, and Halo adopts it by moving the submodule.
 
-1. Take the Whitefoot `main` commit to adopt; its gate must have passed.
-   If Whitefoot has no release `wf-<12-character hash>` for it, or the
-   release was deleted (releases older than 30 days are deleted, except the
-   newest), publish one:
-   `gh workflow run compiler-release.yml -R Ming-Research/Whitefoot -f commit=<hash>`.
-2. On a work branch, set `whitefoot.pin` to `release = wf-<hash>`.
-3. Read what changed between the old and new pinned commits that can affect
-   Halo: `spec/log.md` and the specification, the standard library's
-   interfaces, and the compiler's diagnostics.
-4. Adapt Halo to the new language and compiler, without weakening any check.
-5. Run CI (`make check`); when the compiler's code generation changed,
-   compare Halo's benchmarks before and after on the 14900K.
-6. Open the PR naming both commits, both specification versions and every
-   change Halo needed; it merges under rules 2 to 4.
-
-A pin whose release is gone gets the same commit dispatched again. An
-experiment release, `wf-exp-<12 hex>`, is published for an unmerged
-Whitefoot commit with `-f experiment=true` and serves only a work branch
-([The Whitefoot boundary](#the-whitefoot-boundary)).
-
-## The Whitefoot boundary
-
-- Halo builds with exactly the pinned release, and moving the pin is a
-  deliberate change under rule 4. Halo never vendors Whitefoot source or
-  pins Whitefoot as a submodule.
-- A change Halo needs in Whitefoot is made in Whitefoot, under Whitefoot's
-  own AGENTS.md, as a branch and PR in its repository. While that PR is
-  open, a Halo work branch tries it in CI by pinning an experiment release
-  of the PR's head, `release = wf-exp-<12 hex>`, published with
-  `gh workflow run compiler-release.yml -R Ming-Research/Whitefoot -f commit=<hash> -f experiment=true`,
-  or locally with a compiler built from it (`make WHITEFOOTC=<path>`). Before
-  the branch is ready, the change is on Whitefoot's `main` and the pin names
-  its release; `make pin-ready` refuses an experiment pin.
-- When a missing Whitefoot feature would bend Halo's implementation or
-  architecture, add the feature to Whitefoot instead of working around it.
-  State the gap as its minimal semantic example, apart from the engine code
-  that exposed it, and record it under *Whitefoot requirements* in
-  `docs/todo.md` until Whitefoot resolves it. A problem that belongs to the
-  engine alone is fixed in Halo, not by generalizing the language.
+For Halo, an upgrade whose compiler changed code generation compares Halo's
+benchmarks before and after on the 14900K (`research/experiments/halo-bench`).
 
 ## Code and tests
 
