@@ -1,8 +1,8 @@
 # Halo-wf — agent instructions
 
-Halo is a Lua 5.1 engine written in Whitefoot with an embedding interface
-(`lib/halo`), with the JSON and MessagePack packages its codec libraries bind
-(`lib/json`, `lib/msgpack`). Firn-wf hosts it to run Redis scripts.
+Halo is a Lua 5.1 engine written in Whitefoot with an embedding interface,
+with the JSON and MessagePack packages its codec libraries bind. Firn-wf
+hosts it to run Redis scripts.
 
 ## Goal and priorities
 
@@ -24,12 +24,13 @@ priorities conflict:
 - The reference is Redis 7.0.15 with its bundled Lua 5.1 (PUC Lua 5.1.5 with
   Redis's patches) on x86-64 Linux with glibc. `research/experiments/halo-oracle`
   holds its recorded replies; PUC's sources and Lua 5.1's test suite are
-  further oracles, and Halo's own earlier output never is one.
+  further oracles, as is a format's specification for the JSON and
+  MessagePack packages; Halo's own earlier output never is one.
 - Halo's source never names Redis: the host supplies `redis.call`, `KEYS`,
   `ARGV`, the reply conversions and the script cache.
-- No script, test or benchmark selects a special path in the engine.
-- Ported code keeps its license notice beside it (`lib/halo/compile/LICENSE.md`,
-  `lib/halo/vm/LICENSE.md`, the `pow` notice in `lib/halo/number`).
+- No script, test or benchmark selects a special path in the engine, and no
+  fallback conceals an unsupported feature.
+- Ported code keeps its license notice beside it.
 - The owner and the primary agent own the design tree, the package and module
   graph, the `.wfm` interfaces and the embedding interface; an implementer
   reports an insufficient interface with a minimal example instead of editing
@@ -42,7 +43,7 @@ Halo builds with the compiler release `whitefoot.pin` names, through the
 holds the pin, reading the language at the pinned commit, trying an unmerged
 Whitefoot change and upgrading Whitefoot. A Whitefoot gap goes under
 *Whitefoot requirements* in `docs/todo.md`. An upgrade whose compiler changed
-code generation compares Halo's benchmarks before and after on the 14900K.
+code generation compares Halo's benchmarks before and after.
 
 ## Design tree and research
 
@@ -65,14 +66,15 @@ code generation compares Halo's benchmarks before and after on the 14900K.
   compiler and runs the design lint. It needs git, curl, Python 3, both
   submodules (`git clone --recurse-submodules`) and `/usr/bin/clang`, with LLD
   on Linux.
-- `make design-ready` and `make pin-ready` run in CI on ready PRs and on main.
+- `make design-ready` and `make pin-ready` run before a PR is marked ready,
+  and in CI on ready PRs and on main.
 - The completion review uses [docs/review-checklist.md](docs/review-checklist.md).
 
 ## Merge rules
 
 1. A PR becomes ready only after the owner has approved every decision it
-   needs; the approval is then recorded in `design/log.md`, which
-   `make design-ready` checks.
+   needs, every design-tree change included; the approval is then recorded
+   in `design/log.md`, which `make design-ready` checks.
 2. A merge into `main` needs the owner's approval of that exact revision, the
    whole tree with its pins; a revision changed after approval or after its
    passing check needs both again.
@@ -80,6 +82,8 @@ code generation compares Halo's benchmarks before and after on the 14900K.
 4. A change that moves `whitefoot.pin` or a submodule names the revisions it
    adopts and why. `main` pins a `wf-` release of a Whitefoot `main` commit,
    never a `wf-exp-` one, and submodule commits on their repositories' `main`.
+
+No other step is an approval or merge precondition.
 
 ## Reports
 
