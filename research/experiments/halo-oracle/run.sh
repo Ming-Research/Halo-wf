@@ -187,8 +187,8 @@ def main():
                 raise RuntimeError(f'Missing or empty expected file: {path}')
     corpus_keys = sorted({k for _, m in all_cases for k in m['KEYS']})
     process = connection = None
-    # Explicit system temp root: never leave Redis files in the repository.
-    with tempfile.TemporaryDirectory(prefix='halo-oracle-', dir='/private/tmp') as scratch:
+    # The system temporary directory: never leave Redis files in the repository.
+    with tempfile.TemporaryDirectory(prefix='halo-oracle-') as scratch:
         try:
             if args.port is None:
                 process, connection = start_server(scratch)
