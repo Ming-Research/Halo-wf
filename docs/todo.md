@@ -160,17 +160,18 @@ example apart from the engine code that exposed it
   instruction changes or the next VM performance experiment compares that
   factoring; C1's measured source stays fixed for this bounded experiment.
 
-- **Halo's number library and oracle corpus were checked on macOS only.**
-  `lib/halo/number` matches Redis 7.0.15's bundled Lua built on macOS
-  (research/experiments/halo-number), except that NaN text now follows glibc
-  (`-nan` for a negative NaN), the Linux reference firn uses, as does
-  `string.format`'s NaN text in `lib/halo/vm`; its `strtod`
-  details (NaN payloads, hexadecimal forms, range errors) and the oracle
-  corpus (research/experiments/halo-oracle) were produced against macOS
-  builds. Impact: Linux formatting and parsing parity remains unverified.
-  Change: rerun both comparisons on the x86-64 Linux runner against a glibc
-  build of Redis 7.0.15 and its Lua, and adopt glibc's behavior wherever they
-  differ. Reopen before Halo's first release or when firn's EVAL lands.
+- **Halo's number parsing and codec corpus were checked on macOS only.**
+  The oracle corpus is now recorded on the reference platform
+  (`.github/workflows/oracle-reference.yml`: Redis 7.0.15 built from source
+  on x86-64 Linux; only `lua-core/nonfinite` changed, `nan` to `-nan`). Still
+  macOS-only: `lib/halo/number`'s `strtod` details (NaN payloads,
+  hexadecimal forms, range errors), compared with Redis's bundled Lua built
+  on macOS (research/experiments/halo-number), and the 20 codec snippets that
+  need Linux/glibc qualification (research/experiments/halo-luacodecs).
+  Impact: Linux parsing and codec parity remains unverified. Change: run both
+  comparisons on x86-64 Linux against Redis 7.0.15's bundled Lua built there,
+  and adopt glibc's behavior wherever they differ. Reopen before Halo's first
+  release or when firn's EVAL lands.
 
 - **Reconcile the Halo embedding boundary record with current work.**
   `research/experiments/halo-e2e/GAPS.md` presents the first comparison's

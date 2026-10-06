@@ -44,7 +44,11 @@ The default server is `/private/tmp/wf-redis-7.0.15/src/redis-server`, a
 macOS build; the reference replies are recorded on x86-64 Linux by
 [oracle-reference.yml](../../../.github/workflows/oracle-reference.yml),
 which builds Redis 7.0.15 from source and keeps the new replies and their
-difference from `expected/` as an artifact for review.
+difference from `expected/` as an artifact for review. The replies in
+`expected/` are that recording; the first one changed only
+`lua-core/nonfinite`, whose `0/0` prints `-nan` on x86-64 (a negative default
+NaN, printed with its sign by glibc) where the earlier macOS arm64 recording
+printed `nan`.
 Python 3 and that executable are the only dependencies. `--server PATH`
 can select another Redis 7.0.15 executable; its reported version is checked.
 The runner starts it on a free loopback port with `--save '' --appendonly no`,
