@@ -41,15 +41,18 @@ example apart from the engine code that exposed it
 
 ## Engine
 
-- **The gate runs the oracle corpus only.** `make check` builds the
-  end-to-end test program and compares every oracle script at budgets 1,
-  7 and 1000 in ordinary and collector-stress modes. Not in the gate: the
-  JSON and MessagePack comparisons (`research/experiments/json`,
-  `research/experiments/msgpack`, the latter needing its C reference), the
-  number library's checks (`lib/halo/number/tests`), the runner's error,
-  SHA-1 and memory probes (`--verify-errors`, `--verify-sha1`,
-  `--verify-memory`) and the removed-root controls of
-  `research/experiments/halo-gc`, which must fail. Its fixtures and runner
+- **The gate runs the oracle corpus and the embedding probe only.**
+  `make check` builds the end-to-end test program, runs its embedding probe
+  and compares every oracle script at budgets 1, 7 and 1000 in ordinary and
+  collector-stress modes. Not in the gate: the JSON and MessagePack
+  comparisons (`research/experiments/json`, `research/experiments/msgpack`,
+  the latter needing its C reference), the number library's checks
+  (`lib/halo/number/tests`), the runner's error, SHA-1 and memory probes
+  (`--verify-errors`, `--verify-sha1`, `--verify-memory`), the removed-root
+  controls of `research/experiments/halo-gc`, which must fail, and the
+  builds of the `halo-vm`, `halo-lib` and `halo-bench` hosts, so a change to
+  an engine interface they use is checked there only when an experiment
+  rebuilds them. Its fixtures and runner
   also still live under `research/`. Impact: a regression in those paths
   passes the gate. Change: wire each into `make check` with a control that
   shows it detects a wrong result, and move the gate's fixtures and runner
