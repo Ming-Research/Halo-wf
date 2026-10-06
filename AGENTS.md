@@ -32,7 +32,8 @@ priorities conflict:
 - No script, test or benchmark selects a special path in the engine, and no
   fallback conceals an unsupported feature.
 - Ported code keeps its license notice beside it (`lib/halo/compile/LICENSE.md`,
-  `lib/halo/vm/LICENSE.md`, the `pow` notice in `lib/halo/number`).
+  `lib/halo/heap/LICENSE.md`, `lib/halo/vm/LICENSE.md`, the `pow` notice in
+  `lib/halo/number`).
 - The owner and the primary agent own the design tree, the package and module
   graph, the `.wfm` interfaces and the embedding interface; an implementer
   reports an insufficient interface with a minimal example instead of editing

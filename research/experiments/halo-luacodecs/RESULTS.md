@@ -17,7 +17,7 @@ Executable SHA-256: `de49355d80ef3e247edf767b54467b7d73e42ca209839d310e3572e9e13
 
 Total: 933 snippets; 924 matches; 7 mismatches; 2 with no reference reply.
 
-The comparator checks typed replies, binary bytes, and exact error text. Its fault sensitivity controls come from the existing end-to-end runner. The first return value is converted as Redis RESP2; snippets wrap multiple results where needed. No oracle fixtures were changed. Local libc is not Linux glibc: glibc-dependent behavior remains unqualified by this run.
+The comparator checks typed replies, binary bytes, and exact error text. Its fault sensitivity controls come from the existing end-to-end runner. The first return value is converted as Redis RESP2; snippets wrap multiple results where needed. No oracle fixtures were changed. The host is x86-64 Linux with glibc, the reference platform.
 
 ## Interpretation
 

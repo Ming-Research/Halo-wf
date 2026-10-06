@@ -45,13 +45,13 @@ public fn forget_all(engine: &Engine) -> r: unit writes(engine) doc "Resets and 
 
 public fn reset(engine: &Engine) -> r: unit writes(engine) doc "Closes active upvalues and clears results and suspended execution.";
 
-public fn start<interface Host<E>>(engine: &Engine, env: &E, script: ScriptId, budget: u64) -> r: Outcome writes(engine), writes(env) doc "Starts a cached script with zero arguments and returns the VM outcome.";
+public fn start<interface Host<E>>(engine: &Engine, env: &E, script: ScriptId, budget: u64) -> r: Outcome writes(engine), writes(env) doc "Starts a cached script with zero arguments and returns the VM outcome. Starting replaces the VM's prototypes with this script's, so a Lua closure kept from another script is not callable while this one runs.";
 
 public fn resume<interface Host<E>>(engine: &Engine, env: &E, budget: u64) -> r: Outcome writes(engine), writes(env) doc "Resumes a Budget checkpoint with a fresh safepoint budget. HostStopped is terminal until reset/start.";
 
 public fn result(engine: &Engine, index: u64) -> r: Option<Value> reads(engine) doc "Returns a completed result in stack[0..result_count), or None.";
 
-public fn pin(engine: &Engine, value: Value) -> r: Option<u64> writes(engine) doc "Call while the engine is idle or suspended; the returned token is never reused. Roots are mirrored before dispatch.";
+public fn pin(engine: &Engine, value: Value) -> r: Option<u64> writes(engine) doc "Call while the engine is idle or suspended; the returned token is never reused. Roots are mirrored before dispatch. A pinned Lua closure is callable only while the script it came from runs.";
 
 public fn unpin(engine: &Engine, token: u64) -> r: unit writes(engine) doc "Releases an idle or suspended host root; unknown tokens do nothing.";
 

@@ -49,8 +49,8 @@ closed captures holding the 32-bit halves of the full instance index
 below was replaced after it let a method run as a gmatch iterator). Binding
 an instance does not consume host function IDs. Instance reclamation and Lua
 local/field error names remain limitations recorded in `docs/todo.md`.
-The local reference runs on macOS; Linux/glibc qualification remains required
-by the Halo VM design's H4 platform reference.
+The reference platform is x86-64 Linux with glibc; RESULTS.md records a run
+there.
 
 ## Closure binding assessment
 

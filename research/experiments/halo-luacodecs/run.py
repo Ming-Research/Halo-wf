@@ -189,6 +189,11 @@ end
 """
 
 
+def reference_host():
+    plat=__import__('platform')
+    return plat.system()=='Linux' and plat.machine()=='x86_64' and plat.libc_ver()[0]=='glibc'
+
+
 def build_reference(source, scratch):
     target = scratch / 'redis/deps/lua/src'
     (scratch / 'redis/src').mkdir(parents=True)
@@ -245,7 +250,7 @@ def main():
         for group in sorted({n.split('/')[0] for n,_ in rows}):
             yes,no=counts[(group,True)],counts[(group,False)];report.append(f'| {group} | {yes+no} | {yes} | {no} |')
         compared=len(rows)-len(reference_failures)
-        report += ['',f'Total: {len(rows)} snippets; {compared-len(failures)} matches; {len(failures)} mismatches; {len(reference_failures)} with no reference reply.','', 'The comparator checks typed replies, binary bytes, and exact error text. Its fault sensitivity controls come from the existing end-to-end runner. The first return value is converted as Redis RESP2; snippets wrap multiple results where needed. No oracle fixtures were changed. Local libc is not Linux glibc: glibc-dependent behavior remains unqualified by this run.','', '## Mismatches','']
+        report += ['',f'Total: {len(rows)} snippets; {compared-len(failures)} matches; {len(failures)} mismatches; {len(reference_failures)} with no reference reply.','', 'The comparator checks typed replies, binary bytes, and exact error text. Its fault sensitivity controls come from the existing end-to-end runner. The first return value is converted as Redis RESP2; snippets wrap multiple results where needed. No oracle fixtures were changed. '+('The host is x86-64 Linux with glibc, the reference platform.' if reference_host() else 'The host is not x86-64 Linux with glibc: platform-dependent behavior remains unqualified by this run.'),'', '## Mismatches','']
         for name,source,expected,actual in failures:
             report += [f'### {name}', '```lua',source,'```','Expected: `'+json.dumps(expected,ensure_ascii=True)+'`','Actual: `'+json.dumps(actual,ensure_ascii=True)+'`','']
         for name,source,code,stderr in reference_failures:

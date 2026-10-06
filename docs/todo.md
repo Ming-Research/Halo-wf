@@ -55,6 +55,22 @@ example apart from the engine code that exposed it
   shows it detects a wrong result, and move the gate's fixtures and runner
   to `tests/`. Reopen at the next gate change.
 
+- **A closure kept from one script cannot be called while another runs.**
+  `start` in `lib/halo/vm/calls.wf` replaces the VM's prototypes and line
+  metadata with the started script's, and a Lua closure finds its
+  prototype by index in that current table. A closure the host pins (or a
+  value holding one) from script A, called while script B runs, executes
+  B's prototype at that index. Witness: pin the result of
+  `return function() return 42 end` from one cached script, start another
+  script, and call the pinned value. Impact: a host may keep only data, not
+  Lua closures, across scripts; Redis's own reply conversion turns a
+  returned function into nil, so the oracle corpus cannot reach this. Change:
+  give each cached script's prototypes an engine-wide identity, appended
+  rather than replaced, so a closure keeps its code across starts and
+  flushes invalidate it explicitly. Validate with the witness and a flushed
+  script's closure. Reopen when a host needs to keep or call a closure
+  across scripts.
+
 - **Halo F4 has no every-allocation reachability verifier.**
   The safepoint stress and four missing-root mutations in
   `research/experiments/halo-gc/RESULTS.md` distinguish selected root
