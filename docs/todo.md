@@ -149,17 +149,15 @@ example apart from the engine code that exposed it
   instruction changes or the next VM performance experiment compares that
   factoring; C1's measured source stays fixed for this bounded experiment.
 
-- **Halo's number parsing and codec corpus were checked on macOS only.**
-  The oracle corpus is now recorded on the reference platform
-  (`.github/workflows/oracle-reference.yml`: Redis 7.0.15 built from source
-  on x86-64 Linux; only `lua-core/nonfinite` changed, `nan` to `-nan`). Still
-  macOS-only: `lib/halo/number`'s `strtod` details (NaN payloads,
-  hexadecimal forms, range errors), compared with Redis's bundled Lua built
-  on macOS (research/experiments/halo-number), and the 20 codec snippets that
-  need Linux/glibc qualification (research/experiments/halo-luacodecs).
-  Impact: Linux parsing and codec parity remains unverified. Change: run both
-  comparisons on x86-64 Linux against Redis 7.0.15's bundled Lua built there,
-  and adopt glibc's behavior wherever they differ. Reopen before Halo's first
+- **Halo's number parsing was checked on macOS only.** The oracle corpus and
+  the codec corpus now run on the reference platform (Redis 7.0.15 built
+  from source on x86-64 Linux; research/experiments/halo-oracle,
+  research/experiments/halo-luacodecs). Still macOS-only: `lib/halo/number`'s
+  `strtod` details (NaN payloads, hexadecimal forms, range errors), compared
+  with Redis's bundled Lua built on macOS (research/experiments/halo-number).
+  Impact: Linux parsing parity remains unverified. Change: run that
+  comparison on x86-64 Linux against Redis 7.0.15's bundled Lua built there,
+  and adopt its behavior wherever they differ. Reopen before Halo's first
   release or when firn's EVAL lands.
 
 - **Reconcile the Halo embedding boundary record with current work.**
