@@ -322,19 +322,19 @@ fn embed_probe() -> r: u8 pure {
   }
   let plain_value = halo::embed::intern(engine: &engine, bytes: &format_plain[0_u64..4_u64]);
   set engine.vm.error = plain_value;
-  let plain_ok = format_matches(engine: &engine, line: 17_u64, want: &expect_plain[0_u64..21_u64]);
+  let plain_ok = format_matches(engine: &engine, line: 17_u64, want: &expect_plain[0_u64..20_u64]);
   if bnot(plain_ok) {
     return 38_u8;
   }
   let bare_value = halo::embed::intern(engine: &engine, bytes: &format_bare[0_u64..19_u64]);
   set engine.vm.error = bare_value;
-  let bare_ok = format_matches(engine: &engine, line: 17_u64, want: &expect_bare[0_u64..20_u64]);
+  let bare_ok = format_matches(engine: &engine, line: 17_u64, want: &expect_bare[0_u64..19_u64]);
   if bnot(bare_ok) {
     return 39_u8;
   }
-  let at_value = halo::embed::intern(engine: &engine, bytes: &format_at[0_u64..20_u64]);
+  let at_value = halo::embed::intern(engine: &engine, bytes: &format_at[0_u64..16_u64]);
   set engine.vm.error = at_value;
-  let at_ok = format_matches(engine: &engine, line: 17_u64, want: &expect_at[0_u64..20_u64]);
+  let at_ok = format_matches(engine: &engine, line: 17_u64, want: &expect_at[0_u64..32_u64]);
   if bnot(at_ok) {
     return 40_u8;
   }
@@ -791,10 +791,49 @@ fn pending_probe() -> r: u8 pure {
   return 0_u8;
 }
 
+fn chunk_probe() -> r: u8 pure {
+  doc "A runtime error is located in the chunk name the host compiled the script under, whatever that name is.";
+  let engine = halo::embed::new_engine(limit: 67108864_u64);
+  let env = Probe(mode: 0_u8, calls: 0_u64);
+  let compiled = halo::embed::compile(engine: &engine, chunk_name: &other_chunk[0_u64..6_u64], source: &other_source[0_u64..13_u64]);
+  match move compiled {
+    Err(..) => {
+      return 100_u8;
+    }
+    Ok(value: id) => {
+      let ran = probe_run(engine: &engine, env: &env, script: id);
+      match ran {
+        Error() => {
+        }
+        Done(..) => {
+          return 101_u8;
+        }
+        Budget() => {
+          return 101_u8;
+        }
+        HostStopped() => {
+          return 101_u8;
+        }
+        HostCall() => {
+          return 101_u8;
+        }
+      }
+      let located = format_matches(engine: &engine, line: 0_u64, want: &other_error[0_u64..13_u64]);
+      if bnot(located) {
+        return 102_u8;
+      }
+    }
+  }
+  return 0_u8;
+}
+
 fn smoke() -> status: ExitStatus pure {
   let code = embed_probe();
   if code == 0_u8 {
     set code = pending_probe();
+  }
+  if code == 0_u8 {
+    set code = chunk_probe();
   }
   return std::process::exit_status(code: code);
 }
@@ -813,15 +852,15 @@ const probe_text_5: Array<u8, 51> = "local n=0; for i=1,20 do n=n+i end; return 
 
 const format_plain: Array<u8, 4> = "boom";
 
-const expect_plain: Array<u8, 21> = "@user_script:17: boom";
+const expect_plain: Array<u8, 20> = "user_script:17: boom";
 
 const format_bare: Array<u8, 19> = "user_script:8: boom";
 
-const expect_bare: Array<u8, 20> = "@user_script:8: boom";
+const expect_bare: Array<u8, 19> = "user_script:8: boom";
 
-const format_at: Array<u8, 20> = "@user_script:9: boom";
+const format_at: Array<u8, 16> = "user_script boom";
 
-const expect_at: Array<u8, 20> = "@user_script:9: boom";
+const expect_at: Array<u8, 32> = "user_script:17: user_script boom";
 
 fn format_matches(engine: &Engine, line: u64, want: &[u8]) -> r: Bool reads(engine), reads(want) {
   let actual = halo::embed::format_error(engine: engine, line: line);
@@ -849,3 +888,9 @@ const pending_top_source: Array<u8, 23> = "return host(7, 'a') + 1";
 const pending_nested_source: Array<u8, 108> = "return tostring(setmetatable({}, {__tostring=function() local ok, e = pcall(host, 1); return e .. '!' end}))";
 
 const pending_error: Array<u8, 4> = "boom";
+
+const other_chunk: Array<u8, 6> = "@other";
+
+const other_source: Array<u8, 13> = "error('boom')";
+
+const other_error: Array<u8, 13> = "other:1: boom";
