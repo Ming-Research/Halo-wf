@@ -787,7 +787,7 @@ fn redis_raised(vm: &Vm, message: Value) -> r: Value writes(vm) {
   return reply_table(vm: vm, field: &s_30[0_u64..3_u64], v: message);
 }
 
-fn host_call(env: &Env, vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: u32) -> r: HostOutcome writes(env), writes(vm), writes(stack) contract {
+fn host_call(env: &Env, vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: u32) -> r: HostOutcome reads(stack), writes(vm), writes(stack.inner[func]) contract {
   ensures stack^.inner.len == entry(stack)^.inner.len;
 } {
   if id == 4102_u32 {
