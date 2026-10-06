@@ -55,18 +55,19 @@ jobs:
           mkdir -p build/oracle
           status=0
           research/experiments/halo-oracle/run.sh --check \
-            --server build/redis/redis-7.0.15/src/redis-server 2>&1 | tee build/oracle/check.log || status=$?
+            --server "$PWD/build/redis/redis-7.0.15/src/redis-server" 2>&1 | tee build/oracle/check.log || status=$?
           echo "comparison exit status: $status" | tee -a build/oracle/check.log
 
       - name: Record every reply again
         run: |
           research/experiments/halo-oracle/run.sh --generate \
-            --server build/redis/redis-7.0.15/src/redis-server --output build/oracle/expected
+            --server "$PWD/build/redis/redis-7.0.15/src/redis-server" --output "$PWD/build/oracle/expected"
           diff -r research/experiments/halo-oracle/expected build/oracle/expected > build/oracle/expected.diff || true
           echo "files that differ: $(grep -c '^diff -r' build/oracle/expected.diff || true)"
           cat build/oracle/expected.diff
 
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: oracle-x86-64-linux
           path: build/oracle/
