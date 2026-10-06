@@ -378,6 +378,7 @@ fn library_struct(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: 
           set bits_v62 = reinterpret::<f64, u64>(x_v64);
         } else {
           let integral_v69 = ftrunc(x_v64);
+          let ordered_v69 = feq(integral_v69, integral_v69);
           if flt(integral_v69, 0.0_f64) {
             if cvt.defined::<f64, i64>(integral_v69) {
               let n_v70 = cvt::<f64, i64>(integral_v69);
@@ -387,7 +388,7 @@ fn library_struct(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: 
             }
           } else if cvt.defined::<f64, u64>(integral_v69) {
             set bits_v62 = cvt::<f64, u64>(integral_v69);
-          } else if bnot(feq(integral_v69, integral_v69)) {
+          } else if bnot(ordered_v69) {
             set bits_v62 = 9223372036854775808_u64;
           }
         }
