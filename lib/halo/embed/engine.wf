@@ -3,6 +3,7 @@ alias Script = pkg::value::Script;
 alias CompileError = pkg::compile::CompileError;
 alias Outcome = pkg::vm::Outcome;
 alias Host = pkg::vm::Host;
+alias PendingCall = pkg::vm::PendingCall;
 
 fn append_value(out: &Box<Slots<Value>>, value: Value) -> r: unit writes(out) {
   let n = out^.inner.len;
