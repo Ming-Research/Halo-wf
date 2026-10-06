@@ -371,6 +371,9 @@ fn assemble(p: &Parser) -> result_value: Result<Script, CompileError> reads(p) {
     let nil = Value::Nil();
     push_value(buf: &consts, v: nil);
   }
-  let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lineinfo);
+  let source = box_slots_new::<u8>(capacity: 0_u64);
+  let chunk_length = p^.chunk.inner.len;
+  pkg::lex::format_chunk(chunk: &p^.chunk.inner[0_u64..chunk_length], output: &source);
+  let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lineinfo, source: move source);
   return Ok<Script, CompileError>(value: move script);
 }

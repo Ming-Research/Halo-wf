@@ -608,7 +608,7 @@ fn main(inputs: Inputs) -> status: ExitStatus pure waits {
                 let line = halo::embed::error_line(engine: &engine_v114);
                 let error_v133 = halo::embed::error_value(engine: &engine_v114);
                 let locate = readonly_message(vm: &engine_v114.vm, value: error_v133);
-                let formatted = halo::embed::format_redis_error(engine: &engine_v114, source: &source_v109.inner[start_v124..end_v124], line: line, locate: locate);
+                let formatted = format_redis_error(engine: &engine_v114, source: &source_v109.inner[start_v124..end_v124], line: line, locate: locate);
                 let formatted_len = formatted.inner.len;
                 let error_reply = literal(vm: &engine_v114.vm, text: &formatted.inner[0_u64..formatted_len]);
                 text_bytes(out: &out_v118, bytes: &s_39[0_u64..24_u64]);
