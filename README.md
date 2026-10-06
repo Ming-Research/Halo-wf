@@ -55,8 +55,7 @@ and on Linux LLD.
   alternatives, and their approval log.
 - [docs/todo.md](docs/todo.md): known defects, follow-up work and what Halo
   needs from Whitefoot.
-- [AGENTS.md](AGENTS.md): how work on Halo proceeds, for people and coding
-  agents alike.
+- [AGENTS.md](AGENTS.md): the rules agents follow in this repository.
 
 ## License
 
