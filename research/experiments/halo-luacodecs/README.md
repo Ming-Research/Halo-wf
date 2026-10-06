@@ -45,7 +45,7 @@ tag exclusions, signed Lua-integer conversion and stream protocol in Halo.
 CJSON instances keep independent configuration and reusable buffers. Their
 methods are native heap closures whose callee is the builtin ID, with two
 closed captures holding the 32-bit halves of the full instance index
-(`design/halo/closures.md`; the sentinel form described in the assessment
+(`design/halo/heap/closures.md`; the sentinel form described in the assessment
 below was replaced after it let a method run as a gmatch iterator). Binding
 an instance does not consume host function IDs. Instance reclamation and Lua
 local/field error names remain limitations recorded in `docs/todo.md`.
@@ -77,5 +77,5 @@ stateful native library requires a different binding payload or a native
 function needs Lua callbacks. Instance configuration reclamation remains a
 separate missing lifetime connection, as the TODO describes.
 
-The new draft tree node `design/halo/closures.md` records this
+The new draft tree node `design/halo/heap/closures.md` records this
 recommendation (Q1); no owner approval or log entry is inferred.

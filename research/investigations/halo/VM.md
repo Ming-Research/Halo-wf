@@ -360,11 +360,15 @@ change alone can move a micro-kernel by tens of percent).
 
 ## Open rulings
 
+H1, H2 and H4 are now design-tree decisions awaiting the owner
+(`design/halo/heap/tables.md`, `design/halo/calls.md`, `design/halo.md`);
+H3 is a Whitefoot checker gap kept in Whitefoot's `docs/todo.md`.
+
 - H4. The platform reference is Redis 7.0.15 on x86-64 Linux with glibc,
   firn's own reference (it already prints a negative NaN as `-nan`, as
-  glibc does). The number library formats NaN with its sign accordingly;
-  its parser and the oracle corpus were checked against macOS builds and
-  are rechecked on the Linux runner before release (docs/todo.md).
+  glibc does). The number library formats NaN with its sign accordingly.
+  The oracle and codec corpora now run against that platform; the number
+  parser's comparison is still macOS-only (docs/todo.md).
 
 - H1 (revised during implementation). The first heap, open addressing as
   section 2 says, gave a different `#` from Redis's Lua on 68 of 2,336

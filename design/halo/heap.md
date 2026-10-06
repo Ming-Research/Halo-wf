@@ -1,0 +1,5 @@
+Decision: Halo keeps its own slab per object kind, each a `Box<Slots<Cell>>` with a free list, instead of `std::collections::slab`, because the standard slab reaches a payload through members returning `Result` with a window check on every access, acceptable for allocation but not inside a table read ([VM design, heap](../../research/investigations/halo/VM.md#2-heap)).
+
+Decision: Every string is interned, as in Lua 5.1, so string equality is index equality, and the intern table holds its strings weakly, because table keys and comparisons are on the interpreter's hot paths and the reference interns every string the same way, instead of comparing bytes.
+
+Decision: The collector is a stop-the-world mark and sweep that runs at the budget's safepoints, a loop back edge or a call, where every live value is in a stack slot or another root, and the byte limit applies to live bytes after such a collection, because collecting inside allocation would make every allocating helper keep its live values as arguments, instead of collecting at allocation.
