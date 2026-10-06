@@ -563,8 +563,44 @@ fn cached_string_live(engine: &Engine, id: halo::embed::ScriptId) -> r: Bool rea
   return False();
 }
 
+fn chunk_probe() -> r: u8 pure {
+  doc "A runtime error is located in the chunk name the host compiled the script under, whatever that name is.";
+  let engine = halo::embed::new_engine(limit: 67108864_u64);
+  let env = Probe(mode: 0_u8, calls: 0_u64);
+  let compiled = halo::embed::compile(engine: &engine, chunk_name: &other_chunk[0_u64..6_u64], source: &other_source[0_u64..13_u64]);
+  match move compiled {
+    Err(..) => {
+      return 100_u8;
+    }
+    Ok(value: id) => {
+      let ran = probe_run(engine: &engine, env: &env, script: id);
+      match ran {
+        Error() => {
+        }
+        Done(..) => {
+          return 101_u8;
+        }
+        Budget() => {
+          return 101_u8;
+        }
+        HostStopped() => {
+          return 101_u8;
+        }
+      }
+      let located = format_matches(engine: &engine, line: 0_u64, want: &other_error[0_u64..13_u64]);
+      if bnot(located) {
+        return 102_u8;
+      }
+    }
+  }
+  return 0_u8;
+}
+
 fn smoke() -> status: ExitStatus pure {
   let code = embed_probe();
+  if code == 0_u8 {
+    set code = chunk_probe();
+  }
   return std::process::exit_status(code: code);
 }
 
@@ -612,3 +648,9 @@ fn format_matches(engine: &Engine, line: u64, want: &[u8]) -> r: Bool reads(engi
 const nested_stop_source: Array<u8, 139> = "return tostring(setmetatable({}, {__tostring=function() return tostring(setmetatable({}, {__tostring=function() return host() end})) end}))";
 
 const stop_recovery_source: Array<u8, 9> = "return 73";
+
+const other_chunk: Array<u8, 6> = "@other";
+
+const other_source: Array<u8, 13> = "error('boom')";
+
+const other_error: Array<u8, 13> = "other:1: boom";
