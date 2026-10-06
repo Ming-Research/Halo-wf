@@ -174,7 +174,7 @@ public fn reset(vm: &Vm, stack: &Box<Slots<Value>>) -> r: unit writes(stack), wr
 
 public fn start<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, proto: u32, argc: u64, budget: u64) -> r: Outcome reads(script), writes(stack), writes(vm), writes(env) doc "Calls a prototype with arguments at stack[1..1+argc), returning results at slot zero.";
 
-public fn resume<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, budget: u64) -> r: Outcome reads(script), writes(stack), writes(vm), writes(env) doc "Resumes the saved dispatch checkpoint with a fresh budget; refused while a host call is pending.";
+public fn resume<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, budget: u64) -> r: Outcome reads(script), writes(stack), writes(vm), writes(env) doc "Resumes the saved dispatch checkpoint with a fresh budget. While a host call is pending it ends the run with an error instead, and the call can no longer be completed or failed.";
 
 public fn pending_argument(vm: &Vm, stack: &Box<Slots<Value>>, index: u64) -> r: Value reads(vm), reads(stack) doc "Argument index of the host call that a HostCall outcome left pending, or Nil past its argument count or when no call is pending.";
 

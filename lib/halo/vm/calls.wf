@@ -474,6 +474,7 @@ fn start<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm,
 
 fn resume<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, budget: u64) -> r: Outcome reads(script), writes(stack), writes(vm), writes(env) {
   if vm^.call_pending {
+    set vm^.call_pending = False();
     let ignored = raise_text(vm: vm, text: &calls_text_pending[0_u64..22_u64]);
     return Outcome::Error();
   }
