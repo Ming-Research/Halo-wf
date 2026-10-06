@@ -7,7 +7,12 @@ scripts, but Halo's own source never names Redis: the host supplies
 `redis.call`, `KEYS`, `ARGV`, the reply conversions and the script cache.
 Whitefoot, the language and its compiler, is pinned as a compiler release
 named in `whitefoot.pin` and fetched through the `whitefoot-kit/` submodule,
-and the `design-tree` skill is the `design/skill/` submodule.
+and the design-tree lint comes from the `design/skill/` submodule.
+
+The owner-wide instructions every session loads (`~/.claude/CLAUDE.md`,
+`~/.codex/AGENTS.md`) govern working with the owner, pull requests and
+completion, and the design tree. This file adds Halo's paths, checks, review
+checklist and the parts its reports carry.
 
 ## Project goal
 
@@ -65,30 +70,9 @@ commitment or a standing project rule; only a material choice between viable
 alternatives is a design decision. Restoring decided behavior or editing
 prose without changing its meaning is routine.
 
-1. **Before starting,** read the affected design-tree nodes and their
-   ancestors, verify the worktree and PR state on resumption, and settle the
-   direction with the owner as the `design-tree` skill describes.
-2. **While working,** state why each material choice fits its evidence and
-   record an experiment's criterion before using it to choose. Change the
-   code and the design tree together on a Draft PR, and update what a changed
-   conclusion affects in the same work.
-3. **At completion,** run the [checks](#checks) and the [review](#review),
-   then hand the work back as the skill describes, adding the validation run
-   and its revision, what remains unverified, any pin moved or Whitefoot gap
-   filed, and what the work found along the way.
-4. **After the owner approves** every decision, write the log entry and mark
-   the PR ready (rule 1 below).
-
 **Judge a design by its merits, not by the work it takes.** No design
 judgment weighs the existing code, tests or documents a choice would change,
 nor the effort of changing them.
-
-**Fix or record what you notice.** When work exposes a defect elsewhere, such
-as a bug, an awkward interface, duplicated logic or a stale document, fix it
-in the same change if it is small and within the files you are changing;
-otherwise add an item to `docs/todo.md` with its impact, the change you would
-make and when to reopen it. List each in the PR's *Found along the way*
-section with its disposition.
 
 **Verify with observations that could have come out otherwise.** A passing
 result is evidence only if a wrong result would have failed it. Make each new
@@ -103,21 +87,21 @@ or experiment, run the smallest useful sample, time it and look at its
 spread, then choose the scale; repeat or lengthen only where the spread is
 too large to decide. Never open with a run of hours.
 
-Use a PR as the owner's review surface from the start, as a Draft until rule 1
-below lets it become ready. Push coherent progress to the same branch and keep
-its description and actual validation results current. A series of dependent
-PRs is stacked, each on the branch of the one before it. Updating a
-work-branch PR never authorizes a merge into `main`.
+A series of dependent PRs is stacked, each on the branch of the one before
+it.
 
-**The design tree.** The `design-tree` skill (`design/skill/`, a submodule of
-[Design-skill](https://github.com/Ming-Research/Design-skill) that Halo never
-edits, linked from `.claude/skills/` and `.agents/skills/`) is the one
-recurring procedure; a change to it is made in Design-skill. Its live trees
-are the root node files under `design/` other than `log.md`, each with its
-subdirectory, which the Makefile finds and lints; its log is `design/log.md`,
-its research record `research/investigations/` and `research/experiments/`,
-its TODO `docs/todo.md`, and its checks `make design-lint` and
-`make design-ready`.
+**The design tree.** Its live trees are the root node files under `design/`
+other than `log.md`, each with its subdirectory, which the Makefile finds and
+lints; its change log is `design/log.md`, its research record
+`research/investigations/` and `research/experiments/`, its maintained TODO
+`docs/todo.md`, and its form and readiness checks `make design-lint` and
+`make design-ready`, which run `lint.py` from the `design/skill/` submodule
+([Design-skill](https://github.com/Ming-Research/Design-skill), never edited
+here).
+
+**Reports.** At completion, a Halo report also names any pin or submodule it
+moved and why, any Whitefoot gap it filed, and the oracle comparison's result
+on the validated revision.
 
 **Investigations and performance.** An investigation decides something.
 Before measuring, write the question, the comparison that could answer it
@@ -153,9 +137,9 @@ These are the complete approval and merge rules:
 3. The exact revision merged into `main` must pass `make check` before the
    merge.
 4. A change that moves `whitefoot.pin` or the `design/skill/` or
-   `whitefoot-kit/` submodule names the revisions it adopts and why. A revision merged into `main` pins a
-   commit on that repository's `main`: for Whitefoot, a release
-   `wf-<12 hex>`, never an experiment release.
+   `whitefoot-kit/` submodule names the revisions it adopts and why. A
+   revision merged into `main` pins a commit on that repository's `main`:
+   for Whitefoot, a release `wf-<12 hex>`, never an experiment release.
 
 **Exact revision** is the complete tree that will enter `main`, the pins
 included; if it changes after approval or after its successful check, rules
@@ -183,16 +167,13 @@ merge precondition.
 
 ## Review
 
-One review per task, when the work is complete and before the handoff, and
-whenever the owner asks for one. Start a separate, read-only agent that did
-not implement the change, with the prompt in
+The completion review of the owner-wide instructions is, for Halo, a
+separate, read-only agent started with the prompt in
 [the review checklist](docs/review-checklist.md#how-to-review): GPT-6 Astra
 at high effort and every applicable group for a change to code, tests, gate
 wiring, a pin, the design tree or guidance; GPT-6.1 Sol at high effort and
 groups A, D, M and V, plus R for a material choice, when only research
-records or other prose changed. Fix every finding and review again as the
-`design-tree` skill's workflow describes, push, verify that the remote head
-is the reviewed revision, and fill the PR's review section.
+records or other prose changed. Fill the PR's review section with its result.
 
 ## Building with Whitefoot
 
@@ -245,7 +226,7 @@ set. Follow this by judgment and keep moving.
 - Repository artifacts, identifiers, comments, diagnostics, fixtures, test
   names and file names use English.
 - Each document keeps its role: `README.md` introduces and navigates, this
-  file holds the goal, authority, process and rules, `design/` the decisions
+  file holds the goal, authority and Halo's own rules, `design/` the decisions
   and their log, `docs/review-checklist.md` the review items, `docs/todo.md`
   open defects and Whitefoot requirements until resolved, `research/`
   questions, experiments and results, and the PR description the current

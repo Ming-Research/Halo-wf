@@ -1,9 +1,8 @@
 # Known defects and follow-up work
 
 Items the work has found and not yet done, each with its impact, the change
-that would address it and when to reopen it ([AGENTS.md](../AGENTS.md#how-work-proceeds),
-"Fix or record what you notice"). Remove an item in the change that resolves
-it.
+that would address it and when to reopen it, as the owner-wide instructions
+ask. Remove an item in the change that resolves it.
 
 ## Whitefoot requirements
 
