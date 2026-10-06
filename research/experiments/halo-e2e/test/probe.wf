@@ -635,7 +635,7 @@ fn outcome_code(outcome: Outcome) -> r: u8 pure {
 }
 
 fn pending_probe() -> r: u8 pure {
-  doc "A host call left pending returns its results or raises its error where it was made, at top level and inside a library callback, resume, through the engine or the VM, ends a run whose call is pending, and error_line names the raising line and forgets it when a stale script is started.";
+  doc "A host call left pending returns its results or raises its error where it was made, at top level and inside a library callback, resume, through the engine or the VM, ends a run whose call is pending, and error_line names the raising line and forgets it when the engine refuses a misused resume.";
   let engine = halo::embed::new_engine(limit: 67108864_u64);
   let env = Probe(mode: 3_u8, calls: 0_u64);
   let host = Value::Builtin(id: 4096_u32);
@@ -803,14 +803,13 @@ fn pending_probe() -> r: u8 pure {
       if raised_line != 1_u64 {
         return 94_u8;
       }
-      halo::embed::forget_all(engine: &engine);
-      let stale = halo::embed::start::<ProbeHost>(engine: &engine, env: &env, script: id, budget: 1_u64);
-      let stale_code = outcome_code(outcome: stale);
-      if stale_code != 1_u8 {
+      let misused = halo::embed::resume::<ProbeHost>(engine: &engine, env: &env, budget: 1_u64);
+      let misused_code = outcome_code(outcome: misused);
+      if misused_code != 1_u8 {
         return 95_u8;
       }
-      let stale_line = halo::embed::error_line(engine: &engine);
-      if stale_line != 0_u64 {
+      let misused_line = halo::embed::error_line(engine: &engine);
+      if misused_line != 0_u64 {
         return 96_u8;
       }
     }
