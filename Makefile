@@ -89,7 +89,12 @@ design-lint:
 	@$(PY) -B -m unittest discover -s $(ROOT)/design/skill -p 'test_lint.py'
 	@$(if $(DESIGN_TREES),$(PY) -B $(ROOT)/design/skill/lint.py --root $(ROOT)/design --trees $(DESIGN_TREES) --base "$(DESIGN_REVIEW_BASE)",echo "design lint: no live tree")
 
+# Before a revision is bound for main: AGENTS.md rule 4 refuses an experiment
+# pin there, and every design-tree change must be approved in the log.
 design-ready:
+	@! grep -qE '^release = wf-exp-' $(PIN) || { \
+		echo "whitefoot.pin names experiment release $(RELEASE); a revision bound for main pins a release of a Whitefoot main commit (AGENTS.md, rule 4)" >&2; \
+		exit 1; }
 	@$(if $(DESIGN_TREES),$(PY) -B $(ROOT)/design/skill/lint.py --root $(ROOT)/design --trees $(DESIGN_TREES) --base "$(DESIGN_REVIEW_BASE)" --require-approval,echo "design ready: no live tree")
 
 FORCE:
