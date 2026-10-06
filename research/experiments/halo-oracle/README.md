@@ -25,7 +25,7 @@ Keys used by setup commands are declared in `KEYS`. `-- error: true` marks
 an intentional top-level RESP error; errors caught by Lua remain normal
 successful EVAL replies. A top-level error without that marker, or a missing
 error with it, fails the runner. `-- needs: COMMAND` identifies a command
-absent from [firn's command list](../../../apps/firn/README.md).
+absent from [firn's command list](https://github.com/Ming-Research/Whitefoot/blob/c3c604fdf73970822975b5666c9386d5cf10c024/apps/firn/README.md).
 
 From the repository root, regenerate and then compare without rewriting:
 
