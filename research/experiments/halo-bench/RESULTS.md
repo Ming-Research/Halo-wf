@@ -1902,3 +1902,37 @@ checks only; all benchmark pairs use full LTO. The counter-closure sample
 passes 3/3 ordinary in 0.42 s and 3/3 at stress in 0.21 s, exits 0, at
 budgets 1, 7 and 1000. These samples justify the complete batches. Build,
 source and binary hashes and sample reports are retained in the raw JSON.
+
+
+### Repeat correctness gates on Halo-wf
+
+Checked on x86-64 Linux (GitHub `ubuntu-24.04`, release `wf-648338c31240`)
+at `3c3926fc2`: the candidate entry, now selecting by the closure's explicit
+callee kind (`6f050f3d6`), merged with Halo-wf main `526f67bef`.
+
+- Oracle, `make check` (run 37531183552): the embedding probe passes, and 92
+  scripts at budgets 1, 7 and 1000 pass 276/276 ordinary and 276/276 under
+  collector stress.
+- Removed-root controls (`.github/workflows/fixed-call-gates.yml`, run
+  37531185040; logs in its artifact). Each mutant removes one marking line of
+  `mark_roots` and is rebuilt; the parked-root control uses the harness flag.
+
+| Root | Positive observation | Removal observation | Runner exit |
+|---|---|---|---:|
+| Open upvalues | `kept`, budgets 1, 7, 1000 at stress | 0/3: reply differs | 1 |
+| Frame closure | `qqq`, isolated, budget 1 | 0/1: `invalid upvalue index` | 1 |
+| Constants | stress corpus 276/276 | 99/276 pass, 177 fail | 1 |
+| Parked stack | `zzz`, collected while parked, budget 1 | 0/1: `attempt to index a function value` | 1 |
+
+- Call-kind witness: the scratch witness is now the oracle script
+  `lua-core/call-kinds`. Its first form matched the error text Halo prints;
+  Redis 7.0.15 names the variable ("attempt to call local 'f' (a number
+  value)", run 37529328302), a known gap in `docs/todo.md`. The script now
+  matches the error's kind and value type, and its reply recorded on the
+  reference platform (run 37530330415) is `[17, "a", 0, 1, 0, 1, 21]`.
+  Before (main `526f67bef`) and candidate each pass 3/3 ordinary and 3/3 at
+  stress.
+
+The behavior and root gates pass. The runtime and check-time gates stay as
+measured on the M1 Pro above until the 14900K repeat, which waits for that
+runner's move to clang 22 so the result holds for the toolchain that follows.
