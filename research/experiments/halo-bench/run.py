@@ -85,6 +85,7 @@ def main():
     parser.add_argument('--reference-only', action='store_true', help='size PUC before selecting a slower workload scale')
     parser.add_argument('--profile', action='store_true', help='sample Halo; exclude these timings from baseline')
     parser.add_argument('--out', type=Path, required=True)
+    parser.add_argument('--compiler', type=Path, help='the whitefootc that built --binary, recorded by its digest')
     args = parser.parse_args()
     if args.before_binary and (args.reference_only or args.profile):
         parser.error('native before/after pairs cannot be reference-only or profiled')
@@ -107,7 +108,7 @@ def main():
     data = dict(revision=subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(),
                 host=platform.platform(), started_utc=time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
                 binary_sha256=digest(binary), lua_sha256=digest(lua),
-                compiler_sha256=digest(ROOT/'compiler/target/gate/whitefootc'),
+                compiler_sha256=digest(args.compiler.resolve()) if args.compiler else None,
                 host_sources_sha256={str(path.relative_to(HERE)): digest(path) for path in
                                      (HERE/'modules.wfg', HERE/'host/module.wfm', HERE/'host/driver.wf')},
                 budget=args.budget, profile=args.profile, reference_only=args.reference_only, scales=scales, kernels={}, launches=[])
