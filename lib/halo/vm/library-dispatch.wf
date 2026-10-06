@@ -8,7 +8,6 @@ alias table_set = pkg::heap::table_set;
 alias new_table = pkg::heap::new_table;
 alias truthy = pkg::value::truthy;
 
-
 fn library_dispatch<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, env: &E, vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: u32, pc: u64) -> r: HostOutcome reads(code), reads(consts), writes(env), writes(vm), writes(stack) contract {
   ensures stack^.inner.len == entry(stack)^.inner.len;
 } {
