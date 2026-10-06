@@ -713,7 +713,7 @@ before. Numeric comparisons only read the stack and preserve its window
 fact directly; slot-writing variants publish it. The read-only constant
 window keeps its caller fact and needs no new postcondition.
 
-This boundary follows [FN-9](../../../spec/kernel-spec.md): a full handler's
+This boundary follows [FN-9](https://github.com/Ming-Research/Whitefoot/blob/13453860b462ad3ae169b8e7fb9e1318cf9463a0/spec/kernel-spec.md): a full handler's
 callback can re-enter `run`, so its postconditions are unavailable within
 that recursive component. The callback-free variants are outside that
 component and their checked summaries reach the arms. Putting entire
