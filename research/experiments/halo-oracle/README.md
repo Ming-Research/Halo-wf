@@ -40,12 +40,16 @@ Compiler cache, `--no-cache` and `--full-lto` options belong to the
 [Halo comparison runner](../halo-e2e/README.md), not this RESP2 client.
 It uses a local TCP connection, so omit it from runs that prohibit network access.
 
-The default server is `/private/tmp/wf-redis-7.0.15/src/redis-server`.
+The default server is `/private/tmp/wf-redis-7.0.15/src/redis-server`, a
+macOS build; the reference replies are recorded on x86-64 Linux by
+[oracle-reference.yml](../../../.github/workflows/oracle-reference.yml),
+which builds Redis 7.0.15 from source and keeps the new replies and their
+difference from `expected/` as an artifact for review.
 Python 3 and that executable are the only dependencies. `--server PATH`
 can select another Redis 7.0.15 executable; its reported version is checked.
 The runner starts it on a free loopback port with `--save '' --appendonly no`,
-keeps all server files in a temporary directory under `/private/tmp` outside
-the repository, flushes the database before and after each case, and stops
+keeps all server files in a directory under the system's temporary
+directory, outside the repository, flushes the database before and after each case, and stops
 and waits for the server on completion, failure or interruption. Socket
 operations have a five-second timeout. Redis replies are collected before
 any expected file is written, so an unexpected script error cannot partly

@@ -1,0 +1,73 @@
+# Records the oracle corpus on the reference platform: Redis 7.0.15, built
+# from source with its bundled Lua, on x86-64 Linux with glibc (AGENTS.md,
+# "The reference"). It compares the stored replies with that server, then
+# records every reply again and keeps both results and their difference as
+# an artifact; a person reviews the difference and commits the replies.
+#
+# A change to the corpus, its runner or this file runs it, as does a manual
+# dispatch on the default branch. It never writes to the repository.
+name: oracle-reference
+
+on:
+  push:
+    paths:
+      - research/experiments/halo-oracle/**
+      - .github/workflows/oracle-reference.yml
+  workflow_dispatch:
+
+concurrency:
+  group: oracle-reference-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  record:
+    name: record on x86-64 Linux
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      # The release tarball is checked against the hash Redis publishes in its
+      # redis-hashes repository, an independent source.
+      - name: Build Redis 7.0.15 from source
+        run: |
+          set -o pipefail
+          mkdir -p build/redis && cd build/redis
+          curl -fsSL --retry 3 -o redis-7.0.15.tar.gz https://download.redis.io/releases/redis-7.0.15.tar.gz
+          expected=$(curl -fsSL --retry 3 https://raw.githubusercontent.com/redis/redis-hashes/master/README \
+            | awk '$2 == "redis-7.0.15.tar.gz" && $3 == "sha256" { print $4 }')
+          test -n "$expected"
+          echo "$expected  redis-7.0.15.tar.gz" | sha256sum -c -
+          tar -xzf redis-7.0.15.tar.gz
+          make -C redis-7.0.15 -j"$(nproc)" > make.log 2>&1 || { tail -50 make.log; exit 1; }
+          redis-7.0.15/src/redis-server --version
+          uname -m
+          ldd --version | head -1
+
+      # The comparison may fail: its result is what this run reports.
+      - name: Compare the stored replies
+        run: |
+          set -o pipefail
+          mkdir -p build/oracle
+          status=0
+          research/experiments/halo-oracle/run.sh --check \
+            --server build/redis/redis-7.0.15/src/redis-server 2>&1 | tee build/oracle/check.log || status=$?
+          echo "comparison exit status: $status" | tee -a build/oracle/check.log
+
+      - name: Record every reply again
+        run: |
+          research/experiments/halo-oracle/run.sh --generate \
+            --server build/redis/redis-7.0.15/src/redis-server --output build/oracle/expected
+          diff -r research/experiments/halo-oracle/expected build/oracle/expected > build/oracle/expected.diff || true
+          echo "files that differ: $(grep -c '^diff -r' build/oracle/expected.diff || true)"
+          cat build/oracle/expected.diff
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: oracle-x86-64-linux
+          path: build/oracle/
+          retention-days: 30
