@@ -96,7 +96,7 @@ Source: [code and tests](../AGENTS.md#code-and-tests).
   [G3](../design/skill/SKILL.md#design-checks) to structural choices, and
   check that the assessment happened when the choice was made.
 
-## T. Checks and pins — changes to tests, the Makefile, `.github/`, `whitefoot.pin` or `design/skill`
+## T. Checks and pins — changes to tests, the Makefile, `.github/`, `whitefoot.pin` or a submodule
 
 - [ ] **T1 — Preserved checks.** Every removed, skipped, narrowed or weakened
   test or check has a technical reason consistent with the requested change.
@@ -104,10 +104,9 @@ Source: [code and tests](../AGENTS.md#code-and-tests).
   shows that a representative wrong result is detected.
 - [ ] **T3 — Local and CI correspondence.** CI runs the same Makefile targets
   as local `make check`; changed selection adds no omission or extra check.
-- [ ] **T4 — The pins.** A moved pin names the adopted revisions and why; a
-  revision bound for `main` pins a Whitefoot release built from a commit on
-  Whitefoot's `main`, never an experiment release `wf-exp-`, and a
-  Design-skill commit on its `main`, and Halo's checks pass with them.
+- [ ] **T4 — The pins.** The [review items](../whitefoot-kit/downstream.md#review-items)
+  of Whitefoot-kit hold for `whitefoot.pin` and the `whitefoot-kit` and
+  `design/skill` submodules, and Halo's checks pass with them.
 
 ## R. Decisions — changed choices, premises or evidence
 

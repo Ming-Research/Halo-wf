@@ -9,6 +9,6 @@ it.
 
 Gaps Halo needs Whitefoot to close, each stated as its minimal semantic
 example apart from the engine code that exposed it
-([AGENTS.md](../AGENTS.md#the-whitefoot-boundary)).
+([Whitefoot-kit](../whitefoot-kit/downstream.md#trying-an-unmerged-whitefoot-change)).
 
 ## Engine
