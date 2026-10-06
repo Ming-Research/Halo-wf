@@ -38,6 +38,11 @@ def isnan(raw):
     return raw & (SIGN - 1) > INF
 
 
+def fallback_bits(raw):
+    """The input oracle.lua's pure-Lua fallback builds: every NaN becomes the default quiet NaN of its sign."""
+    return (raw & SIGN) | 0x7ff8000000000000 if isnan(raw) else raw
+
+
 def ulps(a, b):
     if isnan(a) or isnan(b):
         return None
@@ -287,6 +292,9 @@ def main():
         for case, host_line, executable_line in zip(cases, host_lines, executable_lines):
             if host_line == executable_line:
                 continue
+            numeric = (case[1], case[2]) if case[0] != 'S' else ()
+            if any(fallback_bits(value) != value for value in numeric):
+                continue  # The fallback cannot build this NaN's payload or signaling bit; the archive host is exact.
             if case[0] != 'F' and host_line != b'nil' and executable_line != b'nil':
                 host_bits, executable_bits = int(host_line,16), int(executable_line,16)
                 if isnan(host_bits) and isnan(executable_bits):
