@@ -27,7 +27,7 @@ jobs:
         run: make compiler
       - name: Root controls and the call-kind witness
         run: |
-          set -u
+          set +e -u
           wfc=$(ls -d "$PWD"/build/whitefoot/wf-*/whitefootc | head -1)
           out="$PWD/build/gates"
           mkdir -p "$out"

@@ -1,4 +1,4 @@
--- checks: an ordinary call reaches each kind of callee as Lua specifies: a native function, a native iterator, a number and nil (both errors), and a vararg Lua function.
+-- checks: an ordinary call reaches each kind of callee as Lua specifies: a native function, a native iterator, a number and nil (both errors, matched apart from the variable description), and a vararg Lua function.
 -- KEYS: []
 -- ARGV: []
 -- expects: No pre-existing keys.
@@ -22,7 +22,7 @@ local function vararg(a, ...)
 end
 local variable = invoke(vararg, 20, 30)
 return {native, sentinel, ok and 1 or 0,
-  string.find(err, "attempt to call a number value", 1, true) and 1 or 0,
+  string.find(err, "attempt to call", 1, true) and string.find(err, "a number value", 1, true) and 1 or 0,
   nilok and 1 or 0,
-  string.find(nilerr, "attempt to call a nil value", 1, true) and 1 or 0,
+  string.find(nilerr, "attempt to call", 1, true) and string.find(nilerr, "a nil value", 1, true) and 1 or 0,
   variable}
