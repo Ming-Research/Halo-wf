@@ -211,6 +211,7 @@ fn record(engine: &Engine, outcome: Outcome) -> r: Outcome writes(engine.result_
 fn invalid(engine: &Engine) -> r: Outcome writes(engine) {
   let e = intern(engine: engine, bytes: &invalid_script[0_u64..26_u64]);
   set engine^.vm.error = e;
+  set engine^.vm.raise_pc = 0_u64;
   set engine^.result_count = 0_u64;
   set engine^.resumable = False();
   set engine^.calling = False();
