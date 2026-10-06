@@ -205,34 +205,6 @@ fn pattern_results(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, source: Value,
   return HostOutcome::Returned(count: total);
 }
 
-fn pattern_is_iterator(vm: &Vm, value: Value) -> r: Bool reads(vm.heap) {
-  match value {
-    Fun(h: pattern_bound_1) => {
-      let i = cvt::<u32, u64>(pattern_bound_1);
-      if i < vm^.heap.closures.inner.len {
-        if vm^.heap.closures.inner[i].live {
-          return vm^.heap.closures.inner[i].payload.proto == 4294967295_u32;
-        }
-      }
-    }
-    Nil() => {
-    }
-    False() => {
-    }
-    True() => {
-    }
-    Num(..) => {
-    }
-    Str(..) => {
-    }
-    Tab(..) => {
-    }
-    Builtin(..) => {
-    }
-  }
-  return False();
-}
-
 fn pattern_iterator(vm: &Vm, source: Value, pattern: Value) -> r: Value writes(vm) {
   let values = array_filled::<Value, 3>(value: source);
   set values[1_u64] = pattern;
@@ -251,7 +223,7 @@ fn pattern_iterator(vm: &Vm, source: Value, pattern: Value) -> r: Value writes(v
       }
     }
   }
-  return pkg::heap::new_closure(heap: &vm^.heap, proto: 4294967295_u32, upvals: &handles[0_u64..3_u64]);
+  return pkg::heap::new_native_closure(heap: &vm^.heap, id: builtin_string_gmatchaux, upvals: &handles[0_u64..3_u64]);
 }
 
 fn pattern_gmatch_next(vm: &Vm, stack: &Box<Slots<Value>>, func: u64) -> r: HostOutcome writes(vm), writes(stack) {

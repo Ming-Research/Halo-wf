@@ -222,7 +222,7 @@ fn free_closure(heap: &Heap, h: u32) -> r: unit writes(heap) {
       let amount_tail = 4_u64 *sat heap^.closures.inner[i].payload.upvals.inner.cap;
       let amount = 24_u64 +sat amount_tail;
       let b = box_slots_new::<u32>(capacity: 0_u64);
-      let empty = Closure(proto: 0_u32, upvals: move b);
+      let empty = Closure(callee: Callee::Lua(proto: 0_u32), upvals: move b);
       set heap^.closures.inner[i].payload = move empty;
       set heap^.closures.inner[i].live = False();
       set heap^.closures.inner[i].next_free = heap^.closures_free;
@@ -296,13 +296,23 @@ fn free_upvalue(heap: &Heap, h: u32) -> r: unit writes(heap) {
 }
 
 fn new_closure(heap: &Heap, proto: u32, upvals: &[u32]) -> r: Value reads(upvals), writes(heap) {
+  let callee = Callee::Lua(proto: proto);
+  return make_closure(heap: heap, callee: callee, upvals: upvals);
+}
+
+fn new_native_closure(heap: &Heap, id: u32, upvals: &[u32]) -> r: Value reads(upvals), writes(heap) {
+  let callee = Callee::Native(id: id);
+  return make_closure(heap: heap, callee: callee, upvals: upvals);
+}
+
+fn make_closure(heap: &Heap, callee: Callee, upvals: &[u32]) -> r: Value reads(upvals), writes(heap) {
   let b = box_slots_new::<u32>(capacity: upvals^.len);
   for (i in 0_u64..upvals^.len) {
     if b.inner.len < b.inner.cap {
       place_back(window: &b.inner, value: upvals^[i]);
     }
   }
-  let c = Closure(proto: proto, upvals: move b);
+  let c = Closure(callee: callee, upvals: move b);
   match alloc_closure(heap: heap, payload: move c) {
     Some(value: h) => {
       return Value::Fun(h: h);
