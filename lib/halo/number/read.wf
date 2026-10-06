@@ -359,7 +359,7 @@ fn round_bits(value: u64, shift: u64, sticky: Bool) -> rounded: u64 pure {
 }
 
 fn read_hex(input: &[u8], start: u64, end: u64) -> read: NumberBits reads(input) {
-  doc "Reads the rest of a hexadecimal number after its 0x, digits with an optional point and then an optional binary exponent, p or P with an optional sign and at least one decimal digit, filling every byte up to end. Its first digits, at least 61 bits, are kept and a later nonzero digit only noted, which is all rounding to the nearest double, ties to even, needs; overflow and underflow produce infinity and zero.";
+  doc "Reads the rest of a hexadecimal number after its 0x, digits with an optional point and then an optional binary exponent, p or P with an optional sign and at least one decimal digit, filling every byte up to end. Its first digits, at least 61 bits, are kept and a later nonzero digit only noted, which is all rounding to the nearest double, ties to even, needs; overflow and underflow produce infinity and zero. A subnormal result rounds as glibc strtod does on the reference platform, which drops the bit after the first 53 significant bits (round_and_return folds only the bits below it), so 0x1.00000000000008p-1075 reads as zero.";
   let mantissa = 0_u64;
   let sticky = False();
   let exponent = 0_i64;
@@ -466,7 +466,8 @@ fn read_hex(input: &[u8], start: u64, end: u64) -> read: NumberBits reads(input)
   if gap < 128_i64 {
     set shift = cvt.wrap::<i64, u64>(gap);
   }
-  let subnormal = round_bits(value: mantissa, shift: shift, sticky: sticky);
+  let glibc_window = iand(mantissa, 18446744073709550591_u64);
+  let subnormal = round_bits(value: glibc_window, shift: shift, sticky: sticky);
   return accepted(bits: subnormal);
 }
 
@@ -478,8 +479,25 @@ fn is_infinity(input: &[u8], start: u64, length: u64) -> infinite: Bool reads(in
   return either;
 }
 
+fn nan_sequence_byte(byte: u8) -> value: Bool pure {
+  doc "A byte of glibc's NaN n-char-sequence: an ASCII letter, digit or underscore.";
+  let digit_low = byte >= 48_u8;
+  let digit_high = byte <= 57_u8;
+  let digit = band(digit_low, digit_high);
+  let upper_low = byte >= 65_u8;
+  let upper_high = byte <= 90_u8;
+  let upper = band(upper_low, upper_high);
+  let lower_low = byte >= 97_u8;
+  let lower_high = byte <= 122_u8;
+  let lower = band(lower_low, lower_high);
+  let underscore = byte == 95_u8;
+  let letter = bor(upper, lower);
+  let alphanumeric = bor(digit, letter);
+  return bor(alphanumeric, underscore);
+}
+
 fn is_nan(input: &[u8], start: u64, length: u64) -> value: Bool reads(input) {
-  doc "macOS strtod's case-insensitive nan, optionally followed by a payload ending at its first closing parenthesis.";
+  doc "glibc strtod's case-insensitive nan, optionally followed by a parenthesized n-char-sequence of ASCII letters, digits and underscores. Another parenthesized text is left unread, so the number does not take the whole string.";
   if length < 3_u64 {
     return False();
   }
@@ -491,21 +509,29 @@ fn is_nan(input: &[u8], start: u64, length: u64) -> value: Bool reads(input) {
   if length == 3_u64 {
     return True();
   }
+  if length < 5_u64 {
+    return False();
+  }
   let open = start +wrap 3_u64;
   let byte = byte_at(input: input, index: open);
   if byte != 40_u8 {
     return False();
   }
   let end = start +sat length;
+  let close = end -wrap 1_u64;
+  let last = byte_at(input: input, index: close);
+  if last != 41_u8 {
+    return False();
+  }
   let body = open +wrap 1_u64;
-  for (index in body..end) {
+  for (index in body..close) {
     let next = byte_at(input: input, index: index);
-    if next == 41_u8 {
-      let after = index +wrap 1_u64;
-      return after == end;
+    let allowed = nan_sequence_byte(byte: next);
+    if bnot(allowed) {
+      return False();
     }
   }
-  return False();
+  return True();
 }
 
 fn read_magnitude(input: &[u8], start: u64, length: u64) -> read: NumberBits reads(input) {
@@ -539,7 +565,7 @@ fn read_magnitude(input: &[u8], start: u64, length: u64) -> read: NumberBits rea
 }
 
 fn nan_payload(input: &[u8], start: u64, length: u64) -> bits: u64 reads(input) {
-  doc "macOS strtod's NaN payload: a complete unsigned decimal, leading-zero octal, or lowercase-0x hexadecimal integer, accumulated modulo 2^64; other payloads supply zero.";
+  doc "glibc's NaN payload: the n-char-sequence read by strtoull in base 0 (0x or 0X hexadecimal, a leading zero octal, else decimal), saturating at 2^64 - 1. A sequence strtoull does not read whole supplies none.";
   if length <= 5_u64 {
     return 0_u64;
   }
@@ -548,31 +574,58 @@ fn nan_payload(input: &[u8], start: u64, length: u64) -> bits: u64 reads(input) 
   let close = end -wrap 1_u64;
   let position = body;
   let radix = 10_u64;
+  let threshold = 1844674407370955161_u64;
   let first = byte_at(input: input, index: body);
   if first == 48_u8 {
     set radix = 8_u64;
+    set threshold = 2305843009213693951_u64;
     let second = body +wrap 1_u64;
     let marker = byte_at(input: input, index: second);
-    if marker == 120_u8 {
+    let lower_x = marker == 120_u8;
+    let upper_x = marker == 88_u8;
+    let after = second +wrap 1_u64;
+    let following = byte_at(input: input, index: after);
+    let following_digit = hex_digit(byte: following);
+    let inside = after < close;
+    let hex_follows = following_digit < 16_u64;
+    let prefixed = bor(lower_x, upper_x);
+    let digits_follow = band(inside, hex_follows);
+    if band(prefixed, digits_follow) {
       set radix = 16_u64;
-      set position = second +wrap 1_u64;
+      set threshold = 1152921504606846975_u64;
+      set position = after;
     }
   }
   let payload = 0_u64;
+  let saturated = False();
   for (index in position..close) {
     let byte = byte_at(input: input, index: index);
     let digit = hex_digit(byte: byte);
     if digit >= radix {
       return 0_u64;
     }
-    let scaled = payload *wrap radix;
-    set payload = scaled +wrap digit;
+    if bnot(saturated) {
+      if payload > threshold {
+        set saturated = True();
+      } else {
+        let scaled = payload *wrap radix;
+        let room = 18446744073709551615_u64 -sat digit;
+        if scaled > room {
+          set saturated = True();
+        } else {
+          set payload = scaled +wrap digit;
+        }
+      }
+    }
+  }
+  if saturated {
+    return 18446744073709551615_u64;
   }
   return payload;
 }
 
 fn str2number(bytes: &[u8]) -> number: Option<f64> reads(bytes) {
-  doc "Reads luaO_str2d in the macOS C locale, with C-string termination, surrounding whitespace, accepted range errors and signed NaNs.";
+  doc "Reads luaO_str2d as glibc strtod does in the C locale, with C-string termination, surrounding whitespace, accepted range errors and signed NaNs.";
   let end = bytes^.len;
   for (index in 0_u64..end) {
     let byte = byte_at(input: bytes, index: index);
