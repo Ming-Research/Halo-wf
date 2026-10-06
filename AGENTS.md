@@ -32,9 +32,8 @@ Halo builds with the compiler release `whitefoot.pin` names, through the
 `whitefoot-kit` submodule, whose [downstream.md](whitefoot-kit/downstream.md)
 holds the pin, reading the language at the pinned commit, trying an unmerged
 Whitefoot change and upgrading Whitefoot. A Whitefoot gap goes under
-*Whitefoot requirements* in `docs/todo.md`. An upgrade whose compiler changed
-code generation compares `research/experiments/halo-bench` before and
-after.
+*Whitefoot requirements* in `docs/todo.md`. The upgrade's benchmark is
+`research/experiments/halo-bench` (`run.py --before-binary`).
 
 ## Research and checks
 
