@@ -43,9 +43,11 @@ MessagePack uses the general token decoder and writer, with Redis's legacy
 tag exclusions, signed Lua-integer conversion and stream protocol in Halo.
 
 CJSON instances keep independent configuration and reusable buffers. Their
-methods are heap closures with the reserved no-prototype sentinel and three
-closed captures: the builtin ID and the two 32-bit halves of the full instance
-index. Binding an instance does not consume host function IDs. Instance reclamation and Lua
+methods are native heap closures whose callee is the builtin ID, with two
+closed captures holding the 32-bit halves of the full instance index
+(`design/halo/closures.md`; the sentinel form described in the assessment
+below was replaced after it let a method run as a gmatch iterator). Binding
+an instance does not consume host function IDs. Instance reclamation and Lua
 local/field error names remain limitations recorded in `docs/todo.md`.
 The local reference runs on macOS; Linux/glibc qualification remains required
 by the Halo VM design's H4 platform reference.

@@ -213,7 +213,7 @@ def main():
     if not rows: ap.error('filter matched no snippets')
     counts=Counter();failures=[]
     revision=subprocess.run(['git','rev-parse','HEAD'],cwd=ROOT,capture_output=True,text=True,check=True).stdout.strip()
-    with tempfile.TemporaryDirectory(prefix='halo-luacodecs-',dir='/private/tmp') as temp:
+    with tempfile.TemporaryDirectory(prefix='halo-luacodecs-') as temp:
         scratch=Path(temp);lua,seconds,versions=build_reference(args.redis_source,scratch)
         print(f'Reference build {seconds:.3f}s: {versions}',flush=True)
         binary=args.binary.resolve() if args.binary else scratch/'halo'
