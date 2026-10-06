@@ -135,6 +135,9 @@ def corpus():
             add('cjson','return cjson.'+fn+'('+e2e.lua_string(option+'\x00x')+')')
     add('cmsgpack','return {cmsgpack._NAME,cmsgpack._VERSION,cmsgpack._COPYRIGHT,cmsgpack._DESCRIPTION}')
     add('cjson','local j=cjson.new(); return {j._NAME,j._VERSION,j.null==cjson.null,type(j.encode)}')
+    add('struct','return tostring(struct.unpack("f",struct.pack("f",0/0)))')
+    add('struct','return tostring(struct.unpack("<f","\\0\\0\\192\\255"))')
+    add('struct','return tostring(struct.unpack("<f","\\0\\0\\192\\127"))')
     for source in (
         'local j=cjson.new(); local encode=j.encode; j=nil; for i=1,5000 do local x={} end; return encode({1,2})',
         'local j=cjson.new(); local k=cjson.new(); j.encode_number_precision(2); k.encode_number_precision(3); return {j.encode(1.2345),k.encode(1.2345),cjson.encode(1.2345),j.encode==k.encode,j.encode==j.encode}',
