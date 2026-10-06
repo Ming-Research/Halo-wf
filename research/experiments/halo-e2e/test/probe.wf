@@ -635,7 +635,7 @@ fn outcome_code(outcome: Outcome) -> r: u8 pure {
 }
 
 fn pending_probe() -> r: u8 pure {
-  doc "A host call left pending returns its results or raises its error where it was made, at top level and inside a library callback, and the engine refuses resume while a call is pending.";
+  doc "A host call left pending returns its results or raises its error where it was made, at top level and inside a library callback, and resume, through the engine or the VM, ends a run whose call is pending.";
   let engine = halo::embed::new_engine(limit: 67108864_u64);
   let env = Probe(mode: 3_u8, calls: 0_u64);
   let host = Value::Builtin(id: 4096_u32);
@@ -767,6 +767,26 @@ fn pending_probe() -> r: u8 pure {
   let late_code = outcome_code(outcome: late);
   if late_code != 1_u8 {
     return 88_u8;
+  }
+  let direct_run = probe_run(engine: &engine, env: &env, script: top);
+  let direct_run_code = outcome_code(outcome: direct_run);
+  if direct_run_code != 4_u8 {
+    return 89_u8;
+  }
+  let slot = top.slot;
+  if slot < engine.scripts.inner.len {
+    let direct = halo::vm::resume::<ProbeHost>(script: &engine.scripts.inner[slot], stack: &engine.stack, vm: &engine.vm, env: &env, budget: 1_u64);
+    let direct_code = outcome_code(outcome: direct);
+    if direct_code != 1_u8 {
+      return 90_u8;
+    }
+    let after = halo::vm::complete_call::<ProbeHost>(script: &engine.scripts.inner[slot], stack: &engine.stack, vm: &engine.vm, env: &env, results: &results[0_u64..1_u64], budget: 1_u64);
+    let after_code = outcome_code(outcome: after);
+    if after_code != 1_u8 {
+      return 91_u8;
+    }
+  } else {
+    return 89_u8;
   }
   return 0_u8;
 }

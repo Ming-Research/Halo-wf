@@ -1188,16 +1188,7 @@ fn fixture_host(mode: u8, metamethod: Bool) -> r: Bool pure {
       return number_is(stack: &stack, slot: env.last_func, expected: 73.0_f64);
     }
     HostCall() => {
-      if mode != 0_u8 {
-        return False();
-      }
-      if stack.inner.len != env.last_len {
-        return False();
-      }
-      if bnot(env.stopped) {
-        return False();
-      }
-      return number_is(stack: &stack, slot: env.last_func, expected: 73.0_f64);
+      return False();
     }
   }
 }
