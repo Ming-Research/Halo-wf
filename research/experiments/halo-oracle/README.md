@@ -5,7 +5,7 @@ This corpus records the exact RESP2 replies of Redis 7.0.15 for small Lua 5.1
 and its firn bindings described in [Halo's design](../../investigations/halo/DESIGN.md).
 It is explicitly invoked research tooling, outside the compiler gate.
 
-There are 80 scripts: 48 `lua-core`, 16 `redis-api`, 6 `apps`, and 10 `libs`.
+There are 81 scripts: 48 `lua-core`, 16 `redis-api`, 6 `apps`, and 11 `libs`.
 The scripts, replies and runner belong here until the oracle is replaced or
 Halo/firn scripting is retired. Each case is consumed by `run.sh`; the table
 below is the index of the observations it protects.
@@ -181,6 +181,7 @@ not automatically used to overwrite this baseline.
 | libs | [bit-logical](scripts/libs/bit-logical.lua) | bit.band, bor and bxor use signed 32-bit results. |
 | libs | [bit-shifts-hex](scripts/libs/bit-shifts-hex.lua) | Shifts mask counts and tohex formats signed values as hex. |
 | libs | [cjson-arrays-nested](scripts/libs/cjson-arrays-nested.lua) | JSON arrays encode and nested object values decode without relying on object order. |
+| libs | [cjson-instance-methods](scripts/libs/cjson-instance-methods.lua) | Methods of a cjson.new() instance, called through the table and after extraction, beside a string.gmatch iterator. |
 | libs | [cjson-invalid](scripts/libs/cjson-invalid.lua) | Malformed JSON raises an error caught by pcall. |
 | libs | [cjson-numbers](scripts/libs/cjson-numbers.lua) | cjson number formatting is independent of RESP integer conversion. |
 | libs | [cjson-objects](scripts/libs/cjson-objects.lua) | JSON objects, empty table encoding and decoded null/boolean values. |

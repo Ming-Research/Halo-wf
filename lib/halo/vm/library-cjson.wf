@@ -44,19 +44,19 @@ fn cjson_config(vm: &Vm) -> r: u64 writes(vm) {
   return index_v4;
 }
 
-struct CjsonBinding {
+struct NativeBinding {
   id: u32;
   config: u64;
 }
 
 fn cjson_closure(vm: &Vm, id: u32, config: u64) -> r: Value writes(vm) {
-  let captured = array_filled::<u32, 3>(value: no_handle);
-  let words = array_filled::<u32, 3>(value: id);
+  let captured = array_filled::<u32, 2>(value: no_handle);
+  let words = array_filled::<u32, 2>(value: 0_u32);
   let low = iand(config, 4294967295_u64);
   let high = ishr.wrap(config, 32_u32);
-  set words[1_u64] = cvt.wrap::<u64, u32>(low);
-  set words[2_u64] = cvt.wrap::<u64, u32>(high);
-  for (i in 0_u64..3_u64) {
+  set words[0_u64] = cvt.wrap::<u64, u32>(low);
+  set words[1_u64] = cvt.wrap::<u64, u32>(high);
+  for (i in 0_u64..2_u64) {
     let number = cvt.nearest::<u32, f64>(words[i]);
     let value = Value::Num(n: number);
     let payload = pkg::heap::Upval::Closed(v: value);
@@ -69,7 +69,7 @@ fn cjson_closure(vm: &Vm, id: u32, config: u64) -> r: Value writes(vm) {
       }
     }
   }
-  return pkg::heap::new_closure(heap: &vm^.heap, proto: no_handle, upvals: &captured[0_u64..3_u64]);
+  return pkg::heap::new_native_closure(heap: &vm^.heap, id: id, upvals: &captured[0_u64..2_u64]);
 }
 
 fn cjson_capture(vm: &Vm, handle: u32) -> r: Option<u32> reads(vm) {
@@ -101,40 +101,46 @@ fn cjson_capture(vm: &Vm, handle: u32) -> r: Option<u32> reads(vm) {
   return None<u32>();
 }
 
-fn cjson_binding(vm: &Vm, handle: u32) -> r: Option<CjsonBinding> reads(vm) {
+fn native_binding(vm: &Vm, handle: u32) -> r: Option<NativeBinding> reads(vm) {
   let index = cvt::<u32, u64>(handle);
   if index < vm^.heap.closures.inner.len {
     if vm^.heap.closures.inner[index].live {
-      if vm^.heap.closures.inner[index].payload.proto == no_handle {
-        if vm^.heap.closures.inner[index].payload.upvals.inner.len == 3_u64 {
-          let words = array_filled::<u32, 3>(value: 0_u32);
-          for (i in 0_u64..3_u64) {
-            let capture_handle = vm^.heap.closures.inner[index].payload.upvals.inner[i];
-            match cjson_capture(vm: vm, handle: capture_handle) {
-              Some(value: word) => {
-                set words[i] = word;
-              }
-              None() => {
-                return None<CjsonBinding>();
+      let callee = vm^.heap.closures.inner[index].payload.callee;
+      match callee {
+        Native(id: native_id) => {
+          let config = 0_u64;
+          let lower = native_id >= 96_u32;
+          let upper = native_id <= 105_u32;
+          if band(lower, upper) {
+            if vm^.heap.closures.inner[index].payload.upvals.inner.len != 2_u64 {
+              return None<NativeBinding>();
+            }
+            let words = array_filled::<u32, 2>(value: 0_u32);
+            for (i in 0_u64..2_u64) {
+              let capture_handle = vm^.heap.closures.inner[index].payload.upvals.inner[i];
+              match cjson_capture(vm: vm, handle: capture_handle) {
+                Some(value: word) => {
+                  set words[i] = word;
+                }
+                None() => {
+                  return None<NativeBinding>();
+                }
               }
             }
-          }
-          let id = words[0_u64];
-          let lower = id >= 96_u32;
-          let upper = id <= 105_u32;
-          if band(lower, upper) {
-            let low = cvt::<u32, u64>(words[1_u64]);
-            let high = cvt::<u32, u64>(words[2_u64]);
+            let low = cvt::<u32, u64>(words[0_u64]);
+            let high = cvt::<u32, u64>(words[1_u64]);
             let shifted = ishl.wrap(high, 32_u32);
-            let config = ior(shifted, low);
-            let native_record = CjsonBinding(id: id, config: config);
-            return Some<CjsonBinding>(value: native_record);
+            set config = ior(shifted, low);
           }
+          let native_record = NativeBinding(id: native_id, config: config);
+          return Some<NativeBinding>(value: native_record);
+        }
+        Lua(..) => {
         }
       }
     }
   }
-  return None<CjsonBinding>();
+  return None<NativeBinding>();
 }
 
 fn cjson_table(vm: &Vm, config: u64) -> r: Value writes(vm) {

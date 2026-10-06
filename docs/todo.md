@@ -42,7 +42,7 @@ example apart from the engine code that exposed it
 ## Engine
 
 - **The gate runs the oracle corpus only.** `make check` builds the
-  end-to-end test program and compares the 80 oracle scripts at budgets 1,
+  end-to-end test program and compares every oracle script at budgets 1,
   7 and 1000 in ordinary and collector-stress modes. Not in the gate: the
   JSON and MessagePack comparisons (`research/experiments/json`,
   `research/experiments/msgpack`, the latter needing its C reference), the
@@ -54,17 +54,6 @@ example apart from the engine code that exposed it
   passes the gate. Change: wire each into `make check` with a control that
   shows it detects a wrong result, and move the gate's fixtures and runner
   to `tests/`. Reopen at the next gate change.
-
-- **Halo iterator and CJSON closure routing share a sentinel.** Both
-  `library-pattern-api.wf::pattern_is_iterator` and
-  `library-cjson.wf::cjson_binding` select proto `no_handle`, while
-  `calls.wf::prepare` changes the view to a pattern builtin first.
-  Impact: a CJSON method closure can enter iterator handling before its native
-  binding is decoded. Change: distinguish these native closure payloads and
-  test extracted CJSON methods alongside gmatch iterators with independent
-  Lua replies. Reopen before changing native closure routing; the bounded
-  call-entry trial leaves sentinel paths unchanged. This source overlap
-  needs a minimal executable witness before selecting the repair.
 
 - **Halo F4 has no every-allocation reachability verifier.**
   The safepoint stress and four missing-root mutations in

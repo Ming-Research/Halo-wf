@@ -1,0 +1,21 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "bulk",
+      "bytes": "[1,2]"
+    },
+    {
+      "type": "bulk",
+      "bytes": "[3]"
+    },
+    {
+      "type": "integer",
+      "value": 4
+    },
+    {
+      "type": "bulk",
+      "bytes": "a,b"
+    }
+  ]
+}

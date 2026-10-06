@@ -136,7 +136,15 @@ fn enter_lua(vm: &Vm, stack: &Box<Slots<Value>>, h: u32, func: u64, argc: u64, w
   let hi = cvt::<u32, u64>(h);
   if hi < vm^.heap.closures.inner.len {
     if vm^.heap.closures.inner[hi].live {
-      let pi = cvt::<u32, u64>(vm^.heap.closures.inner[hi].payload.proto);
+      let callee = vm^.heap.closures.inner[hi].payload.callee;
+      let pi = vm^.protos.inner.len;
+      match callee {
+        Lua(proto: lua_proto) => {
+          set pi = cvt::<u32, u64>(lua_proto);
+        }
+        Native(..) => {
+        }
+      }
       if pi < vm^.protos.inner.len {
         let p = vm^.protos.inner[pi];
         let fixed = cvt::<u8, u64>(p.numparams);
@@ -305,13 +313,10 @@ fn prepare<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
     }
     let v = stack^.inner[fslot];
     let view = func_of(v: v);
-    if pattern_is_iterator(vm: vm, value: v) {
-      set view = FuncView::Native(id: builtin_string_gmatchaux);
-    }
     let codec_config = 0_u64;
     match view {
       Lua(h: closure_handle) => {
-        match cjson_binding(vm: vm, handle: closure_handle) {
+        match native_binding(vm: vm, handle: closure_handle) {
           Some(value: native_record) => {
             set view = FuncView::Native(id: native_record.id);
             set codec_config = native_record.config;

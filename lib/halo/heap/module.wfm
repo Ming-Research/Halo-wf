@@ -23,8 +23,13 @@ public struct Table {
   public flags: u8;
 }
 
+public enum Callee {
+  Lua(public proto: u32);
+  Native(public id: u32);
+}
+
 public struct Closure {
-  public proto: u32;
+  public callee: Callee;
   public upvals: Box<Slots<u32>>;
 }
 
@@ -133,7 +138,9 @@ public fn alloc_upvalue(heap: &Heap, payload: Upval) -> r: Option<u32> writes(he
 
 public fn free_upvalue(heap: &Heap, h: u32) -> r: unit writes(heap) doc "Replaces a live upvalue with closed Nil and links it onto upvalues_free; repeated frees do nothing.";
 
-public fn new_closure(heap: &Heap, proto: u32, upvals: &[u32]) -> r: Value reads(upvals), writes(heap) doc "Copies the captured handles into a new closure; Nil denotes representational exhaustion.";
+public fn new_closure(heap: &Heap, proto: u32, upvals: &[u32]) -> r: Value reads(upvals), writes(heap) doc "Copies the captured handles into a new Lua closure of prototype proto; Nil denotes representational exhaustion.";
+
+public fn new_native_closure(heap: &Heap, id: u32, upvals: &[u32]) -> r: Value reads(upvals), writes(heap) doc "Copies the captured handles into a new closure that calls the builtin id with them; Nil denotes representational exhaustion.";
 
 public fn new_upvalue(heap: &Heap, value: Upval) -> r: Option<u32> writes(heap) doc "Creates an open or closed upvalue. The VM owns ordering of open upvalues.";
 
