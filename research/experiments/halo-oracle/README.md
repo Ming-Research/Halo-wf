@@ -90,7 +90,7 @@ mode requires `--check` and cannot regenerate expected replies. It does not
 start or stop the candidate. Use a dedicated test instance: before and after
 each case it deletes every declared corpus key with `DEL`. All writes in
 this corpus target declared `halo-oracle:*` keys, so this isolates cases
-without requiring `FLUSHDB`, which firn currently lacks. Other clients must
+without requiring `FLUSHDB`, so a host without it can run the corpus. Other clients must
 not alter these keys or scripting state during the run. A nonzero exit means
 a setup/protocol failure, an unexpected top-level error state, or at least
 one byte-for-byte reply mismatch; mismatches identify the case and expected

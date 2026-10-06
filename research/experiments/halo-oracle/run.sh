@@ -200,7 +200,7 @@ def main():
                 if args.port is None:
                     successful(connection.command('FLUSHDB'), 'FLUSHDB')
                 elif corpus_keys:
-                    # Firn has DEL but no FLUSHDB. All corpus writes use declared keys.
+                    # A host under test may lack FLUSHDB; every corpus write uses a declared key.
                     successful(connection.command('DEL', *corpus_keys), 'DEL corpus keys')
 
             replies = {}
