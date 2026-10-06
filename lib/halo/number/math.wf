@@ -1,5 +1,11 @@
 fn fmod(a: f64, b: f64) -> value: f64 pure {
-  doc "C fmod as glibc computes it on x86-64, the reference: a NaN divisor gives that NaN, quieted, as glibc's (x * y) / (x * y) does with the divisor first; otherwise the exact LLVM frem operation [OP-8].";
+  doc "C fmod as glibc computes it on x86-64, the reference: the dividend's NaN first, then the divisor's, each quieted, as glibc's (x * y) / (x * y) yields on x86-64; otherwise the exact LLVM frem operation [OP-8].";
+  let dividend = reinterpret::<f64, u64>(a);
+  let dividend_magnitude = iand(dividend, 9223372036854775807_u64);
+  if dividend_magnitude > infinity_bits {
+    let quiet = ior(dividend, quiet_bit);
+    return reinterpret::<u64, f64>(quiet);
+  }
   let divisor = reinterpret::<f64, u64>(b);
   let magnitude = iand(divisor, 9223372036854775807_u64);
   if magnitude > infinity_bits {
