@@ -1,0 +1,61 @@
+# Temporary, for Halo-wf#3: builds and times research/experiments/halo-bench
+# on the 14900K, for the Whitefoot upgrade's before/after comparison
+# (whitefoot-kit downstream.md, step 5) and the fixed-arity call entry's
+# runtime and check-time criterion (research/experiments/halo-bench/
+# RESULTS.md). STEP selects the one job a push of this file runs. Removed
+# before the pull request is marked ready.
+name: bench-14900k
+
+on:
+  push:
+    branches: [claude/fixed-call-entry]
+    paths: [.github/workflows/bench-14900k.yml]
+
+env:
+  STEP: build-before-upgrade
+  # Halo-wf main 526f67bef with its pin wf-648338c31240: the upgrade's
+  # "before" source and compiler, built while /usr/bin/clang is still 18.
+  BEFORE_SOURCE: 526f67befe929bfdb33513a0c557d832d4868c43
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  bench:
+    runs-on: [self-hosted, 14900k]
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Build the upgrade's "before" halo-bench
+        if: env.STEP == 'build-before-upgrade'
+        run: |
+          set -euo pipefail
+          git checkout -q --detach "$BEFORE_SOURCE"
+          git submodule update -q --init
+          release=$(sed -n 's/^release = //p' whitefoot.pin)
+          make compiler
+          wfc="$PWD/build/whitefoot/$release/whitefootc"
+          out="$PWD/build/bench-out"
+          rm -rf "$out"; mkdir -p "$out"
+          start=$(date +%s)
+          "$wfc" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-before-upgrade"
+          echo "build seconds: $(( $(date +%s) - start ))"
+          {
+            echo "source $(git rev-parse HEAD)"
+            echo "release $release"
+            sha256sum "$wfc" "$out/halo-before-upgrade"
+            /usr/bin/clang --version | head -n 1
+            ld.lld --version | head -n 1
+            uname -a
+          } | tee "$out/manifest.txt"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: halo-bench-${{ env.STEP }}
+          path: build/bench-out/
+          retention-days: 30
