@@ -10,6 +10,7 @@ on:
     paths:
       - .github/workflows/luacodecs-linux.yml
       - research/experiments/halo-luacodecs/**
+      - lib/**
 
 defaults:
   run:
