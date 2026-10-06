@@ -23,7 +23,7 @@ public fn new() -> state: State pure doc "Starts at source offset zero and line 
 
 public fn next(source: &[u8], state: &State, decoded: &Box<Slots<u8>>) -> result: Result<Token, Error> reads(source), writes(state), writes(decoded) doc "Returns a PUC 5.1 token code (single bytes are 0..255), its half-open source range and starting line. String bytes replace the caller-owned decoded buffer, valid until the next call. Names and numbers borrow their source range, with no conversion or token allocation. Errors are terminal: decoded retains the context needed by format_error; pass it to format_error before restarting.";
 
-public fn format_chunk(chunk: &[u8], output: &Box<Slots<u8>>) -> result: unit reads(chunk), writes(output) doc "Appends the display name luaO_chunkid gives chunk: the name after a leading @ or =, or a bracketed [string ...] abbreviation of source text.";
+public fn format_chunk(chunk: &[u8], size: u64, output: &Box<Slots<u8>>) -> result: unit reads(chunk), writes(output) doc "Appends the display name luaO_chunkid gives chunk in a buffer of size bytes: the name after a leading @ or =, or a bracketed [string ...] abbreviation of source text. Lua's lexer messages use 80 (MAXSRC), its runtime locations 60 (LUA_IDSIZE).";
 
 public fn format_error(chunk: &[u8], error: &Error, decoded: &Box<Slots<u8>>, output: &Box<Slots<u8>>) -> result: unit reads(chunk), reads(error), reads(decoded), writes(output) doc "Replaces output with PUC luaX_lexerror text, including luaO_chunkid's 80-byte chunk abbreviation. chunk is the Lua source name: @filename, =literal, or source text. Errors and strings use C-string truncation at NUL in diagnostics, while successful decoded strings preserve NUL.";
 
