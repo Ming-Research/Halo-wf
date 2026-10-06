@@ -238,7 +238,11 @@ and length the host turns into a slice of the string's public readonly
 bytes, since no function returns a reference), `number_of`, `truthy`,
 `kind`, `new_table`, `table_append`, `table_set`, `table_get`,
 `table_border`, `table_next`, `set_global` (bypassing readonly, as Redis
-sets `KEYS` and `ARGV` from C), `pin`/`unpin`, `error_value` and
+sets `KEYS` and `ARGV` from C), `pin`/`unpin`, `error_value`,
+`error_line` (the line of the innermost Lua function at the raise of the
+error that ended the run: the VM records the pc when the error first leaves
+a dispatch run, keeps it while the error propagates out of callbacks, and
+forgets it when `pcall` or `xpcall` catches the error) and
 `format_error` producing Redis's `@user_script:LINE: msg`. Script cache:
 `compile` returns a `ScriptId` or a compile error with PUC's text;
 `forget_all` is `SCRIPT FLUSH`. Running: `start`, `resume`, `reset`,

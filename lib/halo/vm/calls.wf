@@ -114,6 +114,7 @@ fn unwind(vm: &Vm, stack: &Box<Slots<Value>>) -> r: Step writes(vm), writes(stac
     }
     let f = take_back(window: &vm^.frames.inner);
     if f.flags == protected_flag {
+      set vm^.raise_pc = 0_u64;
       let dest = f.func;
       if dest < stack^.inner.len {
         set stack^.inner[dest] = Value::False();
@@ -617,6 +618,20 @@ fn fail_call<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: 
   let call = resume_pending(stack: stack, vm: vm, budget: budget);
   set vm^.error = error;
   let step = unwind(vm: vm, stack: stack);
+  match step {
+    Error() => {
+      let raised_at = call.return_pc -sat 1_u64;
+      note_raise(vm: vm, pc: raised_at);
+    }
+    Jump(..) => {
+    }
+    Done(..) => {
+    }
+    Stop() => {
+    }
+    Budget() => {
+    }
+  }
   return drive::<Host<E>>(script: script, stack: stack, vm: vm, env: env, step: step);
 }
 

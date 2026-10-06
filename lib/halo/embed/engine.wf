@@ -311,6 +311,17 @@ fn fail_call<interface Host<E>>(engine: &Engine, env: &E, error: Value, budget: 
   return invalid(engine: engine);
 }
 
+fn error_line(engine: &Engine) -> r: u64 reads(engine) {
+  let at = engine^.vm.raise_pc;
+  if at > 0_u64 {
+    let pc = at - 1_u64;
+    if pc < engine^.vm.lineinfo.inner.len {
+      return cvt::<u32, u64>(engine^.vm.lineinfo.inner[pc]);
+    }
+  }
+  return 0_u64;
+}
+
 fn result(engine: &Engine, index: u64) -> r: Option<Value> reads(engine) {
   if index < engine^.result_count {
     if index < engine^.stack.inner.len {

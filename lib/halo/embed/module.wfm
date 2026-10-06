@@ -59,6 +59,8 @@ public fn complete_call<interface Host<E>>(engine: &Engine, env: &E, results: &[
 
 public fn fail_call<interface Host<E>>(engine: &Engine, env: &E, error: Value, budget: u64) -> r: Outcome writes(engine), writes(env) doc "Raises error at the pending host call, as HostOutcome::Raised would have, so an enclosing pcall catches it, and continues the script with budget safepoints, as complete_call does.";
 
+public fn error_line(engine: &Engine) -> r: u64 reads(engine) doc "The source line of the innermost Lua function at the raise of the error that ended the last run, or 0 when unknown. An error keeps its raise point while it propagates out of callbacks; a pcall or xpcall that catches it forgets it, so an error raised again reports the line that raised it again.";
+
 public fn result(engine: &Engine, index: u64) -> r: Option<Value> reads(engine) doc "Returns a completed result in stack[0..result_count), or None.";
 
 public fn pin(engine: &Engine, value: Value) -> r: Option<u64> writes(engine) doc "Call while the engine is idle or suspended; the returned token is never reused. Roots are mirrored before dispatch. A pinned Lua closure is callable only while the script it came from runs.";
