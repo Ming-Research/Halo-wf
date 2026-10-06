@@ -179,16 +179,14 @@ example apart from the engine code that exposed it
   and adopt its behavior wherever they differ. Reopen before Halo's first
   release or when firn's EVAL lands.
 
-- **Reconcile the Halo embedding boundary record with current work.**
-  `research/experiments/halo-e2e/GAPS.md` presents the first comparison's
-  retired file-permission boundary as a current constraint ("this task
-  permits no changes to the VM or project TODO"), while the current F4
-  experiment changes both. Impact: readers can confuse an old editing
-  restriction with a technical limitation. Change: remove historical task
-  scope narration and retain the reproducing semantic witnesses and actual
-  boundaries. Reopen when that boundary record is next updated, before
-  using it as current integration guidance; verify its witnesses against
-  the then-current compiler and Halo revision.
+- **The Halo embedding boundary record's witnesses are unchecked against
+  the current revision.** `research/experiments/halo-e2e/GAPS.md` records
+  the integration gaps of the first comparison; its scope narration is
+  gone, but its witnesses were written against an older compiler and Halo.
+  Impact: a gap it lists may be closed, or one it omits may exist. Change:
+  rerun each witness against the current compiler and Halo revision and
+  keep only the boundaries that still hold. Reopen before using it as
+  current integration guidance.
 
 - **Halo's instruction Cell stride differs from the proposed eight bytes.**
   The [P1 native inspection](../research/experiments/halo-bench/RESULTS.md#value-width-handles-and-native-dispatch-inspected-first)

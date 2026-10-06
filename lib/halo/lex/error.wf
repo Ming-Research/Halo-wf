@@ -48,22 +48,25 @@ fn c_length(bytes: &[u8]) -> length: u64 reads(bytes) {
   return length;
 }
 
-fn format_chunk(chunk: &[u8], output: &Box<Slots<u8>>) -> result: unit reads(chunk), writes(output) {
-  doc "luaO_chunkid with MAXSRC 80, including its filename suffix and source-line abbreviation.";
+fn format_chunk(chunk: &[u8], size: u64, output: &Box<Slots<u8>>) -> result: unit reads(chunk), writes(output) {
+  doc "luaO_chunkid into a buffer of size bytes, including its filename suffix and source-line abbreviation: an = name keeps size - 1 bytes, an @ name its last size - 8, source text size - 17.";
   let length = c_length(bytes: chunk);
   let first = at(source: chunk, index: 0_u64);
   if first == 61_u16 {
-    let end = imin(length, 80_u64);
+    let end = imin(length, size);
     copy_range(source: chunk, start: 1_u64, end: end, buffer: output);
   } else if first == 64_u16 {
+    let keep = size -sat 8_u64;
+    let shown = keep +sat 1_u64;
     let start = 1_u64;
-    if length > 73_u64 {
-      set start = length - 72_u64;
+    if length > shown {
+      set start = length -sat keep;
       copy_range(source: &text_dots[0_u64..3_u64], start: 0_u64, end: 3_u64, buffer: output);
     }
     copy_range(source: chunk, start: start, end: length, buffer: output);
   } else {
-    let end = imin(length, 63_u64);
+    let keep = size -sat 17_u64;
+    let end = imin(length, keep);
     for (i in 0_u64..end) {
       let c = at(source: chunk, index: i);
       let nl = newline(c: c);
@@ -85,7 +88,7 @@ fn format_chunk(chunk: &[u8], output: &Box<Slots<u8>>) -> result: unit reads(chu
 fn format_error(chunk: &[u8], error: &Error, decoded: &Box<Slots<u8>>, output: &Box<Slots<u8>>) -> result: unit reads(chunk), reads(error), reads(decoded), writes(output) {
   doc "The returned message and PUC's diagnostic buffer become a full lexical error string.";
   clear(buffer: output);
-  format_chunk(chunk: chunk, output: output);
+  format_chunk(chunk: chunk, size: 80_u64, output: output);
   put(buffer: output, byte: 58_u8);
   append_decimal(buffer: output, value: error^.line);
   copy_range(source: &text_colon[0_u64..2_u64], start: 0_u64, end: 2_u64, buffer: output);
