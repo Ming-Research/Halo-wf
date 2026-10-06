@@ -149,6 +149,17 @@ example apart from the engine code that exposed it
   The [bounded growth experiment](../research/experiments/halo-bench/RESULTS.md#iteration-order-evidence-correction)
   uses scratch unsorted PUC comparisons to qualify its own change.
 
+- **Halo reused-binary reports identify current inputs, not build inputs.**
+  `research/experiments/halo-e2e/run.py --binary` hashes the current library
+  and harness source even when the supplied executable was built from other
+  bytes. Impact: the printed source digest can be mistaken for the binary's
+  provenance; the fixed-call repeat uses separately retained source and
+  executable hashes for its before build. Change: accept and verify an
+  explicit build-input manifest for reused binaries, and label current
+  fixture/runner inputs separately. Reopen at the next reused-binary
+  experiment; validate that a mismatched source/binary manifest fails and
+  that current fixture changes remain identified independently.
+
 - **Halo's C1 fast variants repeat operation logic in full handlers.**
   Callback-free variants make next-pc summaries available outside the VM's
   recursive callback component, but the corresponding full handlers retain
