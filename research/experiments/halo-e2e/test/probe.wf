@@ -593,7 +593,29 @@ fn chunk_probe() -> r: u8 pure {
       }
     }
   }
+  let long_name = long_chunk_error(engine: &engine, env: &env, name: &long_equals_chunk[0_u64..71_u64], want: &long_equals_error[0_u64..67_u64]);
+  if bnot(long_name) {
+    return 103_u8;
+  }
+  let long_file = long_chunk_error(engine: &engine, env: &env, name: &long_at_chunk[0_u64..71_u64], want: &long_at_error[0_u64..63_u64]);
+  if bnot(long_file) {
+    return 104_u8;
+  }
   return 0_u8;
+}
+
+fn long_chunk_error(engine: &Engine, env: &Probe, name: &[u8], want: &[u8]) -> r: Bool reads(name), reads(want), writes(engine), writes(env) {
+  doc "Runs error('boom') compiled under name and compares its location with want: runtime locations abbreviate the name as luaO_chunkid does with LUA_IDSIZE 60.";
+  let compiled = halo::embed::compile(engine: engine, chunk_name: name, source: &other_source[0_u64..13_u64]);
+  match move compiled {
+    Err(..) => {
+      return False();
+    }
+    Ok(value: id) => {
+      let ran = probe_run(engine: engine, env: env, script: id);
+      return format_matches(engine: engine, line: 0_u64, want: want);
+    }
+  }
 }
 
 fn smoke() -> status: ExitStatus pure {
@@ -654,3 +676,11 @@ const other_chunk: Array<u8, 6> = "@other";
 const other_source: Array<u8, 13> = "error('boom')";
 
 const other_error: Array<u8, 13> = "other:1: boom";
+
+const long_equals_chunk: Array<u8, 71> = "=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
+
+const long_equals_error: Array<u8, 67> = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx:1: boom";
+
+const long_at_chunk: Array<u8, 71> = "@aaaaaaaaaaaaaaaaaaaabbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+
+const long_at_error: Array<u8, 63> = "...aabbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:1: boom";
