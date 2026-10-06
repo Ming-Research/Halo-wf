@@ -853,6 +853,58 @@ fn chunk_probe() -> r: u8 pure {
   return 0_u8;
 }
 
+fn result_length(engine: &Engine) -> r: u64 reads(engine) {
+  match halo::embed::result(engine: engine, index: 0_u64) {
+    None() => {
+      return 0_u64;
+    }
+    Some(value: v) => {
+      match halo::embed::string_of(engine: engine, value: v) {
+        None() => {
+          return 0_u64;
+        }
+        Some(value: view) => {
+          return view.length;
+        }
+      }
+    }
+  }
+}
+
+fn pcall_field_probe() -> r: u8 pure {
+  doc "pcall returns an error table as raised until the embedding names a field, then the string the table holds there.";
+  let engine = halo::embed::new_engine(limit: 67108864_u64);
+  let env = Probe(mode: 0_u8, calls: 0_u64);
+  let compiled = halo::embed::compile(engine: &engine, chunk_name: &probe_text_4[0_u64..12_u64], source: &field_source[0_u64..48_u64]);
+  match move compiled {
+    Err(..) => {
+      return 110_u8;
+    }
+    Ok(value: id) => {
+      let unnamed = probe_run(engine: &engine, env: &env, script: id);
+      let unnamed_code = outcome_code(outcome: unnamed);
+      if unnamed_code != 0_u8 {
+        return 111_u8;
+      }
+      let table_length = result_length(engine: &engine);
+      if table_length != 5_u64 {
+        return 112_u8;
+      }
+      halo::embed::set_pcall_error_field(engine: &engine, field: &field_name[0_u64..3_u64]);
+      let named = probe_run(engine: &engine, env: &env, script: id);
+      let named_code = outcome_code(outcome: named);
+      if named_code != 0_u8 {
+        return 113_u8;
+      }
+      let string_length = result_length(engine: &engine);
+      if string_length != 6_u64 {
+        return 114_u8;
+      }
+    }
+  }
+  return 0_u8;
+}
+
 fn smoke() -> status: ExitStatus pure {
   let code = embed_probe();
   if code == 0_u8 {
@@ -860,6 +912,9 @@ fn smoke() -> status: ExitStatus pure {
   }
   if code == 0_u8 {
     set code = chunk_probe();
+  }
+  if code == 0_u8 {
+    set code = pcall_field_probe();
   }
   return std::process::exit_status(code: code);
 }
@@ -922,3 +977,7 @@ const other_chunk: Array<u8, 6> = "@other";
 const other_source: Array<u8, 13> = "error('boom')";
 
 const other_error: Array<u8, 13> = "other:1: boom";
+
+const field_source: Array<u8, 48> = "local ok,e=pcall(error,{err='x'}) return type(e)";
+
+const field_name: Array<u8, 3> = "err";
