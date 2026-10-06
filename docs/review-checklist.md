@@ -1,9 +1,10 @@
 # Task completion review
 
 The items an independent reviewer checks when a task completes.
-[AGENTS.md](../AGENTS.md#review) says when the review runs, who runs it, how
-findings are handled and where the report goes; merge conditions remain in
-its [branch and main boundary](../AGENTS.md#branch-and-main-boundary).
+The owner-wide instructions say when the review runs and how its findings are
+handled; [AGENTS.md](../AGENTS.md#review) names Halo's reviewer and groups,
+and its [branch and main boundary](../AGENTS.md#branch-and-main-boundary)
+holds the merge conditions.
 
 ## How to review
 
@@ -23,9 +24,9 @@ Task outcome and constraints: <...>
 Base and head: <...>; validation already run: <commands, results, revision>.
 Read the diff from the base (git diff <base>, plus untracked files), the
 changed sections in context, and "How to review" in docs/review-checklist.md.
-Check each group whose trigger applies. For M1, apply the design checks and
-correspondence checks of design/skill/SKILL.md to the relevant tree nodes and
-ancestors. Do not rerun green suites. Report Scope (your model, base..head,
+Check each group whose trigger applies. For M1, apply the design checks
+G1-G3 and correspondence checks DC1-DC4 of the owner-wide instructions to the
+relevant tree nodes and ancestors. Do not rerun green suites. Report Scope (your model, base..head,
 groups checked and skipped), Checks (what you ran) and Findings (item ID,
 file:line, quoted text or missing evidence, reason; quote both sides of a
 contradiction), or "none within scope".
@@ -92,8 +93,8 @@ Source: [code and tests](../AGENTS.md#code-and-tests).
 - [ ] **C4 — Interface fidelity.** Module bodies implement their `.wfm`
   interfaces as written. An interface, contract or effect row changed only
   with the architecture's approval, and none was weakened to let a body pass.
-- [ ] **C5 — Architectural fit.** Apply the design skill's
-  [G3](../design/skill/SKILL.md#design-checks) to structural choices, and
+- [ ] **C5 — Architectural fit.** Apply design check G3 of the owner-wide
+  instructions to structural choices, and
   check that the assessment happened when the choice was made.
 
 ## T. Checks and pins — changes to tests, the Makefile, `.github/`, `whitefoot.pin` or a submodule
@@ -110,8 +111,8 @@ Source: [code and tests](../AGENTS.md#code-and-tests).
 
 ## R. Decisions — changed choices, premises or evidence
 
-Source: [How work proceeds](../AGENTS.md#how-work-proceeds) and the
-[design-tree skill](../design/skill/SKILL.md#what-is-a-decision). Applies to
+Source: [How work proceeds](../AGENTS.md#how-work-proceeds) and the owner-wide
+instructions' design tree, *What is a decision*. Applies to
 changes under `design/` or `research/`, and to any task that made a material
 choice elsewhere.
 
@@ -123,17 +124,16 @@ choice elsewhere.
   states the comparison that could distinguish it, its conditions and its
   actual outcome; a criterion claimed as prior is inspectable.
 - [ ] **R3 — Maintained tree.** Added, changed or retired decisions have
-  corresponding design records under the design skill, and cited sources
+  corresponding records in the design tree, and cited sources
   resolve and support their scope.
 
 ## M. Design review — every change
 
-- [ ] **M1 — Design procedure.** Apply the design-tree skill
-  (`design/skill/SKILL.md`) to the reviewed scope: its design checks G1–G3,
-  correspondence checks DC1–DC4 and structural validation, and include the
-  actual results.
+- [ ] **M1 — Design checks.** Apply the owner-wide instructions' design
+  checks G1–G3 and correspondence checks DC1–DC4 to the reviewed scope, with
+  the design lint's counts against the base, and include the actual results.
 
-## V. Validation and handoff — every change
+## V. Validation and report — every change
 
 - [ ] **V1 — Actual checks.** Applicable checks ran on the delivered content;
   commands, results and limitations are available. Focused success is not
