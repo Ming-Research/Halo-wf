@@ -263,7 +263,7 @@ fn pow(a: f64, b: f64) -> value: f64 pure {
   let negative_result = band(negative_x, odd);
   if xnan {
     if negative_result {
-      let flipped = bxor(x_quiet, sign_bit);
+      let flipped = ixor(x_quiet, sign_bit);
       return reinterpret::<u64, f64>(flipped);
     }
     return reinterpret::<u64, f64>(x_quiet);
