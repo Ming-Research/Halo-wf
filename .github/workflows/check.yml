@@ -50,7 +50,7 @@ jobs:
           python3 --version
 
       - name: Check
-        run: make -k check-${{ matrix.group }}
+        run: make -k check-${{ matrix.group }} NUMBER_EXAMPLES=200
 
       # A failed comparison is read from the runner's report and the actual
       # replies it kept, which the job's log only summarizes.

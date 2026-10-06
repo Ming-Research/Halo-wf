@@ -103,9 +103,10 @@ reference-lua:
 # The number library (lib/halo/number) against the reference Lua's tostring,
 # tonumber, ^, math.fmod, floor and ceil (research/experiments/halo-number).
 NUMBER_SAMPLES ?= 100
+NUMBER_EXAMPLES ?= 8
 number: $(PIN) $(WHITEFOOTC) reference-lua FORCE
 	@cd $(ROOT) && $(PY) -B research/experiments/halo-number/compare.py --compiler $(WHITEFOOTC) \
-		--incremental --lua $(REFERENCE_LUA)/lua --samples $(NUMBER_SAMPLES)
+		--incremental --lua $(REFERENCE_LUA)/lua --samples $(NUMBER_SAMPLES) --examples $(NUMBER_EXAMPLES)
 
 # The MessagePack package against Redis's cmsgpack built with the reference
 # Lua (research/experiments/msgpack); its scratch must be outside the

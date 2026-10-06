@@ -171,7 +171,7 @@ def run(command, **kwargs):
     return result.stdout, time.monotonic()-started
 
 
-def compare(cases, expected, actual):
+def compare(cases, expected, actual, limit=8):
     expected, actual = expected.splitlines(), actual.splitlines()
     if len(expected) != len(cases) or len(actual) != len(cases):
         raise RuntimeError(f'record count: {len(cases)} expected, {len(expected)} Lua, {len(actual)} Halo')
@@ -196,7 +196,7 @@ def compare(cases, expected, actual):
                 stat['max_ulp'] = max(stat['max_ulp'], distance)
                 hist = stat['ulp_histogram']; key = str(distance)
                 hist[key] = hist.get(key, 0) + 1
-        if sum(e['group'] == group for e in examples) < 8:
+        if sum(e['group'] == group for e in examples) < limit:
             examples.append(dict(group=group, op=op, x=x.hex() if isinstance(x, bytes) else f'{x:016x}',
                 y=f'{y:016x}', oracle=want.decode(), halo=got.decode(), ulp=distance))
     return groups, examples
@@ -269,6 +269,7 @@ def main():
     parser.add_argument('--samples', type=int, default=10000)
     parser.add_argument('--musl-source', type=Path, help='optional local musl src/math path for independent port comparison')
     parser.add_argument('--results', type=Path, help='write measured Markdown results')
+    parser.add_argument('--examples', type=int, default=8, help='mismatches listed per group')
     cache_arguments(parser, 'halo-number', timing=True)
     args = parser.parse_args()
     compiler, lua = args.compiler.resolve(), args.lua.resolve()
@@ -312,7 +313,7 @@ def main():
             for stat in musl_report['groups'].values():
                 if stat['mismatches'] != stat['nan_bit_mismatches']:
                     raise RuntimeError('Whitefoot power differs from original musl on a non-NaN result')
-    groups, examples = compare(cases, expected, actual)
+    groups, examples = compare(cases, expected, actual, args.examples)
     print(json.dumps(dict(build_seconds=build_seconds, lua_seconds=lua_seconds,
                           halo_seconds=halo_seconds, executable_seconds=executable_seconds, musl=musl_report, groups=groups, examples=examples), indent=2))
     if args.results:
