@@ -60,8 +60,7 @@ after.
   the Whitefoot repository name that repository's tooling; their commands are
   history.
 - A performance change is attributed with a same-source before-and-after
-  comparison of interleaved full-LTO launches and a falsifier stated before
-  measuring.
+  comparison of interleaved full-LTO launches.
 
 ## Checks
 
