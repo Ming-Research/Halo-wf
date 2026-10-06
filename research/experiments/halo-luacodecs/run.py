@@ -211,7 +211,7 @@ def main():
     args=ap.parse_args();e2e.sensitivity()
     rows=[(n,s) for n,s in corpus() if n.startswith(args.filter)]
     if not rows: ap.error('filter matched no snippets')
-    counts=Counter();failures=[]
+    counts=Counter();failures=[];reference_failures=[]
     revision=subprocess.run(['git','rev-parse','HEAD'],cwd=ROOT,capture_output=True,text=True,check=True).stdout.strip()
     with tempfile.TemporaryDirectory(prefix='halo-luacodecs-') as temp:
         scratch=Path(temp);lua,seconds,versions=build_reference(args.redis_source,scratch)
@@ -226,7 +226,9 @@ def main():
         for name,source in rows:
             chunk.write_text(source)
             ref=subprocess.run([str(lua),str(wrapper),str(chunk),hashlib.sha1(source.encode()).hexdigest()],capture_output=True)
-            if ref.returncode: raise RuntimeError(ref.stderr.decode())
+            if ref.returncode:
+                reference_failures.append((name,source,ref.returncode,ref.stderr.decode('utf8','replace')));print('REFERENCE FAILED',name,repr(source),ref.returncode,flush=True)
+                continue
             expected=json.loads(ref.stdout)
             actual_run=subprocess.run([str(binary),'seven','seven'],input=b'KEYS={};ARGV={}\0'+source.encode(),capture_output=True,timeout=30)
             actual=json.loads(actual_run.stdout) if actual_run.returncode==0 else {'exit':actual_run.returncode,'stderr':actual_run.stderr.decode('utf8','replace')}
@@ -239,11 +241,14 @@ def main():
         report=['# Redis Lua library compatibility results','',f'Local revision: `{revision}`. Host: `{__import__("platform").platform()}`.',f'Reference: Redis 7.0.15 bundled sources, all four libraries explicitly registered; `{versions}`.',f'Reference build {seconds:.3f}s. '+('Halo executable reused; no build performed during comparison.' if args.binary else f'Halo build {build_seconds:.3f}s.')+' Budget 7.',f'Compiler SHA-256: `{hashlib.sha256(Path(args.compiler).read_bytes()).hexdigest()}`.',f'Executable SHA-256: `{hashlib.sha256(binary.read_bytes()).hexdigest()}`.','', '| Library | Snippets | Matches | Mismatches |','| --- | ---: | ---: | ---: |']
         for group in sorted({n.split('/')[0] for n,_ in rows}):
             yes,no=counts[(group,True)],counts[(group,False)];report.append(f'| {group} | {yes+no} | {yes} | {no} |')
-        report += ['',f'Total: {len(rows)} snippets; {len(rows)-len(failures)} matches; {len(failures)} mismatches.','', 'The comparator checks typed replies, binary bytes, and exact error text. Its fault sensitivity controls come from the existing end-to-end runner. The first return value is converted as Redis RESP2; snippets wrap multiple results where needed. No oracle fixtures were changed. Local libc is not Linux glibc: glibc-dependent behavior remains unqualified by this run.','', '## Mismatches','']
+        compared=len(rows)-len(reference_failures)
+        report += ['',f'Total: {len(rows)} snippets; {compared-len(failures)} matches; {len(failures)} mismatches; {len(reference_failures)} with no reference reply.','', 'The comparator checks typed replies, binary bytes, and exact error text. Its fault sensitivity controls come from the existing end-to-end runner. The first return value is converted as Redis RESP2; snippets wrap multiple results where needed. No oracle fixtures were changed. Local libc is not Linux glibc: glibc-dependent behavior remains unqualified by this run.','', '## Mismatches','']
         for name,source,expected,actual in failures:
             report += [f'### {name}', '```lua',source,'```','Expected: `'+json.dumps(expected,ensure_ascii=True)+'`','Actual: `'+json.dumps(actual,ensure_ascii=True)+'`','']
+        for name,source,code,stderr in reference_failures:
+            report += [f'### {name}: the reference exited with {code}', '```lua',source,'```','Reference stderr: `'+json.dumps(stderr,ensure_ascii=True)+'`','']
         args.report.write_text('\n'.join(report))
-        print(f'{len(rows)-len(failures)}/{len(rows)} matched',flush=True)
-        return int(bool(failures))
+        print(f'{compared-len(failures)}/{compared} matched; {len(reference_failures)} without a reference reply',flush=True)
+        return int(bool(failures or reference_failures))
 
 if __name__=='__main__': raise SystemExit(main())
