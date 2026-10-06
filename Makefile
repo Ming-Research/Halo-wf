@@ -32,7 +32,10 @@ check: compiler oracle design-lint
 # byte with Redis 7.0.15's recorded replies. The same program's embedding
 # probe, run with three arguments, checks the engine lifecycle, budget
 # continuation, host outcomes and collector roots, and exits with the number
-# of the first failed observation. The target exits nonzero on any probe
+# of the first failed observation. In each mode the runner first checks the
+# Redis error replies' text and locations, 1,003 binary inputs to
+# redis.sha1hex against Python's hashlib, and the 64 MiB heap limit followed
+# by a script on the same engine. The target exits nonzero on any probe
 # failure or difference in either mode, after running all three, and keeps
 # each mode's report and actual replies under build/halo-e2e/ for
 # inspection. The test
@@ -41,7 +44,8 @@ check: compiler oracle design-lint
 E2E := $(BUILD)/halo-e2e
 E2E_TEST := $(E2E)/test
 E2E_RUN = cd $(ROOT) && $(PY) -B research/experiments/halo-e2e/run.py \
-	--compiler $(WHITEFOOTC) --binary $(E2E_TEST) --budgets 1,7,1000 --scratch-root $(E2E)
+	--compiler $(WHITEFOOTC) --binary $(E2E_TEST) --budgets 1,7,1000 --scratch-root $(E2E) \
+	--verify-errors --verify-sha1 --verify-memory
 
 $(E2E_TEST): $(PIN) $(WHITEFOOTC) FORCE
 	@mkdir -p $(E2E)
