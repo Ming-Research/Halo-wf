@@ -41,19 +41,63 @@ example apart from the engine code that exposed it
 
 ## Engine
 
-- **The gate runs the oracle corpus only.** `make check` builds the
-  end-to-end test program and compares every oracle script at budgets 1,
-  7 and 1000 in ordinary and collector-stress modes. Not in the gate: the
-  JSON and MessagePack comparisons (`research/experiments/json`,
-  `research/experiments/msgpack`, the latter needing its C reference), the
-  number library's checks (`lib/halo/number/tests`), the runner's error,
-  SHA-1 and memory probes (`--verify-errors`, `--verify-sha1`,
-  `--verify-memory`) and the removed-root controls of
-  `research/experiments/halo-gc`, which must fail. Its fixtures and runner
+- **The gate runs the oracle corpus and the embedding probe only.**
+  `make check` builds the end-to-end test program, runs its embedding probe
+  and compares every oracle script at budgets 1, 7 and 1000 in ordinary and
+  collector-stress modes. Not in the gate: the JSON and MessagePack
+  comparisons (`research/experiments/json`, `research/experiments/msgpack`,
+  the latter needing its C reference), the number library's checks
+  (`lib/halo/number/tests`), the runner's error, SHA-1 and memory probes
+  (`--verify-errors`, `--verify-sha1`, `--verify-memory`), the removed-root
+  controls of `research/experiments/halo-gc`, which must fail, and the
+  builds of the `halo-vm`, `halo-lib` and `halo-bench` hosts, so a change to
+  an engine interface they use is checked there only when an experiment
+  rebuilds them. Its fixtures and runner
   also still live under `research/`. Impact: a regression in those paths
   passes the gate. Change: wire each into `make check` with a control that
   shows it detects a wrong result, and move the gate's fixtures and runner
   to `tests/`. Reopen at the next gate change.
+
+- **Runtime type errors do not name the variable.** PUC Lua 5.1 describes
+  the operand of a failed index, call, arithmetic or concatenation by where
+  it came from, `attempt to index local 't' (a nil value)` (also `global`,
+  `field`, `upvalue`, `method`), recovered from the bytecode by `getobjname`
+  in `ldebug.c`; Halo says `attempt to index a nil value`. Witness: inside a
+  function, `local t=nil return t.x` on line 9 gives Redis 7.0.15's reply
+  `ERR user_script:9: attempt to index local 't' (a nil value) script: …`
+  (oracle-reference run 37491234734, script `lua-core/error-rethrow-local`
+  at c5ebccc50). Impact: the text of every error reply and `pcall` message
+  from a runtime type error differs from Redis's, and the oracle corpus has
+  no runtime type-error case to show it. Change: describe the faulting
+  register by the same symbolic walk over Halo's cells at the failing pc,
+  with an oracle case for each description. Reopen before clients compare
+  error text, or with the next error-message work.
+
+- **pcall's error field is read raw.** With an error field named
+  (`set_pcall_error_field`), `pcall` reads it with a raw lookup; Redis's
+  replacement `pcall` uses `lua_getfield`, which also consults the table's
+  `__index`. Witness: `pcall(error, setmetatable({}, {__index={err="E"}}))`
+  returns the string `E` in Redis and the table in Halo (by reading
+  `script_lua.c`, not recorded). Impact: only an error table whose field
+  comes from a metatable differs. Change: run the lookup through the VM's
+  metamethod-aware get, which may call Lua during unwinding. Reopen when a
+  script raises such a table, with a recorded oracle case.
+
+- **A closure kept from one script cannot be called while another runs.**
+  `start` in `lib/halo/vm/calls.wf` replaces the VM's prototypes and line
+  metadata with the started script's, and a Lua closure finds its
+  prototype by index in that current table. A closure the host pins (or a
+  value holding one) from script A, called while script B runs, executes
+  B's prototype at that index. Witness: pin the result of
+  `return function() return 42 end` from one cached script, start another
+  script, and call the pinned value. Impact: a host may keep only data, not
+  Lua closures, across scripts; Redis's own reply conversion turns a
+  returned function into nil, so the oracle corpus cannot reach this. Change:
+  give each cached script's prototypes an engine-wide identity, appended
+  rather than replaced, so a closure keeps its code across starts and
+  flushes invalidate it explicitly. Validate with the witness and a flushed
+  script's closure. Reopen when a host needs to keep or call a closure
+  across scripts.
 
 - **Halo F4 has no every-allocation reachability verifier.**
   The safepoint stress and four missing-root mutations in
@@ -160,29 +204,25 @@ example apart from the engine code that exposed it
   instruction changes or the next VM performance experiment compares that
   factoring; C1's measured source stays fixed for this bounded experiment.
 
-- **Halo's number parsing and codec corpus were checked on macOS only.**
-  The oracle corpus is now recorded on the reference platform
-  (`.github/workflows/oracle-reference.yml`: Redis 7.0.15 built from source
-  on x86-64 Linux; only `lua-core/nonfinite` changed, `nan` to `-nan`). Still
-  macOS-only: `lib/halo/number`'s `strtod` details (NaN payloads,
-  hexadecimal forms, range errors), compared with Redis's bundled Lua built
-  on macOS (research/experiments/halo-number), and the 20 codec snippets that
-  need Linux/glibc qualification (research/experiments/halo-luacodecs).
-  Impact: Linux parsing and codec parity remains unverified. Change: run both
-  comparisons on x86-64 Linux against Redis 7.0.15's bundled Lua built there,
-  and adopt glibc's behavior wherever they differ. Reopen before Halo's first
+- **Halo's number parsing was checked on macOS only.** The oracle corpus and
+  the codec corpus now run on the reference platform (Redis 7.0.15 built
+  from source on x86-64 Linux; research/experiments/halo-oracle,
+  research/experiments/halo-luacodecs). Still macOS-only: `lib/halo/number`'s
+  `strtod` details (NaN payloads, hexadecimal forms, range errors), compared
+  with Redis's bundled Lua built on macOS (research/experiments/halo-number).
+  Impact: Linux parsing parity remains unverified. Change: run that
+  comparison on x86-64 Linux against Redis 7.0.15's bundled Lua built there,
+  and adopt its behavior wherever they differ. Reopen before Halo's first
   release or when firn's EVAL lands.
 
-- **Reconcile the Halo embedding boundary record with current work.**
-  `research/experiments/halo-e2e/GAPS.md` presents the first comparison's
-  retired file-permission boundary as a current constraint ("this task
-  permits no changes to the VM or project TODO"), while the current F4
-  experiment changes both. Impact: readers can confuse an old editing
-  restriction with a technical limitation. Change: remove historical task
-  scope narration and retain the reproducing semantic witnesses and actual
-  boundaries. Reopen when that boundary record is next updated, before
-  using it as current integration guidance; verify its witnesses against
-  the then-current compiler and Halo revision.
+- **The Halo embedding boundary record's witnesses are unchecked against
+  the current revision.** `research/experiments/halo-e2e/GAPS.md` records
+  the integration gaps of the first comparison; its scope narration is
+  gone, but its witnesses were written against an older compiler and Halo.
+  Impact: a gap it lists may be closed, or one it omits may exist. Change:
+  rerun each witness against the current compiler and Halo revision and
+  keep only the boundaries that still hold. Reopen before using it as
+  current integration guidance.
 
 - **Halo's instruction Cell stride differs from the proposed eight bytes.**
   The [P1 native inspection](../research/experiments/halo-bench/RESULTS.md#value-width-handles-and-native-dispatch-inspected-first)

@@ -4,6 +4,7 @@ alias Script = pkg::value::Script;
 alias CompileError = pkg::compile::CompileError;
 alias Outcome = pkg::vm::Outcome;
 alias Host = pkg::vm::Host;
+alias PendingCall = pkg::vm::PendingCall;
 alias TableError = pkg::heap::TableError;
 alias Pair = pkg::heap::Pair;
 alias StringView = pkg::heap::StringView;
@@ -25,6 +26,7 @@ public struct Engine {
   public active: Option<ScriptId>;
   public result_count: u64;
   public resumable: Bool;
+  public calling: Bool;
 }
 
 public struct BuiltinName {
@@ -34,6 +36,8 @@ public struct BuiltinName {
 }
 
 public fn new_engine(limit: u64) -> r: Engine pure doc "Constructs an engine with core globals and a logical heap byte limit.";
+
+public fn set_pcall_error_field(engine: &Engine, field: &[u8]) -> r: unit reads(field), writes(engine.vm.pcall_field) doc "Names the field pcall unwraps: when pcall catches a table whose raw value at field is a string or a number, it returns that value as the error in place of the table. Every other error comes back from pcall as raised; xpcall is unaffected, and its handler receives the original error. An empty name, the default, turns this off.";
 
 public fn set_gc_stress(engine: &Engine, enabled: Bool) -> r: unit writes(engine.vm.heap.gc_stress) doc "Forces a full collection at each collector safepoint while enabled; new engines default to off.";
 
@@ -45,13 +49,23 @@ public fn forget_all(engine: &Engine) -> r: unit writes(engine) doc "Resets and 
 
 public fn reset(engine: &Engine) -> r: unit writes(engine) doc "Closes active upvalues and clears results and suspended execution.";
 
-public fn start<interface Host<E>>(engine: &Engine, env: &E, script: ScriptId, budget: u64) -> r: Outcome writes(engine), writes(env) doc "Starts a cached script with zero arguments and returns the VM outcome.";
+public fn start<interface Host<E>>(engine: &Engine, env: &E, script: ScriptId, budget: u64) -> r: Outcome writes(engine), writes(env) doc "Starts a cached script with zero arguments and returns the VM outcome. Starting replaces the VM's prototypes with this script's, so a Lua closure kept from another script is not callable while this one runs.";
 
 public fn resume<interface Host<E>>(engine: &Engine, env: &E, budget: u64) -> r: Outcome writes(engine), writes(env) doc "Resumes a Budget checkpoint with a fresh safepoint budget. HostStopped is terminal until reset/start.";
 
+public fn pending_call(engine: &Engine) -> r: Option<PendingCall> reads(engine) doc "The host call a HostCall outcome left pending, with its builtin id and argument count, or None.";
+
+public fn pending_argument(engine: &Engine, index: u64) -> r: Value reads(engine) doc "Argument index of the pending host call, or Nil past its argument count or when no call is pending.";
+
+public fn complete_call<interface Host<E>>(engine: &Engine, env: &E, results: &[Value], budget: u64) -> r: Outcome reads(results), writes(engine), writes(env) doc "Returns results from the pending host call, as HostOutcome::Returned would have, and continues the script with budget safepoints; at a HostCall, engine.vm.budget holds the safepoints the run had left.";
+
+public fn fail_call<interface Host<E>>(engine: &Engine, env: &E, error: Value, budget: u64) -> r: Outcome writes(engine), writes(env) doc "Raises error at the pending host call, as HostOutcome::Raised would have, so an enclosing pcall catches it, and continues the script with budget safepoints, as complete_call does.";
+
+public fn error_line(engine: &Engine) -> r: u64 reads(engine) doc "The source line of the innermost Lua function at the raise of the error that ended the last run, or 0 when unknown. An error keeps its raise point while it propagates out of callbacks; a pcall or xpcall that catches it forgets it, so an error raised again reports the line that raised it again.";
+
 public fn result(engine: &Engine, index: u64) -> r: Option<Value> reads(engine) doc "Returns a completed result in stack[0..result_count), or None.";
 
-public fn pin(engine: &Engine, value: Value) -> r: Option<u64> writes(engine) doc "Call while the engine is idle or suspended; the returned token is never reused. Roots are mirrored before dispatch.";
+public fn pin(engine: &Engine, value: Value) -> r: Option<u64> writes(engine) doc "Call while the engine is idle or suspended; the returned token is never reused. Roots are mirrored before dispatch. A pinned Lua closure is callable only while the script it came from runs.";
 
 public fn unpin(engine: &Engine, token: u64) -> r: unit writes(engine) doc "Releases an idle or suspended host root; unknown tokens do nothing.";
 
@@ -83,8 +97,6 @@ public fn set_global(engine: &Engine, name: &[u8], value: Value) -> r: Result<un
 
 public fn error_value(engine: &Engine) -> r: Value reads(engine) doc "Returns the original Lua error object.";
 
-public fn format_error(engine: &Engine, line: u64) -> r: Box<Slots<u8>> reads(engine) doc "Formats @user_script:LINE: msg using a host-supplied source line. Existing user_script locations are preserved. Zero means no known location.";
+public fn format_error(engine: &Engine, line: u64) -> r: Box<Slots<u8>> reads(engine) doc "Locates the error as luaL_where does, chunk:LINE: msg, with the chunk name the script was compiled under and a host-supplied line; a message already located in that chunk is kept as it is, a non-string error reads (error object is not a string), and zero means no known line.";
 
-public fn sha1hex(bytes: &[u8]) -> r: Array<u8, 40> reads(bytes) doc "Returns the lowercase SHA-1 digest of arbitrary binary bytes, shared by redis.sha1hex and script identity.";
-
-public fn format_redis_error(engine: &Engine, source: &[u8], line: u64, locate: Bool) -> r: Box<Slots<u8>> reads(engine), reads(source) doc "Formats Redis 7 EVAL errors, hashing the exact script body and preserving an error table's err field. The caller supplies the failing source line, or zero if unknown; locate adds Lua's user_script prefix to a raw VM message.";
+public fn sha1hex(bytes: &[u8]) -> r: Array<u8, 40> reads(bytes) doc "Returns the lowercase SHA-1 digest of arbitrary binary bytes.";

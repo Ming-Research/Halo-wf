@@ -278,7 +278,7 @@ fn readonly_message(vm: &Vm, value: Value) -> r: Bool reads(vm) {
 }
 
 fn callback_line(vm: &Vm) -> r: u64 reads(vm) {
-  doc "Global slow paths keep their continuation PC. Direct redis.member calls in this experiment use the member lookup's line; this is not a general failing-PC API.";
+  doc "Global slow paths keep their continuation PC; the undeclared-global message uses the lookup's line. The line of an error that ends a script comes from halo::embed::error_line.";
   let pc = vm^.callback_plan.pc;
   if pc > 0_u64 {
     let previous = pc - 1_u64;
@@ -303,6 +303,13 @@ fn run_script(engine: &Engine, env: &Env, id: ScriptId, budget: u64, collect_sus
       HostStopped() => {
         return out_v62;
       }
+      HostCall() => {
+        if steps_v63 >= 1000000_u64 {
+          return out_v62;
+        }
+        set out_v62 = serve_call(engine: engine, env: env, budget: budget);
+        set steps_v63 = steps_v63 + 1_u64;
+      }
       Budget() => {
         if steps_v63 >= 1000000_u64 {
           return out_v62;
@@ -321,6 +328,45 @@ fn run_script(engine: &Engine, env: &Env, id: ScriptId, budget: u64, collect_sus
     }
   }
   return out_v62;
+}
+
+fn serve_call(engine: &Engine, env: &Env, budget: u64) -> r: Outcome writes(engine), writes(env) {
+  doc "Runs the redis.call or redis.pcall that host_call left pending, then returns its reply or raises its error at the call, as Redis's synchronous call would.";
+  match halo::embed::pending_call(engine: engine) {
+    None() => {
+    }
+    Some(value: call) => {
+      let argc = call.argc;
+      let room = argc +sat 1_u64;
+      let args = box_slots_new::<Value>(capacity: room);
+      for (i in 0_u64..room) {
+        if args.inner.len < args.inner.cap {
+          let value = Value::Nil();
+          if i > 0_u64 {
+            let index = i - 1_u64;
+            set value = halo::embed::pending_argument(engine: engine, index: index);
+          }
+          place_back(window: &args.inner, value: value);
+        }
+      }
+      let vm = &engine^.vm;
+      let reply = command(env: env, vm: vm, stack: &args, func: 0_u64, argc: argc);
+      if env^.error {
+        if call.id == 4096_u32 {
+          let error = reply_table(vm: vm, field: &s_30[0_u64..3_u64], v: reply);
+          return halo::embed::fail_call::<TestHost>(engine: engine, env: env, error: error, budget: budget);
+        }
+        set reply = reply_table(vm: vm, field: &s_30[0_u64..3_u64], v: reply);
+      }
+      let results = box_slots_new::<Value>(capacity: 1_u64);
+      if results.inner.len < results.inner.cap {
+        place_back(window: &results.inner, value: reply);
+      }
+      let count = results.inner.len;
+      return halo::embed::complete_call::<TestHost>(engine: engine, env: env, results: &results.inner[0_u64..count], budget: budget);
+    }
+  }
+  return Outcome::Error();
 }
 
 fn install_host(engine: &Engine, env: &Env) -> r: unit writes(engine), writes(env) {
@@ -348,6 +394,7 @@ fn install_host(engine: &Engine, env: &Env) -> r: unit writes(engine), writes(en
   let v_v77 = num(x: 2.0_f64);
   raw(vm: vm_v64, table: redis_v65, key: k_v76, value: v_v77);
   let result_v78 = halo::embed::set_global(engine: engine, name: &s_49[0_u64..5_u64], value: redis_v65);
+  halo::embed::set_pcall_error_field(engine: engine, field: &s_30[0_u64..3_u64]);
   let db_v79 = halo::embed::new_table(engine: engine, asize: 0_u32, hsize: 0_u32);
   set env^.db = db_v79;
   let types_v80 = halo::embed::new_table(engine: engine, asize: 0_u32, hsize: 0_u32);
@@ -501,6 +548,9 @@ fn main(inputs: Inputs) -> status: ExitStatus pure waits {
         HostStopped() => {
           return std::process::exit_status(code: 6_u8);
         }
+        HostCall() => {
+          return std::process::exit_status(code: 6_u8);
+        }
       }
     }
   }
@@ -555,10 +605,10 @@ fn main(inputs: Inputs) -> status: ExitStatus pure waits {
                 reply(vm: &engine_v114.vm, value: v_v131, out: &out_v118, depth: 0_u64);
               }
               Error() => {
-                let line = callback_line(vm: &engine_v114.vm);
+                let line = halo::embed::error_line(engine: &engine_v114);
                 let error_v133 = halo::embed::error_value(engine: &engine_v114);
                 let locate = readonly_message(vm: &engine_v114.vm, value: error_v133);
-                let formatted = halo::embed::format_redis_error(engine: &engine_v114, source: &source_v109.inner[start_v124..end_v124], line: line, locate: locate);
+                let formatted = format_redis_error(engine: &engine_v114, source: &source_v109.inner[start_v124..end_v124], line: line, locate: locate);
                 let formatted_len = formatted.inner.len;
                 let error_reply = literal(vm: &engine_v114.vm, text: &formatted.inner[0_u64..formatted_len]);
                 text_bytes(out: &out_v118, bytes: &s_39[0_u64..24_u64]);
@@ -571,6 +621,9 @@ fn main(inputs: Inputs) -> status: ExitStatus pure waits {
                 return std::process::exit_status(code: 5_u8);
               }
               HostStopped() => {
+                return std::process::exit_status(code: 6_u8);
+              }
+              HostCall() => {
                 return std::process::exit_status(code: 6_u8);
               }
             }

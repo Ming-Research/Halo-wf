@@ -29,9 +29,13 @@ check: compiler oracle design-lint
 # program that runs scripts through pkg::embed and an in-memory host, and its
 # runner compares every script of research/experiments/halo-oracle at
 # budgets 1, 7 and 1000, in ordinary and collector-stress modes, byte for
-# byte with Redis 7.0.15's recorded replies. It exits nonzero on any
-# difference in either mode, after running both, and keeps each mode's
-# report and actual replies under build/halo-e2e/ for inspection. The test
+# byte with Redis 7.0.15's recorded replies. The same program's embedding
+# probe, run with three arguments, checks the engine lifecycle, budget
+# continuation, host outcomes and collector roots, and exits with the number
+# of the first failed observation. The target exits nonzero on any probe
+# failure or difference in either mode, after running all three, and keeps
+# each mode's report and actual replies under build/halo-e2e/ for
+# inspection. The test
 # program is built once, with the graph always named by the same relative
 # path so that the compiler's cache key stays stable.
 E2E := $(BUILD)/halo-e2e
@@ -46,6 +50,8 @@ $(E2E_TEST): $(PIN) $(WHITEFOOTC) FORCE
 oracle: $(E2E_TEST)
 	@rm -rf $(E2E)/ordinary $(E2E)/stress
 	@status=0; \
+	if $(E2E_TEST) probe probe probe < /dev/null; then echo "embedding probe: passed"; \
+	else echo "embedding probe: failed observation $$?"; status=1; fi; \
 	$(E2E_RUN) --report $(E2E)/ordinary.md --actual $(E2E)/ordinary || status=1; \
 	$(E2E_RUN) --gc-stress --report $(E2E)/stress.md --actual $(E2E)/stress || status=1; \
 	exit $$status

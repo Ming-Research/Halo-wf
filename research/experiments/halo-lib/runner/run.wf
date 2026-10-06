@@ -243,6 +243,9 @@ fn main(inputs: Inputs) -> r: ExitStatus pure waits {
           HostStopped() => {
             return std::process::exit_status(code: 4_u8);
           }
+          HostCall() => {
+            return std::process::exit_status(code: 4_u8);
+          }
         }
       }
     }

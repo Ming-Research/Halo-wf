@@ -202,6 +202,42 @@ fn struct_integer(option: u8) -> r: Bool pure {
   return False();
 }
 
+fn struct_single_bits(x: f64) -> r: u64 pure {
+  doc "IEEE single bits of x as x86-64 and Arm narrow a double: a NaN keeps its sign and top payload bits and is quieted.";
+  if feq(x, x) {
+    let single = cvt.nearest::<f64, f32>(x);
+    let narrow = reinterpret::<f32, u32>(single);
+    return cvt::<u32, u64>(narrow);
+  }
+  let wide = reinterpret::<f64, u64>(x);
+  let high = ishr.wrap(wide, 32_u32);
+  let sign = iand(high, 2147483648_u64);
+  let shifted = ishr.wrap(wide, 29_u32);
+  let payload = iand(shifted, 8388607_u64);
+  let quiet = ior(payload, 4194304_u64);
+  let exponent = ior(sign, 2139095040_u64);
+  return ior(exponent, quiet);
+}
+
+fn struct_single_value(bits: u64) -> r: f64 pure {
+  doc "The double that single bits widen to as x86-64 and Arm widen them: a NaN keeps its sign and payload and is quieted.";
+  let narrow = cvt.wrap::<u64, u32>(bits);
+  let single = reinterpret::<u32, f32>(narrow);
+  let widened = cvt::<f32, f64>(single);
+  if feq(widened, widened) {
+    return widened;
+  }
+  let low = iand(bits, 4294967295_u64);
+  let sign_bit = iand(low, 2147483648_u64);
+  let sign = ishl.wrap(sign_bit, 32_u32);
+  let payload_bits = iand(low, 8388607_u64);
+  let payload = ishl.wrap(payload_bits, 29_u32);
+  let quiet = ior(payload, 2251799813685248_u64);
+  let exponent = ior(sign, 9218868437227405312_u64);
+  let nan_bits = ior(exponent, quiet);
+  return reinterpret::<u64, f64>(nan_bits);
+}
+
 fn struct_control(option: u8) -> r: Bool pure {
   if option == 32_u8 {
     return True();
@@ -337,13 +373,12 @@ fn library_struct(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: 
         }
         set arg_v42 = arg_v42 +sat 1_u64;
         if float_v50 {
-          let single_v67 = cvt.nearest::<f64, f32>(x_v64);
-          let narrow_v68 = reinterpret::<f32, u32>(single_v67);
-          set bits_v62 = cvt::<u32, u64>(narrow_v68);
+          set bits_v62 = struct_single_bits(x: x_v64);
         } else if double_v51 {
           set bits_v62 = reinterpret::<f64, u64>(x_v64);
         } else {
           let integral_v69 = ftrunc(x_v64);
+          let ordered_v69 = feq(integral_v69, integral_v69);
           if flt(integral_v69, 0.0_f64) {
             if cvt.defined::<f64, i64>(integral_v69) {
               let n_v70 = cvt::<f64, i64>(integral_v69);
@@ -353,6 +388,8 @@ fn library_struct(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: 
             }
           } else if cvt.defined::<f64, u64>(integral_v69) {
             set bits_v62 = cvt::<f64, u64>(integral_v69);
+          } else if bnot(ordered_v69) {
+            set bits_v62 = 9223372036854775808_u64;
           }
         }
         for (i_v71 in 0_u64..size_v47) {
@@ -385,9 +422,7 @@ fn library_struct(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: 
         }
         let n_v83 = 0.0_f64;
         if float_v50 {
-          let narrow_v84 = cvt.wrap::<u64, u32>(bits_v62);
-          let single_v85 = reinterpret::<u32, f32>(narrow_v84);
-          set n_v83 = cvt::<f32, f64>(single_v85);
+          set n_v83 = struct_single_value(bits: bits_v62);
         } else if double_v51 {
           set n_v83 = reinterpret::<u64, f64>(bits_v62);
         } else {

@@ -147,10 +147,8 @@ fn argument(stack: &Box<Slots<Value>>, func: u64, argc: u64, index: u64) -> r: V
   return Value::Nil();
 }
 
-const error_source: Array<u8, 12> = "user_script:";
-
 fn error_location(vm: &Vm, pc: u64, level: u64, message: Value) -> r: Value writes(vm) {
-  doc "Script has no source-name field; Halo's embedding names its chunk @user_script. Missing line information leaves the original value intact.";
+  doc "Prefixes message with chunk:line: as luaL_where does, the chunk's display name coming from the running script. Missing line information leaves the original value intact.";
   let remaining = level;
   let index = vm^.frames.inner.len;
   let location = pc;
@@ -194,12 +192,19 @@ fn error_location(vm: &Vm, pc: u64, level: u64, message: Value) -> r: Value writ
           break;
         }
       }
-      let bytes = box_slots_new::<u8>(capacity: 24_u64);
-      for (i in 0_u64..12_u64) {
-        if bytes.inner.len < bytes.inner.cap {
-          let byte = error_source[i];
-          place_back(window: &bytes.inner, value: byte);
+      let name_length = vm^.source.inner.len;
+      let capacity = name_length +sat 13_u64;
+      let bytes = box_slots_new::<u8>(capacity: capacity);
+      for (i in 0_u64..name_length) {
+        if i < vm^.source.inner.len {
+          if bytes.inner.len < bytes.inner.cap {
+            let byte = vm^.source.inner[i];
+            place_back(window: &bytes.inner, value: byte);
+          }
         }
+      }
+      if bytes.inner.len < bytes.inner.cap {
+        place_back(window: &bytes.inner, value: 58_u8);
       }
       let i = count;
       loop {
@@ -242,6 +247,8 @@ fn builtin<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
       Returned(..) => {
       }
       Stop() => {
+      }
+      Pending() => {
       }
     }
     return outcome;

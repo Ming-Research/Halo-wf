@@ -1343,7 +1343,7 @@ rather than preceding it; the original corpus samples preceded all
 complete runs. No command bypassed the lock and no timed pair overlapped
 another heavy command. No original expectation was edited.
 
-The provisional Halo tree choice is `design/halo/table-growth.md` (Q1 at
+The provisional Halo tree choice is `design/halo/heap/tables/growth.md` (Q1 at
 handoff). It selects range counting and single-pass replacement against
 the measured original algorithm; it does not reject future in-place
 resize. No approval log is written. Leftovers in docs/todo.md are the

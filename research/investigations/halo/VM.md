@@ -218,20 +218,41 @@ interface Host<E> {
       ensures stack^.inner.len == entry(stack)^.inner.len;
     };
 }
-enum HostOutcome { Returned(count: u64); Raised(); Stop(); }
+enum HostOutcome { Returned(count: u64); Raised(); Stop(); Pending(); }
 ```
 
 A host function's arguments are at `stack[func+1 .. func+1+argc)` and its
 results go from `stack[func]`. `Stop` ends the run with `HostStopped` and
-the stack intact. Halo exports to the host: `intern`, `string_of` (an index
+the stack intact. `Pending` suspends the run at the call and returns
+`HostCall` from `start` or `resume`: the VM records the call (its builtin id,
+argument count, function slot, wanted results, continuation, activation and
+top), and inside a library callback parks the stack as a budget suspension
+does. The host reads the call with `pending_call` and `pending_argument`, and
+answers it once: `complete_call` writes its results at the function slot and
+finishes the call as `Returned` would, and `fail_call` sets the error value and
+unwinds as `Raised` would, so a `pcall` in the calling activation catches it;
+each then dispatches with a fresh budget, completing or unwinding parked
+library callbacks as `resume` does. `resume` while a call is pending ends the
+run with an error. Halo exports to the host: `intern`, `string_of` (an index
 and length the host turns into a slice of the string's public readonly
 bytes, since no function returns a reference), `number_of`, `truthy`,
 `kind`, `new_table`, `table_append`, `table_set`, `table_get`,
 `table_border`, `table_next`, `set_global` (bypassing readonly, as Redis
-sets `KEYS` and `ARGV` from C), `pin`/`unpin`, `error_value` and
-`format_error` producing Redis's `@user_script:LINE: msg`. Script cache:
+sets `KEYS` and `ARGV` from C), `pin`/`unpin`, `error_value`,
+`error_line` (the line of the innermost Lua function at the raise of the
+error that ended the run: the VM records the pc when the error first leaves
+a dispatch run, or, for an error a parked callback's continuation raises,
+the instruction that callback's plan belongs to; keeps it while the error
+propagates out of callbacks; and forgets it when `pcall` or `xpcall`
+catches the error) and
+`set_pcall_error_field` (the field whose string or number value `pcall`
+returns in place of an error table that holds one, as Redis's `pcall` does
+with `err`) and `format_error` locating the error as `chunk:LINE: msg` in the
+chunk name the host compiled the script under (the host composes Redis's
+`EVAL` error reply). Script cache:
 `compile` returns a `ScriptId` or a compile error with PUC's text;
-`forget_all` is `SCRIPT FLUSH`. Running: `start`, `resume`, `reset`. The
+`forget_all` is `SCRIPT FLUSH`. Running: `start`, `resume`, `reset`,
+`complete_call`, `fail_call`. The
 slice protocol of the selected direction (C) is the host's: on `Budget`
 before its first write it resets, leaves the atomic statement, checks for a
 kill and restarts with a doubled budget; an undeclared key before the first
@@ -360,11 +381,15 @@ change alone can move a micro-kernel by tens of percent).
 
 ## Open rulings
 
+H1, H2 and H4 are now design-tree decisions awaiting the owner
+(`design/halo/heap/tables.md`, `design/halo/calls.md`, `design/halo.md`);
+H3 is a Whitefoot checker gap kept in Whitefoot's `docs/todo.md`.
+
 - H4. The platform reference is Redis 7.0.15 on x86-64 Linux with glibc,
   firn's own reference (it already prints a negative NaN as `-nan`, as
-  glibc does). The number library formats NaN with its sign accordingly;
-  its parser and the oracle corpus were checked against macOS builds and
-  are rechecked on the Linux runner before release (docs/todo.md).
+  glibc does). The number library formats NaN with its sign accordingly.
+  The oracle and codec corpora now run against that platform; the number
+  parser's comparison is still macOS-only (docs/todo.md).
 
 - H1 (revised during implementation). The first heap, open addressing as
   section 2 says, gave a different `#` from Redis's Lua on 68 of 2,336

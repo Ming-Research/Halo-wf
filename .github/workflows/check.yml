@@ -1,6 +1,6 @@
 # Halo's gate: every push runs `make check`, which downloads the pinned
 # Whitefoot compiler release and runs every Halo check. The exact revision
-# that merges into main passes this first (AGENTS.md, rule 3).
+# that merges into main passes this first (the owner-wide merge requirements).
 name: check
 
 on:

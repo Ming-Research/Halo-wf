@@ -256,6 +256,9 @@ fn callback_values<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slot
     Budget() => {
       park_suspended_stack(vm: vm, stack: stack);
     }
+    HostCall() => {
+      park_suspended_stack(vm: vm, stack: stack);
+    }
     HostStopped() => {
       park_stopped_stack(vm: vm, stack: stack);
     }

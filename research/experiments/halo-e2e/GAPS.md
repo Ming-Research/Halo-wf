@@ -2,9 +2,7 @@
 
 These are integration gaps in the current Halo implementation, not Lua source
 rejections or proposals to change the language. Reopen them before the firn
-binding treats this experiment as full Redis compatibility. This record lives
-with its reproducing runner because this task permits no changes to the VM or
-project TODO.
+binding treats this experiment as full Redis compatibility.
 
 ## Collector roots
 
@@ -46,11 +44,13 @@ supporting that use. Corpus cases run independent engines and do not verify it.
 
 ## Error locations and Stop
 
-`format_error(engine, line)` formats the requested `@user_script:LINE: msg` and
-preserves a location already present in a string error. `error_value` keeps the
-original object. The caller supplies a known source line; zero means unknown.
-The Redis formatter `format_redis_error(engine, source, line, locate)` composes
-the Redis 7 EVAL table/string distinction and script-body SHA-1 suffix. It
+`format_error(engine, line)` locates the error as `chunk:LINE: msg` in the
+chunk name the script was compiled under and preserves a location already
+present in a string error. `error_value` keeps the original object. The caller
+supplies a known source line; zero means unknown. The test host's Redis
+formatter `format_redis_error(engine, source, line, locate)` in
+`test/redis-error.wf` composes the Redis 7 EVAL table/string distinction and
+script-body SHA-1 suffix. It
 uses an explicit caller-supplied line rather than treating a budget checkpoint
 as a failure location. `locate` requests the Lua prefix for a raw VM error;
 already located strings should pass false.
@@ -119,6 +119,4 @@ host limitation, not Lua acceptance. Cyclic/deep replies are not corpus cases.
 
 `new_engine` installs the VM's slice-1 library. Redis call/pcall, status/error
 reply, log and sha1hex are supplied by this host; sha1hex uses the embedding's
-Whitefoot digest implementation. The additional pattern/codec/bit/struct
-libraries remain outside this change. No VM or library files outside the
-embedding are modified here.
+Whitefoot digest implementation.

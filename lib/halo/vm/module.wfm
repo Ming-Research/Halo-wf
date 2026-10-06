@@ -78,6 +78,19 @@ public struct PatternSubFrame {
   public phase: u8;
 }
 
+public struct PendingCall {
+  public id: u32;
+  public argc: u64;
+  public func: u64;
+  public wanted: i64;
+  public return_pc: u64;
+  public base: u64;
+  public kbase: u64;
+  public tail: Bool;
+  public activation: u32;
+  public top: u64;
+}
+
 public struct Vm {
   public pattern_subs: Box<Slots<PatternSubFrame>>;
   public cjson_configs: Box<Slots<CjsonConfig>>;
@@ -90,6 +103,7 @@ public struct Vm {
   public open_upvalues: Box<Slots<u32>>;
   public protos: Box<Slots<Proto>>;
   public lineinfo: Box<Slots<u32>>;
+  public source: Box<Slots<u8>>;
   public top: u64;
   public budget: u64;
   public saved_pc: u64;
@@ -104,6 +118,10 @@ public struct Vm {
   public callback_plan: CallbackPlan;
   public callbacks: Box<Slots<CallbackFrame>>;
   public suspended: Bool;
+  public pending: PendingCall;
+  public call_pending: Bool;
+  public raise_pc: u64;
+  public pcall_field: Box<Slots<u8>>;
 }
 
 public enum Outcome {
@@ -111,12 +129,14 @@ public enum Outcome {
   Error();
   Budget();
   HostStopped();
+  HostCall();
 }
 
 public enum HostOutcome {
   Returned(public count: u64);
   Raised();
   Stop();
+  Pending();
 }
 
 public interface Host<E> {
@@ -157,7 +177,13 @@ public fn reset(vm: &Vm, stack: &Box<Slots<Value>>) -> r: unit writes(stack), wr
 
 public fn start<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, proto: u32, argc: u64, budget: u64) -> r: Outcome reads(script), writes(stack), writes(vm), writes(env) doc "Calls a prototype with arguments at stack[1..1+argc), returning results at slot zero.";
 
-public fn resume<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, budget: u64) -> r: Outcome reads(script), writes(stack), writes(vm), writes(env) doc "Resumes the saved dispatch checkpoint with a fresh budget.";
+public fn resume<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, budget: u64) -> r: Outcome reads(script), writes(stack), writes(vm), writes(env) doc "Resumes the saved dispatch checkpoint with a fresh budget. While a host call is pending it ends the run with an error instead, and the call can no longer be completed or failed.";
+
+public fn pending_argument(vm: &Vm, stack: &Box<Slots<Value>>, index: u64) -> r: Value reads(vm), reads(stack) doc "Argument index of the host call that a HostCall outcome left pending, or Nil past its argument count or when no call is pending.";
+
+public fn complete_call<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, results: &[Value], budget: u64) -> r: Outcome reads(script), reads(results), writes(stack), writes(vm), writes(env) doc "Returns results from the pending host call, as HostOutcome::Returned would have, and continues with a fresh budget.";
+
+public fn fail_call<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, error: Value, budget: u64) -> r: Outcome reads(script), writes(stack), writes(vm), writes(env) doc "Raises error at the pending host call, as HostOutcome::Raised would have, so an enclosing pcall catches it, and continues with a fresh budget.";
 
 public fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64) -> r: Outcome reads(code), reads(consts), writes(stack), writes(vm), writes(env) contract {
   requires pc < code^.inner.len;

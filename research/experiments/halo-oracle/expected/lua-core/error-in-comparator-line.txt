@@ -1,0 +1,4 @@
+{
+  "type": "error",
+  "bytes": "ERR user_script:9: comparator script: 2437cba17c08bb487bf8959065c307290319dd55, on @user_script:9."
+}

@@ -437,6 +437,19 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: np, base: nb, kbase: nk);
     }
     Err(error: out) => {
+      match out {
+        Error() => {
+          note_raise(vm: vm, pc: pc);
+        }
+        Done(..) => {
+        }
+        Budget() => {
+        }
+        HostStopped() => {
+        }
+        HostCall() => {
+        }
+      }
       return out;
     }
   }

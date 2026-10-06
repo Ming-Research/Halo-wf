@@ -70,9 +70,12 @@ bypasses readonly, while script writes raise and absent reads call a rejecting
 The `smoke` entry and `test` executable with three arguments run the embedding
 probe (stdin is unused): cache, flush, reset, budget resumption, host outcomes,
 and forced collection of pins and cached constants, including pin/compile/unpin
-changes between suspended budget checkpoints. A nonzero exit is the
-probe's numbered failed observation. [GAPS.md](GAPS.md) names limits and concrete
-reopening conditions. None of these research commands is a compiler gate.
+changes between suspended budget checkpoints, the chunk name runtime errors
+are located in, and host calls left pending: completed, failed into a `pcall`
+inside a library callback, and refused by `resume`. A nonzero exit is the
+probe's numbered failed observation; `make check` runs it before the oracle
+comparison. [GAPS.md](GAPS.md) names limits and concrete reopening
+conditions.
 
 The Redis error/SHA-1 comparison uses Redis 7.0.15's local `script_lua.c`
 and `eval.c` as the formatting reference: command errors are tables, Lua
@@ -86,10 +89,10 @@ Add `--verify-sha1` to check three fixed and 1,000 seeded random binary
 inputs against `hashlib` before the selected corpus. Add `--verify-errors`
 to check command/global error locations, SHA-1 arity errors and protected
 error values against Redis-source-grounded expectations. It exercises the same
-Whitefoot `redis.sha1hex` used by scripts. `lib/halo/embed/sha1.wf` and
-`redis-error.wf` serve digest generation and the EVAL reply formatter in
-this embedding; they are superseded with the embedding if Halo is retired
-or its production binding replaces these responsibilities.
+Whitefoot `redis.sha1hex` used by scripts. `lib/halo/embed/sha1.wf` serves
+digest generation and the test host's `test/redis-error.wf` the EVAL reply
+formatter; they are superseded with the embedding if Halo is retired or its
+production binding replaces these responsibilities.
 
 Add `--gc-stress` to enable the engine's collector stress switch. Budget
 arguments still use the existing positional protocol; `--gc-stress` is an
