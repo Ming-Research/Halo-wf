@@ -98,6 +98,73 @@ fn finish(vm: &Vm, stack: &Box<Slots<Value>>, frame: Frame, src: u64, count: u64
   return Step::Jump(pc: pc, base: b, kbase: kb);
 }
 
+fn protected_error(vm: &Vm) -> r: Value writes(vm) {
+  doc "The error value pcall returns. When the embedding names a field, an error table whose raw value at that field is a string or a number gives that value, as Redis's replacement pcall does; every other error is returned as raised.";
+  let error = vm^.error;
+  let n = vm^.pcall_field.inner.len;
+  if n == 0_u64 {
+    return error;
+  }
+  match error {
+    Tab(..) => {
+    }
+    Nil() => {
+      return error;
+    }
+    False() => {
+      return error;
+    }
+    True() => {
+      return error;
+    }
+    Num(..) => {
+      return error;
+    }
+    Str(..) => {
+      return error;
+    }
+    Fun(..) => {
+      return error;
+    }
+    Builtin(..) => {
+      return error;
+    }
+  }
+  let name = box_slots_new::<u8>(capacity: n);
+  for (i in 0_u64..n) {
+    if i < vm^.pcall_field.inner.len {
+      if name.inner.len < name.inner.cap {
+        let b = vm^.pcall_field.inner[i];
+        place_back(window: &name.inner, value: b);
+      }
+    }
+  }
+  let count = name.inner.len;
+  let key = pkg::heap::intern(heap: &vm^.heap, bytes: &name.inner[0_u64..count]);
+  let field = pkg::heap::table_get(heap: &vm^.heap, t: error, key: key);
+  match field {
+    Str(..) => {
+      return field;
+    }
+    Num(..) => {
+      return field;
+    }
+    Nil() => {
+    }
+    False() => {
+    }
+    True() => {
+    }
+    Tab(..) => {
+    }
+    Fun(..) => {
+    }
+    Builtin(..) => {
+    }
+  }
+  return error;
+}
+
 fn unwind(vm: &Vm, stack: &Box<Slots<Value>>) -> r: Step writes(vm), writes(stack) contract {
   ensures stack^.inner.len == entry(stack)^.inner.len;
 } {
@@ -121,7 +188,8 @@ fn unwind(vm: &Vm, stack: &Box<Slots<Value>>) -> r: Step writes(vm), writes(stac
       }
       let err = dest +sat 1_u64;
       if err < stack^.inner.len {
-        set stack^.inner[err] = vm^.error;
+        let caught = protected_error(vm: vm);
+        set stack^.inner[err] = caught;
       }
       let outcome = finish(vm: vm, stack: stack, frame: f, src: dest, count: 2_u64);
       resize_stack(stack: stack, size: length);

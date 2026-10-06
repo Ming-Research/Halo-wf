@@ -37,6 +37,8 @@ public struct BuiltinName {
 
 public fn new_engine(limit: u64) -> r: Engine pure doc "Constructs an engine with core globals and a logical heap byte limit.";
 
+public fn set_pcall_error_field(engine: &Engine, field: &[u8]) -> r: unit reads(field), writes(engine.vm.pcall_field) doc "Names the field pcall unwraps: when pcall catches a table whose raw value at field is a string or a number, it returns that value as the error in place of the table. Every other error, and every error xpcall catches, is returned as raised. An empty name, the default, turns this off.";
+
 public fn set_gc_stress(engine: &Engine, enabled: Bool) -> r: unit writes(engine.vm.heap.gc_stress) doc "Forces a full collection at each collector safepoint while enabled; new engines default to off.";
 
 public fn collection_count(engine: &Engine) -> r: u64 reads(engine.vm.heap.collections) doc "Completed collections since engine construction, saturating at u64 maximum; reset does not clear the count.";

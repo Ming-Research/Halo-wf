@@ -315,8 +315,9 @@ fn vm_new(limit: u64) -> r: Vm pure {
   let sort_frames = box_slots_new::<SortFrame>(capacity: 0_u64);
   let pattern_subs = box_slots_new::<PatternSubFrame>(capacity: 0_u64);
   let cjson_configs = box_slots_new::<CjsonConfig>(capacity: 16_u64);
+  let pcall_field = box_slots_new::<u8>(capacity: 0_u64);
   let no_call = PendingCall(id: 0_u32, argc: 0_u64, func: 0_u64, wanted: 0_i64, return_pc: 0_u64, base: 0_u64, kbase: 0_u64, tail: atom3, activation: 0_u32, top: 0_u64);
-  return Vm(pattern_subs: move pattern_subs, cjson_configs: move cjson_configs, cjson_active_config: 0_u64, library_contexts: move library_contexts, sort_frames: move sort_frames, random_state: 20017429951246_u64, heap: move heap, frames: move frames, open_upvalues: move opens, protos: move protos, lineinfo: move lineinfo, top: 0_u64, budget: unlimited, saved_pc: 0_u64, saved_base: 0_u64, saved_kbase: 0_u64, error: nil, activation: 0_u32, globals: gh, type_metatables: type_metatables, host_stopped: atom3, stopped_stack: move stopped_stack, callback_plan: callback_plan, callbacks: move callbacks, suspended: atom3, pending: no_call, call_pending: atom3, raise_pc: 0_u64);
+  return Vm(pattern_subs: move pattern_subs, cjson_configs: move cjson_configs, cjson_active_config: 0_u64, library_contexts: move library_contexts, sort_frames: move sort_frames, random_state: 20017429951246_u64, heap: move heap, frames: move frames, open_upvalues: move opens, protos: move protos, lineinfo: move lineinfo, top: 0_u64, budget: unlimited, saved_pc: 0_u64, saved_base: 0_u64, saved_kbase: 0_u64, error: nil, activation: 0_u32, globals: gh, type_metatables: type_metatables, host_stopped: atom3, stopped_stack: move stopped_stack, callback_plan: callback_plan, callbacks: move callbacks, suspended: atom3, pending: no_call, call_pending: atom3, raise_pc: 0_u64, pcall_field: move pcall_field);
 }
 
 fn raise_text(vm: &Vm, text: &[u8]) -> r: Bool reads(text), writes(vm) {

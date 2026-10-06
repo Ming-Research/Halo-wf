@@ -353,7 +353,7 @@ fn serve_call(engine: &Engine, env: &Env, budget: u64) -> r: Outcome writes(engi
       let reply = command(env: env, vm: vm, stack: &args, func: 0_u64, argc: argc);
       if env^.error {
         if call.id == 4096_u32 {
-          let error = redis_raised(vm: vm, message: reply);
+          let error = reply_table(vm: vm, field: &s_30[0_u64..3_u64], v: reply);
           return halo::embed::fail_call::<TestHost>(engine: engine, env: env, error: error, budget: budget);
         }
         set reply = reply_table(vm: vm, field: &s_30[0_u64..3_u64], v: reply);
@@ -394,6 +394,7 @@ fn install_host(engine: &Engine, env: &Env) -> r: unit writes(engine), writes(en
   let v_v77 = num(x: 2.0_f64);
   raw(vm: vm_v64, table: redis_v65, key: k_v76, value: v_v77);
   let result_v78 = halo::embed::set_global(engine: engine, name: &s_49[0_u64..5_u64], value: redis_v65);
+  halo::embed::set_pcall_error_field(engine: engine, field: &s_30[0_u64..3_u64]);
   let db_v79 = halo::embed::new_table(engine: engine, asize: 0_u32, hsize: 0_u32);
   set env^.db = db_v79;
   let types_v80 = halo::embed::new_table(engine: engine, asize: 0_u32, hsize: 0_u32);

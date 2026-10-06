@@ -353,6 +353,18 @@ fn unpin(engine: &Engine, token: u64) -> r: unit writes(engine) {
   return unit;
 }
 
+fn set_pcall_error_field(engine: &Engine, field: &[u8]) -> r: unit reads(field), writes(engine.vm.pcall_field) {
+  let name = box_slots_new::<u8>(capacity: field^.len);
+  for (i in 0_u64..field^.len) {
+    if name.inner.len < name.inner.cap {
+      let b = field^[i];
+      place_back(window: &name.inner, value: b);
+    }
+  }
+  set engine^.vm.pcall_field = move name;
+  return unit;
+}
+
 fn set_gc_stress(engine: &Engine, enabled: Bool) -> r: unit writes(engine.vm.heap.gc_stress) {
   set engine^.vm.heap.gc_stress = enabled;
   return unit;

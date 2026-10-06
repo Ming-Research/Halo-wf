@@ -120,6 +120,7 @@ public struct Vm {
   public pending: PendingCall;
   public call_pending: Bool;
   public raise_pc: u64;
+  public pcall_field: Box<Slots<u8>>;
 }
 
 public enum Outcome {

@@ -73,6 +73,16 @@ example apart from the engine code that exposed it
   with an oracle case for each description. Reopen before clients compare
   error text, or with the next error-message work.
 
+- **pcall's error field is read raw.** With an error field named
+  (`set_pcall_error_field`), `pcall` reads it with a raw lookup; Redis's
+  replacement `pcall` uses `lua_getfield`, which also consults the table's
+  `__index`. Witness: `pcall(error, setmetatable({}, {__index={err="E"}}))`
+  returns the string `E` in Redis and the table in Halo (by reading
+  `script_lua.c`, not recorded). Impact: only an error table whose field
+  comes from a metatable differs. Change: run the lookup through the VM's
+  metamethod-aware get, which may call Lua during unwinding. Reopen when a
+  script raises such a table, with a recorded oracle case.
+
 - **A closure kept from one script cannot be called while another runs.**
   `start` in `lib/halo/vm/calls.wf` replaces the VM's prototypes and line
   metadata with the started script's, and a Lua closure finds its
