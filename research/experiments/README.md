@@ -5,7 +5,7 @@ oracle, a README) with measured numbers and their caveats. Binaries,
 corpora downloaded for a run and scratch output are regenerated, not kept.
 Experiments recorded while Halo lived in the Whitefoot repository name its
 tooling and paths of that time; their results stand, and their commands are
-history, not current instructions ([AGENTS.md](../../AGENTS.md#authority-and-reading)).
+history, not current instructions ([AGENTS.md](../../AGENTS.md#design-tree-and-research)).
 
 ## Engine
 

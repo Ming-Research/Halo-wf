@@ -23,7 +23,8 @@ priorities conflict:
 
 - The reference is Redis 7.0.15 with its bundled Lua 5.1 (PUC Lua 5.1.5 with
   Redis's patches) on x86-64 Linux with glibc. `research/experiments/halo-oracle`
-  holds its recorded replies; PUC's sources and Lua 5.1's test suite are
+  holds its recorded replies, which `.github/workflows/oracle-reference.yml`
+  records on that platform; PUC's sources and Lua 5.1's test suite are
   further oracles, and Halo's own earlier output never is one.
 - Halo's source never names Redis: the host supplies `redis.call`, `KEYS`,
   `ARGV`, the reply conversions and the script cache.
@@ -42,7 +43,8 @@ Halo builds with the compiler release `whitefoot.pin` names, through the
 holds the pin, reading the language at the pinned commit, trying an unmerged
 Whitefoot change and upgrading Whitefoot. A Whitefoot gap goes under
 *Whitefoot requirements* in `docs/todo.md`. An upgrade whose compiler changed
-code generation compares Halo's benchmarks before and after on the 14900K.
+code generation compares `research/experiments/halo-bench` before and after
+on the 14900K.
 
 ## Design tree and research
 
@@ -62,7 +64,9 @@ code generation compares Halo's benchmarks before and after on the 14900K.
 ## Checks
 
 - `make check`, the gate, runs in CI on every push: it downloads the pinned
-  compiler and runs the design lint. It needs git, curl, Python 3, both
+  compiler, builds `research/experiments/halo-e2e`'s test program, compares
+  every oracle script at budgets 1, 7 and 1000, ordinary and under collector
+  stress, and runs the design lint. It needs git, curl, Python 3, both
   submodules (`git clone --recurse-submodules`) and `/usr/bin/clang`, with LLD
   on Linux.
 - `make design-ready` and `make pin-ready` run in CI on ready PRs and on main.

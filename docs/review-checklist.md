@@ -11,6 +11,8 @@ runs under the owner-wide instructions, together with their design checks.
   Halo's source names no Redis behavior that belongs to the host.
 - **C3 — Interfaces.** Module bodies implement their `.wfm` interfaces as
   written, and no contract or effect row is weakened to let a body pass.
-- **C4 — Gate.** CI runs the Makefile targets that `make check` runs.
+- **C4 — Gate.** CI runs the Makefile targets that `make check` runs, and a
+  change to the oracle corpus records its replies with
+  `.github/workflows/oracle-reference.yml`.
 - **C5 — Pins.** Whitefoot-kit's [review items](../whitefoot-kit/downstream.md#review-items)
   hold for `whitefoot.pin` and the submodules.
