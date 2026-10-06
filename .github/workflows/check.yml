@@ -48,3 +48,17 @@ jobs:
 
       - name: Check
         run: make check
+
+      # A failed comparison is read from the runner's report and the actual
+      # replies it kept, which the job's log only summarizes.
+      - name: Keep the end-to-end reports and replies
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: halo-e2e
+          path: |
+            build/halo-e2e/*.md
+            build/halo-e2e/ordinary/
+            build/halo-e2e/stress/
+          if-no-files-found: ignore
+          retention-days: 14

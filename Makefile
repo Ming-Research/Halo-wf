@@ -64,7 +64,8 @@ $(WHITEFOOTC): $(PIN)
 # runner compares the 80 scripts of research/experiments/halo-oracle at
 # budgets 1, 7 and 1000, in ordinary and collector-stress modes, byte for
 # byte with Redis 7.0.15's recorded replies. It exits nonzero on any
-# difference. The test program is built once, with the graph always named
+# difference in either mode, after running both, and keeps each mode's
+# report and actual replies under build/halo-e2e/ for inspection. The test program is built once, with the graph always named
 # by the same relative path so that the compiler's cache key stays stable.
 E2E := $(BUILD)/halo-e2e
 E2E_TEST := $(E2E)/test
@@ -76,8 +77,11 @@ $(E2E_TEST): compiler FORCE
 	@cd $(ROOT)/research/experiments/halo-e2e && $(WHITEFOOTC) --graph modules.wfg --entry test -o $@
 
 oracle: $(E2E_TEST)
-	@$(E2E_RUN) --report $(E2E)/ordinary.md
-	@$(E2E_RUN) --gc-stress --report $(E2E)/stress.md
+	@rm -rf $(E2E)/ordinary $(E2E)/stress
+	@status=0; \
+	$(E2E_RUN) --report $(E2E)/ordinary.md --actual $(E2E)/ordinary || status=1; \
+	$(E2E_RUN) --gc-stress --report $(E2E)/stress.md --actual $(E2E)/stress || status=1; \
+	exit $$status
 
 # The design skill's own tests, then the lint of every live tree; until the
 # first tree lands there is nothing to lint.
