@@ -167,8 +167,8 @@ These are the complete approval and merge rules:
    merge.
 4. A change that moves `whitefoot.pin` or the `design/skill/` submodule names
    the revisions it adopts and why. A revision merged into `main` pins a
-   Whitefoot release built from a commit on Whitefoot's `main` and a
-   Design-skill commit on its `main`.
+   `wf-` Whitefoot release, built from a commit on Whitefoot's `main`, never
+   a `wf-exp-` experiment release, and a Design-skill commit on its `main`.
 
 **Exact revision** is the complete tree that will enter `main`, the pins
 included; if it changes after approval or after its successful check, rules
@@ -232,9 +232,11 @@ A pin whose release is gone gets the same commit dispatched again.
   deliberate change under rule 4. Halo never vendors Whitefoot source or
   pins Whitefoot as a submodule.
 - A change Halo needs in Whitefoot is made in Whitefoot, under Whitefoot's
-  own AGENTS.md, as a branch and PR in its repository. Releases exist only
-  for commits on Whitefoot's `main`, so Halo adopts the change after it
-  merges there.
+  own AGENTS.md, as a branch and PR in its repository. While that PR is
+  open, an experiment branch here may pin its experiment release,
+  `release = wf-exp-<12-character hash>`, which Whitefoot's release workflow
+  makes for an unmerged commit whose gate passed; Halo's `main` adopts the
+  change only through a `wf-` release after it merges there (rule 4).
 - When a missing Whitefoot feature would bend Halo's implementation or
   architecture, add the feature to Whitefoot instead of working around it.
   State the gap as its minimal semantic example, apart from the engine code
