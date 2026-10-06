@@ -5,7 +5,6 @@
 -- error: true
 local raise=error
 local ok,e=pcall(function()
-  local t=nil
-  return t.x
+  raise("first")
 end)
 raise(e,0)

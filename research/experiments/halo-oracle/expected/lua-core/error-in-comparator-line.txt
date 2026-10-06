@@ -1,4 +1,0 @@
-{
-  "type": "error",
-  "bytes": "ERR user_script:9: attempt to index local 'x' (a nil value) script: 014f8be3228148f6a54b1541d3073cf58059668b, on @user_script:9."
-}

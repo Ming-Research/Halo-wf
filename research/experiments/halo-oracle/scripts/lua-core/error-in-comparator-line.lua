@@ -3,9 +3,9 @@
 -- ARGV: []
 -- expects: No pre-existing keys.
 -- error: true
+local raise=error
 local t={3,1,2}
 table.sort(t,function(a,b)
-  local x=nil
-  return x.y
+  raise("comparator")
 end)
 return t
