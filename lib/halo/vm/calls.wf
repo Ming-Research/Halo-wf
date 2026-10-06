@@ -550,10 +550,8 @@ fn pending_argument(vm: &Vm, stack: &Box<Slots<Value>>, index: u64) -> r: Value 
         if at < vm^.stopped_stack.inner.len {
           return vm^.stopped_stack.inner[at];
         }
-      } else {
-        if at < stack^.inner.len {
-          return stack^.inner[at];
-        }
+      } else if at < stack^.inner.len {
+        return stack^.inner[at];
       }
     }
   }
