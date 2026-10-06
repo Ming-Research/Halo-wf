@@ -1,244 +1,87 @@
 # Halo-wf — agent instructions
 
-Halo-wf, Halo for short, is a Lua 5.1 engine written in Whitefoot with an
-embedding interface, together with the general JSON and MessagePack packages
-its codec libraries bind. Firn (Ming-Research/Firn-wf) hosts it to run Redis
-scripts, but Halo's own source never names Redis: the host supplies
-`redis.call`, `KEYS`, `ARGV`, the reply conversions and the script cache.
-Whitefoot, the language and its compiler, is pinned as a compiler release
-named in `whitefoot.pin` and fetched through the `whitefoot-kit/` submodule,
-and the design-tree lint comes from the `design/skill/` submodule.
+Halo is a Lua 5.1 engine written in Whitefoot with an embedding interface
+(`lib/halo`), with the JSON and MessagePack packages its codec libraries bind
+(`lib/json`, `lib/msgpack`). Firn-wf hosts it to run Redis scripts.
 
-The owner-wide instructions every session loads (`~/.claude/CLAUDE.md`,
-`~/.codex/AGENTS.md`) govern working with the owner, pull requests and
-completion, and the design tree. This file adds Halo's paths, checks, review
-checklist and the parts its reports carry.
+## Goal and priorities
 
-## Project goal
-
-Halo exists to serve Whitefoot: it is the real interpreter that shows what
-Whitefoot gives a dynamic-language runtime, with dynamic values, closures,
-a collector and budgeted execution under the language's guarantees, and
-exposes what Whitefoot still lacks. Reach, as early as possible, scripts
-whose replies are byte-identical to the reference's and measurements against
-PUC Lua 5.1, then grow to what real Redis scripts need.
-
-When priorities conflict, use this order:
+Halo shows what Whitefoot gives a dynamic-language runtime and exposes what it
+lacks: first scripts whose replies are byte-identical to the reference's and
+measurements against PUC Lua 5.1, then what real Redis scripts need. When
+priorities conflict:
 
 1. reach the next end-to-end compatibility or performance experiment;
 2. keep replies identical to the reference, with every safety check
    Whitefoot requires;
 3. keep the implementation understandable and easy to change;
-4. add only the evidence needed to trust the current result; and
+4. add only the evidence needed to trust the current result;
 5. defer robustness, infrastructure and polish that no current experiment
    needs.
 
-## Authority and reading
+## Reference and correctness
 
-`design/` holds the decisions Halo is built on, each with its reason and
-refused alternatives. Work is not planned in a document up front: a selected
-direction gets `research/investigations/<name>/` for its design, measurements
-and rejected alternatives, and its surviving decision goes to the design
-tree. `research/investigations/halo/` holds the engine's design (`DESIGN.md`,
-`VM.md`), its work order and its falsifiers. Read only the material relevant
-to the task, and do not turn research into an implied implementation
-requirement.
+- The reference is Redis 7.0.15 with its bundled Lua 5.1 (PUC Lua 5.1.5 with
+  Redis's patches) on x86-64 Linux with glibc. `research/experiments/halo-oracle`
+  holds its recorded replies; PUC's sources and Lua 5.1's test suite are
+  further oracles, and Halo's own earlier output never is one.
+- Halo's source never names Redis: the host supplies `redis.call`, `KEYS`,
+  `ARGV`, the reply conversions and the script cache.
+- No script, test or benchmark selects a special path in the engine.
+- Ported code keeps its license notice beside it (`lib/halo/compile/LICENSE.md`,
+  `lib/halo/vm/LICENSE.md`, the `pow` notice in `lib/halo/number`).
+- The owner and the primary agent own the design tree, the package and module
+  graph, the `.wfm` interfaces and the embedding interface; an implementer
+  reports an insufficient interface with a minimal example instead of editing
+  it.
 
-**The reference.** Halo's behavior is judged against Redis 7.0.15 and its
-bundled Lua 5.1 (PUC Lua 5.1.5 with Redis's patches) on x86-64 Linux with
-glibc. The oracle corpus in `research/experiments/halo-oracle/` records that
-reference's replies; PUC's own sources and Lua 5.1's test suite are further
-oracles.
+## Whitefoot
 
-**The language.** The pinned Whitefoot commit defines the language; read its
-specification, maintained programs and standard-library interfaces at that
-commit as [whitefoot-kit/downstream.md](whitefoot-kit/downstream.md#reading-the-language)
-describes. The compiler's diagnostics and repairs are the other source.
+Halo builds with the compiler release `whitefoot.pin` names, through the
+`whitefoot-kit` submodule, whose [downstream.md](whitefoot-kit/downstream.md)
+holds the pin, reading the language at the pinned commit, trying an unmerged
+Whitefoot change and upgrading Whitefoot. A Whitefoot gap goes under
+*Whitefoot requirements* in `docs/todo.md`. An upgrade whose compiler changed
+code generation compares Halo's benchmarks before and after on the 14900K.
 
-A finished task is not evidence: a claim cites a design-tree decision, an
-investigation, a measurement with its workload, environment and comparison,
-or an oracle independent of Halo. Research records written while Halo lived
-in the Whitefoot repository cite Whitefoot paths and tooling of their time
-(for example `.github/run-check.pl`); they stay as historical evidence, and
-their commands are not current instructions.
+## Design tree and research
 
-## How work proceeds
-
-A *material choice* changes accepted scripts or replies, a safety or trust
-condition, a shared interface or representation, a significant performance
-commitment or a standing project rule; only a material choice between viable
-alternatives is a design decision. Restoring decided behavior or editing
-prose without changing its meaning is routine.
-
-**Judge a design by its merits, not by the work it takes.** No design
-judgment weighs the existing code, tests or documents a choice would change,
-nor the effort of changing them.
-
-**Verify with observations that could have come out otherwise.** A passing
-result is evidence only if a wrong result would have failed it. Make each new
-check fail once for each way it can fail, and never check a transform against
-its own output. Resolve every commit id, path, count and measurement with a
-tool when you write it. Another agent's or a reviewer's report is a lead to
-verify, not evidence. A green result reached by weakening a requirement does
-not answer the original question.
-
-**Size a run before starting it.** Before any build, test batch, measurement
-or experiment, run the smallest useful sample, time it and look at its
-spread, then choose the scale; repeat or lengthen only where the spread is
-too large to decide. Never open with a run of hours.
-
-A series of dependent PRs is stacked, each on the branch of the one before
-it.
-
-**The design tree.** Its live trees are the root node files under `design/`
-other than `log.md`, each with its subdirectory, which the Makefile finds and
-lints; its change log is `design/log.md`, its research record
-`research/investigations/` and `research/experiments/`, its maintained TODO
-`docs/todo.md`, and its form and readiness checks `make design-lint` and
-`make design-ready`, which run `lint.py` from the `design/skill/` submodule
-([Design-skill](https://github.com/Ming-Research/Design-skill), never edited
-here).
-
-**Reports.** At completion, a Halo report also names any pin or submodule it
-moved and why, any Whitefoot gap it filed, and the oracle comparison's result
-on the validated revision.
-
-**Investigations and performance.** An investigation decides something.
-Before measuring, write the question, the comparison that could answer it
-either way and the result that would reject the proposal; the surviving
-decision goes to the tree. Attribute a performance change with a same-source
-before-and-after comparison of interleaved launches with full LTO, and a
-falsifier.
-
-## Agents
-
-- The owner and the primary agent own the architecture: the design tree, the
-  package and module graph, the Whitefoot module interfaces (`.wfm`) with
-  their contracts and effect rows, and the embedding interface.
-- Subagents are Codex models chosen by difficulty: GPT-6.1 Sol at high
-  reasoning effort for simple tasks, GPT-6 Astra at high or max for complex
-  ones. Fable is the last resort, used sparingly, only when the primary agent
-  and both Codex models have failed at the task.
-- An implementer that finds an interface insufficient reports the gap to the
-  primary agent with a minimal example instead of editing it.
-
-## Branch and main boundary
-
-These are the complete approval and merge rules:
-
-1. Work-branch changes need no approval, including the design tree, code,
-   tests, gate wiring, the pins and documentation, except that new
-   repository-root entries require owner approval. A PR becomes ready only
-   after the owner has approved every decision it needs, including every
-   design-tree change; the approval is recorded in `design/log.md` only then,
-   and `make design-ready` checks the record.
-2. Every change merged into `main` requires owner approval of the exact
-   revision to be merged.
-3. The exact revision merged into `main` must pass `make check` before the
-   merge.
-4. A change that moves `whitefoot.pin` or the `design/skill/` or
-   `whitefoot-kit/` submodule names the revisions it adopts and why. A
-   revision merged into `main` pins a commit on that repository's `main`:
-   for Whitefoot, a release `wf-<12 hex>`, never an experiment release.
-
-**Exact revision** is the complete tree that will enter `main`, the pins
-included; if it changes after approval or after its successful check, rules
-2 and 3 apply to the new revision. No other workflow step is an approval or
-merge precondition.
+- Live trees: the root node files under `design/` other than `log.md`, each
+  with its subdirectory. Change log: `design/log.md`. Research record:
+  `research/investigations/` and `research/experiments/`. Maintained TODO:
+  `docs/todo.md`. Form and readiness checks: `make design-lint` and
+  `make design-ready`, with `lint.py` from the `design/skill` submodule.
+- `research/investigations/halo/` holds the engine's design (`DESIGN.md`,
+  `VM.md`), work order and falsifiers. Records written while Halo lived in
+  the Whitefoot repository name that repository's tooling; their commands are
+  history.
+- A performance change is attributed with a same-source before-and-after
+  comparison of interleaved full-LTO launches and a falsifier stated before
+  measuring.
 
 ## Checks
 
-- `make check`, the gate, in CI on every push and on the revision to merge.
-  It downloads the pinned compiler (`make compiler`) and runs every Halo
-  check and the design lint. It needs git, curl, Python 3, the
-  `design/skill` and `whitefoot-kit` submodules
-  (`git clone --recurse-submodules` or `git submodule update --init`) and the
-  toolchain the compiler links with: `/usr/bin/clang`, and on Linux LLD,
-  which CI installs.
-- `make design-ready` and `make pin-ready`, before marking ready and in CI
-  on ready PRs and main: every design-tree change is approved in the log, and
-  `whitefoot.pin` names no experiment release.
-- Build and test through CI, not on a developer's machine; run a build or
-  test locally only when CI cannot do it or the owner asks, and say so.
-- Precise timing and performance run on the owner's i9-14900K self-hosted
-  machine (runner labels `self-hosted`, `14900k`), never on a hosted runner
-  or a laptop. Other projects share it: announce a long run before starting
-  it.
+- `make check`, the gate, runs in CI on every push: it downloads the pinned
+  compiler and runs the design lint. It needs git, curl, Python 3, both
+  submodules (`git clone --recurse-submodules`) and `/usr/bin/clang`, with LLD
+  on Linux.
+- `make design-ready` and `make pin-ready` run in CI on ready PRs and on main.
+- The completion review uses [docs/review-checklist.md](docs/review-checklist.md).
 
-## Review
+## Merge rules
 
-The completion review of the owner-wide instructions is, for Halo, a
-separate, read-only agent started with the prompt in
-[the review checklist](docs/review-checklist.md#how-to-review): GPT-6 Astra
-at high effort and every applicable group for a change to code, tests, gate
-wiring, a pin, the design tree or guidance; GPT-6.1 Sol at high effort and
-groups A, D, M and V, plus R for a material choice, when only research
-records or other prose changed. Fill the PR's review section with its result.
+1. A PR becomes ready only after the owner has approved every decision it
+   needs; the approval is then recorded in `design/log.md`, which
+   `make design-ready` checks.
+2. A merge into `main` needs the owner's approval of that exact revision, the
+   whole tree with its pins; a revision changed after approval or after its
+   passing check needs both again.
+3. That revision passes `make check` before the merge.
+4. A change that moves `whitefoot.pin` or a submodule names the revisions it
+   adopts and why. `main` pins a `wf-` release of a Whitefoot `main` commit,
+   never a `wf-exp-` one, and submodule commits on their repositories' `main`.
 
-## Building with Whitefoot
+## Reports
 
-Halo builds with the Whitefoot compiler release `whitefoot.pin` names,
-through the `whitefoot-kit` submodule
-([Whitefoot-kit](https://github.com/Ming-Research/Whitefoot-kit)) that every
-project written in Whitefoot shares. Its
-[downstream.md](whitefoot-kit/downstream.md) holds the rules: the pin and its
-checks, trying an unmerged Whitefoot change with an experiment release or
-`make WHITEFOOTC=<path>`, upgrading Whitefoot, and where a Whitefoot gap is
-recorded (*Whitefoot requirements* in `docs/todo.md`). A change to those rules
-is made in Whitefoot-kit, and Halo adopts it by moving the submodule.
-
-For Halo, an upgrade whose compiler changed code generation compares Halo's
-benchmarks before and after on the 14900K (`research/experiments/halo-bench`).
-
-## Code and tests
-
-- Halo's implementation rules are its design decisions in `design/`; read the
-  nodes a change touches and their ancestors before changing code.
-- Correctness is judged by an oracle independent of Halo: the reference's
-  recorded replies, PUC Lua 5.1's output or test suite, or a format's
-  specification, never Halo's own earlier output.
-- Halo's source never names Redis; Redis's commands, conversions and cache
-  belong to the host.
-- No script, test or benchmark selects a special path in the engine.
-- Ported third-party code keeps its license notice beside it
-  (`lib/halo/compile/LICENSE.md`, `lib/halo/vm/LICENSE.md`, and the `pow`
-  notice in `lib/halo/number`).
-- Never delete, disable, narrow or unwire a test or check merely to make
-  `make check` green. A deliberately retired test leaves an honest technical
-  explanation in the same change.
-
-## Repository structure and hygiene
-
-The repository root and every established directory are a curated, closed
-set. Follow this by judgment and keep moving.
-
-- Do not add a repository-root entry without owner approval. Put new material
-  in the existing directory that owns its kind; if none fits, ask.
-- Every new file, directory, script or document earns its place before it is
-  created: name what it serves, its home and the condition under which it is
-  removed.
-- No bulk dumps. A script ships wired to a caller; a document ships into an
-  existing home and is kept current or deleted.
-- Prefer native tooling; a new script must justify why the native path cannot
-  do the job.
-- Supersede in place: when new material replaces old, update, merge or delete
-  the old in the same change.
-- Repository artifacts, identifiers, comments, diagnostics, fixtures, test
-  names and file names use English.
-- Each document keeps its role: `README.md` introduces and navigates, this
-  file holds the goal, authority and Halo's own rules, `design/` the decisions
-  and their log, `docs/review-checklist.md` the review items, `docs/todo.md`
-  open defects and Whitefoot requirements until resolved, `research/`
-  questions, experiments and results, and the PR description the current
-  change. None narrates editing history.
-
-## Communication
-
-Describe engine and language work with precise, neutral technical wording:
-name the concrete rule, failure and expected behavior, and report material
-risks accurately.
-
-## Data safety
-
-Preserve unrelated user changes in a dirty worktree. Never discard, overwrite
-or rewrite work outside the requested change boundary.
+At completion a report also names any pin or submodule moved, any Whitefoot
+gap filed, and the oracle comparison's result on the validated revision.
