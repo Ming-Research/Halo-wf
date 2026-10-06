@@ -41,12 +41,15 @@ Whitefoot change and upgrading Whitefoot. A Whitefoot gap goes under
   `research/investigations/halo/` holds the engine's design (`DESIGN.md`,
   `VM.md`), work order and falsifiers. Maintained TODO: `docs/todo.md`.
 - Halo's performance comparisons build both sides with full LTO.
-- `make check`, the gate, runs in CI on every push: it downloads the pinned
-  compiler, builds `research/experiments/halo-e2e`'s test program, compares
-  every oracle script at budgets 1, 7 and 1000, ordinary and under collector
-  stress, and runs the design lint. It needs git, curl, Python 3, both
-  submodules (`git clone --recurse-submodules`) and `/usr/bin/clang`, with LLD
-  on Linux.
+- `make check`, the gate, runs in CI on every push as three parallel groups
+  (Makefile): core (the embedding probe, every oracle script at budgets 1, 7
+  and 1000, ordinary and under collector stress, and the design lint),
+  extended (the collector's root controls, the research hosts, the JSON
+  package) and reference (the number library and the MessagePack package
+  against Redis 7.0.15's bundled Lua built from source). It needs git, curl,
+  Python 3, a C compiler, both submodules (`git clone --recurse-submodules`)
+  and, on Linux, `/usr/bin/clang` and LLD of the LLVM major the pinned
+  release names (`make toolchain` installs it).
 - `make pin-ready` runs with the readiness check and refuses an experiment
   pin.
 - The completion review uses [docs/review-checklist.md](docs/review-checklist.md).
