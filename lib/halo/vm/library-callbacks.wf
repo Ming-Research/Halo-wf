@@ -142,6 +142,20 @@ fn resume_library<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots
     if vm^.host_stopped {
       return Step::Stop();
     }
+    if bnot(failed) {
+      match local_outcome_28 {
+        Raised() => {
+          let local_call_pc_31 = local_context_27.frame.return_pc -sat 1_u64;
+          library_call_error_location(vm: vm, id: local_context_27.id, pc: local_call_pc_31);
+        }
+        Returned(..) => {
+        }
+        Stop() => {
+        }
+        Pending() => {
+        }
+      }
+    }
     discard_library_context(vm: vm, index: local_index_26);
     match local_outcome_28 {
       Returned(count: bound_count_1) => {

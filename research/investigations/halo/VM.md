@@ -241,8 +241,10 @@ bytes, since no function returns a reference), `number_of`, `truthy`,
 sets `KEYS` and `ARGV` from C), `pin`/`unpin`, `error_value`,
 `error_line` (the line of the innermost Lua function at the raise of the
 error that ended the run: the VM records the pc when the error first leaves
-a dispatch run, keeps it while the error propagates out of callbacks, and
-forgets it when `pcall` or `xpcall` catches the error) and
+a dispatch run, or, for an error a parked callback's continuation raises,
+the instruction that callback's plan belongs to; keeps it while the error
+propagates out of callbacks; and forgets it when `pcall` or `xpcall`
+catches the error) and
 `format_error` producing Redis's `@user_script:LINE: msg`. Script cache:
 `compile` returns a `ScriptId` or a compile error with PUC's text;
 `forget_all` is `SCRIPT FLUSH`. Running: `start`, `resume`, `reset`,

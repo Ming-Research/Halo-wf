@@ -517,6 +517,7 @@ fn drive<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm,
         let frame = take_back(window: &vm^.callbacks.inner);
         complete_callback(vm: vm, stack: stack, frame: frame, count: countv);
         let continued = continue_callback::<Host<E>>(code: &script^.code, consts: &script^.consts, stack: stack, vm: vm, env: env, plan: frame.plan);
+        note_plan_raise(vm: vm, step: continued, plan: frame.plan);
         set outcome = dispatch_step::<Host<E>>(code: &script^.code, consts: &script^.consts, stack: stack, vm: vm, env: env, step: continued);
       }
       Error() => {
@@ -534,11 +535,34 @@ fn drive<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm,
         } else {
           set raised = unwind(vm: vm, stack: stack);
         }
+        note_plan_raise(vm: vm, step: raised, plan: frame.plan);
         set outcome = dispatch_step::<Host<E>>(code: &script^.code, consts: &script^.consts, stack: stack, vm: vm, env: env, step: raised);
       }
     }
   }
   return Outcome::Error();
+}
+
+fn note_plan_raise(vm: &Vm, step: Step, plan: CallbackPlan) -> r: unit writes(vm.raise_pc) {
+  doc "A parked callback's continuation runs outside a dispatch run; when it raises, the raise point is the instruction its plan belongs to, the call of the library function or the instruction whose metamethod ran, as type_error reads it.";
+  match step {
+    Error() => {
+      let pc = plan.pc;
+      if plan.kind != 2_u8 {
+        set pc = pc -sat 1_u64;
+      }
+      note_raise(vm: vm, pc: pc);
+    }
+    Jump(..) => {
+    }
+    Done(..) => {
+    }
+    Stop() => {
+    }
+    Budget() => {
+    }
+  }
+  return unit;
 }
 
 fn pending_argument(vm: &Vm, stack: &Box<Slots<Value>>, index: u64) -> r: Value reads(vm), reads(stack) {
