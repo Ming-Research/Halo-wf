@@ -141,15 +141,13 @@ fn decimal(out: &Box<Slots<u8>>, number: u64) -> r: unit writes(out) {
   return unit;
 }
 
-const location: Array<u8, 13> = "@user_script:";
-
 const nonstring: Array<u8, 30> = "(error object is not a string)";
 
 fn format_error(engine: &Engine, line: u64) -> r: Box<Slots<u8>> reads(engine) {
   let out = box_slots_new::<u8>(capacity: 0_u64);
   let value = engine^.vm.error;
   let located = False();
-  let with_at = False();
+  let name_length = engine^.vm.source.inner.len;
   match string_of(engine: engine, value: value) {
     None() => {
     }
@@ -157,21 +155,22 @@ fn format_error(engine: &Engine, line: u64) -> r: Box<Slots<u8>> reads(engine) {
       let h = cvt::<u32, u64>(view.handle);
       if h < engine^.vm.heap.strings.inner.len {
         let n = engine^.vm.heap.strings.inner[h].payload.bytes.inner.len;
-        if n >= 13_u64 {
-          set with_at = True();
-          for (i in 0_u64..13_u64) {
-            let b = engine^.vm.heap.strings.inner[h].payload.bytes.inner[i];
-            if b != location[i] {
-              set with_at = False();
+        if n > name_length {
+          set located = True();
+          for (i in 0_u64..name_length) {
+            if i < engine^.vm.heap.strings.inner[h].payload.bytes.inner.len {
+              if i < engine^.vm.source.inner.len {
+                let b = engine^.vm.heap.strings.inner[h].payload.bytes.inner[i];
+                let expected = engine^.vm.source.inner[i];
+                if b != expected {
+                  set located = False();
+                }
+              }
             }
           }
-        }
-        if n >= 12_u64 {
-          set located = True();
-          for (i in 0_u64..12_u64) {
-            let b = engine^.vm.heap.strings.inner[h].payload.bytes.inner[i];
-            let j = i + 1_u64;
-            if b != location[j] {
+          if name_length < engine^.vm.heap.strings.inner[h].payload.bytes.inner.len {
+            let colon = engine^.vm.heap.strings.inner[h].payload.bytes.inner[name_length];
+            if colon != 58_u8 {
               set located = False();
             }
           }
@@ -179,18 +178,14 @@ fn format_error(engine: &Engine, line: u64) -> r: Box<Slots<u8>> reads(engine) {
       }
     }
   }
-  if with_at {
-    set located = True();
-  }
-  if located {
-    if bnot(with_at) {
-      byte(out: &out, b: 64_u8);
+  if bnot(located) {
+    if line > 0_u64 {
+      text(out: &out, bytes: &engine^.vm.source.inner[0_u64..name_length]);
+      byte(out: &out, b: 58_u8);
+      decimal(out: &out, number: line);
+      byte(out: &out, b: 58_u8);
+      byte(out: &out, b: 32_u8);
     }
-  } else if line > 0_u64 {
-    text(out: &out, bytes: &location[0_u64..13_u64]);
-    decimal(out: &out, number: line);
-    byte(out: &out, b: 58_u8);
-    byte(out: &out, b: 32_u8);
   }
   match string_of(engine: engine, value: value) {
     None() => {

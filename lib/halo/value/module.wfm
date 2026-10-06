@@ -120,4 +120,5 @@ public struct Script {
   public consts: Box<Slots<Value>>;
   public protos: Box<Slots<Proto>>;
   public lineinfo: Box<Slots<u32>>;
+  public source: Box<Slots<u8>>;
 }

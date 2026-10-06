@@ -87,10 +87,10 @@ Add `--verify-sha1` to check three fixed and 1,000 seeded random binary
 inputs against `hashlib` before the selected corpus. Add `--verify-errors`
 to check command/global error locations, SHA-1 arity errors and protected
 error values against Redis-source-grounded expectations. It exercises the same
-Whitefoot `redis.sha1hex` used by scripts. `lib/halo/embed/sha1.wf` and
-`redis-error.wf` serve digest generation and the EVAL reply formatter in
-this embedding; they are superseded with the embedding if Halo is retired
-or its production binding replaces these responsibilities.
+Whitefoot `redis.sha1hex` used by scripts. `lib/halo/embed/sha1.wf` serves
+digest generation and the test host's `test/redis-error.wf` the EVAL reply
+formatter; they are superseded with the embedding if Halo is retired or its
+production binding replaces these responsibilities.
 
 Add `--gc-stress` to enable the engine's collector stress switch. Budget
 arguments still use the existing positional protocol; `--gc-stress` is an

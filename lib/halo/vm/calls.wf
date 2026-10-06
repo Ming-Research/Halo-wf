@@ -441,6 +441,14 @@ fn start<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm,
     }
   }
   set vm^.lineinfo = move lines;
+  let name = box_slots_new::<u8>(capacity: script^.source.inner.len);
+  for (i in 0_u64..script^.source.inner.len) {
+    if name.inner.len < name.inner.cap {
+      let b = script^.source.inner[i];
+      place_back(window: &name.inner, value: b);
+    }
+  }
+  set vm^.source = move name;
   set vm^.budget = budget;
   let empty = array_filled::<u32, 0>(value: 0_u32);
   let cl = pkg::heap::new_closure(heap: &vm^.heap, proto: proto, upvals: &empty[0_u64..0_u64]);
