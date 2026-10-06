@@ -1,0 +1,1013 @@
+alias Engine = halo::embed::Engine;
+alias Value = halo::value::Value;
+alias Outcome = halo::vm::Outcome;
+alias HostOutcome = halo::vm::HostOutcome;
+alias Host = halo::vm::Host;
+alias Vm = halo::vm::Vm;
+alias ExitStatus = std::process::ExitStatus;
+
+struct Probe {
+  mode: u8;
+  calls: u64;
+}
+
+fn probe_call(env: &Probe, vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: u32) -> r: HostOutcome writes(env), writes(vm), writes(stack) contract {
+  ensures stack^.inner.len == entry(stack)^.inner.len;
+} {
+  set env^.calls = env^.calls +sat 1_u64;
+  if env^.mode == 2_u8 {
+    return HostOutcome::Stop();
+  }
+  if env^.mode == 3_u8 {
+    return HostOutcome::Pending();
+  }
+  if env^.mode == 1_u8 {
+    set vm^.error = Value::Num(n: 99.0_f64);
+    return HostOutcome::Raised();
+  }
+  if func < stack^.inner.len {
+    set stack^.inner[func] = Value::Num(n: 73.0_f64);
+  }
+  return HostOutcome::Returned(count: 1_u64);
+}
+
+binding ProbeHost : Host<Probe> {
+  call = probe_call;
+}
+
+fn probe_run(engine: &Engine, env: &Probe, script: halo::embed::ScriptId) -> r: Outcome writes(engine), writes(env) {
+  let out = halo::embed::start::<ProbeHost>(engine: engine, env: env, script: script, budget: 1_u64);
+  return probe_settle(engine: engine, env: env, outcome: out);
+}
+
+fn probe_settle(engine: &Engine, env: &Probe, outcome: Outcome) -> r: Outcome writes(engine), writes(env) {
+  doc "Resumes budget checkpoints until the run finishes, stops or leaves a host call pending.";
+  let out = outcome;
+  let steps = 0_u64;
+  loop {
+    match out {
+      Done(..) => {
+        return out;
+      }
+      Error() => {
+        return out;
+      }
+      HostStopped() => {
+        return out;
+      }
+      HostCall() => {
+        return out;
+      }
+      Budget() => {
+        if steps > 100_u64 {
+          return out;
+        }
+        set steps = steps + 1_u64;
+        set out = halo::embed::resume::<ProbeHost>(engine: engine, env: env, budget: 1_u64);
+      }
+    }
+  }
+  return out;
+}
+
+fn returned(engine: &Engine, expected: f64) -> r: Bool reads(engine) {
+  match halo::embed::result(engine: engine, index: 0_u64) {
+    None() => {
+    }
+    Some(value: v) => {
+      match halo::embed::number_of(value: v) {
+        Is(x: observed) => {
+          return feq(observed, expected);
+        }
+        Not() => {
+        }
+      }
+    }
+  }
+  return False();
+}
+
+fn embed_probe() -> r: u8 pure {
+  let engine = halo::embed::new_engine(limit: 67108864_u64);
+  let env = Probe(mode: 0_u8, calls: 0_u64);
+  let host = Value::Builtin(id: 4096_u32);
+  let put = halo::embed::set_global(engine: &engine, name: &probe_text_0[0_u64..4_u64], value: host);
+  let held = halo::embed::intern(engine: &engine, bytes: &probe_text_1[0_u64..24_u64]);
+  let pinned = halo::embed::pin(engine: &engine, value: held);
+  let token = 0_u64;
+  match pinned {
+    None() => {
+      return 1_u8;
+    }
+    Some(value: t) => {
+      set token = t;
+    }
+  }
+  let inactive = halo::embed::compile(engine: &engine, chunk_name: &probe_text_2[0_u64..12_u64], source: &probe_text_3[0_u64..36_u64]);
+  let cached = halo::embed::ScriptId(slot: 0_u64, generation: 0_u64);
+  match move inactive {
+    Err(..) => {
+      return 2_u8;
+    }
+    Ok(value: id) => {
+      set cached = id;
+    }
+  }
+  let compiled = halo::embed::compile(engine: &engine, chunk_name: &probe_text_4[0_u64..12_u64], source: &probe_text_5[0_u64..51_u64]);
+  let active = cached;
+  match move compiled {
+    Err(..) => {
+      return 3_u8;
+    }
+    Ok(value: id) => {
+      set active = id;
+    }
+  }
+  set engine.vm.heap.threshold = 0_u64;
+  set engine.vm.heap.bytes_since_gc = 1_u64;
+  let ran = probe_run(engine: &engine, env: &env, script: active);
+  match ran {
+    Done(count: n) => {
+      if n != 1_u64 {
+        return 4_u8;
+      }
+    }
+    Error() => {
+      return 5_u8;
+    }
+    Budget() => {
+      return 6_u8;
+    }
+    HostStopped() => {
+      return 7_u8;
+    }
+    HostCall() => {
+      return 7_u8;
+    }
+  }
+  let ok = returned(engine: &engine, expected: 283.0_f64);
+  if bnot(ok) {
+    return 8_u8;
+  }
+  if env.calls != 1_u64 {
+    return 9_u8;
+  }
+  match halo::embed::string_of(engine: &engine, value: held) {
+    None() => {
+      return 10_u8;
+    }
+    Some(value: v) => {
+      if v.length != 24_u64 {
+        return 11_u8;
+      }
+    }
+  }
+  let cached_run = probe_run(engine: &engine, env: &env, script: cached);
+  match cached_run {
+    Done(..) => {
+    }
+    Error() => {
+      return 12_u8;
+    }
+    Budget() => {
+      return 13_u8;
+    }
+    HostStopped() => {
+      return 14_u8;
+    }
+    HostCall() => {
+      return 14_u8;
+    }
+  }
+  match halo::embed::result(engine: &engine, index: 0_u64) {
+    None() => {
+      return 15_u8;
+    }
+    Some(value: v) => {
+      match halo::embed::string_of(engine: &engine, value: v) {
+        None() => {
+          return 16_u8;
+        }
+        Some(value: view) => {
+          if view.length != 27_u64 {
+            return 17_u8;
+          }
+        }
+      }
+    }
+  }
+  set env.mode = 1_u8;
+  let raised = probe_run(engine: &engine, env: &env, script: active);
+  match raised {
+    Error() => {
+    }
+    Done(..) => {
+      return 18_u8;
+    }
+    Budget() => {
+      return 19_u8;
+    }
+    HostStopped() => {
+      return 20_u8;
+    }
+    HostCall() => {
+      return 20_u8;
+    }
+  }
+  let error = halo::embed::error_value(engine: &engine);
+  match halo::embed::number_of(value: error) {
+    Is(x: observed) => {
+      let same = feq(observed, 99.0_f64);
+      if bnot(same) {
+        return 21_u8;
+      }
+    }
+    Not() => {
+      return 22_u8;
+    }
+  }
+  set env.mode = 2_u8;
+  let stopped = probe_run(engine: &engine, env: &env, script: active);
+  match stopped {
+    HostStopped() => {
+    }
+    HostCall() => {
+      return 70_u8;
+    }
+    Error() => {
+      return 23_u8;
+    }
+    Done(..) => {
+      return 24_u8;
+    }
+    Budget() => {
+      return 25_u8;
+    }
+  }
+  let calls_before = env.calls;
+  let stop_resume = halo::embed::resume::<ProbeHost>(engine: &engine, env: &env, budget: 1_u64);
+  match stop_resume {
+    Error() => {
+    }
+    Done(..) => {
+      return 34_u8;
+    }
+    Budget() => {
+      return 35_u8;
+    }
+    HostStopped() => {
+      return 36_u8;
+    }
+    HostCall() => {
+      return 36_u8;
+    }
+  }
+  if env.calls != calls_before {
+    return 37_u8;
+  }
+  halo::embed::reset(engine: &engine);
+  match halo::embed::result(engine: &engine, index: 0_u64) {
+    None() => {
+    }
+    Some(..) => {
+      return 26_u8;
+    }
+  }
+  halo::embed::unpin(engine: &engine, token: token);
+  set env.mode = 0_u8;
+  set engine.vm.heap.threshold = 0_u64;
+  set engine.vm.heap.bytes_since_gc = 1_u64;
+  let again = probe_run(engine: &engine, env: &env, script: active);
+  match halo::embed::string_of(engine: &engine, value: held) {
+    None() => {
+    }
+    Some(..) => {
+      return 27_u8;
+    }
+  }
+  halo::embed::forget_all(engine: &engine);
+  let stale = halo::embed::start::<ProbeHost>(engine: &engine, env: &env, script: active, budget: 1_u64);
+  match stale {
+    Error() => {
+    }
+    Done(..) => {
+      return 28_u8;
+    }
+    Budget() => {
+      return 29_u8;
+    }
+    HostStopped() => {
+      return 30_u8;
+    }
+    HostCall() => {
+      return 30_u8;
+    }
+  }
+  let invalid_resume = halo::embed::resume::<ProbeHost>(engine: &engine, env: &env, budget: 1_u64);
+  match invalid_resume {
+    Error() => {
+    }
+    Done(..) => {
+      return 31_u8;
+    }
+    Budget() => {
+      return 32_u8;
+    }
+    HostStopped() => {
+      return 33_u8;
+    }
+    HostCall() => {
+      return 33_u8;
+    }
+  }
+  let plain_value = halo::embed::intern(engine: &engine, bytes: &format_plain[0_u64..4_u64]);
+  set engine.vm.error = plain_value;
+  let plain_ok = format_matches(engine: &engine, line: 17_u64, want: &expect_plain[0_u64..20_u64]);
+  if bnot(plain_ok) {
+    return 38_u8;
+  }
+  let bare_value = halo::embed::intern(engine: &engine, bytes: &format_bare[0_u64..19_u64]);
+  set engine.vm.error = bare_value;
+  let bare_ok = format_matches(engine: &engine, line: 17_u64, want: &expect_bare[0_u64..19_u64]);
+  if bnot(bare_ok) {
+    return 39_u8;
+  }
+  let at_value = halo::embed::intern(engine: &engine, bytes: &format_at[0_u64..16_u64]);
+  set engine.vm.error = at_value;
+  let at_ok = format_matches(engine: &engine, line: 17_u64, want: &expect_at[0_u64..32_u64]);
+  if bnot(at_ok) {
+    return 40_u8;
+  }
+  let nested = halo::embed::compile(engine: &engine, chunk_name: &probe_text_4[0_u64..12_u64], source: &nested_stop_source[0_u64..139_u64]);
+  let nested_id = halo::embed::ScriptId(slot: 0_u64, generation: engine.generation);
+  match move nested {
+    Err(..) => {
+      return 41_u8;
+    }
+    Ok(value: id) => {
+      set nested_id = id;
+    }
+  }
+  let enabled = True();
+  halo::embed::set_gc_stress(engine: &engine, enabled: enabled);
+  set env.mode = 2_u8;
+  let nested_outcome = probe_run(engine: &engine, env: &env, script: nested_id);
+  match nested_outcome {
+    HostStopped() => {
+    }
+    HostCall() => {
+      return 71_u8;
+    }
+    Done(..) => {
+      return 42_u8;
+    }
+    Error() => {
+      return 43_u8;
+    }
+    Budget() => {
+      return 44_u8;
+    }
+  }
+  if engine.stack.inner.len < 256_u64 {
+    return 45_u8;
+  }
+  let before_reset = halo::embed::collection_count(engine: &engine);
+  halo::embed::reset(engine: &engine);
+  if engine.vm.stopped_stack.inner.len != 0_u64 {
+    return 46_u8;
+  }
+  let after_reset = halo::embed::collection_count(engine: &engine);
+  if after_reset != before_reset {
+    return 47_u8;
+  }
+  let follow = halo::embed::compile(engine: &engine, chunk_name: &probe_text_4[0_u64..12_u64], source: &stop_recovery_source[0_u64..9_u64]);
+  match move follow {
+    Err(..) => {
+      return 48_u8;
+    }
+    Ok(value: id) => {
+      set env.mode = 0_u8;
+      let recovered = probe_run(engine: &engine, env: &env, script: id);
+      match recovered {
+        Done(..) => {
+        }
+        Error() => {
+          return 49_u8;
+        }
+        Budget() => {
+          return 50_u8;
+        }
+        HostStopped() => {
+          return 51_u8;
+        }
+        HostCall() => {
+          return 51_u8;
+        }
+      }
+      let right_reply = returned(engine: &engine, expected: 73.0_f64);
+      if bnot(right_reply) {
+        return 52_u8;
+      }
+    }
+  }
+  return root_updates_probe(omit_refresh: 0_u8);
+}
+
+fn root_updates_probe(omit_refresh: u8) -> r: u8 pure {
+  doc "Edit the root set between budget checkpoints, after the first bridge is already valid.";
+  let engine = halo::embed::new_engine(limit: 67108864_u64);
+  let env = Probe(mode: 0_u8, calls: 0_u64);
+  let enabled = True();
+  halo::embed::set_gc_stress(engine: &engine, enabled: enabled);
+  let compiled = halo::embed::compile(engine: &engine, chunk_name: &probe_text_4[0_u64..12_u64], source: &probe_text_5[0_u64..51_u64]);
+  let active = halo::embed::ScriptId(slot: 0_u64, generation: 0_u64);
+  match move compiled {
+    Err(..) => {
+      return 53_u8;
+    }
+    Ok(value: id) => {
+      set active = id;
+    }
+  }
+  let first = halo::embed::start::<ProbeHost>(engine: &engine, env: &env, script: active, budget: 1_u64);
+  match first {
+    Budget() => {
+    }
+    Done(..) => {
+      return 54_u8;
+    }
+    Error() => {
+      return 54_u8;
+    }
+    HostStopped() => {
+      return 54_u8;
+    }
+    HostCall() => {
+      return 54_u8;
+    }
+  }
+  let held = halo::embed::intern(engine: &engine, bytes: &probe_text_1[0_u64..24_u64]);
+  let pinned = halo::embed::pin(engine: &engine, value: held);
+  let token = 0_u64;
+  match pinned {
+    None() => {
+      return 55_u8;
+    }
+    Some(value: t) => {
+      set token = t;
+    }
+  }
+  let before = halo::embed::collection_count(engine: &engine);
+  let omit_pin = omit_refresh == 1_u8;
+  let resumed = root_probe_resume(engine: &engine, env: &env, id: active, omitted: omit_pin);
+  match resumed {
+    Budget() => {
+    }
+    Done(..) => {
+      return 57_u8;
+    }
+    Error() => {
+      return 57_u8;
+    }
+    HostStopped() => {
+      return 57_u8;
+    }
+    HostCall() => {
+      return 57_u8;
+    }
+  }
+  let after = halo::embed::collection_count(engine: &engine);
+  if after <= before {
+    return 58_u8;
+  }
+  match halo::embed::string_of(engine: &engine, value: held) {
+    None() => {
+      return 59_u8;
+    }
+    Some(value: view) => {
+      if view.length != 24_u64 {
+        return 60_u8;
+      }
+    }
+  }
+  let inactive = halo::embed::compile(engine: &engine, chunk_name: &probe_text_2[0_u64..12_u64], source: &probe_text_3[0_u64..36_u64]);
+  let cached = active;
+  match move inactive {
+    Err(..) => {
+      return 56_u8;
+    }
+    Ok(value: id) => {
+      set cached = id;
+    }
+  }
+  let omit_compile = omit_refresh == 2_u8;
+  let compiled_resume = root_probe_resume(engine: &engine, env: &env, id: active, omitted: omit_compile);
+  match compiled_resume {
+    Budget() => {
+    }
+    Done(..) => {
+      return 67_u8;
+    }
+    Error() => {
+      return 67_u8;
+    }
+    HostStopped() => {
+      return 67_u8;
+    }
+    HostCall() => {
+      return 67_u8;
+    }
+  }
+  let collected = halo::embed::collection_count(engine: &engine);
+  if collected <= after {
+    return 68_u8;
+  }
+  let cached_live = cached_string_live(engine: &engine, id: cached);
+  if bnot(cached_live) {
+    return 69_u8;
+  }
+  halo::embed::unpin(engine: &engine, token: token);
+  let omit_unpin = omit_refresh == 3_u8;
+  let second = root_probe_resume(engine: &engine, env: &env, id: active, omitted: omit_unpin);
+  let released = halo::embed::collection_count(engine: &engine);
+  if released <= collected {
+    return 61_u8;
+  }
+  match halo::embed::string_of(engine: &engine, value: held) {
+    None() => {
+    }
+    Some(..) => {
+      return 62_u8;
+    }
+  }
+  let cached_run = probe_run(engine: &engine, env: &env, script: cached);
+  match cached_run {
+    Done(..) => {
+    }
+    Error() => {
+      return 63_u8;
+    }
+    Budget() => {
+      return 63_u8;
+    }
+    HostStopped() => {
+      return 63_u8;
+    }
+    HostCall() => {
+      return 63_u8;
+    }
+  }
+  match halo::embed::result(engine: &engine, index: 0_u64) {
+    None() => {
+      return 64_u8;
+    }
+    Some(value: v) => {
+      match halo::embed::string_of(engine: &engine, value: v) {
+        None() => {
+          return 65_u8;
+        }
+        Some(value: view) => {
+          if view.length != 27_u64 {
+            return 66_u8;
+          }
+        }
+      }
+    }
+  }
+  return 0_u8;
+}
+
+fn root_probe_resume(engine: &Engine, env: &Probe, id: halo::embed::ScriptId, omitted: Bool) -> r: Outcome writes(engine), writes(env) {
+  doc "The negative controls skip the embedding bridge refresh for one checkpoint, using the same VM resume and collector with the stale bridge. Ordinary probes use the embedding API.";
+  if omitted {
+    let slot = id.slot;
+    if slot < engine^.scripts.inner.len {
+      return halo::vm::resume::<ProbeHost>(script: &engine^.scripts.inner[slot], stack: &engine^.stack, vm: &engine^.vm, env: env, budget: 1_u64);
+    }
+    return Outcome::Error();
+  }
+  return halo::embed::resume::<ProbeHost>(engine: engine, env: env, budget: 1_u64);
+}
+
+fn cached_string_live(engine: &Engine, id: halo::embed::ScriptId) -> r: Bool reads(engine) {
+  doc "The inactive chunk's sole string constant is the independently written 27-byte return literal; it must survive before another root mutation or start can refresh the bridge.";
+  let slot = id.slot;
+  if slot < engine^.scripts.inner.len {
+    let n = engine^.scripts.inner[slot].consts.inner.len;
+    for (i in 0_u64..n) {
+      if slot < engine^.scripts.inner.len {
+        if i < engine^.scripts.inner[slot].consts.inner.len {
+          let v = engine^.scripts.inner[slot].consts.inner[i];
+          match halo::embed::string_of(engine: engine, value: v) {
+            None() => {
+            }
+            Some(value: view) => {
+              if view.length == 27_u64 {
+                return True();
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  return False();
+}
+
+fn outcome_code(outcome: Outcome) -> r: u8 pure {
+  match outcome {
+    Done(..) => {
+      return 0_u8;
+    }
+    Error() => {
+      return 1_u8;
+    }
+    Budget() => {
+      return 2_u8;
+    }
+    HostStopped() => {
+      return 3_u8;
+    }
+    HostCall() => {
+      return 4_u8;
+    }
+  }
+}
+
+fn pending_probe() -> r: u8 pure {
+  doc "A host call left pending returns its results or raises its error where it was made, at top level and inside a library callback, resume, through the engine or the VM, ends a run whose call is pending, and error_line names the raising line and forgets it when the engine refuses a misused resume.";
+  let engine = halo::embed::new_engine(limit: 67108864_u64);
+  let env = Probe(mode: 3_u8, calls: 0_u64);
+  let host = Value::Builtin(id: 4096_u32);
+  let put = halo::embed::set_global(engine: &engine, name: &probe_text_0[0_u64..4_u64], value: host);
+  let enabled = True();
+  halo::embed::set_gc_stress(engine: &engine, enabled: enabled);
+  let top = halo::embed::ScriptId(slot: 0_u64, generation: 0_u64);
+  let compiled = halo::embed::compile(engine: &engine, chunk_name: &probe_text_4[0_u64..12_u64], source: &pending_top_source[0_u64..23_u64]);
+  match move compiled {
+    Err(..) => {
+      return 72_u8;
+    }
+    Ok(value: id) => {
+      set top = id;
+    }
+  }
+  let nested = top;
+  let compiled_nested = halo::embed::compile(engine: &engine, chunk_name: &probe_text_4[0_u64..12_u64], source: &pending_nested_source[0_u64..108_u64]);
+  match move compiled_nested {
+    Err(..) => {
+      return 73_u8;
+    }
+    Ok(value: id) => {
+      set nested = id;
+    }
+  }
+  let first = probe_run(engine: &engine, env: &env, script: top);
+  let first_code = outcome_code(outcome: first);
+  if first_code != 4_u8 {
+    return 74_u8;
+  }
+  match halo::embed::pending_call(engine: &engine) {
+    None() => {
+      return 75_u8;
+    }
+    Some(value: call) => {
+      if call.id != 4096_u32 {
+        return 76_u8;
+      }
+      if call.argc != 2_u64 {
+        return 76_u8;
+      }
+    }
+  }
+  let seven = halo::embed::pending_argument(engine: &engine, index: 0_u64);
+  match halo::embed::number_of(value: seven) {
+    Is(x: observed) => {
+      let same = feq(observed, 7.0_f64);
+      if bnot(same) {
+        return 77_u8;
+      }
+    }
+    Not() => {
+      return 77_u8;
+    }
+  }
+  let past = halo::embed::pending_argument(engine: &engine, index: 2_u64);
+  let absent = is_nil(v: past);
+  if bnot(absent) {
+    return 78_u8;
+  }
+  let answer = Value::Num(n: 41.0_f64);
+  let results = array_filled::<Value, 1>(value: answer);
+  let completed = halo::embed::complete_call::<ProbeHost>(engine: &engine, env: &env, results: &results[0_u64..1_u64], budget: 1_u64);
+  let settled = probe_settle(engine: &engine, env: &env, outcome: completed);
+  let settled_code = outcome_code(outcome: settled);
+  if settled_code != 0_u8 {
+    return 79_u8;
+  }
+  let sum = returned(engine: &engine, expected: 42.0_f64);
+  if bnot(sum) {
+    return 80_u8;
+  }
+  let again = halo::embed::complete_call::<ProbeHost>(engine: &engine, env: &env, results: &results[0_u64..1_u64], budget: 1_u64);
+  let again_code = outcome_code(outcome: again);
+  if again_code != 1_u8 {
+    return 81_u8;
+  }
+  let inner = probe_run(engine: &engine, env: &env, script: nested);
+  let inner_code = outcome_code(outcome: inner);
+  if inner_code != 4_u8 {
+    return 82_u8;
+  }
+  match halo::embed::pending_call(engine: &engine) {
+    None() => {
+      return 83_u8;
+    }
+    Some(value: call) => {
+      if call.argc != 1_u64 {
+        return 83_u8;
+      }
+    }
+  }
+  let error = halo::embed::intern(engine: &engine, bytes: &pending_error[0_u64..4_u64]);
+  let failed = halo::embed::fail_call::<ProbeHost>(engine: &engine, env: &env, error: error, budget: 1_u64);
+  let caught = probe_settle(engine: &engine, env: &env, outcome: failed);
+  let caught_code = outcome_code(outcome: caught);
+  if caught_code != 0_u8 {
+    return 84_u8;
+  }
+  match halo::embed::result(engine: &engine, index: 0_u64) {
+    None() => {
+      return 85_u8;
+    }
+    Some(value: v) => {
+      match halo::embed::string_of(engine: &engine, value: v) {
+        None() => {
+          return 85_u8;
+        }
+        Some(value: view) => {
+          if view.length != 5_u64 {
+            return 85_u8;
+          }
+        }
+      }
+    }
+  }
+  let refused = probe_run(engine: &engine, env: &env, script: top);
+  let refused_code = outcome_code(outcome: refused);
+  if refused_code != 4_u8 {
+    return 86_u8;
+  }
+  let resumed = halo::embed::resume::<ProbeHost>(engine: &engine, env: &env, budget: 1_u64);
+  let resumed_code = outcome_code(outcome: resumed);
+  if resumed_code != 1_u8 {
+    return 87_u8;
+  }
+  let late = halo::embed::complete_call::<ProbeHost>(engine: &engine, env: &env, results: &results[0_u64..1_u64], budget: 1_u64);
+  let late_code = outcome_code(outcome: late);
+  if late_code != 1_u8 {
+    return 88_u8;
+  }
+  let direct_run = probe_run(engine: &engine, env: &env, script: top);
+  let direct_run_code = outcome_code(outcome: direct_run);
+  if direct_run_code != 4_u8 {
+    return 89_u8;
+  }
+  let slot = top.slot;
+  if slot < engine.scripts.inner.len {
+    let direct = halo::vm::resume::<ProbeHost>(script: &engine.scripts.inner[slot], stack: &engine.stack, vm: &engine.vm, env: &env, budget: 1_u64);
+    let direct_code = outcome_code(outcome: direct);
+    if direct_code != 1_u8 {
+      return 90_u8;
+    }
+    let after = halo::vm::complete_call::<ProbeHost>(script: &engine.scripts.inner[slot], stack: &engine.stack, vm: &engine.vm, env: &env, results: &results[0_u64..1_u64], budget: 1_u64);
+    let after_code = outcome_code(outcome: after);
+    if after_code != 1_u8 {
+      return 91_u8;
+    }
+  } else {
+    return 89_u8;
+  }
+  let raising = halo::embed::compile(engine: &engine, chunk_name: &probe_text_4[0_u64..12_u64], source: &line_error_source[0_u64..10_u64]);
+  match move raising {
+    Err(..) => {
+      return 92_u8;
+    }
+    Ok(value: id) => {
+      let failed_run = probe_run(engine: &engine, env: &env, script: id);
+      let failed_run_code = outcome_code(outcome: failed_run);
+      if failed_run_code != 1_u8 {
+        return 93_u8;
+      }
+      let raised_line = halo::embed::error_line(engine: &engine);
+      if raised_line != 1_u64 {
+        return 94_u8;
+      }
+      let misused = halo::embed::resume::<ProbeHost>(engine: &engine, env: &env, budget: 1_u64);
+      let misused_code = outcome_code(outcome: misused);
+      if misused_code != 1_u8 {
+        return 95_u8;
+      }
+      let misused_line = halo::embed::error_line(engine: &engine);
+      if misused_line != 0_u64 {
+        return 96_u8;
+      }
+    }
+  }
+  return 0_u8;
+}
+
+fn chunk_probe() -> r: u8 pure {
+  doc "A runtime error is located in the chunk name the host compiled the script under, whatever that name is.";
+  let engine = halo::embed::new_engine(limit: 67108864_u64);
+  let env = Probe(mode: 0_u8, calls: 0_u64);
+  let compiled = halo::embed::compile(engine: &engine, chunk_name: &other_chunk[0_u64..6_u64], source: &other_source[0_u64..13_u64]);
+  match move compiled {
+    Err(..) => {
+      return 100_u8;
+    }
+    Ok(value: id) => {
+      let ran = probe_run(engine: &engine, env: &env, script: id);
+      match ran {
+        Error() => {
+        }
+        Done(..) => {
+          return 101_u8;
+        }
+        Budget() => {
+          return 101_u8;
+        }
+        HostStopped() => {
+          return 101_u8;
+        }
+        HostCall() => {
+          return 101_u8;
+        }
+      }
+      let located = format_matches(engine: &engine, line: 0_u64, want: &other_error[0_u64..13_u64]);
+      if bnot(located) {
+        return 102_u8;
+      }
+    }
+  }
+  let long_name = long_chunk_error(engine: &engine, env: &env, name: &long_equals_chunk[0_u64..71_u64], want: &long_equals_error[0_u64..67_u64]);
+  if bnot(long_name) {
+    return 103_u8;
+  }
+  let long_file = long_chunk_error(engine: &engine, env: &env, name: &long_at_chunk[0_u64..71_u64], want: &long_at_error[0_u64..63_u64]);
+  if bnot(long_file) {
+    return 104_u8;
+  }
+  return 0_u8;
+}
+
+fn result_length(engine: &Engine) -> r: u64 reads(engine) {
+  match halo::embed::result(engine: engine, index: 0_u64) {
+    None() => {
+      return 0_u64;
+    }
+    Some(value: v) => {
+      match halo::embed::string_of(engine: engine, value: v) {
+        None() => {
+          return 0_u64;
+        }
+        Some(value: view) => {
+          return view.length;
+        }
+      }
+    }
+  }
+}
+
+fn pcall_field_probe() -> r: u8 pure {
+  doc "pcall returns an error table as raised until the embedding names a field, then the string the table holds there.";
+  let engine = halo::embed::new_engine(limit: 67108864_u64);
+  let env = Probe(mode: 0_u8, calls: 0_u64);
+  let compiled = halo::embed::compile(engine: &engine, chunk_name: &probe_text_4[0_u64..12_u64], source: &field_source[0_u64..48_u64]);
+  match move compiled {
+    Err(..) => {
+      return 110_u8;
+    }
+    Ok(value: id) => {
+      let unnamed = probe_run(engine: &engine, env: &env, script: id);
+      let unnamed_code = outcome_code(outcome: unnamed);
+      if unnamed_code != 0_u8 {
+        return 111_u8;
+      }
+      let table_length = result_length(engine: &engine);
+      if table_length != 5_u64 {
+        return 112_u8;
+      }
+      halo::embed::set_pcall_error_field(engine: &engine, field: &field_name[0_u64..3_u64]);
+      let named = probe_run(engine: &engine, env: &env, script: id);
+      let named_code = outcome_code(outcome: named);
+      if named_code != 0_u8 {
+        return 113_u8;
+      }
+      let string_length = result_length(engine: &engine);
+      if string_length != 6_u64 {
+        return 114_u8;
+      }
+    }
+  }
+  return 0_u8;
+}
+
+fn long_chunk_error(engine: &Engine, env: &Probe, name: &[u8], want: &[u8]) -> r: Bool reads(name), reads(want), writes(engine), writes(env) {
+  doc "Runs error('boom') compiled under name and compares its location with want: runtime locations abbreviate the name as luaO_chunkid does with LUA_IDSIZE 60.";
+  let compiled = halo::embed::compile(engine: engine, chunk_name: name, source: &other_source[0_u64..13_u64]);
+  match move compiled {
+    Err(..) => {
+      return False();
+    }
+    Ok(value: id) => {
+      let ran = probe_run(engine: engine, env: env, script: id);
+      return format_matches(engine: engine, line: 0_u64, want: want);
+    }
+  }
+}
+
+fn smoke() -> status: ExitStatus pure {
+  let code = embed_probe();
+  if code == 0_u8 {
+    set code = pending_probe();
+  }
+  if code == 0_u8 {
+    set code = chunk_probe();
+  }
+  if code == 0_u8 {
+    set code = pcall_field_probe();
+  }
+  return std::process::exit_status(code: code);
+}
+
+const probe_text_0: Array<u8, 4> = "host";
+
+const probe_text_1: Array<u8, 24> = "pinned-not-in-any-script";
+
+const probe_text_2: Array<u8, 12> = "@user_script";
+
+const probe_text_3: Array<u8, 36> = "return 'cached-not-in-active-script'";
+
+const probe_text_4: Array<u8, 12> = "@user_script";
+
+const probe_text_5: Array<u8, 51> = "local n=0; for i=1,20 do n=n+i end; return host()+n";
+
+const format_plain: Array<u8, 4> = "boom";
+
+const expect_plain: Array<u8, 20> = "user_script:17: boom";
+
+const format_bare: Array<u8, 19> = "user_script:8: boom";
+
+const expect_bare: Array<u8, 19> = "user_script:8: boom";
+
+const format_at: Array<u8, 16> = "user_script boom";
+
+const expect_at: Array<u8, 32> = "user_script:17: user_script boom";
+
+fn format_matches(engine: &Engine, line: u64, want: &[u8]) -> r: Bool reads(engine), reads(want) {
+  let actual = halo::embed::format_error(engine: engine, line: line);
+  if actual.inner.len != want^.len {
+    return False();
+  }
+  for (i in 0_u64..want^.len) {
+    if i < actual.inner.len {
+      if actual.inner[i] != want^[i] {
+        return False();
+      }
+    } else {
+      return False();
+    }
+  }
+  return True();
+}
+
+const nested_stop_source: Array<u8, 139> = "return tostring(setmetatable({}, {__tostring=function() return tostring(setmetatable({}, {__tostring=function() return host() end})) end}))";
+
+const stop_recovery_source: Array<u8, 9> = "return 73";
+
+const pending_top_source: Array<u8, 23> = "return host(7, 'a') + 1";
+
+const pending_nested_source: Array<u8, 108> = "return tostring(setmetatable({}, {__tostring=function() local ok, e = pcall(host, 1); return e .. '!' end}))";
+
+const pending_error: Array<u8, 4> = "boom";
+
+const line_error_source: Array<u8, 10> = "error('x')";
+
+const other_chunk: Array<u8, 6> = "@other";
+
+const other_source: Array<u8, 13> = "error('boom')";
+
+const other_error: Array<u8, 13> = "other:1: boom";
+
+const field_source: Array<u8, 48> = "local ok,e=pcall(error,{err='x'}) return type(e)";
+
+const field_name: Array<u8, 3> = "err";
+
+const long_equals_chunk: Array<u8, 71> = "=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
+
+const long_equals_error: Array<u8, 67> = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx:1: boom";
+
+const long_at_chunk: Array<u8, 71> = "@aaaaaaaaaaaaaaaaaaaabbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+
+const long_at_error: Array<u8, 63> = "...aabbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:1: boom";

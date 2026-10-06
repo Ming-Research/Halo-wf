@@ -1,0 +1,167 @@
+alias Value = pkg::value::Value;
+alias Heap = pkg::heap::Heap;
+alias no_handle = pkg::heap::no_handle;
+
+fn stack_limit(vm: &Vm, stack: &Box<Slots<Value>>) -> r: u64 reads(vm), reads(stack) {
+  doc "The highest frame_top or dynamic result top, capped at stack length; open call arguments and multires values above a frame's fixed registers remain live.";
+  let len = stack^.inner.len;
+  let n = vm^.frames.inner.len;
+  if n == 0_u64 {
+    return len;
+  }
+  let limit = vm^.top;
+  let i = 0_u64;
+  loop {
+    if i < vm^.frames.inner.len {
+      let t = vm^.frames.inner[i].frame_top;
+      if t > limit {
+        set limit = t;
+      }
+      set i = i +wrap 1_u64;
+    } else {
+      break;
+    }
+  }
+  if limit > len {
+    return len;
+  }
+  return limit;
+}
+
+fn mark_roots(vm: &Vm, stack: &Box<Slots<Value>>, consts: &Box<Slots<Value>>, limit: u64) -> r: unit reads(stack), reads(consts), writes(vm) {
+  doc "Marks every root: the live stack, each frame's closure, the open upvalues, the globals, the per-type metatables, the script's constants, the error value and a host-stopped stack.";
+  let i = 0_u64;
+  loop {
+    if i < limit {
+      if i < stack^.inner.len {
+        let v = stack^.inner[i];
+        pkg::heap::gc_mark(heap: &vm^.heap, v: v);
+      }
+      set i = i +wrap 1_u64;
+    } else {
+      break;
+    }
+  }
+  set i = 0_u64;
+  loop {
+    if i < vm^.frames.inner.len {
+      let c = vm^.frames.inner[i].closure;
+      if c != no_handle {
+        let f = Value::Fun(h: c);
+        pkg::heap::gc_mark(heap: &vm^.heap, v: f);
+      }
+      set i = i +wrap 1_u64;
+    } else {
+      break;
+    }
+  }
+  set i = 0_u64;
+  loop {
+    if i < vm^.open_upvalues.inner.len {
+      let u = vm^.open_upvalues.inner[i];
+      pkg::heap::gc_mark_upvalue(heap: &vm^.heap, h: u);
+      set i = i +wrap 1_u64;
+    } else {
+      break;
+    }
+  }
+  let g = Value::Tab(h: vm^.globals);
+  pkg::heap::gc_mark(heap: &vm^.heap, v: g);
+  set i = 0_u64;
+  loop {
+    if i < 6_u64 {
+      let m = vm^.type_metatables[i];
+      if m != no_handle {
+        let mv = Value::Tab(h: m);
+        pkg::heap::gc_mark(heap: &vm^.heap, v: mv);
+      }
+      set i = i +wrap 1_u64;
+    } else {
+      break;
+    }
+  }
+  set i = 0_u64;
+  loop {
+    if i < consts^.inner.len {
+      let k = consts^.inner[i];
+      pkg::heap::gc_mark(heap: &vm^.heap, v: k);
+      set i = i +wrap 1_u64;
+    } else {
+      break;
+    }
+  }
+  let library_count = vm^.library_contexts.inner.len;
+  for (index in 0_u64..library_count) {
+    if index < vm^.library_contexts.inner.len {
+      let context = vm^.library_contexts.inner[index];
+      pkg::heap::gc_mark(heap: &vm^.heap, v: context.table);
+      pkg::heap::gc_mark(heap: &vm^.heap, v: context.comparator);
+      pkg::heap::gc_mark(heap: &vm^.heap, v: context.saved_error);
+    }
+  }
+  let sort_count = vm^.sort_frames.inner.len;
+  for (index in 0_u64..sort_count) {
+    if index < vm^.sort_frames.inner.len {
+      let frame = vm^.sort_frames.inner[index];
+      pkg::heap::gc_mark(heap: &vm^.heap, v: frame.a);
+      pkg::heap::gc_mark(heap: &vm^.heap, v: frame.b);
+      pkg::heap::gc_mark(heap: &vm^.heap, v: frame.pivot);
+    }
+  }
+  let substitution_count = vm^.pattern_subs.inner.len;
+  for (index in 0_u64..substitution_count) {
+    if index < vm^.pattern_subs.inner.len {
+      let source = vm^.pattern_subs.inner[index].source;
+      let pattern = vm^.pattern_subs.inner[index].pattern;
+      let replacement = vm^.pattern_subs.inner[index].replacement;
+      pkg::heap::gc_mark(heap: &vm^.heap, v: source);
+      pkg::heap::gc_mark(heap: &vm^.heap, v: pattern);
+      pkg::heap::gc_mark(heap: &vm^.heap, v: replacement);
+    }
+  }
+  let e = vm^.error;
+  pkg::heap::gc_mark(heap: &vm^.heap, v: e);
+  set i = 0_u64;
+  loop {
+    if i < vm^.stopped_stack.inner.len {
+      let sv = vm^.stopped_stack.inner[i];
+      pkg::heap::gc_mark(heap: &vm^.heap, v: sv);
+      set i = i +wrap 1_u64;
+    } else {
+      break;
+    }
+  }
+  return unit;
+}
+
+fn collect_if_due(vm: &Vm, stack: &Box<Slots<Value>>, consts: &Box<Slots<Value>>) -> r: Bool reads(consts), writes(vm), writes(stack) contract {
+  ensures stack^.inner.len == entry(stack)^.inner.len;
+} {
+  doc "Call sites gate the slow path with the same stress/limit/allocation predicate as heap.gc_due; this check also preserves the helper's standalone behavior. A safepoint: at a loop back-edge or call every live value is in a stack slot or a root, so a due collection marks the roots, clears the stack above the live part as Lua 5.1's traversestack does, and sweeps.";
+  let due = pkg::heap::gc_due(heap: &vm^.heap);
+  if bnot(due) {
+    return True();
+  }
+  let limit = stack_limit(vm: vm, stack: stack);
+  pkg::heap::gc_begin(heap: &vm^.heap);
+  mark_roots(vm: vm, stack: stack, consts: consts, limit: limit);
+  pkg::heap::gc_propagate(heap: &vm^.heap);
+  let j = limit;
+  loop {
+    if j < stack^.inner.len {
+      set stack^.inner[j] = Value::Nil();
+      set j = j +wrap 1_u64;
+    } else {
+      break;
+    }
+  }
+  let freed = pkg::heap::gc_sweep(heap: &vm^.heap);
+  if vm^.heap.limit > 0_u64 {
+    if vm^.heap.bytes > vm^.heap.limit {
+      return raise_text(vm: vm, text: &collection_memory_error[0_u64..17_u64]);
+    }
+  }
+  return True();
+}
+
+const collection_memory_error: Array<u8, 17> = "not enough memory";

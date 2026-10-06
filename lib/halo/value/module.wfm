@@ -1,0 +1,124 @@
+public enum Value {
+  Nil();
+  False();
+  True();
+  Num(public n: f64);
+  Str(public h: u32);
+  Tab(public h: u32);
+  Fun(public h: u32);
+  Builtin(public id: u32);
+}
+
+public enum Cell {
+  Move(public a: u8, public b: u8);
+  LoadK(public a: u8, public k: u8);
+  LoadKx(public a: u8, public k: u32);
+  LoadBool(public a: u8, public b: u8, public skip: u8);
+  LoadNil(public a: u8, public b: u8);
+  GetUpval(public a: u8, public u: u8);
+  SetUpval(public a: u8, public u: u8);
+  GetGlobal(public a: u8, public k: u8);
+  SetGlobal(public a: u8, public k: u8);
+  GetGlobalX(public a: u8, public k: u32);
+  SetGlobalX(public a: u8, public k: u32);
+  GetTableR(public a: u8, public t: u8, public c: u8);
+  GetTableK(public a: u8, public t: u8, public k: u8);
+  SetTableRR(public t: u8, public key: u8, public val: u8);
+  SetTableRK(public t: u8, public key: u8, public val: u8);
+  SetTableKR(public t: u8, public key: u8, public val: u8);
+  SetTableKK(public t: u8, public key: u8, public val: u8);
+  NewTable(public a: u8, public asize: u8, public hsize: u8);
+  SelfR(public a: u8, public b: u8, public c: u8);
+  SelfK(public a: u8, public b: u8, public k: u8);
+  AddRR(public a: u8, public b: u8, public c: u8);
+  AddRK(public a: u8, public b: u8, public c: u8);
+  AddKR(public a: u8, public b: u8, public c: u8);
+  AddKK(public a: u8, public b: u8, public c: u8);
+  SubRR(public a: u8, public b: u8, public c: u8);
+  SubRK(public a: u8, public b: u8, public c: u8);
+  SubKR(public a: u8, public b: u8, public c: u8);
+  SubKK(public a: u8, public b: u8, public c: u8);
+  MulRR(public a: u8, public b: u8, public c: u8);
+  MulRK(public a: u8, public b: u8, public c: u8);
+  MulKR(public a: u8, public b: u8, public c: u8);
+  MulKK(public a: u8, public b: u8, public c: u8);
+  DivRR(public a: u8, public b: u8, public c: u8);
+  DivRK(public a: u8, public b: u8, public c: u8);
+  DivKR(public a: u8, public b: u8, public c: u8);
+  DivKK(public a: u8, public b: u8, public c: u8);
+  ModRR(public a: u8, public b: u8, public c: u8);
+  ModRK(public a: u8, public b: u8, public c: u8);
+  ModKR(public a: u8, public b: u8, public c: u8);
+  ModKK(public a: u8, public b: u8, public c: u8);
+  PowRR(public a: u8, public b: u8, public c: u8);
+  PowRK(public a: u8, public b: u8, public c: u8);
+  PowKR(public a: u8, public b: u8, public c: u8);
+  PowKK(public a: u8, public b: u8, public c: u8);
+  Unm(public a: u8, public b: u8);
+  Not(public a: u8, public b: u8);
+  Len(public a: u8, public b: u8);
+  Concat(public a: u8, public b: u8, public c: u8);
+  Jmp(public target: u32);
+  EqJmpRR(public a: u8, public b: u8, public c: u8, public target: u32);
+  EqJmpRK(public a: u8, public b: u8, public c: u8, public target: u32);
+  EqJmpKR(public a: u8, public b: u8, public c: u8, public target: u32);
+  EqJmpKK(public a: u8, public b: u8, public c: u8, public target: u32);
+  LtJmpRR(public a: u8, public b: u8, public c: u8, public target: u32);
+  LtJmpRK(public a: u8, public b: u8, public c: u8, public target: u32);
+  LtJmpKR(public a: u8, public b: u8, public c: u8, public target: u32);
+  LtJmpKK(public a: u8, public b: u8, public c: u8, public target: u32);
+  LeJmpRR(public a: u8, public b: u8, public c: u8, public target: u32);
+  LeJmpRK(public a: u8, public b: u8, public c: u8, public target: u32);
+  LeJmpKR(public a: u8, public b: u8, public c: u8, public target: u32);
+  LeJmpKK(public a: u8, public b: u8, public c: u8, public target: u32);
+  TestJmp(public a: u8, public c: u8, public target: u32);
+  TestSetJmp(public a: u8, public b: u8, public c: u8, public target: u32);
+  Call(public a: u8, public b: u8, public c: u8);
+  TailCall(public a: u8, public b: u8, public c: u8);
+  Return(public a: u8, public b: u8);
+  ForLoop(public a: u8, public target: u32);
+  ForPrep(public a: u8, public target: u32);
+  TForLoop(public a: u8, public c: u8, public target: u32);
+  SetList(public a: u8, public b: u8, public c: u32);
+  Close(public a: u8);
+  Closure(public a: u8, public proto: u32);
+  VarArg(public a: u8, public b: u8);
+}
+
+public enum NumView {
+  Is(public x: f64);
+  Not();
+}
+
+public enum HandleView {
+  Handle(public h: u32);
+  NoHandle();
+}
+
+public struct Proto {
+  public start: u32;
+  public kbase: u32;
+  public nk: u32;
+  public numparams: u8;
+  public is_vararg: Bool;
+  public maxstack: u8;
+  public nups: u8;
+}
+
+public const builtin_host_base: u32 = 4096_u32;
+
+public fn num_of(v: Value) -> r: NumView pure doc "The number a value holds, or Not for every other kind.";
+
+public fn str_of(v: Value) -> r: HandleView pure doc "The string handle a value holds, or NoHandle for every other kind.";
+
+public fn tab_of(v: Value) -> r: HandleView pure doc "The table handle a value holds, or NoHandle for every other kind.";
+
+public fn truthy(v: Value) -> r: Bool pure doc "Lua truth: every value except nil and false is true.";
+
+public struct Script {
+  public code: Box<Slots<Cell>>;
+  public consts: Box<Slots<Value>>;
+  public protos: Box<Slots<Proto>>;
+  public lineinfo: Box<Slots<u32>>;
+  public source: Box<Slots<u8>>;
+}

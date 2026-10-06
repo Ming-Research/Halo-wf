@@ -1,0 +1,37 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "bulk",
+      "bytes": "string"
+    },
+    {
+      "type": "bulk",
+      "bytes": "ERR x"
+    },
+    {
+      "type": "bulk",
+      "bytes": "number"
+    },
+    {
+      "type": "integer",
+      "value": 42
+    },
+    {
+      "type": "bulk",
+      "bytes": "table"
+    },
+    {
+      "type": "bulk",
+      "bytes": "string"
+    },
+    {
+      "type": "bulk",
+      "bytes": "ERR direct"
+    },
+    {
+      "type": "bulk",
+      "bytes": "table"
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+{
+  "type": "error",
+  "bytes": "ERR user_script:10: invalid replacement value (a table) script: 26e8219f8d1a165af7d824eea55d12f9433943d8, on @user_script:10."
+}

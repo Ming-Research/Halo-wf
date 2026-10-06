@@ -17,12 +17,18 @@ loop (invariant fetch: pc < n, invariant frame: base + 256_u64 <= stack^.inner.l
 }
 ```
 
-INV-1 checks a loop's header invariants as one batch, and an arm that sets
-`pc` but not `base` (most arms) loses the `base` invariant on that path:
-`witnesses/vm/ts.wf` and `s1_core.wf` are refused with
-`INV-1 UndischargedLoopInvariant ... obligation: Backedge`. `t3.wf` passes
-when every path sets both variables; `u7.wf` passes by re-checking
-`base <= room` at run time before `set pc`, two comparisons per dispatch.
+The arms change different loop variables, and the body's paths join before
+the backedge, where only facts identical on every input survive: an arm
+that sets `base = t` under `t <= room` carries `t <= room` and `base == t`,
+an arm that leaves `base` carries the assumed `base <= room`, and the join
+keeps neither, so `witnesses/vm/ts.wf` and `s1_core.wf` are refused with
+`INV-1 UndischargedLoopInvariant ... obligation: Backedge`. The minimal
+witness has one invariant and two paths (`witnesses/vm/join.wf`; recorded
+in docs/todo.md under checker precision). `t3.wf` passes when every path
+sets both variables; `u7.wf` passes by re-checking `base <= room` at run
+time before `set pc`, two comparisons per dispatch. (The consultation first
+attributed this to the header batch as a whole; a loop with two invariants
+whose body sets only one variable is accepted, which refutes that.)
 
 The interpreter is therefore the guaranteed self-tail call [FN-10], whose
 parameters are never set, so the entry requirements hold in every arm:
@@ -95,8 +101,8 @@ Rejected: NaN-boxing (every access would decode tags by hand with
 the oracle, moves the same 16 bytes). Rejected: generational handles as in
 E1 (a precise collector never leaves a dangling handle; the generation would
 cost a load and compare on every table and string access). A `live` flag is
-kept and checked, and a test-build verifier checks handles after every
-collection.
+kept and checked; a test-build verifier is planned to check handles after
+every collection (F4).
 
 ## 2. Heap
 
@@ -118,8 +124,7 @@ object kind is a `Box<Slots<Cell>>` with a free list; a cell is
   `-0` is `0`, NaN and nil keys raise. `#` is Lua 5.1's `luaH_getn` exactly.
   `next` walks the array part, then the nodes. `readonly` is Redis 7's
   readonly table: setting one raises "Attempt to modify a readonly table".
-  Not replicated: PUC's node placement, so `pairs` order over non-sequence
-  keys differs from Redis's Lua (open ruling H1).
+  The hash part is revised to PUC's own (open ruling H1).
 - **Closures** `{ proto: u32; upvals }`; prototypes belong to the compiled
   script and die with `SCRIPT FLUSH`.
 - **Upvalues** `enum Upval { Open(slot: u64); Closed(v: Value) }`; the open
@@ -129,10 +134,17 @@ object kind is a `Box<Slots<Cell>>` with a free list; a cell is
 Collector: stop-the-world mark and sweep with an explicit gray stack and
 epoch marks (E1). Roots: the stack below the current frame's
 `base + maxstack`, frame records, open upvalues, globals, the registry,
-every script's constant pool, and values the host pins. Collection happens
-only inside allocation, never at a dispatch; an allocating helper takes the
-values it must keep as arguments and returns the new handle, and a handler
-never holds an unrooted handle across a second allocation. Trigger:
+every script's constant pool, and values the host pins. Collection happens at the budget's own safepoints, a loop back-edge or a
+call, where every live value is in a stack slot or another root (revised
+during implementation from "only inside allocation", which would have made
+every allocating helper keep its live values as arguments): a due
+collection marks the stack below the highest frame top or dynamic argument/result
+top, frame closures,
+open upvalues, globals, per-type metatables, the script's constants, the
+error value and a host-stopped stack, clears the stack above as Lua 5.1's
+`traversestack` does, and sweeps. The byte limit applies to logical live
+heap bytes after a safepoint collection; it does not bound temporary
+allocation inside library calls, slab/intern reserve or process RSS. Trigger:
 `bytes_since_gc > max(1 MiB, live_bytes_after_last_gc)`. Byte accounting
 answers G5: past `memory_limit`, collect once, then raise "not enough
 memory". Not incremental, no weak tables, no `__gc` in slice 1.
@@ -192,6 +204,10 @@ involved) and otherwise calls the one shared slow executor, which performs
 coercion, metamethods, hash misses, `__index` chains and readonly refusal
 and writes the destination slot itself; it returns `Err` after raising
 into `vm.error`. Outcomes: `Done(count)`, `Error`, `Budget`, `HostStopped`.
+The retained C1 form lets selected hot arms
+self-tail-call with the current window facts; callback-free variants expose
+the next pc, while fast misses, frame changes and other instructions keep
+the checked shared Step epilogue (section 11).
 
 ## 6. Embedding
 
@@ -202,20 +218,41 @@ interface Host<E> {
       ensures stack^.inner.len == entry(stack)^.inner.len;
     };
 }
-enum HostOutcome { Returned(count: u64); Raised(); Stop(); }
+enum HostOutcome { Returned(count: u64); Raised(); Stop(); Pending(); }
 ```
 
 A host function's arguments are at `stack[func+1 .. func+1+argc)` and its
 results go from `stack[func]`. `Stop` ends the run with `HostStopped` and
-the stack intact. Halo exports to the host: `intern`, `string_of` (an index
+the stack intact. `Pending` suspends the run at the call and returns
+`HostCall` from `start` or `resume`: the VM records the call (its builtin id,
+argument count, function slot, wanted results, continuation, activation and
+top), and inside a library callback parks the stack as a budget suspension
+does. The host reads the call with `pending_call` and `pending_argument`, and
+answers it once: `complete_call` writes its results at the function slot and
+finishes the call as `Returned` would, and `fail_call` sets the error value and
+unwinds as `Raised` would, so a `pcall` in the calling activation catches it;
+each then dispatches with a fresh budget, completing or unwinding parked
+library callbacks as `resume` does. `resume` while a call is pending ends the
+run with an error. Halo exports to the host: `intern`, `string_of` (an index
 and length the host turns into a slice of the string's public readonly
 bytes, since no function returns a reference), `number_of`, `truthy`,
 `kind`, `new_table`, `table_append`, `table_set`, `table_get`,
 `table_border`, `table_next`, `set_global` (bypassing readonly, as Redis
-sets `KEYS` and `ARGV` from C), `pin`/`unpin`, `error_value` and
-`format_error` producing Redis's `@user_script:LINE: msg`. Script cache:
+sets `KEYS` and `ARGV` from C), `pin`/`unpin`, `error_value`,
+`error_line` (the line of the innermost Lua function at the raise of the
+error that ended the run: the VM records the pc when the error first leaves
+a dispatch run, or, for an error a parked callback's continuation raises,
+the instruction that callback's plan belongs to; keeps it while the error
+propagates out of callbacks; and forgets it when `pcall` or `xpcall`
+catches the error) and
+`set_pcall_error_field` (the field whose string or number value `pcall`
+returns in place of an error table that holds one, as Redis's `pcall` does
+with `err`) and `format_error` locating the error as `chunk:LINE: msg` in the
+chunk name the host compiled the script under (the host composes Redis's
+`EVAL` error reply). Script cache:
 `compile` returns a `ScriptId` or a compile error with PUC's text;
-`forget_all` is `SCRIPT FLUSH`. Running: `start`, `resume`, `reset`. The
+`forget_all` is `SCRIPT FLUSH`. Running: `start`, `resume`, `reset`,
+`complete_call`, `fail_call`. The
 slice protocol of the selected direction (C) is the host's: on `Budget`
 before its first write it resets, leaves the atomic statement, checks for a
 kill and restarts with a doubled budget; an undeclared key before the first
@@ -298,22 +335,75 @@ coding agent.
 - F4: a script allocating without bound under a 64 MiB limit fails with
   "not enough memory" and the host survives; the collector verifier finds
   nothing with collection forced at every allocation.
+  Status: safepoint stress, root mutations and memory recovery pass; every-allocation verification remains open ([F4 results](../../experiments/halo-gc/RESULTS.md)).
 - P1 (with the current `match` lowering): Halo's median is at most PUC
   5.1.5's on `fib(30)`, a 1e8 numeric loop, 1e7 table integer fill and read,
   1e6 string-key reads, 1e6 short concatenations, `table.sort` of 1e6
   numbers and binary-trees depth 16; above 1.5 times on `fib` or the loop,
   the value width and handle checks are attributed first.
+  Status: P1 still fails on six unscaled kernels and depth-14 binary-trees after the root-bridge and inline-safepoint repairs; same-source pairs meet both repair criteria, and the six-pair rerun is in [P1 results](../../experiments/halo-bench/RESULTS.md#p1-rerun-after-the-retained-changes).
 - P2 (after the per-arm lowering): at most 0.6 times PUC on the numeric
   kernels and 0.8 times on the table and string kernels.
 - P3: the budget costs under 1% on the loop kernel.
 
+## 11. Performance stage candidates
+
+Slice 1 keeps every Lua register in a stack slot and every machine register
+for the eight loop-carried parameters. `a = b + c` is therefore
+
+```
+load  stack[base + b]      tag and 8-byte payload
+load  stack[base + c]      tag and payload
+test both tags for Num
+fadd
+store stack[base + a]      tag and payload
+dispatch
+```
+
+two 16-byte loads and one 16-byte store per arithmetic cell, as in PUC Lua.
+The candidates below are ordered by expected gain, measured in Silverfir-nano
+(silverfir-lessons) and in the match-dispatch experiments (PR #217).
+C1 was tested against the current P1 source under the bounded criterion below. The C2/C3 follow-up selected frame-window clearing from fresh C1 profiles; its 2.99% fib gain fails the fixed 10% criterion ([follow-up results](../../experiments/halo-bench/RESULTS.md#c2c3-profile-directed-bounded-experiment)). C2/C3 remain unmeasured, and C4–C6 remain unselected. The current compiler already emits native
+per-arm dispatch from the joined source, as the P1 disassembly shows.
+
+| Candidate | Mechanism | Evidence | Whitefoot constraint | Falsifier |
+|---|---|---|---|---|
+| C1. Hot instructions dispatch directly | 18 arms tail-call `run` with unchanged base/kbase facts; callback-free variants carry the next pc, while cold paths keep the shared Step epilogue | [Six full-LTO pairs](../../experiments/halo-bench/RESULTS.md#c1-bounded-per-arm-continuation-experiment): loop improves 54.32%, fib 12.37%; current native dispatch was already per-arm | The requested graph-check median grows 1.147× (210.07 to 241.00 s); full-handler summaries cannot cross the recursive callback component | Retain only with at least 10% improvement on both loop and fib and at most 1.5× check cost; kept: both numeric/check criteria pass and both oracle modes pass 240/240 |
+| C2. Accumulator | The compiler marks a producer whose result the next cell consumes; the value travels in a loop-carried parameter instead of the stack slot | Silverfir: +29% with no change in dispatch count; fresh C1 profiles selected a frame-work trial instead, so C2 is unmeasured | a Lua value is two words; a ninth parameter costs 8% on x86-64 until the lowering spills the coldest one; the slow path and every safepoint write the accumulator back first, so collector roots stay the stack | under 10% on the numeric kernels |
+| C3. Pinned locals | One or two locals chosen by static use count live in loop-carried parameters, written through to their slot | Silverfir: +16% for the first, 4 to 12% for the second; a third about 0; fresh C1 profiles selected a frame-work trial instead, so C3 is unmeasured | same parameter budget as C2; write-through keeps the slot authoritative | under 5% per pinned local |
+| C4. Type-specialized cells | A cell that has met numbers is rewritten to a variant that skips the tag test and falls back when the test fails | Lua 5.4 and LuaJIT's interpreter specialize this way | code is read-only during a run (`reads(code)`); rewriting needs the code box writable or a side table, which changes run's row | under 5% after C1 to C3 |
+| C5. Fast path for globals | `GetGlobal` and `SetGlobal` look up the globals table inline when it has no metatable on the key's path | every global read now takes the slow executor | Redis 7's global protection installs a metatable on `_G`, so the fast path must test for it | Redis corpus time not improved by 5% |
+| C6. Index representation | Carry a derived address for `code` and the current frame instead of base + index on every access | match-dispatch E0: 9.0% between u8 operands and raw pointers, all of it representation | a lowering matter, not source: no unsafe access is admitted | belongs to the match-dispatch work |
+
+Each candidate is measured as a same-source pair, interleaved launches, at
+least six runs, Silverfir's handler-placement warning applied (a layout
+change alone can move a micro-kernel by tens of percent).
+
 ## Open rulings
 
-- H1. `pairs` order over non-sequence keys is not Redis's; the oracle sorts
-  such outputs. Recommended: accept, since PUC's own order varies between
-  builds and scripts that depend on it are fragile.
+H1, H2 and H4 are now design-tree decisions awaiting the owner
+(`design/halo/heap/tables.md`, `design/halo/calls.md`, `design/halo.md`);
+H3 is a Whitefoot checker gap kept in Whitefoot's `docs/todo.md`.
+
+- H4. The platform reference is Redis 7.0.15 on x86-64 Linux with glibc,
+  firn's own reference (it already prints a negative NaN as `-nan`, as
+  glibc does). The number library formats NaN with its sign accordingly.
+  The oracle and codec corpora now run against that platform; the number
+  parser's comparison is still macOS-only (docs/todo.md).
+
+- H1 (revised during implementation). The first heap, open addressing as
+  section 2 says, gave a different `#` from Redis's Lua on 68 of 2,336
+  traced tables with holes: PUC reuses a nil-valued main position and
+  rehashes only when its `lastfree` pointer runs out, so array sizes differ
+  over time and `luaH_getn` picks another border. Recommended and being
+  implemented: the hash part ports `ltable.c` exactly (chained scatter
+  table, Brent's variation, `lastfree`, PUC's number and string hashes), so
+  `#` and `pairs` order equal Redis's for number, string and boolean keys;
+  only tables and functions used as keys traverse in another order, since
+  PUC hashes them by address.
 - H2. Library callbacks re-enter `run` up to 200 nestings, as PUC does.
   Recommended: accept; measure the stack use once the lowering exists.
-- H3. The header-invariant batch behavior of INV-1 (a path that sets one
-  invariant's variable drops the whole batch): specified rule or checker
-  limitation. Slice 1 does not depend on it.
+- H3. A loop invariant is lost where a guarded update joins an untouched
+  path (`witnesses/vm/join.wf`): the join keeps only identical facts. The
+  program is sound, so this is a precision gap, recorded in docs/todo.md.
+  Slice 1 does not depend on it.

@@ -1,0 +1,326 @@
+alias Value = pkg::value::Value;
+alias Cell = pkg::value::Cell;
+alias Proto = pkg::value::Proto;
+alias Script = pkg::value::Script;
+alias Heap = pkg::heap::Heap;
+
+public struct Frame {
+  public func: u64;
+  public base: u64;
+  public return_pc: u64;
+  public kbase: u64;
+  public closure: u32;
+  public nresults: i64;
+  public activation: u32;
+  public flags: u8;
+  public varbase: u64;
+  public varcount: u64;
+  public frame_top: u64;
+}
+
+public struct CallbackPlan {
+  public pc: u64;
+  public base: u64;
+  public kbase: u64;
+  public kind: u8;
+  public dest: u64;
+  public first: u64;
+  public index: u64;
+  public target: u64;
+  public expected: Bool;
+}
+
+public struct CallbackFrame {
+  public plan: CallbackPlan;
+  public scratch: u64;
+  public dest: u64;
+  public wanted: i64;
+  public length: u64;
+  public top: u64;
+  public activation: u32;
+  public mode: u8;
+}
+
+public struct LibraryContext {
+  public frame: Frame;
+  public tail: Bool;
+  public id: u32;
+  public phase: u8;
+  public count: u64;
+  public table: Value;
+  public comparator: Value;
+  public saved_error: Value;
+}
+
+public struct SortFrame {
+  public context: u64;
+  public lower: i64;
+  public upper: i64;
+  public i: i64;
+  public j: i64;
+  public phase: u8;
+  public a: Value;
+  public b: Value;
+  public pivot: Value;
+}
+
+public struct PatternSubFrame {
+  public context: u64;
+  public source: Value;
+  public pattern: Value;
+  public replacement: Value;
+  public output: Box<Slots<u8>>;
+  public start: u64;
+  public end: u64;
+  public count: u64;
+  public maximum: i64;
+  public anchor: Bool;
+  public phase: u8;
+}
+
+public struct PendingCall {
+  public id: u32;
+  public argc: u64;
+  public func: u64;
+  public wanted: i64;
+  public return_pc: u64;
+  public base: u64;
+  public kbase: u64;
+  public tail: Bool;
+  public activation: u32;
+  public top: u64;
+}
+
+public struct Vm {
+  public pattern_subs: Box<Slots<PatternSubFrame>>;
+  public cjson_configs: Box<Slots<CjsonConfig>>;
+  public cjson_active_config: u64;
+  public library_contexts: Box<Slots<LibraryContext>>;
+  public sort_frames: Box<Slots<SortFrame>>;
+  public random_state: u64;
+  public heap: Heap;
+  public frames: Box<Slots<Frame>>;
+  public open_upvalues: Box<Slots<u32>>;
+  public protos: Box<Slots<Proto>>;
+  public lineinfo: Box<Slots<u32>>;
+  public source: Box<Slots<u8>>;
+  public top: u64;
+  public budget: u64;
+  public saved_pc: u64;
+  public saved_base: u64;
+  public saved_kbase: u64;
+  public error: Value;
+  public activation: u32;
+  public globals: u32;
+  public type_metatables: Array<u32, 6>;
+  public host_stopped: Bool;
+  public stopped_stack: Box<Slots<Value>>;
+  public callback_plan: CallbackPlan;
+  public callbacks: Box<Slots<CallbackFrame>>;
+  public suspended: Bool;
+  public pending: PendingCall;
+  public call_pending: Bool;
+  public raise_pc: u64;
+  public pcall_field: Box<Slots<u8>>;
+}
+
+public enum Outcome {
+  Done(public count: u64);
+  Error();
+  Budget();
+  HostStopped();
+  HostCall();
+}
+
+public enum HostOutcome {
+  Returned(public count: u64);
+  Raised();
+  Stop();
+  Pending();
+}
+
+public interface Host<E> {
+  fn call(env: &E, vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: u32) -> r: HostOutcome writes(env), writes(vm), writes(stack) contract {
+    ensures stack^.inner.len == entry(stack)^.inner.len;
+  };
+}
+
+public const protected_flag: u8 = 1_u8;
+
+public const tail_flag: u8 = 2_u8;
+
+public const builtin_pcall: u32 = 0_u32;
+
+public const builtin_error: u32 = 1_u32;
+
+public const builtin_select: u32 = 2_u32;
+
+public const builtin_type: u32 = 3_u32;
+
+public const builtin_rawget: u32 = 4_u32;
+
+public const builtin_rawset: u32 = 5_u32;
+
+public const builtin_setmetatable: u32 = 6_u32;
+
+public const builtin_getmetatable: u32 = 7_u32;
+
+public const unlimited: u64 = 18446744073709551615_u64;
+
+public fn vm_new(limit: u64) -> r: Vm pure doc "An empty VM with an ordinary globals table. start installs script metadata.";
+
+public fn stack_new(size: u64) -> r: Box<Slots<Value>> pure contract {
+  ensures r.inner.len == size;
+} doc "Constructs a Nil-filled stack.";
+
+public fn reset(vm: &Vm, stack: &Box<Slots<Value>>) -> r: unit writes(stack), writes(vm) doc "Closes open upvalues and removes active frames.";
+
+public fn start<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, proto: u32, argc: u64, budget: u64) -> r: Outcome reads(script), writes(stack), writes(vm), writes(env) doc "Calls a prototype with arguments at stack[1..1+argc), returning results at slot zero.";
+
+public fn resume<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, budget: u64) -> r: Outcome reads(script), writes(stack), writes(vm), writes(env) doc "Resumes the saved dispatch checkpoint with a fresh budget. While a host call is pending it ends the run with an error instead, and the call can no longer be completed or failed.";
+
+public fn pending_argument(vm: &Vm, stack: &Box<Slots<Value>>, index: u64) -> r: Value reads(vm), reads(stack) doc "Argument index of the host call that a HostCall outcome left pending, or Nil past its argument count or when no call is pending.";
+
+public fn complete_call<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, results: &[Value], budget: u64) -> r: Outcome reads(script), reads(results), writes(stack), writes(vm), writes(env) doc "Returns results from the pending host call, as HostOutcome::Returned would have, and continues with a fresh budget.";
+
+public fn fail_call<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, error: Value, budget: u64) -> r: Outcome reads(script), writes(stack), writes(vm), writes(env) doc "Raises error at the pending host call, as HostOutcome::Raised would have, so an enclosing pcall catches it, and continues with a fresh budget.";
+
+public fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64) -> r: Outcome reads(code), reads(consts), writes(stack), writes(vm), writes(env) contract {
+  requires pc < code^.inner.len;
+  requires base + 256_u64 <= stack^.inner.len;
+  requires kbase + 256_u64 <= consts^.inner.len;
+} doc "Eight-parameter guaranteed self-tail dispatch.";
+
+public struct BuiltinBinding {
+  public library: u8;
+  public name: Array<u8, 32>;
+  public length: u64;
+  public id: u32;
+}
+
+public const builtin_assert: u32 = 8_u32;
+
+public const builtin_ipairs: u32 = 9_u32;
+
+public const builtin_pairs: u32 = 10_u32;
+
+public const builtin_next: u32 = 11_u32;
+
+public const builtin_xpcall: u32 = 12_u32;
+
+public const builtin_rawequal: u32 = 13_u32;
+
+public const builtin_tonumber: u32 = 14_u32;
+
+public const builtin_tostring: u32 = 15_u32;
+
+public const builtin_unpack: u32 = 16_u32;
+
+public const builtin_ipairsaux: u32 = 17_u32;
+
+public const builtin_string_len: u32 = 32_u32;
+
+public const builtin_string_sub: u32 = 33_u32;
+
+public const builtin_string_upper: u32 = 34_u32;
+
+public const builtin_string_lower: u32 = 35_u32;
+
+public const builtin_string_rep: u32 = 36_u32;
+
+public const builtin_string_reverse: u32 = 37_u32;
+
+public const builtin_string_byte: u32 = 38_u32;
+
+public const builtin_string_char: u32 = 39_u32;
+
+public const builtin_string_format: u32 = 40_u32;
+
+public const builtin_string_find: u32 = 41_u32;
+
+public const builtin_string_match: u32 = 42_u32;
+
+public const builtin_string_gmatch: u32 = 43_u32;
+
+public const builtin_string_gsub: u32 = 44_u32;
+
+public const builtin_string_gmatchaux: u32 = 45_u32;
+
+public const builtin_table_insert: u32 = 48_u32;
+
+public const builtin_table_remove: u32 = 49_u32;
+
+public const builtin_table_concat: u32 = 50_u32;
+
+public const builtin_table_getn: u32 = 51_u32;
+
+public const builtin_table_maxn: u32 = 52_u32;
+
+public const builtin_table_sort: u32 = 53_u32;
+
+public const builtin_math_abs: u32 = 64_u32;
+
+public const builtin_math_ceil: u32 = 65_u32;
+
+public const builtin_math_floor: u32 = 66_u32;
+
+public const builtin_math_fmod: u32 = 67_u32;
+
+public const builtin_math_modf: u32 = 68_u32;
+
+public const builtin_math_sqrt: u32 = 69_u32;
+
+public const builtin_math_pow: u32 = 70_u32;
+
+public const builtin_math_min: u32 = 71_u32;
+
+public const builtin_math_max: u32 = 72_u32;
+
+public const builtin_math_frexp: u32 = 73_u32;
+
+public const builtin_math_ldexp: u32 = 74_u32;
+
+public const builtin_math_log: u32 = 75_u32;
+
+public const builtin_math_log10: u32 = 76_u32;
+
+public const builtin_math_exp: u32 = 77_u32;
+
+public const builtin_math_sin: u32 = 78_u32;
+
+public const builtin_math_cos: u32 = 79_u32;
+
+public const builtin_math_tan: u32 = 80_u32;
+
+public const builtin_math_asin: u32 = 81_u32;
+
+public const builtin_math_acos: u32 = 82_u32;
+
+public const builtin_math_atan: u32 = 83_u32;
+
+public const builtin_math_atan2: u32 = 84_u32;
+
+public const builtin_math_sinh: u32 = 85_u32;
+
+public const builtin_math_cosh: u32 = 86_u32;
+
+public const builtin_math_tanh: u32 = 87_u32;
+
+public const builtin_math_deg: u32 = 88_u32;
+
+public const builtin_math_rad: u32 = 89_u32;
+
+public const builtin_math_random: u32 = 90_u32;
+
+public const builtin_math_randomseed: u32 = 91_u32;
+
+public const library_builtin_count: u64 = 65_u64;
+
+public fn library_builtin(index: u64) -> r: Option<BuiltinBinding> pure doc "Stable slice 1 builtin-id table plus codec bindings at reserved indices 96..143. library 0 installs into globals; 1 string; 2 table; 3 math; 4 cjson; 5 cmsgpack; 6 bit; 7 struct. Name bytes are [0..length); IDs 0..7 are retained, 8..17 base, 32..44 string; 45 is the private gmatch closure dispatcher, 48..53 table, 64..91 math. ipairsaux (17) is private to the iterator. math.huge and math.pi are numeric constants, installed separately.";
+
+public fn install_libraries(vm: &Vm) -> r: unit writes(vm) doc "Installs the builtin-id table into globals and creates string, table, math, cjson, cmsgpack, bit and struct tables. Installs string.__index through the string type metatable; adds math.pi and math.huge. Host functions use IDs >=4096.";
+
+public struct CjsonConfig {
+  public settings: Array<u64, 9>;
+  public buffer: Box<Slots<u8>>;
+}

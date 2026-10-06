@@ -16,12 +16,27 @@ conversions and the script cache. The JSON and MessagePack codecs that Lua
 scripts use through `cjson` and `cmsgpack` are separate, general packages in
 this repository.
 
+## Packages
+
+Each package is its own Whitefoot package directory with a `modules.wfg`, so
+a host binds it by path:
+
+- [lib/halo](lib/halo/): the engine. `pkg::value` holds values and
+  instruction cells; `pkg::number` Lua's number formatting and parsing;
+  `pkg::heap` slabs, interned strings, tables, closures and the collector;
+  `pkg::lex` and `pkg::compile` a port of Lua 5.1's lexer, parser and code
+  generator; `pkg::vm` the interpreter and Lua's libraries with `cjson`,
+  `cmsgpack`, `bit` and `struct`; `pkg::embed` the embedding interface.
+- [lib/json](lib/json/): a pull decoder and a structured writer for JSON.
+- [lib/msgpack](lib/msgpack/): a pull decoder and an append writer for
+  MessagePack.
+
 ## Compatibility target
 
 Halo's behavior is judged against Redis 7.0.15 and its bundled Lua 5.1 (PUC
 Lua 5.1.5 with Redis's patches) on x86-64 Linux with glibc. The oracle corpus
 in [research/experiments/halo-oracle](research/experiments/halo-oracle/)
-records that reference's exact replies to 80 scripts covering Lua 5.1's core
+records that reference's exact replies to scripts covering Lua 5.1's core
 semantics, the scripting API, the codec libraries and application scripts.
 
 ## Building and checking
@@ -39,7 +54,9 @@ cd Halo-wf
 make check
 ```
 
-`make check` is the gate every change to `main` passes in CI. It needs git,
+`make check` is the gate every change to `main` passes in CI: it builds the
+end-to-end test program and compares the oracle corpus at three execution
+budgets, with the collector run normally and at every safepoint. It needs git,
 curl, Python 3 and the toolchain the compiler links with: `/usr/bin/clang`,
 and on Linux LLD.
 

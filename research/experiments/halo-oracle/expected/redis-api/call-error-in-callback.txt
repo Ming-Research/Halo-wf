@@ -1,0 +1,4 @@
+{
+  "type": "error",
+  "bytes": "ERR Wrong number of args calling Redis command from script script: 621fa05b8069c023638c86de0754ba9309c59d97, on @user_script:6."
+}

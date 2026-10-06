@@ -1,0 +1,809 @@
+alias Inputs = std::process::Inputs;
+alias ExitStatus = std::process::ExitStatus;
+alias HandleFactory = std::io::HandleFactory;
+alias InputStream = std::io::InputStream;
+alias OutputStream = std::io::OutputStream;
+alias Value = halo::value::Value;
+alias Vm = halo::vm::Vm;
+alias no_handle = halo::heap::no_handle;
+alias Engine = halo::embed::Engine;
+alias ScriptId = halo::embed::ScriptId;
+alias Outcome = halo::vm::Outcome;
+
+fn push(out: &Box<Slots<u8>>, byte: u8) -> r: unit writes(out) {
+  let cap_v0 = out^.inner.cap;
+  if out^.inner.len == cap_v0 {
+    let twice_v1 = cap_v0 +sat cap_v0;
+    let target_v2 = imax(twice_v1, 4096_u64);
+    if target_v2 > cap_v0 {
+      grow(cell: out, capacity: target_v2);
+    }
+  }
+  if out^.inner.len < out^.inner.cap {
+    place_back(window: &out^.inner, value: byte);
+  }
+  return unit;
+}
+
+fn text_bytes(out: &Box<Slots<u8>>, bytes: &[u8]) -> r: unit reads(bytes), writes(out) {
+  for (i_v3 in 0_u64..bytes^.len) {
+    let b_v4 = bytes^[i_v3];
+    push(out: out, byte: b_v4);
+  }
+  return unit;
+}
+
+fn decimal(out: &Box<Slots<u8>>, n: u64) -> r: unit writes(out) {
+  let digits_v5 = slots_new::<u8, 20>();
+  let n_v6 = n;
+  loop {
+    let d_v7 = n_v6 % 10_u64;
+    let digit_v8 = cvt.wrap::<u64, u8>(d_v7);
+    let b_v9 = digit_v8 +wrap 48_u8;
+    if digits_v5.len < digits_v5.cap {
+      place_back(window: &digits_v5, value: b_v9);
+    }
+    set n_v6 = n_v6 / 10_u64;
+    if n_v6 == 0_u64 {
+      break;
+    }
+  }
+  loop {
+    if digits_v5.len == 0_u64 {
+      break;
+    }
+    let b_v10 = take_back(window: &digits_v5);
+    push(out: out, byte: b_v10);
+  }
+  return unit;
+}
+
+fn value_bytes(vm: &Vm, v: Value, out: &Box<Slots<u8>>) -> r: unit reads(vm), writes(out) {
+  match halo::heap::string_of(heap: &vm^.heap, value: v) {
+    None() => {
+    }
+    Some(value: view_v11) => {
+      let h_v12 = cvt::<u32, u64>(view_v11.handle);
+      if h_v12 < vm^.heap.strings.inner.len {
+        let n_v13 = vm^.heap.strings.inner[h_v12].payload.bytes.inner.len;
+        text_bytes(out: out, bytes: &vm^.heap.strings.inner[h_v12].payload.bytes.inner[0_u64..n_v13]);
+      }
+    }
+  }
+  return unit;
+}
+
+fn hex(n: u8) -> r: u8 pure {
+  if n < 10_u8 {
+    return n +wrap 48_u8;
+  }
+  return n +wrap 87_u8;
+}
+
+fn json_string(out: &Box<Slots<u8>>, bytes: &[u8]) -> r: unit reads(bytes), writes(out) {
+  push(out: out, byte: 34_u8);
+  for (i_v14 in 0_u64..bytes^.len) {
+    let b_v15 = bytes^[i_v14];
+    let quote_v16 = b_v15 == 34_u8;
+    let slash_v17 = b_v15 == 92_u8;
+    if bor(quote_v16, slash_v17) {
+      push(out: out, byte: 92_u8);
+      push(out: out, byte: b_v15);
+    } else {
+      let low_v18 = b_v15 < 32_u8;
+      let high_v19 = b_v15 > 126_u8;
+      if bor(low_v18, high_v19) {
+        text_bytes(out: out, bytes: &s_32[0_u64..4_u64]);
+        let hi_v20 = b_v15 / 16_u8;
+        let lo_v21 = b_v15 % 16_u8;
+        let h_v22 = hex(n: hi_v20);
+        let l_v23 = hex(n: lo_v21);
+        push(out: out, byte: h_v22);
+        push(out: out, byte: l_v23);
+      } else {
+        push(out: out, byte: b_v15);
+      }
+    }
+  }
+  push(out: out, byte: 34_u8);
+  return unit;
+}
+
+fn json_bytes(vm: &Vm, value: Value, out: &Box<Slots<u8>>, sanitize: Bool, error: Bool) -> r: unit reads(vm), writes(out) {
+  let bytes_v24 = box_slots_new::<u8>(capacity: 0_u64);
+  value_bytes(vm: vm, v: value, out: &bytes_v24);
+  if sanitize {
+    let n_v25 = bytes_v24.inner.len;
+    let end_v26 = n_v25;
+    for (i_v27 in 0_u64..n_v25) {
+      if i_v27 < bytes_v24.inner.len {
+        let b_v28 = bytes_v24.inner[i_v27];
+        if b_v28 == 0_u8 {
+          if i_v27 < end_v26 {
+            set end_v26 = i_v27;
+          }
+        }
+        let lf_v29 = b_v28 == 10_u8;
+        let cr_v30 = b_v28 == 13_u8;
+        if bor(lf_v29, cr_v30) {
+          set bytes_v24.inner[i_v27] = 32_u8;
+        }
+      }
+    }
+    loop {
+      if bytes_v24.inner.len <= end_v26 {
+        break;
+      }
+      let b_v31 = take_back(window: &bytes_v24.inner);
+    }
+  }
+  let prefix_v32 = False();
+  if error {
+    for (i_v33 in 0_u64..bytes_v24.inner.len) {
+      let b_v34 = bytes_v24.inner[i_v33];
+      if b_v34 == 32_u8 {
+        set prefix_v32 = True();
+        break;
+      }
+      let low_v35 = b_v34 < 65_u8;
+      let high_v36 = b_v34 > 90_u8;
+      if bor(low_v35, high_v36) {
+        break;
+      }
+    }
+  }
+  let missing_prefix_v37 = bnot(prefix_v32);
+  if band(error, missing_prefix_v37) {
+    let all_v38 = box_slots_new::<u8>(capacity: 0_u64);
+    text_bytes(out: &all_v38, bytes: &s_33[0_u64..4_u64]);
+    let n_v39 = bytes_v24.inner.len;
+    text_bytes(out: &all_v38, bytes: &bytes_v24.inner[0_u64..n_v39]);
+    let n_v40 = all_v38.inner.len;
+    json_string(out: out, bytes: &all_v38.inner[0_u64..n_v40]);
+  } else {
+    let n_v41 = bytes_v24.inner.len;
+    json_string(out: out, bytes: &bytes_v24.inner[0_u64..n_v41]);
+  }
+  return unit;
+}
+
+fn nil_reply(out: &Box<Slots<u8>>) -> r: unit writes(out) {
+  text_bytes(out: out, bytes: &s_34[0_u64..28_u64]);
+  return unit;
+}
+
+fn reply(vm: &Vm, value: Value, out: &Box<Slots<u8>>, depth: u64) -> r: unit writes(vm), writes(out) {
+  if depth >= 128_u64 {
+    text_bytes(out: out, bytes: &s_35[0_u64..50_u64]);
+    return unit;
+  }
+  match value {
+    Nil() => {
+      nil_reply(out: out);
+    }
+    False() => {
+      nil_reply(out: out);
+    }
+    True() => {
+      text_bytes(out: out, bytes: &s_36[0_u64..28_u64]);
+    }
+    Num(n: number_v42) => {
+      let n_v43 = ftrunc(number_v42);
+      let v_v44 = -9223372036854775808_i64;
+      if cvt.defined::<f64, i64>(n_v43) {
+        set v_v44 = cvt::<f64, i64>(n_v43);
+      }
+      text_bytes(out: out, bytes: &s_37[0_u64..26_u64]);
+      let bytes_v45 = integer_string(vm: vm, value: v_v44);
+      value_bytes(vm: vm, v: bytes_v45, out: out);
+      push(out: out, byte: 125_u8);
+    }
+    Str(..) => {
+      text_bytes(out: out, bytes: &s_38[0_u64..23_u64]);
+      let no_v46 = False();
+      json_bytes(vm: vm, value: value, out: out, sanitize: no_v46, error: no_v46);
+      push(out: out, byte: 125_u8);
+    }
+    Tab(..) => {
+      let errkey_v47 = literal(vm: vm, text: &s_30[0_u64..3_u64]);
+      let okkey_v48 = literal(vm: vm, text: &s_5[0_u64..2_u64]);
+      let err_v49 = get(vm: vm, table: value, key: errkey_v47);
+      let ok_v50 = get(vm: vm, table: value, key: okkey_v48);
+      let error_v51 = is_string(v: err_v49);
+      let status_v52 = is_string(v: ok_v50);
+      if error_v51 {
+        text_bytes(out: out, bytes: &s_39[0_u64..24_u64]);
+        let yes_v53 = True();
+        let keep = False();
+        json_bytes(vm: vm, value: err_v49, out: out, sanitize: yes_v53, error: keep);
+        push(out: out, byte: 125_u8);
+      } else if status_v52 {
+        text_bytes(out: out, bytes: &s_40[0_u64..25_u64]);
+        let yes_v54 = True();
+        let no_v55 = False();
+        json_bytes(vm: vm, value: ok_v50, out: out, sanitize: yes_v54, error: no_v55);
+        push(out: out, byte: 125_u8);
+      } else {
+        text_bytes(out: out, bytes: &s_41[0_u64..25_u64]);
+        let i_v56 = 1_u64;
+        loop {
+          let x_v57 = cvt.nearest::<u64, f64>(i_v56);
+          let key_v58 = num(x: x_v57);
+          let v_v59 = get(vm: vm, table: value, key: key_v58);
+          let absent_v60 = is_nil(v: v_v59);
+          if absent_v60 {
+            break;
+          }
+          if i_v56 > 1_u64 {
+            push(out: out, byte: 44_u8);
+          }
+          let next_v61 = depth + 1_u64;
+          reply(vm: vm, value: v_v59, out: out, depth: next_v61);
+          set i_v56 = i_v56 +sat 1_u64;
+        }
+        text_bytes(out: out, bytes: &s_42[0_u64..2_u64]);
+      }
+    }
+    Fun(..) => {
+      nil_reply(out: out);
+    }
+    Builtin(..) => {
+      nil_reply(out: out);
+    }
+  }
+  return unit;
+}
+
+fn readonly_message(vm: &Vm, value: Value) -> r: Bool reads(vm) {
+  match halo::heap::string_of(heap: &vm^.heap, value: value) {
+    None() => {
+      return False();
+    }
+    Some(value: view) => {
+      let h = cvt::<u32, u64>(view.handle);
+      if h < vm^.heap.strings.inner.len {
+        if vm^.heap.strings.inner[h].payload.bytes.inner.len == 34_u64 {
+          for (i in 0_u64..34_u64) {
+            let b = vm^.heap.strings.inner[h].payload.bytes.inner[i];
+            if b != readonly_error[i] {
+              return False();
+            }
+          }
+          return True();
+        }
+      }
+    }
+  }
+  return False();
+}
+
+fn callback_line(vm: &Vm) -> r: u64 reads(vm) {
+  doc "Global slow paths keep their continuation PC; the undeclared-global message uses the lookup's line. The line of an error that ends a script comes from halo::embed::error_line.";
+  let pc = vm^.callback_plan.pc;
+  if pc > 0_u64 {
+    let previous = pc - 1_u64;
+    if previous < vm^.lineinfo.inner.len {
+      return cvt::<u32, u64>(vm^.lineinfo.inner[previous]);
+    }
+  }
+  return 0_u64;
+}
+
+fn run_script(engine: &Engine, env: &Env, id: ScriptId, budget: u64, collect_suspended: Bool, isolate_frames: Bool, omit_suspended_root: Bool) -> r: Outcome writes(engine), writes(env) {
+  let out_v62 = halo::embed::start::<TestHost>(engine: engine, env: env, script: id, budget: budget);
+  let steps_v63 = 0_u64;
+  loop {
+    match out_v62 {
+      Done(..) => {
+        return out_v62;
+      }
+      Error() => {
+        return out_v62;
+      }
+      HostStopped() => {
+        return out_v62;
+      }
+      HostCall() => {
+        if steps_v63 >= 1000000_u64 {
+          return out_v62;
+        }
+        set out_v62 = serve_call(engine: engine, env: env, budget: budget);
+        set steps_v63 = steps_v63 + 1_u64;
+      }
+      Budget() => {
+        if steps_v63 >= 1000000_u64 {
+          return out_v62;
+        }
+        if isolate_frames {
+          isolate_frame_roots(engine: engine);
+        }
+        if collect_suspended {
+          if engine^.vm.suspended {
+            collect_checkpoint(engine: engine, env: env, id: id, omit_root: omit_suspended_root);
+          }
+        }
+        set out_v62 = halo::embed::resume::<TestHost>(engine: engine, env: env, budget: budget);
+        set steps_v63 = steps_v63 + 1_u64;
+      }
+    }
+  }
+  return out_v62;
+}
+
+fn serve_call(engine: &Engine, env: &Env, budget: u64) -> r: Outcome writes(engine), writes(env) {
+  doc "Runs the redis.call or redis.pcall that host_call left pending, then returns its reply or raises its error at the call, as Redis's synchronous call would.";
+  match halo::embed::pending_call(engine: engine) {
+    None() => {
+    }
+    Some(value: call) => {
+      let argc = call.argc;
+      let room = argc +sat 1_u64;
+      let args = box_slots_new::<Value>(capacity: room);
+      for (i in 0_u64..room) {
+        if args.inner.len < args.inner.cap {
+          let value = Value::Nil();
+          if i > 0_u64 {
+            let index = i - 1_u64;
+            set value = halo::embed::pending_argument(engine: engine, index: index);
+          }
+          place_back(window: &args.inner, value: value);
+        }
+      }
+      let vm = &engine^.vm;
+      let reply = command(env: env, vm: vm, stack: &args, func: 0_u64, argc: argc);
+      if env^.error {
+        if call.id == 4096_u32 {
+          let error = reply_table(vm: vm, field: &s_30[0_u64..3_u64], v: reply);
+          return halo::embed::fail_call::<TestHost>(engine: engine, env: env, error: error, budget: budget);
+        }
+        set reply = reply_table(vm: vm, field: &s_30[0_u64..3_u64], v: reply);
+      }
+      let results = box_slots_new::<Value>(capacity: 1_u64);
+      if results.inner.len < results.inner.cap {
+        place_back(window: &results.inner, value: reply);
+      }
+      let count = results.inner.len;
+      return halo::embed::complete_call::<TestHost>(engine: engine, env: env, results: &results.inner[0_u64..count], budget: budget);
+    }
+  }
+  return Outcome::Error();
+}
+
+fn install_host(engine: &Engine, env: &Env) -> r: unit writes(engine), writes(env) {
+  let vm_v64 = &engine^.vm;
+  let redis_v65 = halo::heap::new_table(heap: &vm_v64^.heap, asize: 0_u32, hsize: 8_u32);
+  let k_v66 = literal(vm: vm_v64, text: &s_43[0_u64..4_u64]);
+  let v_v67 = Value::Builtin(id: 4096_u32);
+  raw(vm: vm_v64, table: redis_v65, key: k_v66, value: v_v67);
+  let k_v68 = literal(vm: vm_v64, text: &s_44[0_u64..5_u64]);
+  let v_v69 = Value::Builtin(id: 4097_u32);
+  raw(vm: vm_v64, table: redis_v65, key: k_v68, value: v_v69);
+  let k_v70 = literal(vm: vm_v64, text: &s_45[0_u64..12_u64]);
+  let v_v71 = Value::Builtin(id: 4098_u32);
+  raw(vm: vm_v64, table: redis_v65, key: k_v70, value: v_v71);
+  let k_v72 = literal(vm: vm_v64, text: &s_46[0_u64..11_u64]);
+  let v_v73 = Value::Builtin(id: 4099_u32);
+  raw(vm: vm_v64, table: redis_v65, key: k_v72, value: v_v73);
+  let k_v74 = literal(vm: vm_v64, text: &s_47[0_u64..3_u64]);
+  let v_v75 = Value::Builtin(id: 4100_u32);
+  raw(vm: vm_v64, table: redis_v65, key: k_v74, value: v_v75);
+  let sha_key = literal(vm: vm_v64, text: &sha_name[0_u64..7_u64]);
+  let sha_builtin = Value::Builtin(id: 4102_u32);
+  raw(vm: vm_v64, table: redis_v65, key: sha_key, value: sha_builtin);
+  let k_v76 = literal(vm: vm_v64, text: &s_48[0_u64..10_u64]);
+  let v_v77 = num(x: 2.0_f64);
+  raw(vm: vm_v64, table: redis_v65, key: k_v76, value: v_v77);
+  let result_v78 = halo::embed::set_global(engine: engine, name: &s_49[0_u64..5_u64], value: redis_v65);
+  halo::embed::set_pcall_error_field(engine: engine, field: &s_30[0_u64..3_u64]);
+  let db_v79 = halo::embed::new_table(engine: engine, asize: 0_u32, hsize: 0_u32);
+  set env^.db = db_v79;
+  let types_v80 = halo::embed::new_table(engine: engine, asize: 0_u32, hsize: 0_u32);
+  set env^.types = types_v80;
+  let expiry_v81 = halo::embed::new_table(engine: engine, asize: 0_u32, hsize: 0_u32);
+  set env^.expiry = expiry_v81;
+  let dbpin_v82 = halo::embed::pin(engine: engine, value: db_v79);
+  let tpin_v83 = halo::embed::pin(engine: engine, value: types_v80);
+  let epin_v84 = halo::embed::pin(engine: engine, value: expiry_v81);
+  return unit;
+}
+
+fn protect(engine: &Engine) -> r: unit writes(engine) {
+  let vm_v85 = &engine^.vm;
+  let meta_v86 = halo::heap::new_table(heap: &vm_v85^.heap, asize: 0_u32, hsize: 1_u32);
+  let index_v87 = literal(vm: vm_v85, text: &s_50[0_u64..7_u64]);
+  let v_v88 = Value::Builtin(id: 4101_u32);
+  raw(vm: vm_v85, table: meta_v86, key: index_v87, value: v_v88);
+  match halo::value::tab_of(v: meta_v86) {
+    NoHandle() => {
+    }
+    Handle(h: mh_v89) => {
+      let g_v90 = cvt::<u32, u64>(vm_v85^.globals);
+      if g_v90 < vm_v85^.heap.tables.inner.len {
+        set vm_v85^.heap.tables.inner[g_v90].payload.meta = mh_v89;
+        set vm_v85^.heap.tables.inner[g_v90].payload.read_only = True();
+      }
+    }
+  }
+  return unit;
+}
+
+fn read_source(factory: &HandleFactory, input: &InputStream, source: &Box<Slots<u8>>) -> success: Bool writes(factory), writes(input), writes(source) waits {
+  doc "Read stdin in small host operations, preserving all binary bytes.";
+  let scratch_v91 = array_filled::<u8, 4096>(value: 0_u8);
+  loop {
+    let deadline_v92 = None<std::time::Instant>();
+    let got_v93 = std::io::read_next(factory: factory, input: input, destination: &scratch_v91[0_u64..4096_u64], start: 0_u64, end: 4096_u64, deadline: deadline_v92);
+    match got_v93 {
+      Ok(value: count_v94) => {
+        for (i_v95 in 0_u64..count_v94) {
+          if i_v95 < 4096_u64 {
+            let b_v96 = scratch_v91[i_v95];
+            push(out: source, byte: b_v96);
+          }
+        }
+      }
+      Err(error: stop_v97) => {
+        match stop_v97 {
+          ReadEnd() => {
+            return True();
+          }
+          ReadFailed(error: problem_v98) => {
+            return False();
+          }
+        }
+      }
+    }
+  }
+  return False();
+}
+
+fn main(inputs: Inputs) -> status: ExitStatus pure waits {
+  let Inputs(args: args_v99, cwd: cwd_v100, stdout: output_v101, stderr: stderr_v102, handles: factory_v103, stdin: input_v104, clock: clock_v105, wall_clock: wall_clock_v106) = move inputs;
+  let std::fs::Directory(read: cwd_read_v107, write: cwd_write_v108) = move cwd_v100;
+  std::fs::close_directory(factory: &factory_v103, directory: move cwd_read_v107);
+  std::fs::close_directory_write(factory: &factory_v103, directory: move cwd_write_v108);
+  let modes = std::text::args_count(args: &args_v99);
+  let stress = False();
+  let collect_suspended = False();
+  let omit_suspended_root = False();
+  let isolate_frames = False();
+  let recover = False();
+  let omit_refresh = 0_u8;
+  let positional = 0_u64;
+  for (index in 1_u64..modes) {
+    if argument_is(args: &args_v99, index: index, text: &stress_option[0_u64..11_u64]) {
+      set stress = True();
+    } else if argument_is(args: &args_v99, index: index, text: &suspended_option[0_u64..19_u64]) {
+      set collect_suspended = True();
+    } else if argument_is(args: &args_v99, index: index, text: &omit_root_option[0_u64..21_u64]) {
+      set omit_suspended_root = True();
+    } else if argument_is(args: &args_v99, index: index, text: &frames_option[0_u64..16_u64]) {
+      set isolate_frames = True();
+    } else if argument_is(args: &args_v99, index: index, text: &recovery_option[0_u64..17_u64]) {
+      set recover = True();
+    } else if argument_is(args: &args_v99, index: index, text: &pin_refresh_option[0_u64..18_u64]) {
+      set omit_refresh = 1_u8;
+    } else if argument_is(args: &args_v99, index: index, text: &compile_refresh_option[0_u64..22_u64]) {
+      set omit_refresh = 2_u8;
+    } else if argument_is(args: &args_v99, index: index, text: &unpin_refresh_option[0_u64..20_u64]) {
+      set omit_refresh = 3_u8;
+    } else {
+      set positional = positional +sat 1_u64;
+    }
+  }
+  if omit_refresh > 0_u8 {
+    let code = root_updates_probe(omit_refresh: omit_refresh);
+    return std::process::exit_status(code: code);
+  }
+  if positional > 2_u64 {
+    return smoke();
+  }
+  let source_v109 = box_slots_new::<u8>(capacity: 0_u64);
+  let read_v110 = read_source(factory: &factory_v103, input: &input_v104, source: &source_v109);
+  if bnot(read_v110) {
+    return std::process::exit_status(code: 2_u8);
+  }
+  let n_v111 = source_v109.inner.len;
+  let split_v112 = n_v111;
+  for (i_v113 in 0_u64..n_v111) {
+    if source_v109.inner[i_v113] == 0_u8 {
+      set split_v112 = i_v113;
+      break;
+    }
+  }
+  if split_v112 >= n_v111 {
+    return std::process::exit_status(code: 2_u8);
+  }
+  let engine_v114 = halo::embed::new_engine(limit: 67108864_u64);
+  halo::embed::set_gc_stress(engine: &engine_v114, enabled: stress);
+  let nil_v115 = Value::Nil();
+  let no_v116 = False();
+  let env_v117 = Env(db: nil_v115, types: nil_v115, expiry: nil_v115, error: no_v116);
+  install_host(engine: &engine_v114, env: &env_v117);
+  let out_v118 = box_slots_new::<u8>(capacity: 0_u64);
+  let budget_v119 = 1000_u64;
+  let argc_v120 = positional +sat 1_u64;
+  if argc_v120 > 1_u64 {
+    set budget_v119 = 1_u64;
+  }
+  if argc_v120 > 2_u64 {
+    set budget_v119 = 7_u64;
+  }
+  let prep_v121 = halo::embed::compile(engine: &engine_v114, chunk_name: &s_51[0_u64..6_u64], source: &source_v109.inner[0_u64..split_v112]);
+  match move prep_v121 {
+    Err(..) => {
+      return std::process::exit_status(code: 3_u8);
+    }
+    Ok(value: id_v122) => {
+      let outcome_v123 = run_script(engine: &engine_v114, env: &env_v117, id: id_v122, budget: budget_v119, collect_suspended: collect_suspended, isolate_frames: isolate_frames, omit_suspended_root: omit_suspended_root);
+      match outcome_v123 {
+        Done(..) => {
+        }
+        Error() => {
+          return std::process::exit_status(code: 4_u8);
+        }
+        Budget() => {
+          return std::process::exit_status(code: 5_u8);
+        }
+        HostStopped() => {
+          return std::process::exit_status(code: 6_u8);
+        }
+        HostCall() => {
+          return std::process::exit_status(code: 6_u8);
+        }
+      }
+    }
+  }
+  protect(engine: &engine_v114);
+  let primary_start = split_v112 + 1_u64;
+  let primary_end = n_v111;
+  let passes = 1_u64;
+  if recover {
+    for (i in primary_start..n_v111) {
+      if source_v109.inner[i] == 0_u8 {
+        set primary_end = i;
+        set passes = 2_u64;
+        break;
+      }
+    }
+    if passes != 2_u64 {
+      return std::process::exit_status(code: 2_u8);
+    }
+  }
+  let collections_before = halo::embed::collection_count(engine: &engine_v114);
+  for (pass in 0_u64..passes) {
+    let start_v124 = primary_start;
+    let end_v124 = primary_end;
+    if pass == 1_u64 {
+      set start_v124 = primary_end +sat 1_u64;
+      set end_v124 = n_v111;
+    }
+    if start_v124 <= end_v124 {
+      if end_v124 <= source_v109.inner.len {
+        let compiled_v125 = halo::embed::compile(engine: &engine_v114, chunk_name: &s_52[0_u64..12_u64], source: &source_v109.inner[start_v124..end_v124]);
+        match move compiled_v125 {
+          Err(error: problem_v126) => {
+            text_bytes(out: &out_v118, bytes: &s_39[0_u64..24_u64]);
+            let len_v127 = problem_v126.message.inner.len;
+            json_string(out: &out_v118, bytes: &problem_v126.message.inner[0_u64..len_v127]);
+            push(out: &out_v118, byte: 125_u8);
+          }
+          Ok(value: id_v128) => {
+            let outcome_v129 = run_script(engine: &engine_v114, env: &env_v117, id: id_v128, budget: budget_v119, collect_suspended: collect_suspended, isolate_frames: isolate_frames, omit_suspended_root: omit_suspended_root);
+            match outcome_v129 {
+              Done(count: count_v130) => {
+                let v_v131 = Value::Nil();
+                if count_v130 > 0_u64 {
+                  match halo::embed::result(engine: &engine_v114, index: 0_u64) {
+                    None() => {
+                    }
+                    Some(value: first_v132) => {
+                      set v_v131 = first_v132;
+                    }
+                  }
+                }
+                reply(vm: &engine_v114.vm, value: v_v131, out: &out_v118, depth: 0_u64);
+              }
+              Error() => {
+                let line = halo::embed::error_line(engine: &engine_v114);
+                let error_v133 = halo::embed::error_value(engine: &engine_v114);
+                let locate = readonly_message(vm: &engine_v114.vm, value: error_v133);
+                let formatted = format_redis_error(engine: &engine_v114, source: &source_v109.inner[start_v124..end_v124], line: line, locate: locate);
+                let formatted_len = formatted.inner.len;
+                let error_reply = literal(vm: &engine_v114.vm, text: &formatted.inner[0_u64..formatted_len]);
+                text_bytes(out: &out_v118, bytes: &s_39[0_u64..24_u64]);
+                let yes_v134 = True();
+                let no_prefix = False();
+                json_bytes(vm: &engine_v114.vm, value: error_reply, out: &out_v118, sanitize: yes_v134, error: no_prefix);
+                push(out: &out_v118, byte: 125_u8);
+              }
+              Budget() => {
+                return std::process::exit_status(code: 5_u8);
+              }
+              HostStopped() => {
+                return std::process::exit_status(code: 6_u8);
+              }
+              HostCall() => {
+                return std::process::exit_status(code: 6_u8);
+              }
+            }
+          }
+        }
+      } else {
+        return std::process::exit_status(code: 2_u8);
+      }
+    } else {
+      return std::process::exit_status(code: 2_u8);
+    }
+    push(out: &out_v118, byte: 10_u8);
+  }
+  let wrote = write_bytes(factory: &factory_v103, output: &output_v101, bytes: &out_v118);
+  if bnot(wrote) {
+    return std::process::exit_status(code: 2_u8);
+  }
+  let stats = box_slots_new::<u8>(capacity: 0_u64);
+  text_bytes(out: &stats, bytes: &stats_prefix[0_u64..15_u64]);
+  let collections_after = halo::embed::collection_count(engine: &engine_v114);
+  let collections = collections_after -sat collections_before;
+  decimal(out: &stats, n: collections);
+  text_bytes(out: &stats, bytes: &stats_bytes[0_u64..9_u64]);
+  decimal(out: &stats, n: engine_v114.vm.heap.bytes);
+  push(out: &stats, byte: 125_u8);
+  push(out: &stats, byte: 10_u8);
+  let reported = write_bytes(factory: &factory_v103, output: &stderr_v102, bytes: &stats);
+  if bnot(reported) {
+    return std::process::exit_status(code: 2_u8);
+  }
+  return std::process::exit_status(code: 0_u8);
+}
+
+const frames_option: Array<u8, 16> = "--isolate-frames";
+
+const omit_root_option: Array<u8, 21> = "--omit-suspended-root";
+
+const suspended_option: Array<u8, 19> = "--collect-suspended";
+
+const recovery_option: Array<u8, 17> = "--memory-recovery";
+
+const stress_option: Array<u8, 11> = "--gc-stress";
+
+const stats_prefix: Array<u8, 15> = "{\"collections\":";
+
+const stats_bytes: Array<u8, 9> = ",\"bytes\":";
+
+fn argument_is(args: &std::text::Args, index: u64, text: &[u8]) -> r: Bool reads(args), reads(text) {
+  let fetched = std::text::arg_get(args: args, position: index);
+  match move fetched {
+    Err(..) => {
+      return False();
+    }
+    Ok(value: argument) => {
+      let length = std::text::host_bytes_len(value: &argument);
+      if length != text^.len {
+        return False();
+      }
+      let bytes = box_slots_new::<u8>(capacity: length);
+      for (i in 0_u64..length) {
+        if bytes.inner.len < bytes.inner.cap {
+          place_back(window: &bytes.inner, value: 0_u8);
+        }
+      }
+      let n = bytes.inner.len;
+      match std::text::host_copy_bytes(value: &argument, destination: &bytes.inner[0_u64..n], start: 0_u64, end: n) {
+        Err(..) => {
+          return False();
+        }
+        Ok(value: copied) => {
+          if copied != text^.len {
+            return False();
+          }
+          for (i in 0_u64..text^.len) {
+            if i < bytes.inner.len {
+              if bytes.inner[i] != text^[i] {
+                return False();
+              }
+            } else {
+              return False();
+            }
+          }
+          return True();
+        }
+      }
+    }
+  }
+}
+
+fn write_bytes(factory: &HandleFactory, output: &OutputStream, bytes: &Box<Slots<u8>>) -> r: Bool reads(bytes), writes(factory), writes(output) waits {
+  let length = bytes^.inner.len;
+  let position = 0_u64;
+  loop {
+    if position >= length {
+      return True();
+    }
+    let deadline = None<std::time::Instant>();
+    let written = std::io::write_once(factory: factory, output: output, source: &bytes^.inner[0_u64..length], start: position, end: length, deadline: deadline);
+    match written {
+      Ok(value: end) => {
+        if end == position {
+          return False();
+        }
+        set position = end;
+      }
+      Err(..) => {
+        return False();
+      }
+    }
+  }
+  return False();
+}
+
+fn collect_checkpoint(engine: &Engine, env: &Env, id: ScriptId, omit_root: Bool) -> r: unit writes(engine), writes(env) {
+  doc "Runs one synthetic back-edge on the parked VM before resume, preserving its saved continuation and using the active pool's mirrored roots. This is an explicitly selected research probe.";
+  let slot = id.slot;
+  let code = box_slots_new::<halo::value::Cell>(capacity: 1_u64);
+  let jump = halo::value::Cell::Jmp(target: 0_u32);
+  if code.inner.len < code.inner.cap {
+    place_back(window: &code.inner, value: jump);
+  }
+  let parked = box_slots_new::<Value>(capacity: 0_u64);
+  if omit_root {
+    swap(first: &parked, second: &engine^.vm.stopped_stack);
+  }
+  let budget = engine^.vm.budget;
+  set engine^.vm.budget = 1_u64;
+  if code.inner.len > 0_u64 {
+    if slot < engine^.scripts.inner.len {
+      if engine^.scripts.inner[slot].consts.inner.len >= 256_u64 {
+        if engine^.stack.inner.len >= 256_u64 {
+          let outcome = halo::vm::run::<TestHost>(code: &code, consts: &engine^.scripts.inner[slot].consts, stack: &engine^.stack, vm: &engine^.vm, env: env, pc: 0_u64, base: 0_u64, kbase: 0_u64);
+        }
+      }
+    }
+  }
+  set engine^.vm.budget = budget;
+  if omit_root {
+    swap(first: &parked, second: &engine^.vm.stopped_stack);
+  }
+  return unit;
+}
+
+fn isolate_frame_roots(engine: &Engine) -> r: unit reads(engine.vm.frames), writes(engine.stack) {
+  doc "At a budget checkpoint, remove the frame's dead function-slot alias when it still equals the recorded closure. Return results will replace this slot; the frame record remains the owner used by upvalue access.";
+  let count = engine^.vm.frames.inner.len;
+  for (i in 0_u64..count) {
+    let frame = engine^.vm.frames.inner[i];
+    if frame.closure != no_handle {
+      let slot = frame.func;
+      if slot < engine^.stack.inner.len {
+        match engine^.stack.inner[slot] {
+          Fun(h: handle) => {
+            if handle^ == frame.closure {
+              set engine^.stack.inner[slot] = Value::Nil();
+            }
+          }
+          Nil() => {
+          }
+          False() => {
+          }
+          True() => {
+          }
+          Num(..) => {
+          }
+          Str(..) => {
+          }
+          Tab(..) => {
+          }
+          Builtin(..) => {
+          }
+        }
+      }
+    }
+  }
+  return unit;
+}
+
+const pin_refresh_option: Array<u8, 18> = "--omit-pin-refresh";
+
+const compile_refresh_option: Array<u8, 22> = "--omit-compile-refresh";
+
+const unpin_refresh_option: Array<u8, 20> = "--omit-unpin-refresh";

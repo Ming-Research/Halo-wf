@@ -21,9 +21,40 @@ DESIGN_REVIEW_BASE ?= origin/main
 # projects written in Whitefoot (whitefoot-kit/downstream.md).
 include $(ROOT)/whitefoot-kit/whitefoot.mk
 
-.PHONY: check design-lint design-ready
+.PHONY: check oracle design-lint design-ready FORCE
 
-check: compiler design-lint
+check: compiler oracle design-lint
+
+# The end-to-end comparison: research/experiments/halo-e2e builds a test
+# program that runs scripts through pkg::embed and an in-memory host, and its
+# runner compares every script of research/experiments/halo-oracle at
+# budgets 1, 7 and 1000, in ordinary and collector-stress modes, byte for
+# byte with Redis 7.0.15's recorded replies. The same program's embedding
+# probe, run with three arguments, checks the engine lifecycle, budget
+# continuation, host outcomes and collector roots, and exits with the number
+# of the first failed observation. The target exits nonzero on any probe
+# failure or difference in either mode, after running all three, and keeps
+# each mode's report and actual replies under build/halo-e2e/ for
+# inspection. The test
+# program is built once, with the graph always named by the same relative
+# path so that the compiler's cache key stays stable.
+E2E := $(BUILD)/halo-e2e
+E2E_TEST := $(E2E)/test
+E2E_RUN = cd $(ROOT) && $(PY) -B research/experiments/halo-e2e/run.py \
+	--compiler $(WHITEFOOTC) --binary $(E2E_TEST) --budgets 1,7,1000 --scratch-root $(E2E)
+
+$(E2E_TEST): $(PIN) $(WHITEFOOTC) FORCE
+	@mkdir -p $(E2E)
+	@cd $(ROOT)/research/experiments/halo-e2e && $(WHITEFOOTC) --graph modules.wfg --entry test -o $@
+
+oracle: $(E2E_TEST)
+	@rm -rf $(E2E)/ordinary $(E2E)/stress
+	@status=0; \
+	if $(E2E_TEST) probe probe probe < /dev/null; then echo "embedding probe: passed"; \
+	else echo "embedding probe: failed observation $$?"; status=1; fi; \
+	$(E2E_RUN) --report $(E2E)/ordinary.md --actual $(E2E)/ordinary || status=1; \
+	$(E2E_RUN) --gc-stress --report $(E2E)/stress.md --actual $(E2E)/stress || status=1; \
+	exit $$status
 
 # The design skill's own tests, then the lint of every live tree; until the
 # first tree lands there is nothing to lint.
@@ -33,3 +64,5 @@ design-lint:
 
 design-ready:
 	@$(if $(DESIGN_TREES),$(PY) -B $(ROOT)/design/skill/lint.py --root $(ROOT)/design --trees $(DESIGN_TREES) --base "$(DESIGN_REVIEW_BASE)" --require-approval,echo "design ready: no live tree")
+
+FORCE:

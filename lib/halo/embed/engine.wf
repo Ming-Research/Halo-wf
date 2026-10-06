@@ -1,0 +1,375 @@
+alias Value = pkg::value::Value;
+alias Script = pkg::value::Script;
+alias CompileError = pkg::compile::CompileError;
+alias Outcome = pkg::vm::Outcome;
+alias Host = pkg::vm::Host;
+alias PendingCall = pkg::vm::PendingCall;
+
+fn append_value(out: &Box<Slots<Value>>, value: Value) -> r: unit writes(out) {
+  let n = out^.inner.len;
+  if n < 18446744073709551615_u64 {
+    if n == out^.inner.cap {
+      let twice = n +sat n;
+      let cap = imax(twice, 16_u64);
+      grow(cell: out, capacity: cap);
+    }
+    if out^.inner.len < out^.inner.cap {
+      place_back(window: &out^.inner, value: value);
+    }
+  }
+  return unit;
+}
+
+fn invalidate_roots(engine: &Engine) -> r: unit writes(engine.roots_valid) {
+  for (i in 0_u64..engine^.roots_valid.inner.len) {
+    set engine^.roots_valid.inner[i] = False();
+  }
+  return unit;
+}
+
+fn refresh_roots(engine: &Engine, slot: u64) -> r: unit writes(engine) {
+  doc "Each pool retains its root bridge until compile, pin or unpin invalidates it. Only original constant prefixes source a rebuild; inactive bridge tails are never read during rebuilds.";
+  if slot < engine^.roots_valid.inner.len {
+    if engine^.roots_valid.inner[slot] {
+      return unit;
+    }
+    if slot < engine^.constant_lengths.inner.len {
+      let n = engine^.constant_lengths.inner[slot];
+      if slot < engine^.scripts.inner.len {
+        loop {
+          if slot < engine^.scripts.inner.len {
+            if engine^.scripts.inner[slot].consts.inner.len > n {
+              let dropped = take_back(window: &engine^.scripts.inner[slot].consts.inner);
+            } else {
+              break;
+            }
+          } else {
+            break;
+          }
+        }
+        for (s in 0_u64..engine^.scripts.inner.len) {
+          if s < engine^.constant_lengths.inner.len {
+            let count = engine^.constant_lengths.inner[s];
+            for (i in 0_u64..count) {
+              if s < engine^.scripts.inner.len {
+                if i < engine^.scripts.inner[s].consts.inner.len {
+                  let v = engine^.scripts.inner[s].consts.inner[i];
+                  if slot < engine^.scripts.inner.len {
+                    append_value(out: &engine^.scripts.inner[slot].consts, value: v);
+                  }
+                }
+              }
+            }
+          }
+        }
+        for (i in 0_u64..engine^.pins.inner.len) {
+          let v = engine^.pins.inner[i];
+          if slot < engine^.scripts.inner.len {
+            append_value(out: &engine^.scripts.inner[slot].consts, value: v);
+          }
+        }
+        if slot < engine^.roots_valid.inner.len {
+          set engine^.roots_valid.inner[slot] = True();
+        }
+      }
+    }
+  }
+  return unit;
+}
+
+fn new_engine(limit: u64) -> r: Engine pure {
+  let vm = pkg::vm::vm_new(limit: limit);
+  let stack = pkg::vm::stack_new(size: 256_u64);
+  let scripts = box_slots_new::<Script>(capacity: 0_u64);
+  let lengths = box_slots_new::<u64>(capacity: 0_u64);
+  let pins = box_slots_new::<Value>(capacity: 0_u64);
+  let valid = box_slots_new::<Bool>(capacity: 0_u64);
+  let active = None<ScriptId>();
+  let no = False();
+  let engine = Engine(vm: move vm, stack: move stack, scripts: move scripts, constant_lengths: move lengths, pins: move pins, roots_valid: move valid, generation: 0_u64, active: active, result_count: 0_u64, resumable: no, calling: no);
+  install_core(engine: &engine);
+  pkg::vm::install_libraries(vm: &engine.vm);
+  return move engine;
+}
+
+const cache_error: Array<u8, 22> = "script cache exhausted";
+
+fn cache_failure() -> r: Result<ScriptId, CompileError> pure {
+  let message = box_slots_new::<u8>(capacity: 22_u64);
+  for (i in 0_u64..22_u64) {
+    if message.inner.len < message.inner.cap {
+      let b = cache_error[i];
+      place_back(window: &message.inner, value: b);
+    }
+  }
+  let error = CompileError(line: 0_u64, message: move message);
+  return Err<ScriptId, CompileError>(error: move error);
+}
+
+fn compile(engine: &Engine, chunk_name: &[u8], source: &[u8]) -> r: Result<ScriptId, CompileError> reads(chunk_name), reads(source), writes(engine) {
+  if engine^.generation == 18446744073709551615_u64 {
+    return cache_failure();
+  }
+  let compiled = pkg::compile::compile(heap: &engine^.vm.heap, chunk_name: chunk_name, source: source);
+  match move compiled {
+    Err(error: problem) => {
+      return Err<ScriptId, CompileError>(error: move problem);
+    }
+    Ok(value: script) => {
+      let n = engine^.scripts.inner.len;
+      if n < 18446744073709551615_u64 {
+        let cap = n + 1_u64;
+        if cap > engine^.scripts.inner.cap {
+          grow(cell: &engine^.scripts, capacity: cap);
+        }
+        if cap > engine^.constant_lengths.inner.cap {
+          grow(cell: &engine^.constant_lengths, capacity: cap);
+        }
+        if cap > engine^.roots_valid.inner.cap {
+          grow(cell: &engine^.roots_valid, capacity: cap);
+        }
+        let len = script.consts.inner.len;
+        if engine^.scripts.inner.len < engine^.scripts.inner.cap {
+          place_back(window: &engine^.scripts.inner, value: move script);
+          if engine^.constant_lengths.inner.len < engine^.constant_lengths.inner.cap {
+            place_back(window: &engine^.constant_lengths.inner, value: len);
+            if engine^.roots_valid.inner.len < engine^.roots_valid.inner.cap {
+              let no = False();
+              place_back(window: &engine^.roots_valid.inner, value: no);
+            }
+            invalidate_roots(engine: engine);
+            let id = ScriptId(slot: n, generation: engine^.generation);
+            return Ok<ScriptId, CompileError>(value: id);
+          }
+          return cache_failure();
+        }
+      }
+    }
+  }
+  return cache_failure();
+}
+
+fn reset(engine: &Engine) -> r: unit writes(engine) {
+  pkg::vm::reset(vm: &engine^.vm, stack: &engine^.stack);
+  for (i in 0_u64..engine^.stack.inner.len) {
+    let nil = Value::Nil();
+    set engine^.stack.inner[i] = nil;
+  }
+  set engine^.active = None<ScriptId>();
+  set engine^.result_count = 0_u64;
+  set engine^.resumable = False();
+  set engine^.calling = False();
+  return unit;
+}
+
+fn forget_all(engine: &Engine) -> r: unit writes(engine) {
+  reset(engine: engine);
+  loop {
+    if engine^.scripts.inner.len == 0_u64 {
+      break;
+    }
+    let dropped = take_back(window: &engine^.scripts.inner);
+  }
+  loop {
+    if engine^.constant_lengths.inner.len == 0_u64 {
+      break;
+    }
+    let dropped = take_back(window: &engine^.constant_lengths.inner);
+  }
+  loop {
+    if engine^.roots_valid.inner.len == 0_u64 {
+      break;
+    }
+    let dropped = take_back(window: &engine^.roots_valid.inner);
+  }
+  set engine^.generation = engine^.generation +sat 1_u64;
+  return unit;
+}
+
+fn record(engine: &Engine, outcome: Outcome) -> r: Outcome writes(engine.result_count), writes(engine.resumable), writes(engine.calling) {
+  set engine^.result_count = 0_u64;
+  set engine^.resumable = False();
+  set engine^.calling = False();
+  match outcome {
+    Done(count: n) => {
+      set engine^.result_count = n;
+    }
+    Error() => {
+    }
+    Budget() => {
+      set engine^.resumable = True();
+    }
+    HostStopped() => {
+    }
+    HostCall() => {
+      set engine^.calling = True();
+    }
+  }
+  return outcome;
+}
+
+fn invalid(engine: &Engine) -> r: Outcome writes(engine) {
+  let e = intern(engine: engine, bytes: &invalid_script[0_u64..26_u64]);
+  set engine^.vm.error = e;
+  set engine^.vm.raise_pc = 0_u64;
+  set engine^.result_count = 0_u64;
+  set engine^.resumable = False();
+  set engine^.calling = False();
+  return Outcome::Error();
+}
+
+const invalid_script: Array<u8, 26> = "invalid or inactive script";
+
+fn start<interface Host<E>>(engine: &Engine, env: &E, script: ScriptId, budget: u64) -> r: Outcome writes(engine), writes(env) {
+  reset(engine: engine);
+  let s = script.slot;
+  if script.generation == engine^.generation {
+    refresh_roots(engine: engine, slot: s);
+    if s < engine^.scripts.inner.len {
+      set engine^.active = Some<ScriptId>(value: script);
+      let out = pkg::vm::start::<Host<E>>(script: &engine^.scripts.inner[s], stack: &engine^.stack, vm: &engine^.vm, env: env, proto: 0_u32, argc: 0_u64, budget: budget);
+      return record(engine: engine, outcome: out);
+    }
+  }
+  return invalid(engine: engine);
+}
+
+fn resume<interface Host<E>>(engine: &Engine, env: &E, budget: u64) -> r: Outcome writes(engine), writes(env) {
+  if engine^.resumable {
+    let active = engine^.active;
+    match active {
+      None() => {
+      }
+      Some(value: id) => {
+        let s = id.slot;
+        if id.generation == engine^.generation {
+          refresh_roots(engine: engine, slot: s);
+          if s < engine^.scripts.inner.len {
+            let out = pkg::vm::resume::<Host<E>>(script: &engine^.scripts.inner[s], stack: &engine^.stack, vm: &engine^.vm, env: env, budget: budget);
+            return record(engine: engine, outcome: out);
+          }
+        }
+      }
+    }
+  }
+  return invalid(engine: engine);
+}
+
+fn pending_call(engine: &Engine) -> r: Option<PendingCall> reads(engine) {
+  if engine^.calling {
+    let call = engine^.vm.pending;
+    return Some<PendingCall>(value: call);
+  }
+  return None<PendingCall>();
+}
+
+fn pending_argument(engine: &Engine, index: u64) -> r: Value reads(engine) {
+  if engine^.calling {
+    return pkg::vm::pending_argument(vm: &engine^.vm, stack: &engine^.stack, index: index);
+  }
+  return Value::Nil();
+}
+
+fn complete_call<interface Host<E>>(engine: &Engine, env: &E, results: &[Value], budget: u64) -> r: Outcome reads(results), writes(engine), writes(env) {
+  if engine^.calling {
+    let active = engine^.active;
+    match active {
+      None() => {
+      }
+      Some(value: id) => {
+        let s = id.slot;
+        if id.generation == engine^.generation {
+          refresh_roots(engine: engine, slot: s);
+          if s < engine^.scripts.inner.len {
+            let out = pkg::vm::complete_call::<Host<E>>(script: &engine^.scripts.inner[s], stack: &engine^.stack, vm: &engine^.vm, env: env, results: results, budget: budget);
+            return record(engine: engine, outcome: out);
+          }
+        }
+      }
+    }
+  }
+  return invalid(engine: engine);
+}
+
+fn fail_call<interface Host<E>>(engine: &Engine, env: &E, error: Value, budget: u64) -> r: Outcome writes(engine), writes(env) {
+  if engine^.calling {
+    let active = engine^.active;
+    match active {
+      None() => {
+      }
+      Some(value: id) => {
+        let s = id.slot;
+        if id.generation == engine^.generation {
+          refresh_roots(engine: engine, slot: s);
+          if s < engine^.scripts.inner.len {
+            let out = pkg::vm::fail_call::<Host<E>>(script: &engine^.scripts.inner[s], stack: &engine^.stack, vm: &engine^.vm, env: env, error: error, budget: budget);
+            return record(engine: engine, outcome: out);
+          }
+        }
+      }
+    }
+  }
+  return invalid(engine: engine);
+}
+
+fn error_line(engine: &Engine) -> r: u64 reads(engine) {
+  let at = engine^.vm.raise_pc;
+  if at > 0_u64 {
+    let pc = at - 1_u64;
+    if pc < engine^.vm.lineinfo.inner.len {
+      return cvt::<u32, u64>(engine^.vm.lineinfo.inner[pc]);
+    }
+  }
+  return 0_u64;
+}
+
+fn result(engine: &Engine, index: u64) -> r: Option<Value> reads(engine) {
+  if index < engine^.result_count {
+    if index < engine^.stack.inner.len {
+      let v = engine^.stack.inner[index];
+      return Some<Value>(value: v);
+    }
+  }
+  return None<Value>();
+}
+
+fn pin(engine: &Engine, value: Value) -> r: Option<u64> writes(engine) {
+  let n = engine^.pins.inner.len;
+  if n < 18446744073709551615_u64 {
+    append_value(out: &engine^.pins, value: value);
+    if n < engine^.pins.inner.len {
+      invalidate_roots(engine: engine);
+      return Some<u64>(value: n);
+    }
+  }
+  return None<u64>();
+}
+
+fn unpin(engine: &Engine, token: u64) -> r: unit writes(engine) {
+  if token < engine^.pins.inner.len {
+    set engine^.pins.inner[token] = Value::Nil();
+    invalidate_roots(engine: engine);
+  }
+  return unit;
+}
+
+fn set_pcall_error_field(engine: &Engine, field: &[u8]) -> r: unit reads(field), writes(engine.vm.pcall_field) {
+  let name = box_slots_new::<u8>(capacity: field^.len);
+  for (i in 0_u64..field^.len) {
+    if name.inner.len < name.inner.cap {
+      let b = field^[i];
+      place_back(window: &name.inner, value: b);
+    }
+  }
+  set engine^.vm.pcall_field = move name;
+  return unit;
+}
+
+fn set_gc_stress(engine: &Engine, enabled: Bool) -> r: unit writes(engine.vm.heap.gc_stress) {
+  set engine^.vm.heap.gc_stress = enabled;
+  return unit;
+}
+
+fn collection_count(engine: &Engine) -> r: u64 reads(engine.vm.heap.collections) {
+  return engine^.vm.heap.collections;
+}

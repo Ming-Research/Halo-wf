@@ -1,0 +1,54 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "integer",
+      "value": 1
+    },
+    {
+      "type": "integer",
+      "value": 2
+    },
+    {
+      "type": "integer",
+      "value": 3
+    },
+    {
+      "type": "integer",
+      "value": 2
+    },
+    {
+      "type": "bulk",
+      "bytes": "WRONGTYPE Operation against a key holding the wrong kind of value"
+    },
+    {
+      "type": "bulk",
+      "bytes": "a3b4"
+    },
+    {
+      "type": "bulk",
+      "bytes": "2"
+    },
+    {
+      "type": "bulk",
+      "bytes": "WRONGTYPE Operation against a key holding the wrong kind of value"
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "1"
+        },
+        {
+          "type": "bulk",
+          "bytes": "a"
+        },
+        {
+          "type": "bulk",
+          "bytes": "b"
+        }
+      ]
+    }
+  ]
+}

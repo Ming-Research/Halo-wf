@@ -11,7 +11,7 @@
     },
     {
       "type": "bulk",
-      "bytes": "nan"
+      "bytes": "-nan"
     },
     {
       "type": "integer",

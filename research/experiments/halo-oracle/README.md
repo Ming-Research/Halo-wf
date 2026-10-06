@@ -5,7 +5,7 @@ This corpus records the exact RESP2 replies of Redis 7.0.15 for small Lua 5.1
 and its firn bindings described in [Halo's design](../../investigations/halo/DESIGN.md).
 It is explicitly invoked research tooling, outside the compiler gate.
 
-There are 80 scripts: 48 `lua-core`, 16 `redis-api`, 6 `apps`, and 10 `libs`.
+There are 81 scripts: 48 `lua-core`, 16 `redis-api`, 6 `apps`, and 11 `libs`.
 The scripts, replies and runner belong here until the oracle is replaced or
 Halo/firn scripting is retired. Each case is consumed by `run.sh`; the table
 below is the index of the observations it protects.
@@ -31,15 +31,29 @@ From the repository root, regenerate and then compare without rewriting:
 
 ```sh
 research/experiments/halo-oracle/run.sh --generate
+research/experiments/halo-oracle/run.sh --check --filter lua-core/assert
 research/experiments/halo-oracle/run.sh --check
 ```
 
-The default server is `/private/tmp/wf-redis-7.0.15/src/redis-server`.
+This runner only executes Redis and never builds or checks Whitefoot code.
+Compiler cache, `--no-cache` and `--full-lto` options belong to the
+[Halo comparison runner](../halo-e2e/README.md), not this RESP2 client.
+It uses a local TCP connection, so omit it from runs that prohibit network access.
+
+The default server is `/private/tmp/wf-redis-7.0.15/src/redis-server`, a
+macOS build; the reference replies are recorded on x86-64 Linux by
+[oracle-reference.yml](../../../.github/workflows/oracle-reference.yml),
+which builds Redis 7.0.15 from source and keeps the new replies and their
+difference from `expected/` as an artifact for review. The replies in
+`expected/` are that recording; the first one changed only
+`lua-core/nonfinite`, whose `0/0` prints `-nan` on x86-64 (a negative default
+NaN, printed with its sign by glibc) where the earlier macOS arm64 recording
+printed `nan`.
 Python 3 and that executable are the only dependencies. `--server PATH`
 can select another Redis 7.0.15 executable; its reported version is checked.
 The runner starts it on a free loopback port with `--save '' --appendonly no`,
-keeps all server files in a temporary directory under `/private/tmp` outside
-the repository, flushes the database before and after each case, and stops
+keeps all server files in a directory under the system's temporary
+directory, outside the repository, flushes the database before and after each case, and stops
 and waits for the server on completion, failure or interruption. Socket
 operations have a five-second timeout. Redis replies are collected before
 any expected file is written, so an unexpected script error cannot partly
@@ -76,7 +90,7 @@ mode requires `--check` and cannot regenerate expected replies. It does not
 start or stop the candidate. Use a dedicated test instance: before and after
 each case it deletes every declared corpus key with `DEL`. All writes in
 this corpus target declared `halo-oracle:*` keys, so this isolates cases
-without requiring `FLUSHDB`, which firn currently lacks. Other clients must
+without requiring `FLUSHDB`, so a host without it can run the corpus. Other clients must
 not alter these keys or scripting state during the run. A nonzero exit means
 a setup/protocol failure, an unexpected top-level error state, or at least
 one byte-for-byte reply mismatch; mismatches identify the case and expected
@@ -167,6 +181,7 @@ not automatically used to overwrite this baseline.
 | libs | [bit-logical](scripts/libs/bit-logical.lua) | bit.band, bor and bxor use signed 32-bit results. |
 | libs | [bit-shifts-hex](scripts/libs/bit-shifts-hex.lua) | Shifts mask counts and tohex formats signed values as hex. |
 | libs | [cjson-arrays-nested](scripts/libs/cjson-arrays-nested.lua) | JSON arrays encode and nested object values decode without relying on object order. |
+| libs | [cjson-instance-methods](scripts/libs/cjson-instance-methods.lua) | Methods of a cjson.new() instance, called through the table and after extraction, beside a string.gmatch iterator. |
 | libs | [cjson-invalid](scripts/libs/cjson-invalid.lua) | Malformed JSON raises an error caught by pcall. |
 | libs | [cjson-numbers](scripts/libs/cjson-numbers.lua) | cjson number formatting is independent of RESP integer conversion. |
 | libs | [cjson-objects](scripts/libs/cjson-objects.lua) | JSON objects, empty table encoding and decoded null/boolean values. |
