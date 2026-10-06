@@ -4,7 +4,7 @@
 
 Firn's deployment milestone needs Redis scripting (`EVAL`, `EVALSHA`), and
 the owner selected a Lua interpreter written in Whitefoot rather than an
-embedded native engine ([design/language/firn](../../../design/language/firn.md)).
+embedded native engine ([design/language/firn](https://github.com/Ming-Research/Whitefoot/blob/c3c604fdf73970822975b5666c9386d5cf10c024/design/language/firn.md)).
 Halo is that engine: a general Lua 5.1 engine with an embedding interface,
 which firn hosts. The owner's rulings of 2026-10-04:
 
