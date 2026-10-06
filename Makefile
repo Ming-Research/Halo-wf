@@ -17,12 +17,15 @@ DESIGN_TREES := $(filter-out log,$(basename $(notdir $(wildcard $(ROOT)/design/*
 DESIGN_REVIEW_BASE ?= origin/main
 
 # The pinned Whitefoot compiler. whitefoot.pin holds one line,
-# `release = wf-<12-character commit hash>`, naming a release of
-# Ming-Research/Whitefoot; `make compiler` downloads that release's
-# whitefootc for this host, checked against its SHA256SUMS and manifest, to
-# build/whitefoot/<release>/.
+# `release = wf-<12-character commit hash>` for a commit on Whitefoot's main,
+# or `release = wf-exp-<12-character commit hash>` for an experiment release
+# of an unmerged commit, naming a release of Ming-Research/Whitefoot;
+# `make compiler` downloads that release's whitefootc for this host, checked
+# against its SHA256SUMS and manifest, to build/whitefoot/<release>/.
 PIN := $(ROOT)/whitefoot.pin
-RELEASE := $(shell sed -n 's/^release = \(wf-[0-9a-f]\{12\}\)$$/\1/p' $(PIN) 2>/dev/null)
+PIN_LINE := ^release = wf-(exp-)?[0-9a-f]{12}$$
+RELEASE := $(shell sed -n -E 's/^release = (wf-(exp-)?[0-9a-f]{12})$$/\1/p' $(PIN) 2>/dev/null)
+RELEASE_COMMIT := $(lastword $(subst -, ,$(RELEASE)))
 RELEASES := https://github.com/Ming-Research/Whitefoot/releases/download
 HOST := $(shell uname -s)-$(shell uname -m)
 ASSET := $(if $(filter Linux-x86_64,$(HOST)),whitefootc-linux-x86_64.tar.gz,$(if $(filter Darwin-arm64,$(HOST)),whitefootc-macos-arm64.tar.gz))
@@ -40,7 +43,9 @@ $(PIN):
 	@exit 1
 
 $(WHITEFOOTC): $(PIN)
-	@test -n "$(RELEASE)" || { echo "whitefoot.pin must hold one line: release = wf-<12-character commit hash>" >&2; exit 1; }
+	@test "$$(grep -c '' $(PIN))" = 1 && grep -qE '$(PIN_LINE)' $(PIN) || { \
+		echo "whitefoot.pin must hold exactly one line: release = wf-<12-character commit hash> (or wf-exp-<hash> on an experiment branch)" >&2; \
+		exit 1; }
 	@test -n "$(ASSET)" || { echo "Whitefoot publishes no compiler for $(HOST)" >&2; exit 1; }
 	@rm -rf $(WHITEFOOT).part && mkdir -p $(WHITEFOOT).part
 	@cd $(WHITEFOOT).part && for file in $(ASSET) SHA256SUMS whitefoot-release.json; do \
@@ -49,7 +54,7 @@ $(WHITEFOOTC): $(PIN)
 			exit 1; }; \
 	done
 	@cd $(WHITEFOOT).part && grep '  $(ASSET)$$' SHA256SUMS | shasum -a 256 -c -
-	@cd $(WHITEFOOT).part && $(PY) -c 'import json, sys; m = json.load(open("whitefoot-release.json")); sys.exit(0 if m["tag"] == "$(RELEASE)" and m["commit"].startswith("$(RELEASE:wf-%=%)") else "whitefoot-release.json does not describe $(RELEASE)")'
+	@cd $(WHITEFOOT).part && $(PY) -c 'import json, sys; m = json.load(open("whitefoot-release.json")); sys.exit(0 if m["tag"] == "$(RELEASE)" and m["commit"].startswith("$(RELEASE_COMMIT)") else "whitefoot-release.json does not describe $(RELEASE)")'
 	@cd $(WHITEFOOT).part && tar -xzf $(ASSET) && rm $(ASSET) && test -x whitefootc
 	@rm -rf $(WHITEFOOT) && mv $(WHITEFOOT).part $(WHITEFOOT)
 	@echo "whitefootc $(RELEASE) for $(HOST) at $(WHITEFOOTC)"
@@ -59,7 +64,8 @@ $(WHITEFOOTC): $(PIN)
 # runner compares the 80 scripts of research/experiments/halo-oracle at
 # budgets 1, 7 and 1000, in ordinary and collector-stress modes, byte for
 # byte with Redis 7.0.15's recorded replies. It exits nonzero on any
-# difference. The test program is built once, with the graph always named
+# difference in either mode, after running both, and keeps each mode's
+# report and actual replies under build/halo-e2e/ for inspection. The test program is built once, with the graph always named
 # by the same relative path so that the compiler's cache key stays stable.
 E2E := $(BUILD)/halo-e2e
 E2E_TEST := $(E2E)/test
@@ -71,8 +77,11 @@ $(E2E_TEST): compiler FORCE
 	@cd $(ROOT)/research/experiments/halo-e2e && $(WHITEFOOTC) --graph modules.wfg --entry test -o $@
 
 oracle: $(E2E_TEST)
-	@$(E2E_RUN) --report $(E2E)/ordinary.md
-	@$(E2E_RUN) --gc-stress --report $(E2E)/stress.md
+	@rm -rf $(E2E)/ordinary $(E2E)/stress
+	@status=0; \
+	$(E2E_RUN) --report $(E2E)/ordinary.md --actual $(E2E)/ordinary || status=1; \
+	$(E2E_RUN) --gc-stress --report $(E2E)/stress.md --actual $(E2E)/stress || status=1; \
+	exit $$status
 
 # The design skill's own tests, then the lint of every live tree; until the
 # first tree lands there is nothing to lint.
