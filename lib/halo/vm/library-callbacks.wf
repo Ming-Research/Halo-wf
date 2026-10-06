@@ -159,6 +159,9 @@ fn resume_library<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots
       Stop() => {
         return Step::Stop();
       }
+      Pending() => {
+        return Step::Error();
+      }
     }
   }
   return Step::Error();

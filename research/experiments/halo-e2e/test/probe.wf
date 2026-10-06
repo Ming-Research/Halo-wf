@@ -18,6 +18,9 @@ fn probe_call(env: &Probe, vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: 
   if env^.mode == 2_u8 {
     return HostOutcome::Stop();
   }
+  if env^.mode == 3_u8 {
+    return HostOutcome::Pending();
+  }
   if env^.mode == 1_u8 {
     set vm^.error = Value::Num(n: 99.0_f64);
     return HostOutcome::Raised();
@@ -34,6 +37,12 @@ binding ProbeHost : Host<Probe> {
 
 fn probe_run(engine: &Engine, env: &Probe, script: halo::embed::ScriptId) -> r: Outcome writes(engine), writes(env) {
   let out = halo::embed::start::<ProbeHost>(engine: engine, env: env, script: script, budget: 1_u64);
+  return probe_settle(engine: engine, env: env, outcome: out);
+}
+
+fn probe_settle(engine: &Engine, env: &Probe, outcome: Outcome) -> r: Outcome writes(engine), writes(env) {
+  doc "Resumes budget checkpoints until the run finishes, stops or leaves a host call pending.";
+  let out = outcome;
   let steps = 0_u64;
   loop {
     match out {
@@ -44,6 +53,9 @@ fn probe_run(engine: &Engine, env: &Probe, script: halo::embed::ScriptId) -> r: 
         return out;
       }
       HostStopped() => {
+        return out;
+      }
+      HostCall() => {
         return out;
       }
       Budget() => {
@@ -129,6 +141,9 @@ fn embed_probe() -> r: u8 pure {
     HostStopped() => {
       return 7_u8;
     }
+    HostCall() => {
+      return 7_u8;
+    }
   }
   let ok = returned(engine: &engine, expected: 283.0_f64);
   if bnot(ok) {
@@ -158,6 +173,9 @@ fn embed_probe() -> r: u8 pure {
       return 13_u8;
     }
     HostStopped() => {
+      return 14_u8;
+    }
+    HostCall() => {
       return 14_u8;
     }
   }
@@ -192,6 +210,9 @@ fn embed_probe() -> r: u8 pure {
     HostStopped() => {
       return 20_u8;
     }
+    HostCall() => {
+      return 20_u8;
+    }
   }
   let error = halo::embed::error_value(engine: &engine);
   match halo::embed::number_of(value: error) {
@@ -209,6 +230,9 @@ fn embed_probe() -> r: u8 pure {
   let stopped = probe_run(engine: &engine, env: &env, script: active);
   match stopped {
     HostStopped() => {
+    }
+    HostCall() => {
+      return 70_u8;
     }
     Error() => {
       return 23_u8;
@@ -232,6 +256,9 @@ fn embed_probe() -> r: u8 pure {
       return 35_u8;
     }
     HostStopped() => {
+      return 36_u8;
+    }
+    HostCall() => {
       return 36_u8;
     }
   }
@@ -272,6 +299,9 @@ fn embed_probe() -> r: u8 pure {
     HostStopped() => {
       return 30_u8;
     }
+    HostCall() => {
+      return 30_u8;
+    }
   }
   let invalid_resume = halo::embed::resume::<ProbeHost>(engine: &engine, env: &env, budget: 1_u64);
   match invalid_resume {
@@ -284,6 +314,9 @@ fn embed_probe() -> r: u8 pure {
       return 32_u8;
     }
     HostStopped() => {
+      return 33_u8;
+    }
+    HostCall() => {
       return 33_u8;
     }
   }
@@ -321,6 +354,9 @@ fn embed_probe() -> r: u8 pure {
   let nested_outcome = probe_run(engine: &engine, env: &env, script: nested_id);
   match nested_outcome {
     HostStopped() => {
+    }
+    HostCall() => {
+      return 71_u8;
     }
     Done(..) => {
       return 42_u8;
@@ -364,6 +400,9 @@ fn embed_probe() -> r: u8 pure {
         HostStopped() => {
           return 51_u8;
         }
+        HostCall() => {
+          return 51_u8;
+        }
       }
       let right_reply = returned(engine: &engine, expected: 73.0_f64);
       if bnot(right_reply) {
@@ -403,6 +442,9 @@ fn root_updates_probe(omit_refresh: u8) -> r: u8 pure {
     HostStopped() => {
       return 54_u8;
     }
+    HostCall() => {
+      return 54_u8;
+    }
   }
   let held = halo::embed::intern(engine: &engine, bytes: &probe_text_1[0_u64..24_u64]);
   let pinned = halo::embed::pin(engine: &engine, value: held);
@@ -428,6 +470,9 @@ fn root_updates_probe(omit_refresh: u8) -> r: u8 pure {
       return 57_u8;
     }
     HostStopped() => {
+      return 57_u8;
+    }
+    HostCall() => {
       return 57_u8;
     }
   }
@@ -469,6 +514,9 @@ fn root_updates_probe(omit_refresh: u8) -> r: u8 pure {
     HostStopped() => {
       return 67_u8;
     }
+    HostCall() => {
+      return 67_u8;
+    }
   }
   let collected = halo::embed::collection_count(engine: &engine);
   if collected <= after {
@@ -503,6 +551,9 @@ fn root_updates_probe(omit_refresh: u8) -> r: u8 pure {
       return 63_u8;
     }
     HostStopped() => {
+      return 63_u8;
+    }
+    HostCall() => {
       return 63_u8;
     }
   }
@@ -563,8 +614,159 @@ fn cached_string_live(engine: &Engine, id: halo::embed::ScriptId) -> r: Bool rea
   return False();
 }
 
+fn outcome_code(outcome: Outcome) -> r: u8 pure {
+  match outcome {
+    Done(..) => {
+      return 0_u8;
+    }
+    Error() => {
+      return 1_u8;
+    }
+    Budget() => {
+      return 2_u8;
+    }
+    HostStopped() => {
+      return 3_u8;
+    }
+    HostCall() => {
+      return 4_u8;
+    }
+  }
+}
+
+fn pending_probe() -> r: u8 pure {
+  doc "A host call left pending returns its results or raises its error where it was made, at top level and inside a library callback, and the engine refuses resume while a call is pending.";
+  let engine = halo::embed::new_engine(limit: 67108864_u64);
+  let env = Probe(mode: 3_u8, calls: 0_u64);
+  let host = Value::Builtin(id: 4096_u32);
+  let put = halo::embed::set_global(engine: &engine, name: &probe_text_0[0_u64..4_u64], value: host);
+  let enabled = True();
+  halo::embed::set_gc_stress(engine: &engine, enabled: enabled);
+  let top = halo::embed::ScriptId(slot: 0_u64, generation: 0_u64);
+  let compiled = halo::embed::compile(engine: &engine, chunk_name: &probe_text_4[0_u64..12_u64], source: &pending_top_source[0_u64..23_u64]);
+  match move compiled {
+    Err(..) => {
+      return 72_u8;
+    }
+    Ok(value: id) => {
+      set top = id;
+    }
+  }
+  let nested = top;
+  let compiled_nested = halo::embed::compile(engine: &engine, chunk_name: &probe_text_4[0_u64..12_u64], source: &pending_nested_source[0_u64..108_u64]);
+  match move compiled_nested {
+    Err(..) => {
+      return 73_u8;
+    }
+    Ok(value: id) => {
+      set nested = id;
+    }
+  }
+  let first = probe_run(engine: &engine, env: &env, script: top);
+  if outcome_code(outcome: first) != 4_u8 {
+    return 74_u8;
+  }
+  match halo::embed::pending_call(engine: &engine) {
+    None() => {
+      return 75_u8;
+    }
+    Some(value: call) => {
+      if call.id != 4096_u32 {
+        return 76_u8;
+      }
+      if call.argc != 2_u64 {
+        return 76_u8;
+      }
+    }
+  }
+  let seven = halo::embed::pending_argument(engine: &engine, index: 0_u64);
+  match halo::embed::number_of(value: seven) {
+    Is(x: observed) => {
+      let same = feq(observed, 7.0_f64);
+      if bnot(same) {
+        return 77_u8;
+      }
+    }
+    Not() => {
+      return 77_u8;
+    }
+  }
+  let past = halo::embed::pending_argument(engine: &engine, index: 2_u64);
+  if bnot(is_nil(v: past)) {
+    return 78_u8;
+  }
+  let answer = Value::Num(n: 41.0_f64);
+  let results = array_filled::<Value, 1>(value: answer);
+  let completed = halo::embed::complete_call::<ProbeHost>(engine: &engine, env: &env, results: &results[0_u64..1_u64], budget: 1_u64);
+  let settled = probe_settle(engine: &engine, env: &env, outcome: completed);
+  if outcome_code(outcome: settled) != 0_u8 {
+    return 79_u8;
+  }
+  let sum = returned(engine: &engine, expected: 42.0_f64);
+  if bnot(sum) {
+    return 80_u8;
+  }
+  let again = halo::embed::complete_call::<ProbeHost>(engine: &engine, env: &env, results: &results[0_u64..1_u64], budget: 1_u64);
+  if outcome_code(outcome: again) != 1_u8 {
+    return 81_u8;
+  }
+  let inner = probe_run(engine: &engine, env: &env, script: nested);
+  if outcome_code(outcome: inner) != 4_u8 {
+    return 82_u8;
+  }
+  match halo::embed::pending_call(engine: &engine) {
+    None() => {
+      return 83_u8;
+    }
+    Some(value: call) => {
+      if call.argc != 1_u64 {
+        return 83_u8;
+      }
+    }
+  }
+  let error = halo::embed::intern(engine: &engine, bytes: &pending_error[0_u64..4_u64]);
+  let failed = halo::embed::fail_call::<ProbeHost>(engine: &engine, env: &env, error: error, budget: 1_u64);
+  let caught = probe_settle(engine: &engine, env: &env, outcome: failed);
+  if outcome_code(outcome: caught) != 0_u8 {
+    return 84_u8;
+  }
+  match halo::embed::result(engine: &engine, index: 0_u64) {
+    None() => {
+      return 85_u8;
+    }
+    Some(value: v) => {
+      match halo::embed::string_of(engine: &engine, value: v) {
+        None() => {
+          return 85_u8;
+        }
+        Some(value: view) => {
+          if view.length != 5_u64 {
+            return 85_u8;
+          }
+        }
+      }
+    }
+  }
+  let refused = probe_run(engine: &engine, env: &env, script: top);
+  if outcome_code(outcome: refused) != 4_u8 {
+    return 86_u8;
+  }
+  let resumed = halo::embed::resume::<ProbeHost>(engine: &engine, env: &env, budget: 1_u64);
+  if outcome_code(outcome: resumed) != 1_u8 {
+    return 87_u8;
+  }
+  let late = halo::embed::complete_call::<ProbeHost>(engine: &engine, env: &env, results: &results[0_u64..1_u64], budget: 1_u64);
+  if outcome_code(outcome: late) != 1_u8 {
+    return 88_u8;
+  }
+  return 0_u8;
+}
+
 fn smoke() -> status: ExitStatus pure {
   let code = embed_probe();
+  if code == 0_u8 {
+    set code = pending_probe();
+  }
   return std::process::exit_status(code: code);
 }
 
@@ -612,3 +814,9 @@ fn format_matches(engine: &Engine, line: u64, want: &[u8]) -> r: Bool reads(engi
 const nested_stop_source: Array<u8, 139> = "return tostring(setmetatable({}, {__tostring=function() return tostring(setmetatable({}, {__tostring=function() return host() end})) end}))";
 
 const stop_recovery_source: Array<u8, 9> = "return 73";
+
+const pending_top_source: Array<u8, 23> = "return host(7, 'a') + 1";
+
+const pending_nested_source: Array<u8, 108> = "return tostring(setmetatable({}, {__tostring=function() local ok, e = pcall(host, 1); return e .. '!' end}))";
+
+const pending_error: Array<u8, 4> = "boom";

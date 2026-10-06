@@ -169,6 +169,9 @@ fn fixture_smoke(budget: u64) -> r: Bool pure {
       HostStopped() => {
         return False();
       }
+      HostCall() => {
+        return False();
+      }
       Budget() => {
         set suspensions = suspensions +sat 1_u64;
         set out = halo::vm::resume::<TestHost>(script: &script, stack: &stack, vm: &vm, env: &env, budget: budget);
@@ -254,6 +257,9 @@ fn fixture_fib(budget: u64) -> r: Bool pure {
       HostStopped() => {
         return False();
       }
+      HostCall() => {
+        return False();
+      }
       Budget() => {
         set suspensions = suspensions +sat 1_u64;
         set out = halo::vm::resume::<TestHost>(script: &script, stack: &stack, vm: &vm, env: &env, budget: budget);
@@ -316,6 +322,9 @@ fn fixture_numeric_for(budget: u64) -> r: Bool pure {
         return False();
       }
       HostStopped() => {
+        return False();
+      }
+      HostCall() => {
         return False();
       }
       Budget() => {
@@ -400,6 +409,9 @@ fn fixture_counter(budget: u64) -> r: Bool pure {
       HostStopped() => {
         return False();
       }
+      HostCall() => {
+        return False();
+      }
       Budget() => {
         set suspensions = suspensions +sat 1_u64;
         set out = halo::vm::resume::<TestHost>(script: &script, stack: &stack, vm: &vm, env: &env, budget: budget);
@@ -463,6 +475,9 @@ fn fixture_tables(budget: u64) -> r: Bool pure {
         return False();
       }
       HostStopped() => {
+        return False();
+      }
+      HostCall() => {
         return False();
       }
       Budget() => {
@@ -578,6 +593,9 @@ fn fixture_meta(budget: u64) -> r: Bool pure {
         return False();
       }
       HostStopped() => {
+        return False();
+      }
+      HostCall() => {
         return False();
       }
       Budget() => {
@@ -720,6 +738,9 @@ fn fixture_protected_error(budget: u64) -> r: Bool pure {
       HostStopped() => {
         return False();
       }
+      HostCall() => {
+        return False();
+      }
       Budget() => {
         set suspensions = suspensions +sat 1_u64;
         set out = halo::vm::resume::<TestHost>(script: &script, stack: &stack, vm: &vm, env: &env, budget: budget);
@@ -781,6 +802,9 @@ fn fixture_vararg(budget: u64) -> r: Bool pure {
         return False();
       }
       HostStopped() => {
+        return False();
+      }
+      HostCall() => {
         return False();
       }
       Budget() => {
@@ -865,6 +889,9 @@ fn fixture_tail(budget: u64) -> r: Bool pure {
         return False();
       }
       HostStopped() => {
+        return False();
+      }
+      HostCall() => {
         return False();
       }
       Budget() => {
@@ -1160,6 +1187,18 @@ fn fixture_host(mode: u8, metamethod: Bool) -> r: Bool pure {
       }
       return number_is(stack: &stack, slot: env.last_func, expected: 73.0_f64);
     }
+    HostCall() => {
+      if mode != 0_u8 {
+        return False();
+      }
+      if stack.inner.len != env.last_len {
+        return False();
+      }
+      if bnot(env.stopped) {
+        return False();
+      }
+      return number_is(stack: &stack, slot: env.last_func, expected: 73.0_f64);
+    }
   }
 }
 
@@ -1300,6 +1339,8 @@ fn fixture_error_level(level: u8, callback: u8) -> r: Bool pure {
     Budget() => {
     }
     HostStopped() => {
+    }
+    HostCall() => {
     }
   }
   return False();

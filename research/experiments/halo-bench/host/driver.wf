@@ -187,6 +187,9 @@ fn main(inputs: std::process::Inputs) -> status: std::process::ExitStatus pure w
           HostStopped() => {
             return std::process::exit_status(code: 6_u8);
           }
+          HostCall() => {
+            return std::process::exit_status(code: 6_u8);
+          }
           Budget() => {
             set suspends = suspends +sat 1_u64;
             set outcome = halo::embed::resume::<BenchHost>(engine: &engine, env: &env, budget: budget);

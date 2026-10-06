@@ -243,6 +243,8 @@ fn builtin<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
       }
       Stop() => {
       }
+      Pending() => {
+      }
     }
     return outcome;
   }

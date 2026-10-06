@@ -353,6 +353,8 @@ fn prepare<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
                 }
                 Stop() => {
                 }
+                Pending() => {
+                }
               }
             }
             if library_callback {
@@ -365,6 +367,12 @@ fn prepare<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
             }
             Stop() => {
               return Step::Stop();
+            }
+            Pending() => {
+              let call = PendingCall(id: bound_id_1, argc: nargs, func: fslot, wanted: nr, return_pc: return_pc, base: base, kbase: kbase, tail: tailing, activation: vm^.activation, top: vm^.top);
+              set vm^.pending = call;
+              set vm^.call_pending = True();
+              return Step::Budget();
             }
             Returned(count: n) => {
               if tailing {
@@ -461,21 +469,41 @@ fn start<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm,
   }
   let atom0 = False();
   let step = prepare::<Host<E>>(code: &script^.code, consts: &script^.consts, vm: vm, stack: stack, env: env, func: 0_u64, argc: argc, wanted: -1_i64, return_pc: 0_u64, base: 0_u64, kbase: 0_u64, tail: atom0);
-  return dispatch_step::<Host<E>>(code: &script^.code, consts: &script^.consts, stack: stack, vm: vm, env: env, step: step);
+  return drive::<Host<E>>(script: script, stack: stack, vm: vm, env: env, step: step);
 }
 
 fn resume<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, budget: u64) -> r: Outcome reads(script), writes(stack), writes(vm), writes(env) {
+  if vm^.call_pending {
+    let ignored = raise_text(vm: vm, text: &calls_text_pending[0_u64..22_u64]);
+    return Outcome::Error();
+  }
   set vm^.budget = budget;
   if vm^.suspended {
     restore_stopped_stack(vm: vm, stack: stack);
     set vm^.suspended = False();
   }
   let step = Step::Jump(pc: vm^.saved_pc, base: vm^.saved_base, kbase: vm^.saved_kbase);
+  return drive::<Host<E>>(script: script, stack: stack, vm: vm, env: env, step: step);
+}
+
+fn suspension(vm: &Vm) -> r: Outcome reads(vm) {
+  doc "A suspended run reports a pending host call when one is recorded, and otherwise its budget checkpoint.";
+  if vm^.call_pending {
+    return Outcome::HostCall();
+  }
+  return Outcome::Budget();
+}
+
+fn drive<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, step: Step) -> r: Outcome reads(script), writes(stack), writes(vm), writes(env) {
+  doc "Dispatches step, then completes or unwinds the library callbacks a suspension left parked, until the run finishes or suspends again.";
   let outcome = dispatch_step::<Host<E>>(code: &script^.code, consts: &script^.consts, stack: stack, vm: vm, env: env, step: step);
   loop {
     match outcome {
       Budget() => {
-        return Outcome::Budget();
+        return suspension(vm: vm);
+      }
+      HostCall() => {
+        return suspension(vm: vm);
       }
       HostStopped() => {
         return Outcome::HostStopped();
@@ -510,6 +538,92 @@ fn resume<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm
   }
   return Outcome::Error();
 }
+
+fn pending_argument(vm: &Vm, stack: &Box<Slots<Value>>, index: u64) -> r: Value reads(vm), reads(stack) {
+  if vm^.call_pending {
+    let argc = vm^.pending.argc;
+    if index < argc {
+      let func = vm^.pending.func;
+      let first = func +sat 1_u64;
+      let at = first +sat index;
+      if vm^.suspended {
+        if at < vm^.stopped_stack.inner.len {
+          return vm^.stopped_stack.inner[at];
+        }
+      } else {
+        if at < stack^.inner.len {
+          return stack^.inner[at];
+        }
+      }
+    }
+  }
+  return Value::Nil();
+}
+
+fn resume_pending(stack: &Box<Slots<Value>>, vm: &Vm, budget: u64) -> r: PendingCall writes(stack), writes(vm) {
+  doc "Clears the pending call and restores the state at its call point: the parked stack, the activation and the top.";
+  let call = vm^.pending;
+  set vm^.call_pending = False();
+  set vm^.budget = budget;
+  if vm^.suspended {
+    restore_stopped_stack(vm: vm, stack: stack);
+    set vm^.suspended = False();
+  }
+  set vm^.activation = call.activation;
+  set vm^.top = call.top;
+  return call;
+}
+
+fn complete_call<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, results: &[Value], budget: u64) -> r: Outcome reads(script), reads(results), writes(stack), writes(vm), writes(env) {
+  if bnot(vm^.call_pending) {
+    let ignored = raise_text(vm: vm, text: &calls_text_no_call[0_u64..23_u64]);
+    return Outcome::Error();
+  }
+  let call = resume_pending(stack: stack, vm: vm, budget: budget);
+  let count = results^.len;
+  let func = call.func;
+  let end = func +sat count;
+  let room = end +sat 1_u64;
+  ensure_stack(stack: stack, size: room);
+  for (i in 0_u64..count) {
+    let at = func +sat i;
+    if at < stack^.inner.len {
+      let value = results^[i];
+      set stack^.inner[at] = value;
+    }
+  }
+  let step = Step::Error();
+  let finished = False();
+  if call.tail {
+    if vm^.frames.inner.len > 0_u64 {
+      let old = take_back(window: &vm^.frames.inner);
+      let oldbase = old.base;
+      close_upvalues(vm: vm, stack: stack, level: oldbase);
+      set step = finish(vm: vm, stack: stack, frame: old, src: func, count: count);
+      set finished = True();
+    }
+  }
+  if bnot(finished) {
+    let frame = Frame(func: func, base: call.base, return_pc: call.return_pc, kbase: call.kbase, closure: no_handle, nresults: call.wanted, activation: call.activation, flags: 0_u8, varbase: 0_u64, varcount: 0_u64, frame_top: call.top);
+    set step = finish(vm: vm, stack: stack, frame: frame, src: func, count: count);
+  }
+  return drive::<Host<E>>(script: script, stack: stack, vm: vm, env: env, step: step);
+}
+
+fn fail_call<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, error: Value, budget: u64) -> r: Outcome reads(script), writes(stack), writes(vm), writes(env) {
+  if bnot(vm^.call_pending) {
+    let ignored = raise_text(vm: vm, text: &calls_text_no_call[0_u64..23_u64]);
+    return Outcome::Error();
+  }
+  let call = resume_pending(stack: stack, vm: vm, budget: budget);
+  set vm^.error = error;
+  let step = unwind(vm: vm, stack: stack);
+  return drive::<Host<E>>(script: script, stack: stack, vm: vm, env: env, step: step);
+}
+
+const calls_text_pending: Array<u8, 22> = "a host call is pending";
+
+const calls_text_no_call: Array<u8, 23> = "no host call is pending";
 
 fn dispatch_step<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, step: Step) -> r: Outcome reads(code), reads(consts), writes(stack), writes(vm), writes(env) {
   match step {

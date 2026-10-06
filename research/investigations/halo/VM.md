@@ -218,12 +218,22 @@ interface Host<E> {
       ensures stack^.inner.len == entry(stack)^.inner.len;
     };
 }
-enum HostOutcome { Returned(count: u64); Raised(); Stop(); }
+enum HostOutcome { Returned(count: u64); Raised(); Stop(); Pending(); }
 ```
 
 A host function's arguments are at `stack[func+1 .. func+1+argc)` and its
 results go from `stack[func]`. `Stop` ends the run with `HostStopped` and
-the stack intact. Halo exports to the host: `intern`, `string_of` (an index
+the stack intact. `Pending` suspends the run at the call and returns
+`HostCall` from `start` or `resume`: the VM records the call (its builtin id,
+argument count, function slot, wanted results, continuation, activation and
+top), and inside a library callback parks the stack as a budget suspension
+does. The host reads the call with `pending_call` and `pending_argument`, and
+answers it once: `complete_call` writes its results at the function slot and
+finishes the call as `Returned` would, and `fail_call` sets the error value and
+unwinds as `Raised` would, so a `pcall` in the calling activation catches it;
+each then dispatches with a fresh budget, completing or unwinding parked
+library callbacks as `resume` does. `resume` while a call is pending ends the
+run with an error. Halo exports to the host: `intern`, `string_of` (an index
 and length the host turns into a slice of the string's public readonly
 bytes, since no function returns a reference), `number_of`, `truthy`,
 `kind`, `new_table`, `table_append`, `table_set`, `table_get`,
@@ -231,7 +241,8 @@ bytes, since no function returns a reference), `number_of`, `truthy`,
 sets `KEYS` and `ARGV` from C), `pin`/`unpin`, `error_value` and
 `format_error` producing Redis's `@user_script:LINE: msg`. Script cache:
 `compile` returns a `ScriptId` or a compile error with PUC's text;
-`forget_all` is `SCRIPT FLUSH`. Running: `start`, `resume`, `reset`. The
+`forget_all` is `SCRIPT FLUSH`. Running: `start`, `resume`, `reset`,
+`complete_call`, `fail_call`. The
 slice protocol of the selected direction (C) is the host's: on `Budget`
 before its first write it resets, leaves the atomic statement, checks for a
 kill and restarts with a doubled budget; an undeclared key before the first

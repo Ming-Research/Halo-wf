@@ -85,7 +85,7 @@ fn new_engine(limit: u64) -> r: Engine pure {
   let valid = box_slots_new::<Bool>(capacity: 0_u64);
   let active = None<ScriptId>();
   let no = False();
-  let engine = Engine(vm: move vm, stack: move stack, scripts: move scripts, constant_lengths: move lengths, pins: move pins, roots_valid: move valid, generation: 0_u64, active: active, result_count: 0_u64, resumable: no);
+  let engine = Engine(vm: move vm, stack: move stack, scripts: move scripts, constant_lengths: move lengths, pins: move pins, roots_valid: move valid, generation: 0_u64, active: active, result_count: 0_u64, resumable: no, calling: no);
   install_core(engine: &engine);
   pkg::vm::install_libraries(vm: &engine.vm);
   return move engine;
@@ -157,6 +157,7 @@ fn reset(engine: &Engine) -> r: unit writes(engine) {
   set engine^.active = None<ScriptId>();
   set engine^.result_count = 0_u64;
   set engine^.resumable = False();
+  set engine^.calling = False();
   return unit;
 }
 
@@ -184,9 +185,10 @@ fn forget_all(engine: &Engine) -> r: unit writes(engine) {
   return unit;
 }
 
-fn record(engine: &Engine, outcome: Outcome) -> r: Outcome writes(engine.result_count), writes(engine.resumable) {
+fn record(engine: &Engine, outcome: Outcome) -> r: Outcome writes(engine.result_count), writes(engine.resumable), writes(engine.calling) {
   set engine^.result_count = 0_u64;
   set engine^.resumable = False();
+  set engine^.calling = False();
   match outcome {
     Done(count: n) => {
       set engine^.result_count = n;
@@ -198,6 +200,9 @@ fn record(engine: &Engine, outcome: Outcome) -> r: Outcome writes(engine.result_
     }
     HostStopped() => {
     }
+    HostCall() => {
+      set engine^.calling = True();
+    }
   }
   return outcome;
 }
@@ -207,6 +212,7 @@ fn invalid(engine: &Engine) -> r: Outcome writes(engine) {
   set engine^.vm.error = e;
   set engine^.result_count = 0_u64;
   set engine^.resumable = False();
+  set engine^.calling = False();
   return Outcome::Error();
 }
 
@@ -238,6 +244,63 @@ fn resume<interface Host<E>>(engine: &Engine, env: &E, budget: u64) -> r: Outcom
           refresh_roots(engine: engine, slot: s);
           if s < engine^.scripts.inner.len {
             let out = pkg::vm::resume::<Host<E>>(script: &engine^.scripts.inner[s], stack: &engine^.stack, vm: &engine^.vm, env: env, budget: budget);
+            return record(engine: engine, outcome: out);
+          }
+        }
+      }
+    }
+  }
+  return invalid(engine: engine);
+}
+
+fn pending_call(engine: &Engine) -> r: Option<PendingCall> reads(engine) {
+  if engine^.calling {
+    let call = engine^.vm.pending;
+    return Some<PendingCall>(value: call);
+  }
+  return None<PendingCall>();
+}
+
+fn pending_argument(engine: &Engine, index: u64) -> r: Value reads(engine) {
+  if engine^.calling {
+    return pkg::vm::pending_argument(vm: &engine^.vm, stack: &engine^.stack, index: index);
+  }
+  return Value::Nil();
+}
+
+fn complete_call<interface Host<E>>(engine: &Engine, env: &E, results: &[Value], budget: u64) -> r: Outcome reads(results), writes(engine), writes(env) {
+  if engine^.calling {
+    let active = engine^.active;
+    match active {
+      None() => {
+      }
+      Some(value: id) => {
+        let s = id.slot;
+        if id.generation == engine^.generation {
+          refresh_roots(engine: engine, slot: s);
+          if s < engine^.scripts.inner.len {
+            let out = pkg::vm::complete_call::<Host<E>>(script: &engine^.scripts.inner[s], stack: &engine^.stack, vm: &engine^.vm, env: env, results: results, budget: budget);
+            return record(engine: engine, outcome: out);
+          }
+        }
+      }
+    }
+  }
+  return invalid(engine: engine);
+}
+
+fn fail_call<interface Host<E>>(engine: &Engine, env: &E, error: Value, budget: u64) -> r: Outcome writes(engine), writes(env) {
+  if engine^.calling {
+    let active = engine^.active;
+    match active {
+      None() => {
+      }
+      Some(value: id) => {
+        let s = id.slot;
+        if id.generation == engine^.generation {
+          refresh_roots(engine: engine, slot: s);
+          if s < engine^.scripts.inner.len {
+            let out = pkg::vm::fail_call::<Host<E>>(script: &engine^.scripts.inner[s], stack: &engine^.stack, vm: &engine^.vm, env: env, error: error, budget: budget);
             return record(engine: engine, outcome: out);
           }
         }

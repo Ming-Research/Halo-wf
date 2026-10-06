@@ -830,30 +830,21 @@ fn host_call(env: &Env, vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64
     set vm^.error = e_v215;
     return HostOutcome::Raised();
   }
-  let value_v216 = Value::Nil();
   let call_v217 = id == 4096_u32;
   let protected_v218 = id == 4097_u32;
   if bor(call_v217, protected_v218) {
-    set value_v216 = command(env: env, vm: vm, stack: stack, func: func, argc: argc);
-    if env^.error {
-      if id == 4096_u32 {
-        let error = redis_raised(vm: vm, message: value_v216);
-        set vm^.error = error;
-        return HostOutcome::Raised();
-      }
-      set value_v216 = reply_table(vm: vm, field: &s_30[0_u64..3_u64], v: value_v216);
-    }
+    return HostOutcome::Pending();
+  }
+  let value_v216 = Value::Nil();
+  let v_v220 = arg(stack: stack, func: func, argc: argc, index: 0_u64);
+  if id == 4098_u32 {
+    set value_v216 = reply_table(vm: vm, field: &s_5[0_u64..2_u64], v: v_v220);
+  } else if id == 4099_u32 {
+    set value_v216 = reply_table(vm: vm, field: &s_30[0_u64..3_u64], v: v_v220);
   } else {
-    let v_v220 = arg(stack: stack, func: func, argc: argc, index: 0_u64);
-    if id == 4098_u32 {
-      set value_v216 = reply_table(vm: vm, field: &s_5[0_u64..2_u64], v: v_v220);
-    } else if id == 4099_u32 {
-      set value_v216 = reply_table(vm: vm, field: &s_30[0_u64..3_u64], v: v_v220);
-    } else {
-      let e_v221 = literal(vm: vm, text: &s_31[0_u64..25_u64]);
-      set vm^.error = e_v221;
-      return HostOutcome::Raised();
-    }
+    let e_v221 = literal(vm: vm, text: &s_31[0_u64..25_u64]);
+    set vm^.error = e_v221;
+    return HostOutcome::Raised();
   }
   if func < stack^.inner.len {
     set stack^.inner[func] = value_v216;

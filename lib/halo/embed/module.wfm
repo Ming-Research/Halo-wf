@@ -4,6 +4,7 @@ alias Script = pkg::value::Script;
 alias CompileError = pkg::compile::CompileError;
 alias Outcome = pkg::vm::Outcome;
 alias Host = pkg::vm::Host;
+alias PendingCall = pkg::vm::PendingCall;
 alias TableError = pkg::heap::TableError;
 alias Pair = pkg::heap::Pair;
 alias StringView = pkg::heap::StringView;
@@ -25,6 +26,7 @@ public struct Engine {
   public active: Option<ScriptId>;
   public result_count: u64;
   public resumable: Bool;
+  public calling: Bool;
 }
 
 public struct BuiltinName {
@@ -48,6 +50,14 @@ public fn reset(engine: &Engine) -> r: unit writes(engine) doc "Closes active up
 public fn start<interface Host<E>>(engine: &Engine, env: &E, script: ScriptId, budget: u64) -> r: Outcome writes(engine), writes(env) doc "Starts a cached script with zero arguments and returns the VM outcome. Starting replaces the VM's prototypes with this script's, so a Lua closure kept from another script is not callable while this one runs.";
 
 public fn resume<interface Host<E>>(engine: &Engine, env: &E, budget: u64) -> r: Outcome writes(engine), writes(env) doc "Resumes a Budget checkpoint with a fresh safepoint budget. HostStopped is terminal until reset/start.";
+
+public fn pending_call(engine: &Engine) -> r: Option<PendingCall> reads(engine) doc "The host call a HostCall outcome left pending, with its builtin id and argument count, or None.";
+
+public fn pending_argument(engine: &Engine, index: u64) -> r: Value reads(engine) doc "Argument index of the pending host call, or Nil past its argument count or when no call is pending.";
+
+public fn complete_call<interface Host<E>>(engine: &Engine, env: &E, results: &[Value], budget: u64) -> r: Outcome reads(results), writes(engine), writes(env) doc "Returns results from the pending host call, as HostOutcome::Returned would have, and continues the script with a fresh budget.";
+
+public fn fail_call<interface Host<E>>(engine: &Engine, env: &E, error: Value, budget: u64) -> r: Outcome writes(engine), writes(env) doc "Raises error at the pending host call, as HostOutcome::Raised would have, so an enclosing pcall catches it, and continues the script with a fresh budget.";
 
 public fn result(engine: &Engine, index: u64) -> r: Option<Value> reads(engine) doc "Returns a completed result in stack[0..result_count), or None.";
 
