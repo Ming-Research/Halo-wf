@@ -245,7 +245,9 @@ a dispatch run, or, for an error a parked callback's continuation raises,
 the instruction that callback's plan belongs to; keeps it while the error
 propagates out of callbacks; and forgets it when `pcall` or `xpcall`
 catches the error) and
-`format_error` producing Redis's `@user_script:LINE: msg`. Script cache:
+`format_error` locating the error as `chunk:LINE: msg` in the chunk name the
+host compiled the script under (the host composes Redis's `EVAL` error
+reply). Script cache:
 `compile` returns a `ScriptId` or a compile error with PUC's text;
 `forget_all` is `SCRIPT FLUSH`. Running: `start`, `resume`, `reset`,
 `complete_call`, `fail_call`. The

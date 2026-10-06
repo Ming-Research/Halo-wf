@@ -8,8 +8,6 @@ alias table_set = pkg::heap::table_set;
 alias new_table = pkg::heap::new_table;
 alias truthy = pkg::value::truthy;
 
-const library_source_prefix: Array<u8, 12> = "user_script:";
-
 fn library_dispatch<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, env: &E, vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: u32, pc: u64) -> r: HostOutcome reads(code), reads(consts), writes(env), writes(vm), writes(stack) contract {
   ensures stack^.inner.len == entry(stack)^.inner.len;
 } {
@@ -89,14 +87,23 @@ fn library_error_location(vm: &Vm, pc: u64) -> r: unit writes(vm) {
       let hi = cvt::<u32, u64>(handle);
       if hi < vm^.heap.strings.inner.len {
         let bytes = &vm^.heap.strings.inner[hi].payload.bytes.inner;
-        if bytes^.len >= 12_u64 {
+        let name_length = vm^.source.inner.len;
+        if bytes^.len > name_length {
           set already = True();
-          for (i in 0_u64..12_u64) {
-            let byte = bytes^[i];
-            let expected = library_source_prefix[i];
-            if byte != expected {
-              set already = False();
+          for (i in 0_u64..name_length) {
+            if i < bytes^.len {
+              if i < vm^.source.inner.len {
+                let byte = bytes^[i];
+                let expected = vm^.source.inner[i];
+                if byte != expected {
+                  set already = False();
+                }
+              }
             }
+          }
+          let colon = bytes^[name_length];
+          if colon != 58_u8 {
+            set already = False();
           }
         }
       }

@@ -46,11 +46,13 @@ supporting that use. Corpus cases run independent engines and do not verify it.
 
 ## Error locations and Stop
 
-`format_error(engine, line)` formats the requested `@user_script:LINE: msg` and
-preserves a location already present in a string error. `error_value` keeps the
-original object. The caller supplies a known source line; zero means unknown.
-The Redis formatter `format_redis_error(engine, source, line, locate)` composes
-the Redis 7 EVAL table/string distinction and script-body SHA-1 suffix. It
+`format_error(engine, line)` locates the error as `chunk:LINE: msg` in the
+chunk name the script was compiled under and preserves a location already
+present in a string error. `error_value` keeps the original object. The caller
+supplies a known source line; zero means unknown. The test host's Redis
+formatter `format_redis_error(engine, source, line, locate)` in
+`test/redis-error.wf` composes the Redis 7 EVAL table/string distinction and
+script-body SHA-1 suffix. It
 uses an explicit caller-supplied line rather than treating a budget checkpoint
 as a failure location. `locate` requests the Lua prefix for a raw VM error;
 already located strings should pass false.
