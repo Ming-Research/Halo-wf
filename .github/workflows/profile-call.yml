@@ -1,12 +1,13 @@
-# Temporary, for the Halo performance line: profiles fib's call path on the
-# 14900K (research/experiments/halo-bench/RESULTS.md, "The call path"). A
-# push of this file runs it. Removed before the pull request is marked ready.
-name: bench-14900k
+# Temporary, for the Halo performance line: profiles fib's call path on a
+# hosted x86-64 runner (research/experiments/halo-bench/RESULTS.md, "The call
+# path"); it reads shares of samples, not times. A push of this file runs it.
+# Removed before the pull request is marked ready.
+name: profile-call
 
 on:
   push:
     branches: [claude/halo-call]
-    paths: [.github/workflows/bench-14900k.yml]
+    paths: [.github/workflows/profile-call.yml]
 
 defaults:
   run:
@@ -14,13 +15,21 @@ defaults:
 
 jobs:
   bench:
-    runs-on: [self-hosted, 14900k]
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: true
           fetch-depth: 0
+
+      - name: Install the host toolchain and perf
+        run: |
+          make toolchain
+          sudo apt-get update -q
+          sudo apt-get install -y -q "linux-tools-$(uname -r)" linux-tools-common
+          sudo sysctl -w kernel.perf_event_paranoid=-1
+          sudo sysctl -w kernel.kptr_restrict=0
 
       - name: Profile fib's call path
         run: |

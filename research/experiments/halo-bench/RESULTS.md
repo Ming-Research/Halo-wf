@@ -2693,8 +2693,9 @@ the compiler emits beyond what the source asks for is a Whitefoot gap: it is
 stated as a minimal witness and brought to the owner, not worked around in
 Halo's source.
 
-Run: on the 14900K, Halo at main `99936d6e6` built with full LTO as `run.py`
-builds it, and Redis 7.0.15's bundled PUC Lua built from source, each running
+Run: on a GitHub-hosted ubuntu-24.04 x86-64 runner, since the 14900K's
+runner was offline and this run reads shares of samples, not times; Halo at
+main `99936d6e6` built with full LTO as `run.py` builds it, and Redis 7.0.15's bundled PUC Lua built from source, each running
 the fib kernel at N = 30; `perf record` of each, three launches, reported by
 symbol; `perf annotate` of Halo's sampled symbols; and the disassembly of the
 call-path functions with their instruction counts.
