@@ -20,6 +20,63 @@ const library_table_lib_text_6: Array<u8, 11> = ") at index ";
 
 const library_table_lib_text_7: Array<u8, 22> = " in table for 'concat'";
 
+const table_foreach_invalid_key: Array<u8, 21> = "invalid key to 'next'";
+
+fn table_foreach_run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, stack: &Box<Slots<Value>>, env: &E, context: u64) -> r: HostOutcome reads(code), reads(consts), writes(vm), writes(stack), writes(env) {
+  doc "Lua 5.1 foreach traverses raw next order. The library context roots the table, callback in comparator, and last visited foreach_key. A non-nil key means a callback result at frame.func must be consumed before advancing; callback failures bypass this continuation. Save the key before a kind-4 callback so nested calls, host waits and budget suspension resume without repeating a visit. Context phase remains reserved for error propagation, which a caught callback error can also change.";
+  loop {
+    if context >= vm^.library_contexts.inner.len {
+      break;
+    }
+    let table_foreach_context = vm^.library_contexts.inner[context];
+    let table_foreach_destination = table_foreach_context.frame.func;
+    set vm^.library_contexts.inner[context].phase = 0_u8;
+    let table_foreach_first = is_nil(v: table_foreach_context.foreach_key);
+    let table_foreach_has_result = bnot(table_foreach_first);
+    if table_foreach_has_result {
+      if table_foreach_destination >= stack^.inner.len {
+        break;
+      }
+      let table_foreach_result = stack^.inner[table_foreach_destination];
+      let table_foreach_nil_result = is_nil(v: table_foreach_result);
+      let table_foreach_stop = bnot(table_foreach_nil_result);
+      if table_foreach_stop {
+        return HostOutcome::Returned(count: 1_u64);
+      }
+    }
+    match pkg::heap::table_next(heap: &vm^.heap, t: table_foreach_context.table, key: table_foreach_context.foreach_key) {
+      Ok(value: table_foreach_next) => {
+        match table_foreach_next {
+          Some(value: table_foreach_pair) => {
+            if context >= vm^.library_contexts.inner.len {
+              break;
+            }
+            set vm^.library_contexts.inner[context].foreach_key = table_foreach_pair.key;
+            library_plan(vm: vm, index: context);
+            let table_foreach_nil = Value::Nil();
+            let table_foreach_ok = callback::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, dest: table_foreach_destination, f: table_foreach_context.comparator, b: table_foreach_pair.key, c: table_foreach_pair.val, third: table_foreach_nil, argc: 2_u64, wanted: 1_i64, mode: 0_u8);
+            if vm^.host_stopped {
+              return HostOutcome::Stop();
+            }
+            let table_foreach_failed = bnot(table_foreach_ok);
+            if table_foreach_failed {
+              return HostOutcome::Raised();
+            }
+          }
+          None() => {
+            return HostOutcome::Returned(count: 0_u64);
+          }
+        }
+      }
+      Err(..) => {
+        library_raw_error(vm: vm);
+        return lib_failure(vm: vm, text: &table_foreach_invalid_key[0_u64..21_u64]);
+      }
+    }
+  }
+  return HostOutcome::Raised();
+}
+
 fn table_at(vm: &Vm, table: Value, index: i64) -> r: Value reads(vm) {
   let local_key_1 = number_key(index: index);
   return table_get(heap: &vm^.heap, t: table, key: local_key_1);
@@ -38,6 +95,7 @@ fn table_swap(vm: &Vm, table: Value, i: i64, j: i64, a: Value, b: Value) -> r: B
 }
 
 fn library_table<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, stack: &Box<Slots<Value>>, env: &E, func: u64, argc: u64, id: u32) -> r: HostOutcome reads(code), reads(consts), writes(vm), writes(stack), writes(env) {
+  doc "Validates table library arguments and dispatches raw operations or resumable callbacks; foreach requires a function just as sort's explicit comparator does.";
   let local_a_3 = argument(stack: stack, func: func, argc: argc, index: 0_u64);
   let local_b_4 = argument(stack: stack, func: func, argc: argc, index: 1_u64);
   let local_c_5 = argument(stack: stack, func: func, argc: argc, index: 2_u64);
@@ -63,6 +121,19 @@ fn library_table<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<
     NoHandle() => {
       return lib_argerror(vm: vm, id: id, index: 1_u64, argc: argc, value: local_a_3, expected: &library_table_lib_text_2[0_u64..5_u64]);
     }
+  }
+  if id == builtin_table_foreach {
+    match func_of(v: local_b_4) {
+      Lua(..) => {
+      }
+      Native(..) => {
+      }
+      Other() => {
+        return lib_argerror(vm: vm, id: id, index: 2_u64, argc: argc, value: local_b_4, expected: &library_table_lib_text_3[0_u64..8_u64]);
+      }
+    }
+    let table_foreach_index = vm^.library_contexts.inner.len -sat 1_u64;
+    return table_foreach_run::<Host<E>>(code: code, consts: consts, vm: vm, stack: stack, env: env, context: table_foreach_index);
   }
   let local_border_10 = pkg::heap::table_border(heap: &vm^.heap, t: local_a_3);
   let local_n_11 = cvt.wrap::<u64, i64>(local_border_10);

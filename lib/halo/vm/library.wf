@@ -40,7 +40,10 @@ const library_version_key: Array<u8, 8> = "_VERSION";
 
 const library_version_value: Array<u8, 7> = "Lua 5.1";
 
+const library_math_mod_key: Array<u8, 3> = "mod";
+
 fn library_builtin(index: u64) -> r: Option<BuiltinBinding> pure {
+  doc "Maps installation indices to stable builtin IDs; aliases installed separately retain the original builtin's error name.";
   if index == 0_u64 {
     let local_name_1 = array_filled::<u8, 32>(value: 0_u8);
     set local_name_1[0_u64] = 112_u8;
@@ -691,6 +694,18 @@ fn library_builtin(index: u64) -> r: Option<BuiltinBinding> pure {
     let row = BuiltinBinding(library: 1_u8, name: name, length: 4_u64, id: 44_u32);
     return Some<BuiltinBinding>(value: row);
   }
+  if index == 65_u64 {
+    let table_foreach_name = array_filled::<u8, 32>(value: 0_u8);
+    set table_foreach_name[0_u64] = 102_u8;
+    set table_foreach_name[1_u64] = 111_u8;
+    set table_foreach_name[2_u64] = 114_u8;
+    set table_foreach_name[3_u64] = 101_u8;
+    set table_foreach_name[4_u64] = 97_u8;
+    set table_foreach_name[5_u64] = 99_u8;
+    set table_foreach_name[6_u64] = 104_u8;
+    let table_foreach_binding = BuiltinBinding(library: 2_u8, name: table_foreach_name, length: 7_u64, id: builtin_table_foreach);
+    return Some<BuiltinBinding>(value: table_foreach_binding);
+  }
   return codec_builtin(index: index);
 }
 
@@ -870,6 +885,7 @@ fn lib_argtext(vm: &Vm, id: u32, index: u64, text: &[u8]) -> r: HostOutcome read
 }
 
 fn install_libraries(vm: &Vm) -> r: unit writes(vm) {
+  doc "Installs library members and constants, including Lua 5.1's mod compatibility alias using the fmod builtin value.";
   install_codecs(vm: vm);
   let local_string_147 = new_table(heap: &vm^.heap, asize: 0_u32, hsize: 16_u32);
   let local_table_148 = new_table(heap: &vm^.heap, asize: 0_u32, hsize: 8_u32);
@@ -910,6 +926,9 @@ fn install_libraries(vm: &Vm) -> r: unit writes(vm) {
       }
     }
   }
+  let math_mod_key = intern(heap: &vm^.heap, bytes: &library_math_mod_key[0_u64..3_u64]);
+  let math_mod_value = Value::Builtin(id: builtin_math_fmod);
+  let math_mod_installed = table_set(heap: &vm^.heap, t: local_math_149, key: math_mod_key, val: math_mod_value);
   let local_pi_key_162 = intern(heap: &vm^.heap, bytes: &library_lib_text_11[0_u64..2_u64]);
   let local_pi_number_163 = 3.141592653589793_f64;
   let local_pi_value_164 = Value::Num(n: local_pi_number_163);

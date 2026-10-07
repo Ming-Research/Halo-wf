@@ -115,6 +115,7 @@ fn xpcall_continue<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slot
 }
 
 fn resume_library<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, plan: CallbackPlan, failed: Bool) -> r: Step reads(code), reads(consts), writes(stack), writes(vm), writes(env) {
+  doc "Resumes a library after its callback, retaining the context across suspension and discarding it only on completion or propagated failure.";
   let local_index_26 = plan.first;
   if local_index_26 < vm^.library_contexts.inner.len {
     let local_context_27 = vm^.library_contexts.inner[local_index_26];
@@ -126,6 +127,9 @@ fn resume_library<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots
       if local_context_27.id == builtin_string_gsub {
         set vm^.callback_plan = plan;
         set local_outcome_28 = pattern_gsub_run::<Host<E>>(code: code, consts: consts, env: env, vm: vm, stack: stack, context: local_index_26);
+      } else if local_context_27.id == builtin_table_foreach {
+        set vm^.callback_plan = plan;
+        set local_outcome_28 = table_foreach_run::<Host<E>>(code: code, consts: consts, vm: vm, stack: stack, env: env, context: local_index_26);
       } else if local_context_27.id == builtin_table_sort {
         set vm^.callback_plan = plan;
         let local_ok_29 = sort_run::<Host<E>>(code: code, consts: consts, vm: vm, stack: stack, env: env, context: local_index_26);

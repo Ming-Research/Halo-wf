@@ -4,6 +4,14 @@ Newest first. One entry per approved change of the tree: a dated title,
 `Nodes:` naming every node changed, `Owner-approved:` and `Summary:`; the
 owner-wide instructions' *Log format* owns the form.
 
+## 2026-10-07 Halo's library follows what real Redis scripts call
+
+Nodes: halo
+
+Owner-approved: 2026-10-07 in the Halo session: "all agreed" (Q89 option A: the library scope from the script survey).
+
+Summary: Halo provides the Lua 5.1 library that Redis 7.0.15's sandbox exposes except coroutines, `loadstring` and `load`, `getfenv` and `setfenv`, `collectgarbage`, `gcinfo`, `newproxy` with `__gc`, weak tables, `string.dump`, `string.gfind`, `table.foreachi` and `table.setn`, and gains `math.mod` and `table.foreach`. A survey of 2,700 files in 2,168 repositories that GitHub's code search found calling `redis.call`, with its corpus and criterion fixed before any script was read, found scripts calling `math.mod` (Ohm's save script) and `table.foreach` (Discourse's presence scripts) and none calling the others (`research/investigations/halo/SCRIPTS.md`); an excluded function is reconsidered when a host reports a script that calls it.
+
 ## 2026-10-07 Halo's self-tail dispatch is provisional
 
 Nodes: halo/dispatch, halo/dispatch/continuations
