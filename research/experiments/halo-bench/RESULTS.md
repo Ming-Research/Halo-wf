@@ -2676,3 +2676,27 @@ final engine (`380b624f0`), main `bc4e2db17` against it with a twin:
 `--check-module pkg::vm`: main 7.568 and 7.610 s, branch 7.573 and 7.609 s
 (1.000 times). The criterion still passes: integer-table takes 0.881 times
 as long, and no kernel is slower beyond its bounds.
+
+## String-key lookup
+
+### Criterion, recorded before the change
+
+A table read with a string key goes through `table_get`
+(`lib/halo/heap/tables.wf`): `integer_key` classification, `node_find`,
+`main_position` with the generic `key_hash` and a modulus, and the generic
+`equal`, which matches every value kind (`node_find` 19% of the string-key
+kernel's samples, 14% of binary-trees'). PUC's `luaH_getstr` takes the
+string's cached hash, masks it to the node vector, and compares string
+pointers along the chain. Change: a string-key read takes a lookup
+specialised for strings, the cached hash masked by the power-of-two node
+count and handle comparison along the chain, with the same result as
+`table_get` for every table (integer-keyed parts are never reached by a
+string key); every other key keeps `table_get`.
+
+Kept only if, on the 14900K, in six interleaved full-LTO pairs of main
+before the change against the branch after it, with a twin of the before
+binary: the string-key kernel's median falls at least 5%, by more than
+both ranges and the twin's difference; no kernel is slower beyond its
+larger range and the twin's; `--check-module pkg::vm` takes at most 1.25
+times as long; and `make check` passes. Otherwise the change is reverted
+with its measurements kept.
