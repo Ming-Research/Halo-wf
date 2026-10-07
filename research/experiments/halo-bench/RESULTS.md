@@ -2700,3 +2700,32 @@ both ranges and the twin's difference; no kernel is slower beyond its
 larger range and the twin's; `--check-module pkg::vm` takes at most 1.25
 times as long; and `make check` passes. Otherwise the change is reverted
 with its measurements kept.
+
+### Result
+
+[Run 37595142933](https://github.com/Ming-Research/Halo-wf/actions/runs/37595142933):
+main `99936d6e6` against the branch at `b37e0dbba`, whose engine differs from
+main only in `lib/halo/heap/tables.wf`, its module interface and
+`lib/halo/vm/handlers.wf` (the run's own `git diff --stat`); six interleaved
+full-LTO pairs with `wf-8b647edbbc95`, medians in seconds:
+
+| Kernel | Main | Branch | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1043 | 0.1042 | 0.999 | 1.74% | 0.38% | 0.996 |
+| loop | 0.4338 | 0.4347 | 1.002 | 1.37% | 1.23% | 1.002 |
+| integer-table | 0.5344 | 0.5134 | 0.961 | 2.93% | 1.77% | 0.996 |
+| string-key | 0.0337 | 0.0259 | 0.769 | 2.69% | 0.49% | 1.013 |
+| concat | 0.0731 | 0.0742 | 1.015 | 1.93% | 2.98% | 1.005 |
+| sort | 0.1852 | 0.1766 | 0.954 | 0.92% | 0.77% | 0.996 |
+| binary-trees | 1.9550 | 1.9413 | 0.993 | 1.85% | 1.33% | 1.000 |
+
+`--check-module pkg::vm`: main 7.564 and 7.599 s, branch 7.544 and 7.639 s
+(1.001 times). `make check` passed at `c87aec0be`, the same engine
+([run 37594106496](https://github.com/Ming-Research/Halo-wf/actions/runs/37594106496)).
+
+**The criterion passes and the change is kept.** String-key takes 0.769
+times as long, beyond both ranges and the twin; integer-table (0.961) and
+sort (0.954) also move beyond their bounds, and no kernel is slower beyond
+its bounds. Against PUC's median in the paired P1 run above (0.0198 s),
+string-key's 0.0259 s is about 1.31 times PUC's (not measured in one
+session).
