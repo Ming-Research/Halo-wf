@@ -4,6 +4,14 @@ Newest first. One entry per approved change of the tree: a dated title,
 `Nodes:` naming every node changed, `Owner-approved:` and `Summary:`; the
 owner-wide instructions' *Log format* owns the form.
 
+## 2026-10-07 Halo's self-tail dispatch is provisional
+
+Nodes: halo/dispatch, halo/dispatch/continuations
+
+Owner-approved: 2026-10-07 in the Halo session: "all agreed" (Q87: withdraw the approval the 2026-10-06 batch gave the self-tail dispatch form, whose card did not say it replaced `loop { match }`), with the direction "when it is done, come back and update the code" (Q86: Halo's dispatch becomes `loop { match }` once Whitefoot accepts it).
+
+Summary: The interpreter stays the guaranteed self-tail call `run` only until Whitefoot accepts the same interpreter as a plain `loop { match }`, the form an interpreter is to take with the compiler emitting its tail calls; the checker's loss of the window facts where the loop's arms join is Whitefoot's gap to close, and a loop that re-checks the windows at run time on every dispatch is refused, since it would hide that gap. The per-arm continuation decision is replaced with the dispatch. The self-tail form had been recorded as a design choice and approved in a batch whose one-line card did not show that it replaced the loop form or why.
+
 ## 2026-10-07 Halo's fast store inserts missing keys into plain tables
 
 Nodes: halo/dispatch

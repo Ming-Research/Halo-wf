@@ -15,11 +15,13 @@ example apart from the engine code that exposed it
   and leaves it on another, then joins the two before the back edge, loses
   the header invariant both paths re-prove, because the join keeps only
   facts identical on both inputs (`INV-1 UndischargedLoopInvariant`,
-  obligation `Backedge`). Impact: Halo's dispatch loop is written as a
-  self-tail call rather than `loop { match }`, whose arms update different
-  loop variables. The minimal witness and the candidate repairs are in
-  Whitefoot's `docs/todo.md` (Ming-Research/Whitefoot#246). Reopen when
-  Whitefoot changes INV-1's join.
+  obligation `Backedge`). Impact: Halo cannot write its dispatch as
+  `loop { match }`, the form an interpreter is to take, because its arms
+  update different loop variables; `run` stays a self-tail call only until
+  Whitefoot accepts the loop ([dispatch](../design/halo/dispatch.md)). The
+  minimal witness and the candidate repairs are in Whitefoot's
+  `docs/todo.md` (Ming-Research/Whitefoot#246). Reopen when Whitefoot
+  changes INV-1's join, and then rewrite `run` as `loop { match }`.
 
 - **Checking Halo's vm package is on the build's critical path.** Whitefoot's
   [compile-speed investigation](https://github.com/Ming-Research/Whitefoot/blob/main/research/investigations/compile-speed/DESIGN.md#remaining-costs)
