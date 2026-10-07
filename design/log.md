@@ -12,6 +12,14 @@ Owner-approved: 2026-10-07 in the Halo session: "all agreed" (Q89 option A: the 
 
 Summary: Halo provides the Lua 5.1 library that Redis 7.0.15's sandbox exposes except coroutines, `loadstring` and `load`, `getfenv` and `setfenv`, `collectgarbage`, `gcinfo`, `newproxy` with `__gc`, weak tables, `string.dump`, `string.gfind`, `table.foreachi` and `table.setn`, and gains `math.mod` and `table.foreach`. A survey of 2,700 files in 2,168 repositories that GitHub's code search found calling `redis.call`, with its corpus and criterion fixed before any script was read, found scripts calling `math.mod` (Ohm's save script) and `table.foreach` (Discourse's presence scripts) and none calling the others (`research/investigations/halo/SCRIPTS.md`); an excluded function is reconsidered when a host reports a script that calls it.
 
+## 2026-10-07 Halo's self-tail dispatch is provisional
+
+Nodes: halo/dispatch, halo/dispatch/continuations
+
+Owner-approved: 2026-10-07 in the Halo session: "all agreed" (Q87: withdraw the approval the 2026-10-06 batch gave the self-tail dispatch form, whose card did not say it replaced `loop { match }`), with the direction "when it is done, come back and update the code" (Q86: Halo's dispatch becomes `loop { match }` once Whitefoot accepts it).
+
+Summary: The interpreter stays the guaranteed self-tail call `run` only until Whitefoot accepts the same interpreter as a plain `loop { match }`, the form an interpreter is to take with the compiler emitting its tail calls; the checker's loss of the window facts where the loop's arms join is Whitefoot's gap to close, and a loop that re-checks the windows at run time on every dispatch is refused, since it would hide that gap. The per-arm continuation decision is replaced with the dispatch. The self-tail form had been recorded as a design choice and approved in a batch whose one-line card did not show that it replaced the loop form or why.
+
 ## 2026-10-07 Halo's fast store inserts missing keys into plain tables
 
 Nodes: halo/dispatch
