@@ -174,7 +174,7 @@ fn raw_assign(vm: &Vm, t: Value, key: Value, v: Value) -> r: Bool writes(vm) {
           return raise_text(vm: vm, text: &slow_text_3[0_u64..21_u64]);
         }
         InvalidTable() => {
-          return type_error(vm: vm, v: t, op: 1_u8);
+          return unnamed_type_error(vm: vm, v: t, op: 1_u8);
         }
         Overflow() => {
           return raise_text(vm: vm, text: &slow_text_4[0_u64..17_u64]);
@@ -342,7 +342,7 @@ fn concat_strings(vm: &Vm, b: u32, c: u32) -> r: Value writes(vm) {
   return Value::Nil();
 }
 
-fn slow<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, op: SlowOp, dest: u64, b: Value, c: Value, v: Value) -> r: Bool reads(code), reads(consts), writes(stack), writes(vm), writes(env) contract {
+fn slow<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, op: SlowOp, dest: u64, b: Value, c: Value, v: Value, breg: u64, creg: u64) -> r: Bool reads(code), reads(consts), writes(stack), writes(vm), writes(env) contract {
   requires dest < stack^.inner.len;
   ensures stack^.inner.len == entry(stack)^.inner.len;
 } {
@@ -352,6 +352,7 @@ fn slow<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, 
   match op {
     Get() => {
       let t = b;
+      let location = breg;
       for (i in 0_u64..100_u64) {
         let result = table_get(heap: &vm^.heap, t: t, key: c);
         let tm = metamethod(vm: vm, v: t, name: &slow_text_8[0_u64..7_u64]);
@@ -367,7 +368,7 @@ fn slow<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, 
           }
           NoHandle() => {
             if is_nil(v: tm) {
-              return type_error(vm: vm, v: t, op: 1_u8);
+              return type_error(code: code, consts: consts, vm: vm, v: t, op: 1_u8, reg: location);
             }
           }
         }
@@ -384,6 +385,8 @@ fn slow<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, 
           }
           Other() => {
             set t = tm;
+            // luaV_gettable/settable now point at a tag-method value outside the stack.
+            set location = unlimited;
           }
         }
       }
@@ -391,6 +394,7 @@ fn slow<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, 
     }
     Set() => {
       let t = b;
+      let location = breg;
       for (i in 0_u64..100_u64) {
         if is_readonly(vm: vm, v: t) {
           return raise_text(vm: vm, text: &slow_text_10[0_u64..34_u64]);
@@ -420,7 +424,7 @@ fn slow<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, 
           }
           NoHandle() => {
             if is_nil(v: tm) {
-              return type_error(vm: vm, v: t, op: 1_u8);
+              return type_error(code: code, consts: consts, vm: vm, v: t, op: 1_u8, reg: location);
             }
           }
         }
@@ -437,6 +441,8 @@ fn slow<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, 
           }
           Other() => {
             set t = tm;
+            // luaV_gettable/settable now point at a tag-method value outside the stack.
+            set location = unlimited;
           }
         }
       }
@@ -718,23 +724,28 @@ fn slow<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, 
   if name == 7_u8 {
     let kb = kind(v: b);
     let bad = b;
+    let location = breg;
     let string_left = kb == 3_u8;
     let number_left = kb == 2_u8;
     if bor(string_left, number_left) {
       set bad = c;
+      set location = creg;
     }
-    return type_error(vm: vm, v: bad, op: 3_u8);
+    return type_error(code: code, consts: consts, vm: vm, v: bad, op: 3_u8, reg: location);
   }
   if name == 8_u8 {
-    return type_error(vm: vm, v: b, op: 4_u8);
+    return type_error(code: code, consts: consts, vm: vm, v: b, op: 4_u8, reg: breg);
   }
   let bad = b;
+  let location = breg;
+  // luaG_aritherror tests conversion, not the original value tag.
   match coerce_number(vm: vm, v: b) {
     Is(..) => {
       set bad = c;
+      set location = creg;
     }
     Not() => {
     }
   }
-  return type_error(vm: vm, v: bad, op: 0_u8);
+  return type_error(code: code, consts: consts, vm: vm, v: bad, op: 0_u8, reg: location);
 }

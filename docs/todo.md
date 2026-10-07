@@ -58,20 +58,19 @@ example apart from the engine code that exposed it
   shows it detects a wrong result, and move the gate's fixtures and runner
   to `tests/`. Reopen at the next gate change.
 
-- **Runtime type errors do not name the variable.** PUC Lua 5.1 describes
-  the operand of a failed index, call, arithmetic or concatenation by where
-  it came from, `attempt to index local 't' (a nil value)` (also `global`,
-  `field`, `upvalue`, `method`), recovered from the bytecode by `getobjname`
-  in `ldebug.c`; Halo says `attempt to index a nil value`. Witness: inside a
-  function, `local t=nil return t.x` on line 9 gives Redis 7.0.15's reply
-  `ERR user_script:9: attempt to index local 't' (a nil value) script: …`
-  (oracle-reference run 37491234734, script `lua-core/error-rethrow-local`
-  at c5ebccc50). Impact: the text of every error reply and `pcall` message
-  from a runtime type error differs from Redis's, and the oracle corpus has
-  no runtime type-error case to show it. Change: describe the faulting
-  register by the same symbolic walk over Halo's cells at the failing pc,
-  with an oracle case for each description. Reopen before clients compare
-  error text, or with the next error-message work.
+- **Argument errors hardcode the called function's name.** Lua 5.1's
+  `luaL_argerror` uses `getfuncname` (`getobjname` at the caller's CALL
+  register), so `bad argument #N to 'NAME'` can name a local alias or a field.
+  For a method it subtracts the implicit self argument; a bad self reports
+  `calling 'NAME' on bad self`. This is Lua source behavior, not a recorded
+  Redis observation. Halo's builtins still hardcode names, for example
+  `bad argument #1 to 'select'` in `lib/halo/vm/builtins.wf`, and library
+  errors use the builtin binding name. Impact: aliases, field calls and
+  methods can disagree in both name and argument number. Change: route
+  argument errors through the operand description at the caller's call
+  cell and apply `luaL_argerror`'s method adjustment. Validate with recorded
+  oracle replies for local aliases, fields, methods and bad self. Reopen
+  before clients compare argument-error text.
 
 - **pcall's error field is read raw.** With an error field named
   (`set_pcall_error_field`), `pcall` reads it with a raw lookup; Redis's

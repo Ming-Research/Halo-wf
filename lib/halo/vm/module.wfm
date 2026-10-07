@@ -1,3 +1,5 @@
+alias DebugName = pkg::value::DebugName;
+alias LocalVariable = pkg::value::LocalVariable;
 alias Value = pkg::value::Value;
 alias Cell = pkg::value::Cell;
 alias Proto = pkg::value::Proto;
@@ -104,6 +106,9 @@ public struct Vm {
   public protos: Box<Slots<Proto>>;
   public lineinfo: Box<Slots<u32>>;
   public source: Box<Slots<u8>>;
+  public debug_names: Box<Slots<u8>>;
+  public local_variables: Box<Slots<LocalVariable>>;
+  public upvalue_names: Box<Slots<DebugName>>;
   public top: u64;
   public budget: u64;
   public saved_pc: u64;

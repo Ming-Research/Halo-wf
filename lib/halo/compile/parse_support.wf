@@ -658,11 +658,16 @@ fn newlocal(p: &Parser, h: u32, n: i64) -> result_value: unit writes(p) {
   let i = cvt::<i64, u64>(pos);
   let id = p^.current;
   if id < p^.funcs.inner.len {
+    // lparser.c registerlocalvar/new_localvar: active slots index declaration records.
+    let record = p^.funcs.inner[id].local_debug.inner.len;
+    let record_index = cvt.wrap::<u64, u32>(record);
+    let debug = LocalDebug(name: h, startpc: 0_i64, endpc: 0_i64);
+    push_local_debug(buf: &p^.funcs.inner[id].local_debug, v: debug);
     let count = p^.funcs.inner[id].locals.inner.len;
     if count == i {
-      push_index(buf: &p^.funcs.inner[id].locals, v: h);
+      push_index(buf: &p^.funcs.inner[id].locals, v: record_index);
     } else if i < count {
-      set p^.funcs.inner[id].locals.inner[i] = h;
+      set p^.funcs.inner[id].locals.inner[i] = record_index;
     }
   }
   return unit;
@@ -684,6 +689,12 @@ fn adjustlocals(p: &Parser, n: i64) -> result_value: unit writes(p) {
   let old = nactvar(p: p);
   let arg_107 = old +wrap n;
   set_nactvar(p: p, n: arg_107);
+  let first = cvt.wrap::<i64, u64>(old);
+  let limit = cvt.wrap::<i64, u64>(arg_107);
+  for (index in first..limit) {
+    let slot = cvt.wrap::<u64, i64>(index);
+    startlocal(p: p, slot: slot);
+  }
   return unit;
 }
 
@@ -709,7 +720,7 @@ fn leaveblock(p: &Parser) -> result_value: unit writes(p) {
     }
   }
   let arg_111 = b.nactvar;
-  set_nactvar(p: p, n: arg_111);
+  removelocals(p: p, level: arg_111);
   if b.upval {
     let arg_112 = b.nactvar;
     let i = k_emit(p: p, op: 35_u8, a: arg_112, b: 0_i64, c: 0_i64);
@@ -754,7 +765,13 @@ fn resolve(p: &Parser, id: u64, h: u32, base: Bool) -> result_value: Exp writes(
     let i = cvt.wrap::<i64, u64>(n);
     if id < p^.funcs.inner.len {
       if i < p^.funcs.inner[id].locals.inner.len {
-        if p^.funcs.inner[id].locals.inner[i] == h {
+        let record_index = p^.funcs.inner[id].locals.inner[i];
+        let record = cvt::<u32, u64>(record_index);
+        let found = False();
+        if record < p^.funcs.inner[id].local_debug.inner.len {
+          set found = p^.funcs.inner[id].local_debug.inner[record].name == h;
+        }
+        if found {
           if base {
           } else {
             mark_upvalue(p: p, id: id, level: n);
@@ -789,7 +806,7 @@ fn resolve(p: &Parser, id: u64, h: u32, base: Bool) -> result_value: Exp writes(
     }
     let arg_117 = v.k;
     let arg_118 = v.info;
-    let u = Up(k: arg_117, info: arg_118);
+    let u = Up(name: h, k: arg_117, info: arg_118);
     push_up(buf: &p^.funcs.inner[id].ups, v: u);
     let arg_119 = cvt.wrap::<u64, i64>(nup);
     return empty_exp(k: 7_u8, info: arg_119);
@@ -855,5 +872,50 @@ fn adjustassign(p: &Parser, nvars: i64, nexps: i64, e: &Exp) -> result_value: un
       k_nilregs(p: p, from: reg, n: extra);
     }
   }
+  return unit;
+}
+
+fn startlocal(p: &Parser, slot: i64) -> result_value: unit writes(p) {
+  doc "lparser.c adjustlocalvars and localfunc set a declaration's startpc at the current instruction boundary.";
+  let id = p^.current;
+  if id < p^.funcs.inner.len {
+    let at = pc(s: &p^.funcs.inner[id]);
+    if slot >= 0_i64 {
+      let i = cvt::<i64, u64>(slot);
+      if i < p^.funcs.inner[id].locals.inner.len {
+        let index = p^.funcs.inner[id].locals.inner[i];
+        let record = cvt::<u32, u64>(index);
+        if record < p^.funcs.inner[id].local_debug.inner.len {
+          set p^.funcs.inner[id].local_debug.inner[record].startpc = at;
+        }
+      }
+    }
+  }
+  return unit;
+}
+
+fn removelocals(p: &Parser, level: i64) -> result_value: unit writes(p) {
+  doc "lparser.c removevars ends locals before CLOSE and before close_func's final RETURN.";
+  let old = nactvar(p: p);
+  let id = p^.current;
+  if id < p^.funcs.inner.len {
+    let at = pc(s: &p^.funcs.inner[id]);
+    let first = cvt.wrap::<i64, u64>(level);
+    let limit = cvt.wrap::<i64, u64>(old);
+    for (active in first..limit) {
+      let slot = cvt.wrap::<u64, i64>(active);
+      if slot >= 0_i64 {
+        let i = cvt::<i64, u64>(slot);
+        if i < p^.funcs.inner[id].locals.inner.len {
+          let index = p^.funcs.inner[id].locals.inner[i];
+          let record = cvt::<u32, u64>(index);
+          if record < p^.funcs.inner[id].local_debug.inner.len {
+            set p^.funcs.inner[id].local_debug.inner[record].endpc = at;
+          }
+        }
+      }
+    }
+  }
+  set_nactvar(p: p, n: level);
   return unit;
 }

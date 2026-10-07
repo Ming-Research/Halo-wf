@@ -116,7 +116,7 @@ fn concat_step<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Va
         let nil = Value::Nil();
         let expect = False();
         set vm^.callback_plan = CallbackPlan(pc: pc, base: base, kbase: kbase, kind: 2_u8, dest: dest, first: first, index: previous, target: 0_u64, expected: expect);
-        let ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: left, b: a, c: b, v: nil);
+        let ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: left, b: a, c: b, v: nil, breg: previous, creg: index);
         resize_stack(stack: stack, size: length);
         if vm^.suspended {
           return Step::Budget();

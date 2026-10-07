@@ -281,7 +281,7 @@ fn pattern_gsub_run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slo
                 let op = SlowOp::Get();
                 let nil = Value::Nil();
                 if func < stack^.inner.len {
-                  set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: op, dest: func, b: replacement, c: key, v: nil);
+                  set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: op, dest: func, b: replacement, c: key, v: nil, breg: unlimited, creg: unlimited);
                 }
               }
               None() => {

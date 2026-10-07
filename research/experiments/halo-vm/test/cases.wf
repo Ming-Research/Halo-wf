@@ -1,3 +1,5 @@
+alias DebugName = halo::value::DebugName;
+alias LocalVariable = halo::value::LocalVariable;
 alias Value = halo::value::Value;
 alias Cell = halo::value::Cell;
 alias Proto = halo::value::Proto;
@@ -77,7 +79,7 @@ fn put_const(consts: &Box<Slots<Value>>, value: Value) -> r: unit writes(consts)
 }
 
 fn put_proto(protos: &Box<Slots<Proto>>, start: u32, params: u8, vararg: Bool, ups: u8, maxstack: u8) -> r: unit writes(protos) {
-  let p = Proto(start: start, kbase: 0_u32, nk: 16_u32, numparams: params, is_vararg: vararg, maxstack: maxstack, nups: ups);
+  let p = Proto(start: start, kbase: 0_u32, nk: 16_u32, numparams: params, is_vararg: vararg, maxstack: maxstack, nups: ups, local_base: 0_u64, local_count: 0_u64, upvalue_name_base: 0_u64);
   if protos^.inner.len < protos^.inner.cap {
     place_back(window: &protos^.inner, value: p);
   }
@@ -148,8 +150,11 @@ fn fixture_smoke(budget: u64) -> r: Bool pure {
   pad(consts: &consts);
   let atom1 = False();
   put_proto(protos: &protos, start: 0_u32, params: 0_u8, vararg: atom1, ups: 0_u8, maxstack: 2_u8);
+  let debug_names = box_slots_new::<u8>(capacity: 0_u64);
+  let local_variables = box_slots_new::<LocalVariable>(capacity: 0_u64);
+  let upvalue_names = box_slots_new::<DebugName>(capacity: 0_u64);
   let source = chunk_source();
-  let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source);
+  let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source, debug_names: move debug_names, local_variables: move local_variables, upvalue_names: move upvalue_names);
   let out = halo::vm::start::<TestHost>(script: &script, stack: &stack, vm: &vm, env: &env, proto: 0_u32, argc: 0_u64, budget: budget);
   let suspensions = 0_u64;
   loop {
@@ -237,8 +242,11 @@ fn fixture_fib(budget: u64) -> r: Bool pure {
   put_proto(protos: &protos, start: 0_u32, params: 0_u8, vararg: atom3, ups: 0_u8, maxstack: 3_u8);
   let atom4 = False();
   put_proto(protos: &protos, start: 5_u32, params: 1_u8, vararg: atom4, ups: 0_u8, maxstack: 4_u8);
+  let debug_names = box_slots_new::<u8>(capacity: 0_u64);
+  let local_variables = box_slots_new::<LocalVariable>(capacity: 0_u64);
+  let upvalue_names = box_slots_new::<DebugName>(capacity: 0_u64);
   let source = chunk_source();
-  let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source);
+  let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source, debug_names: move debug_names, local_variables: move local_variables, upvalue_names: move upvalue_names);
   let out = halo::vm::start::<TestHost>(script: &script, stack: &stack, vm: &vm, env: &env, proto: 0_u32, argc: 0_u64, budget: budget);
   let suspensions = 0_u64;
   loop {
@@ -305,8 +313,11 @@ fn fixture_numeric_for(budget: u64) -> r: Bool pure {
   pad(consts: &consts);
   let atom6 = False();
   put_proto(protos: &protos, start: 0_u32, params: 0_u8, vararg: atom6, ups: 0_u8, maxstack: 5_u8);
+  let debug_names = box_slots_new::<u8>(capacity: 0_u64);
+  let local_variables = box_slots_new::<LocalVariable>(capacity: 0_u64);
+  let upvalue_names = box_slots_new::<DebugName>(capacity: 0_u64);
   let source = chunk_source();
-  let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source);
+  let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source, debug_names: move debug_names, local_variables: move local_variables, upvalue_names: move upvalue_names);
   let out = halo::vm::start::<TestHost>(script: &script, stack: &stack, vm: &vm, env: &env, proto: 0_u32, argc: 0_u64, budget: budget);
   let suspensions = 0_u64;
   loop {
@@ -387,8 +398,11 @@ fn fixture_counter(budget: u64) -> r: Bool pure {
   put_proto(protos: &protos, start: 0_u32, params: 0_u8, vararg: atom8, ups: 0_u8, maxstack: 5_u8);
   let atom9 = False();
   put_proto(protos: &protos, start: 11_u32, params: 0_u8, vararg: atom9, ups: 1_u8, maxstack: 2_u8);
+  let debug_names = box_slots_new::<u8>(capacity: 0_u64);
+  let local_variables = box_slots_new::<LocalVariable>(capacity: 0_u64);
+  let upvalue_names = box_slots_new::<DebugName>(capacity: 0_u64);
   let source = chunk_source();
-  let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source);
+  let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source, debug_names: move debug_names, local_variables: move local_variables, upvalue_names: move upvalue_names);
   let out = halo::vm::start::<TestHost>(script: &script, stack: &stack, vm: &vm, env: &env, proto: 0_u32, argc: 0_u64, budget: budget);
   let suspensions = 0_u64;
   loop {
@@ -460,8 +474,11 @@ fn fixture_tables(budget: u64) -> r: Bool pure {
   pad(consts: &consts);
   let atom11 = False();
   put_proto(protos: &protos, start: 0_u32, params: 0_u8, vararg: atom11, ups: 0_u8, maxstack: 3_u8);
+  let debug_names = box_slots_new::<u8>(capacity: 0_u64);
+  let local_variables = box_slots_new::<LocalVariable>(capacity: 0_u64);
+  let upvalue_names = box_slots_new::<DebugName>(capacity: 0_u64);
   let source = chunk_source();
-  let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source);
+  let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source, debug_names: move debug_names, local_variables: move local_variables, upvalue_names: move upvalue_names);
   let out = halo::vm::start::<TestHost>(script: &script, stack: &stack, vm: &vm, env: &env, proto: 0_u32, argc: 0_u64, budget: budget);
   let suspensions = 0_u64;
   loop {
@@ -574,8 +591,11 @@ fn fixture_meta(budget: u64) -> r: Bool pure {
   put_proto(protos: &protos, start: 0_u32, params: 0_u8, vararg: atom16, ups: 0_u8, maxstack: 4_u8);
   let atom17 = False();
   put_proto(protos: &protos, start: 6_u32, params: 2_u8, vararg: atom17, ups: 0_u8, maxstack: 6_u8);
+  let debug_names = box_slots_new::<u8>(capacity: 0_u64);
+  let local_variables = box_slots_new::<LocalVariable>(capacity: 0_u64);
+  let upvalue_names = box_slots_new::<DebugName>(capacity: 0_u64);
   let source = chunk_source();
-  let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source);
+  let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source, debug_names: move debug_names, local_variables: move local_variables, upvalue_names: move upvalue_names);
   let out = halo::vm::start::<TestHost>(script: &script, stack: &stack, vm: &vm, env: &env, proto: 0_u32, argc: 0_u64, budget: budget);
   let suspensions = 0_u64;
   loop {
@@ -692,8 +712,11 @@ fn fixture_protected_error(budget: u64) -> r: Bool pure {
   put_proto(protos: &protos, start: 15_u32, params: 0_u8, vararg: atom23, ups: 0_u8, maxstack: 2_u8);
   let atom24 = False();
   put_proto(protos: &protos, start: 18_u32, params: 0_u8, vararg: atom24, ups: 0_u8, maxstack: 2_u8);
+  let debug_names = box_slots_new::<u8>(capacity: 0_u64);
+  let local_variables = box_slots_new::<LocalVariable>(capacity: 0_u64);
+  let upvalue_names = box_slots_new::<DebugName>(capacity: 0_u64);
   let source = chunk_source();
-  let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source);
+  let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source, debug_names: move debug_names, local_variables: move local_variables, upvalue_names: move upvalue_names);
   let out = halo::vm::start::<TestHost>(script: &script, stack: &stack, vm: &vm, env: &env, proto: 0_u32, argc: 0_u64, budget: budget);
   let suspensions = 0_u64;
   loop {
@@ -790,8 +813,11 @@ fn fixture_vararg(budget: u64) -> r: Bool pure {
       set stack.inner[i] = Value::Num(n: x);
     }
   }
+  let debug_names = box_slots_new::<u8>(capacity: 0_u64);
+  let local_variables = box_slots_new::<LocalVariable>(capacity: 0_u64);
+  let upvalue_names = box_slots_new::<DebugName>(capacity: 0_u64);
   let source = chunk_source();
-  let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source);
+  let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source, debug_names: move debug_names, local_variables: move local_variables, upvalue_names: move upvalue_names);
   let out = halo::vm::start::<TestHost>(script: &script, stack: &stack, vm: &vm, env: &env, proto: 0_u32, argc: 4_u64, budget: budget);
   let suspensions = 0_u64;
   loop {
@@ -867,8 +893,11 @@ fn fixture_tail(budget: u64) -> r: Bool pure {
   let loopfun = halo::heap::new_closure(heap: &vm.heap, proto: 0_u32, upvals: &ups[0_u64..0_u64]);
   let globals = Value::Tab(h: vm.globals);
   raw(vm: &vm, t: globals, key: loopname, val: loopfun);
+  let debug_names = box_slots_new::<u8>(capacity: 0_u64);
+  let local_variables = box_slots_new::<LocalVariable>(capacity: 0_u64);
+  let upvalue_names = box_slots_new::<DebugName>(capacity: 0_u64);
   let source = chunk_source();
-  let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source);
+  let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source, debug_names: move debug_names, local_variables: move local_variables, upvalue_names: move upvalue_names);
   let out = halo::vm::start::<TestHost>(script: &script, stack: &stack, vm: &vm, env: &env, proto: 0_u32, argc: 2_u64, budget: budget);
   let suspensions = 0_u64;
   loop {
@@ -1153,8 +1182,11 @@ fn fixture_host(mode: u8, metamethod: Bool) -> r: Bool pure {
   }
   pad(consts: &consts);
   put_proto(protos: &protos, start: 0_u32, params: 0_u8, vararg: no, ups: 0_u8, maxstack: 4_u8);
+  let debug_names = box_slots_new::<u8>(capacity: 0_u64);
+  let local_variables = box_slots_new::<LocalVariable>(capacity: 0_u64);
+  let upvalue_names = box_slots_new::<DebugName>(capacity: 0_u64);
   let source = chunk_source();
-  let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source);
+  let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source, debug_names: move debug_names, local_variables: move local_variables, upvalue_names: move upvalue_names);
   let result = halo::vm::start::<TestHost>(script: &script, stack: &stack, vm: &vm, env: &env, proto: 0_u32, argc: 0_u64, budget: unlimited);
   if env.calls != 1_u64 {
     return False();
@@ -1310,8 +1342,11 @@ fn fixture_error_level(level: u8, callback: u8) -> r: Bool pure {
   if is_callback {
     put_proto(protos: &protos, start: callback_start, params: 2_u8, vararg: no, ups: 0_u8, maxstack: 3_u8);
   }
+  let debug_names = box_slots_new::<u8>(capacity: 0_u64);
+  let local_variables = box_slots_new::<LocalVariable>(capacity: 0_u64);
+  let upvalue_names = box_slots_new::<DebugName>(capacity: 0_u64);
   let source = chunk_source();
-  let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source);
+  let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source, debug_names: move debug_names, local_variables: move local_variables, upvalue_names: move upvalue_names);
   let out = halo::vm::start::<TestHost>(script: &script, stack: &stack, vm: &vm, env: &env, proto: 0_u32, argc: 0_u64, budget: unlimited);
   match out {
     Done(count: got) => {

@@ -69,7 +69,7 @@ fn sort_compare<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<V
       }
       let local_op_13 = SlowOp::Lt();
       if local_dest_6 < stack^.inner.len {
-        let compared = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: local_op_13, dest: local_dest_6, b: a, c: b, v: local_nil_7);
+        let compared = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: local_op_13, dest: local_dest_6, b: a, c: b, v: local_nil_7, breg: unlimited, creg: unlimited);
         return compared;
       }
       return False();

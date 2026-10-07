@@ -5,7 +5,7 @@ This corpus records the exact RESP2 replies of Redis 7.0.15 for small Lua 5.1
 and its firn bindings described in [Halo's design](../../investigations/halo/DESIGN.md).
 It is explicitly invoked research tooling, outside the compiler gate.
 
-There are 81 scripts: 48 `lua-core`, 16 `redis-api`, 6 `apps`, and 11 `libs`.
+There are 100 scripts: 60 `lua-core`, 23 `redis-api`, 6 `apps`, and 11 `libs`.
 The scripts, replies and runner belong here until the oracle is replaced or
 Halo/firn scripting is retired. Each case is consumed by `run.sh`; the table
 below is the index of the observations it protects.
@@ -195,6 +195,14 @@ not automatically used to overwrite this baseline.
 | lua-core | [counter-closure](scripts/lua-core/counter-closure.lua) | Separate counter closures retain independent upvalue state. |
 | lua-core | [embedded-zero](scripts/lua-core/embedded-zero.lua) | Embedded NUL survives length, slicing, byte lookup and RESP bulk. |
 | lua-core | [error-levels](scripts/lua-core/error-levels.lua) | error levels select caller locations; level zero has no location. |
+| lua-core | [error-names-control](scripts/lua-core/error-names-control.lua) | Symbolic walks cross forward tests and jumps and skip closure capture cells. |
+| lua-core | [error-names-field](scripts/lua-core/error-names-field.lua) | String constant fields retain their names; numeric and register keys use question mark. |
+| lua-core | [error-names-global](scripts/lua-core/error-names-global.lua) | Existing globals supply global names without the nonexistent-global interception. |
+| lua-core | [error-names-local](scripts/lua-core/error-names-local.lua) | Active local names, MOVE recursion, operand selection, and local scope boundaries. |
+| lua-core | [error-names-method](scripts/lua-core/error-names-method.lua) | SELF names a missing or non-callable method; an invalid receiver is still an index operand. |
+| lua-core | [error-names-unnamed](scripts/lua-core/error-names-unnamed.lua) | Call results, constructors, constants, tag-method chains and native calls have no operand name. |
+| lua-core | [error-names-upvalue](scripts/lua-core/error-names-upvalue.lua) | Upvalue names and ordering survive two closure levels and every operand error family. |
+| lua-core | [error-names-userdata](scripts/lua-core/error-names-userdata.lua) | cjson.null uses the same operand descriptions with userdata as its Lua type. |
 | lua-core | [error-values](scripts/lua-core/error-values.lua) | pcall preserves string and table error objects without stringifying tables. |
 | lua-core | [float-print](scripts/lua-core/float-print.lua) | tostring uses Lua number formatting and exponent notation. |
 | lua-core | [format-14g](scripts/lua-core/format-14g.lua) | Explicit %.14g rounding at fourteen significant digits. |
