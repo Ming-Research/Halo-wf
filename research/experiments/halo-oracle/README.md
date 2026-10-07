@@ -7,7 +7,7 @@ Halo's `make check-core` compares the corpus through the `oracle` target;
 recording reference replies remains the job of
 [oracle-reference.yml](../../../.github/workflows/oracle-reference.yml).
 
-There are 101 scripts: 61 `lua-core`, 23 `redis-api`, 6 `apps`, and 11 `libs`.
+There are 102 scripts: 62 `lua-core`, 23 `redis-api`, 6 `apps`, and 11 `libs`.
 The scripts, replies and runner belong here until the oracle is replaced or
 Halo/firn scripting is retired. Each case is consumed by `run.sh`; the table
 below is the index of the observations it protects.
@@ -136,7 +136,7 @@ glibc, as described above. The replies are exact observations of that
 reference, not portable-language promises for every case.
 
 - `integer-doubles`, `float-print`, `format-14g`, `negative-division`,
-  `numeric-coercion`, `concat-numbers`, `nonfinite`, `math-powers`,
+  `numeric-coercion`, `concat-numbers`, `nonfinite`, `table-sort-order`, `math-powers`,
   `math-round-extrema`, `math-random`, `string-format`, `cjson-numbers`, and
   `struct-strings-floats` expose floating-point arithmetic, libm, C/Lua or
   cjson formatting, or binary double representation. Lua's `tostring` uses
@@ -249,6 +249,7 @@ not automatically used to overwrite this baseline.
 | lua-core | [table-insert-remove](scripts/lua-core/table-insert-remove.lua) | Array insertion shifts entries; removal returns and shifts values. |
 | lua-core | [table-parts](scripts/lua-core/table-parts.lua) | Array and hash entries coexist; hash entries do not add array length. |
 | lua-core | [table-sort](scripts/lua-core/table-sort.lua) | Default and custom comparator sort numbers into opposite orders. |
+| lua-core | [table-sort-order](scripts/lua-core/table-sort-order.lua) | Default auxsort permutation for duplicate numbers, signed zeros, strings with NUL, NaN, hash-backed indices and short arrays. |
 | lua-core | [tail-recursion](scripts/lua-core/tail-recursion.lua) | Proper tail calls allow deep recursion without growing call stack. |
 | lua-core | [unpack-select-varargs](scripts/lua-core/unpack-select-varargs.lua) | unpack ranges and select preserve vararg count including nil. |
 | lua-core | [version-global](scripts/lua-core/version-global.lua) | The base library exposes _VERSION as the string Lua 5.1. |
