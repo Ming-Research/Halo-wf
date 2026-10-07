@@ -1892,6 +1892,7 @@ observation, not a replacement selection batch. Loop and sort also have wide
 spread, limiting stronger performance claims. This measures the combined
 entry qualification/helper and code-layout change, not isolated cycle shares.
 The check-time and runtime gates pass; selection awaits behavior/root gates.
+For the subsequent selection verdict, see the [14900K repeat](#14900k-repeat-with-wf-e1708490c384).
 
 
 ### Repeat correctness construction and sizing
@@ -1936,3 +1937,155 @@ callee kind (`6f050f3d6`), merged with Halo-wf main `526f67bef`.
 The behavior and root gates pass. The runtime and check-time gates stay as
 measured on the M1 Pro above until the 14900K repeat, which waits for that
 runner's move to clang 22 so the result holds for the toolchain that follows.
+That repeat is now recorded [below](#14900k-repeat-with-wf-e1708490c384), including the failed criterion and reversion.
+
+
+### 14900K repeat with wf-e1708490c384
+
+The repeat ran on the owner's i9-14900K CI runner, x86-64 Linux
+6.8.0-142-generic with glibc 2.39, in
+[run 37547846309](https://github.com/Ming-Research/Halo-wf/actions/runs/37547846309).
+The `STEP: compare` workflow at
+[`c35c53b59`](https://github.com/Ming-Research/Halo-wf/blob/c35c53b594ec4a3fb412224bb1b6c150af087200/.github/workflows/bench-14900k.yml)
+built both entry-comparison binaries with full LTO, Whitefoot release
+`wf-e1708490c384` (built with LLVM 22), `/usr/bin/clang` 22.1.8 and LLD
+22.1.8. The before binary, `halo-after-upgrade`, uses main source
+`526f67befe929bfdb33513a0c557d832d4868c43`; `halo-entry` uses branch
+`c35c53b594ec4a3fb412224bb1b6c150af087200`. Thus this repeats the criterion
+against the merged main baseline, rather than the original task base. The
+branch also contains number-library and gate changes; the number-library
+changes are not on these kernels' paths. This is the candidate comparison,
+not an attribution of isolated entry costs.
+
+The run's `halo-bench-compare` artifact holds `manifest-after.txt`,
+`entry-{1,3,6}.json`, `upgrade-{1,3,6}.json`, their logs and
+`check-times.txt`. The manifest maps sources and compiler releases to the
+executables; the JSON's current checkout revision alone is not a binary's
+build provenance. Recorded SHA-256s:
+
+| Executable | SHA-256 |
+|---|---|
+| `wf-e1708490c384/whitefootc` | `a413e443c702681c931635cae9a536682591b0d47ef2a5e702cdf60f6779400e` |
+| `halo-after-upgrade` | `ac982b1843b33a24485c6658d480c71a63ba2eaf525ff9bb8a9f259378e8cbe5` |
+| `halo-entry` | `9d3ecfac06a29204518c594ba6f63a27da477f9c3f50d8d9a1c3c3b6c02bd7f5` |
+
+The workflow first prepares the pinned compiler with `make compiler`, checks
+the host toolchain with `make toolchain-check`, fetches Redis 7.0.15's Lua
+with `sh research/experiments/halo-oracle/fetch-redis.sh "$PWD/build/redis"`,
+and archives the main baseline into `build/main-src`. Its build and timing
+commands are reproduced below; the workflow also records each command's
+logs and stops on failure. `compare upgrade` runs before `compare entry`.
+
+```sh
+release=wf-e1708490c384
+wfc="$PWD/build/whitefoot/$release/whitefootc"
+out="$PWD/build/bench-out"
+lua="$PWD/build/redis/redis-7.0.15/deps/lua/src/lua"
+"$wfc" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-entry"
+(cd build/main-src && "$wfc" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-after-upgrade")
+kernels=fib,loop,integer-table,string-key,concat,sort,binary-trees
+compare() {
+  label=$1; before=$2; after=$3
+  for runs in 1 3 6; do
+    python3 -B research/experiments/halo-bench/run.py --lua "$lua" \
+      --before-binary "$before" --binary "$after" --kernels "$kernels" \
+      --scale binary-trees=14 --runs "$runs" --out "$out/$label-$runs.json" --compiler "$wfc" \
+      > "$out/$label-$runs.log" 2>&1 || { cat "$out/$label-$runs.log"; exit 1; }
+  done
+}
+compare upgrade "$out/halo-before-upgrade" "$out/halo-after-upgrade"
+compare entry "$out/halo-after-upgrade" "$out/halo-entry"
+TIMEFORMAT=%R
+for sample in 1 2; do
+  for side in main entry; do
+    dir=build/main-src; [ "$side" = entry ] && dir=.
+    seconds=$( { time (cd "$dir" && "$wfc" --graph lib/halo/modules.wfg --check-module pkg::vm > "$out/check-$side-$sample.log" 2>&1); } 2>&1 )
+    echo "check-module pkg::vm $side sample $sample: $seconds s" | tee -a "$out/check-times.txt"
+  done
+done
+```
+
+One sizing pair and three warm pairs precede each selected six-pair batch;
+they are not pooled into the selected medians. The entry batch starts at
+`2026-10-07T00:09:41Z`. Process wall times include startup, Lua compilation,
+execution and teardown, with normal GC and unlimited budget. Launch order
+alternates before/after and after/before. Binary-trees uses depth 14; the
+other kernel counts are unchanged. In `entry-6.json`, ratio is candidate
+median / main median; each relative range is `(maximum - minimum) / median`.
+
+| Kernel | Main median s | Entry median s | Entry/main ratio | Main relative range | Entry relative range |
+|---|---:|---:|---:|---:|---:|
+| fib | 0.102447 | 0.100728 | 0.983 | 1.647% | 1.995% |
+| loop | 0.436116 | 0.435895 | 0.999 | 2.010% | 0.768% |
+| integer-table | 0.591408 | 0.593963 | 1.004 | 1.458% | 1.642% |
+| string-key | 0.033935 | 0.033974 | 1.001 | 3.394% | 2.787% |
+| concat | 0.101048 | 0.100705 | 0.997 | 0.698% | 0.952% |
+| sort | 0.726625 | 0.734516 | 1.011 | 0.764% | 0.978% |
+| binary-trees | 2.086497 | 2.108678 | 1.011 | 1.482% | 1.549% |
+
+**The retention criterion fails.** Fib improves only 1.678% (about 1.7%),
+below the required 10%. The earlier M1 Pro result (-18.99% time) was not
+reproduced on this host and compiler; this comparison does not establish
+why. The other-kernel noise gate also fails: sort's median loss is 1.086%,
+exceeding the larger of its two relative ranges, 0.978%. Integer-table's
+0.432%, string-key's 0.114% and binary-trees' 1.063% losses are below their
+respective larger ranges; loop and concat improve. This applies the recorded
+noise definition using unrounded JSON values. It corrects the reversion
+commit message's claim that all other kernels stayed within noise.
+
+The interleaved module-check samples in `check-times.txt` are main
+7.158 / 7.163 s and entry 7.252 / 7.143 s. Their medians are 7.1605 and
+7.1975 s, respectively: 1.0052×, within the 1.25× limit. The two samples
+per side suffice for this threshold. All selected benchmark and independent
+PUC reference exits are zero, checksums agree, suspensions are zero and
+paired GC counts agree. The full oracle and removed-root gate passes remain
+the earlier results at `3c3926fc2`
+([correctness gates](#repeat-correctness-gates-on-halo-wf)); this benchmark
+run does not rerun those gates or validate the subsequent reversion.
+
+Under the pre-recorded rule to revert on any failed criterion, commit
+[`46cad3c17`](https://github.com/Ming-Research/Halo-wf/commit/46cad3c17e4e96e174eaa37582cb7d58d82bb872)
+removed `enter_fixed_lua` and restored ordinary CALL's direct `prepare` path
+in `calls.wf` and `handlers.wf`, retaining this branch's later operand-error
+description changes. The fixed-entry change is reverted; its measurements
+remain as evidence.
+
+
+## Whitefoot wf-e1708490c384 upgrade comparison
+
+The same [14900K run](https://github.com/Ming-Research/Halo-wf/actions/runs/37547846309)
+also records the compiler-upgrade comparison required by
+[downstream.md, upgrade step 5](../../../whitefoot-kit/downstream.md#upgrading-whitefoot).
+Both sides use main source `526f67bef` and full LTO. The before executable,
+`halo-before-upgrade`, was built by
+[run 37543253469](https://github.com/Ming-Research/Halo-wf/actions/runs/37543253469)
+with `wf-648338c31240`, clang 18.1.3 and LLD 18.1.3, then downloaded for
+this run. Its SHA-256 is
+`b1558f4c72ce5e53d448a6af17ddd0cdd2c6851a74e459bb90d80328ee9b0c7e`;
+the old compiler's is
+`07b0969d5b1b6d761321f04153c6990e307c9cd30e2b14f1f2405f12891e4171`.
+The after executable is `halo-after-upgrade`, built with
+`wf-e1708490c384`, clang/LLD 22.1.8 as identified above. Both build steps use
+`--graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto`.
+
+`upgrade-6.json` (batch start `2026-10-07T00:08:13Z`) supplies these selected
+six-pair results after one sizing pair and three warm pairs, with the same
+host, commands, kernel sizes, normal GC and unlimited budget described above.
+Ratio is after median / before median; ranges use each side's own median.
+
+| Kernel | Before median s | After median s | After/before ratio | Before relative range | After relative range |
+|---|---:|---:|---:|---:|---:|
+| loop | 0.499451 | 0.436068 | 0.873 | 0.517% | 0.737% |
+| fib | 0.106292 | 0.102975 | 0.969 | 3.306% | 2.404% |
+| sort | 0.747802 | 0.725945 | 0.971 | 0.569% | 0.412% |
+| binary-trees | 2.140436 | 2.079276 | 0.971 | 1.400% | 0.961% |
+| integer-table | 0.603874 | 0.595150 | 0.986 | 2.299% | 2.059% |
+| concat | 0.101707 | 0.100784 | 0.991 | 1.154% | 1.013% |
+| string-key | 0.033770 | 0.033947 | 1.005 | 3.953% | 1.373% |
+
+All selected benchmark and independent PUC reference exits are zero,
+checksums agree, suspensions are zero and paired GC counts agree. There is
+no twin-of-base noise control, and both Whitefoot and clang/LLD changed.
+These observations report only the upgrade's combined effect on these
+kernels on this host; they do not isolate Whitefoot's contribution or
+establish a causal explanation for individual changes.

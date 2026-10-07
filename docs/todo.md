@@ -139,11 +139,13 @@ example apart from the engine code that exposed it
   [bounded call-entry trial](../research/experiments/halo-bench/RESULTS.md#sentinel-qualification-defect-found-before-selection)
   improves fib by 19.47% but is reverted because prototype bounds alone do not
   preserve explicit native-sentinel routing for the public prototype window.
-  Change: repeat fixed Lua entry with explicit sentinel exclusion, preserving
-  every native/invalid/vararg fallback; establish that exclusion independent
-  of the prototype count and repeat the full runtime, check-time, oracle and
-  removed-root criterion. Frame/result transport and residual table copying
-  remain separate attribution targets. Compare these, the VM.md candidates
+  The [sentinel-qualified repeat on the 14900K](../research/experiments/halo-bench/RESULTS.md#14900k-repeat-with-wf-e1708490c384)
+  failed its criterion with `wf-e1708490c384` and clang 22: fib improved only
+  1.7% against the required 10%, and sort regressed beyond the recorded
+  noise limit. It was reverted in `46cad3c17`; the module-check limit passed,
+  and the earlier oracle and removed-root gates passed.
+  Change: investigate frame/result transport and residual table copying as
+  separate attribution targets. Compare these, the VM.md candidates
   and library/heap paths with same-source,
   full-LTO pairs, preserving checksums, normal GC, roots and handle validity.
   Reopen at the next performance experiment; require a discriminating native
@@ -151,7 +153,7 @@ example apart from the engine code that exposed it
 
 - **Halo's oracle hides next/pairs hash iteration order.**
   `research/experiments/halo-oracle/scripts/lua-core/next-pairs.lua` sorts both
-  observations; passing the 240 comparison rows proves contents, not order.
+  observations; passing the oracle comparison proves contents, not order.
   Impact: a table-layout change can pass while diverging from the selected
   Redis Lua order. Change: add an independent unsorted table-growth and
   iteration observation in the oracle's existing home, with recorded Redis

@@ -32,10 +32,14 @@ existing native tools and validates their independently printed outputs;
 Python does not implement compiler or VM semantics. This runner stays while
 P1 is reproducible and is removed with the experiment if retired.
 
-Build with the existing compiler and full runtime LTO (no Cargo or network):
+Build with the pinned compiler (`make compiler` downloads it; the Makefile's
+`WHITEFOOTC` names its path) and full runtime LTO; `make reference-lua` builds
+the PUC reference under `build/redis`:
 
 ```sh
-perl .github/run-check.pl halo-bench-build compiler/target/gate/whitefootc --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o research/experiments/halo-bench/target/halo
+make compiler reference-lua
+wfc=build/whitefoot/$(sed -n 's/^release = //p' whitefoot.pin)/whitefootc
+"$wfc" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o research/experiments/halo-bench/target/halo
 ```
 
 Use `target/` for regenerable logs and profiler reports. Run the smallest
@@ -48,7 +52,7 @@ Halo launch; those timings are calibration, not a checksum-verified baseline. If
 recorded. `--budget realistic` measures Halo at 1000 instead of 2^64−1.
 
 ```sh
-perl .github/run-check.pl halo-bench-sample python3 research/experiments/halo-bench/run.py --lua /path/to/redis/deps/lua/src/lua --kernels fib --runs 1 --out research/experiments/halo-bench/target/fib-one.json
+python3 -B research/experiments/halo-bench/run.py --lua build/redis/redis-7.0.15/deps/lua/src/lua --compiler "$wfc" --kernels fib --runs 1 --out research/experiments/halo-bench/target/fib-one.json
 ```
 
 Wall time surrounds each process launch through exit (source reading, engine
@@ -82,7 +86,7 @@ pairs cannot be profiled or reference-only. `before` replaces `puc` in this
 mode's timing summaries; the PUC check is not a timed pair member.
 
 ```sh
-perl .github/run-check.pl halo-repair-pair python3 -B research/experiments/halo-bench/run.py --lua /path/to/redis/deps/lua/src/lua --before-binary research/experiments/halo-bench/target/halo-before --binary research/experiments/halo-bench/target/halo-roots --before-budget realistic --budget realistic --kernels loop --runs 1 --out research/experiments/halo-bench/target/roots-one.json
+python3 -B research/experiments/halo-bench/run.py --lua build/redis/redis-7.0.15/deps/lua/src/lua --compiler "$wfc" --before-binary research/experiments/halo-bench/target/halo-before --binary research/experiments/halo-bench/target/halo-roots --before-budget realistic --budget realistic --kernels loop --runs 1 --out research/experiments/halo-bench/target/roots-one.json
 ```
 
 The runner and retained cost observations serve the P1 cost-repair criteria in
