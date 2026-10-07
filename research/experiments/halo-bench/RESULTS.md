@@ -2605,3 +2605,27 @@ the 14900K, six alternating pairs as in the first P1 run on this host
 Sort meets P1 (0.749, measured in one paired run); concat moves from 2.42 to
 1.76; the other kernels are where the first run left them. P1 still fails on
 six kernels: integer-table, fib, binary-trees, concat, string-key and loop.
+
+## Table stores without the slow executor
+
+### Criterion, recorded before the change
+
+A table store whose old value is nil leaves the fast handler
+(`fast_instruction_set_table_*` in `lib/halo/vm/handlers.wf`): the slow
+executor looks the key up again, checks `__newindex` and read-only refusal,
+and `raw_assign` and `table_set` validate the table and key once more before
+inserting. PUC's `luaV_settable` takes one writable slot from `luaH_set`
+and, with no `__newindex` to consult, writes through it. The integer-table
+kernel's fill loop stores ten million new keys this way. Change: when the
+table has no metatable and is not read-only, the fast handler inserts the
+new key itself through the table's own insertion path (growth and rehash as
+now), refusing a nil or NaN key with the same errors as now; a metatable,
+a read-only table or any other case keeps the slow executor.
+
+Kept only if, on the 14900K, in six interleaved full-LTO pairs of main
+before the change against the branch after it, with a twin of the before
+binary: the integer-table kernel's median falls at least 8%, by more than
+both ranges and the twin's difference; no other kernel is slower beyond its
+larger range and the twin's; `--check-module pkg::vm` takes at most 1.25
+times as long; and `make check` passes. Otherwise the change is reverted
+with its measurements kept.
