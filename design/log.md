@@ -4,6 +4,14 @@ Newest first. One entry per approved change of the tree: a dated title,
 `Nodes:` naming every node changed, `Owner-approved:` and `Summary:`; the
 owner-wide instructions' *Log format* owns the form.
 
+## 2026-10-07 Halo's fast store inserts missing keys into plain tables
+
+Nodes: halo/dispatch
+
+Owner-approved: 2026-10-07 in the Halo session: "Q84 approved" (a table store's common case includes a missing key in a live table with no metatable that is not read-only).
+
+Summary: The fast table store inserts a missing key itself through the table's own insertion path when the table is live, has no metatable and is not read-only and the key is neither nil nor NaN, leaving tables with a metatable, read-only tables, invalid tables and invalid keys to the slow executor; this narrows the rule that hash misses go to the slow executor. Sending every new key to the slow executor repeated its lookup and validation; the change makes the integer-table kernel 11.9% faster and binary-trees 9.2% faster on the 14900K with no kernel slower (`research/experiments/halo-bench/RESULTS.md`, "Table stores without the slow executor").
+
 ## 2026-10-07 Halo sorts plain arrays synchronously
 
 Nodes: halo/calls
