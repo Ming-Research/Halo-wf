@@ -50,3 +50,39 @@ reaches; the others stay unimplemented.
 The survey cannot see private scripts or scripts that search does not
 index, and GitHub's order is not a sample of production use; the result is
 stated no wider than the corpus.
+
+## Result
+
+Searched on 2026-10-07: GitHub's index held 23,040 Lua, 4,544 JavaScript,
+21,280 TypeScript, 18,880 Python, 12,640 Go, 10,912 Java, 1,468 Ruby,
+22,272 PHP and 2,320 C# files containing `redis.call`. The first 300 of
+each, 2,700 files in 2,168 repositories (search returned no forks), were
+read in full and searched as above; the files themselves are not kept.
+Seven repositories named `redis` were set aside as possible copies of
+Redis; none had a match, so setting them aside changes nothing.
+
+Calls inside a script Redis runs, on its normal path:
+
+- `math.mod`: four repositories, one script. Ohm's save script tests
+  `math.mod(#attrs, 2) == 1` on every save, in
+  [soveran/ohm](https://github.com/soveran/ohm/blob/7dace9522d6af5af472bb34725f4972ef2845202/lib/ohm/lua/save.lua#L48)
+  and its ports
+  [soveran/ohm-crystal](https://github.com/soveran/ohm-crystal/blob/0d60236545ec77073a0378e4f76759389046e343/src/ohm/save.lua#L48),
+  [pote/gohm](https://github.com/pote/gohm/blob/4d19ff19131fa94b8903c4f85e5469388c5840e1/lua_save.go#L51)
+  and [luca3m/redis3m](https://github.com/luca3m/redis3m/blob/1c32da4df62bd415a175aae653c6f1649c0b37fe/data/lua/save.lua#L48).
+- `table.foreach`: one repository. Discourse's presence channels convert
+  the user ids a script reads and expire old members with it, in two
+  scripts in
+  [lib/presence_channel.rb](https://github.com/discourse/discourse/blob/833e1576d475b02bbea893272091dd3717773f73/lib/presence_channel.rb#L558).
+
+No surveyed repository calls `coroutine`, `loadstring`, `load`,
+`getfenv`, `setfenv`, `collectgarbage`, `gcinfo`, `newproxy`, `__gc`, a
+weak table, `string.dump`, `string.gfind`, `table.foreachi` or
+`table.setn` in a script. Matches read and set aside: `load(` in 18
+repositories, every one in host-language code (JavaScript, Python, Go,
+Ruby, PHP, C#); `__mode` in one script as the name of a hash field passed
+to `HSET`; `setfenv` in one repository's game-server Lua, which reaches
+Redis through a client module and is not a script Redis runs.
+
+By the criterion, `math.mod` and `table.foreach` are implemented next, and
+the other functions stay unimplemented.
