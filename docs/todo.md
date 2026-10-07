@@ -162,6 +162,19 @@ example apart from the engine code that exposed it
   apply the split where the same pattern holds, each with a same-source
   pair. Reopen at the next performance experiment.
 
+- **Halo's dispatch arms take the next pc from their helpers.** In
+  `lib/halo/vm/dispatch.wf`, an arm receives `next` from its instruction
+  helper (for example `instruction_move` returning `Ok(next)`), so
+  Whitefoot's code cursor (from release `wf-0b7f5c5b9854`) cannot see that
+  `next` is `pc + 1` and forms the code address from the index as before. The
+  stage-3 wasm interpreter computes `let next = pc + 1_u64` in the arm and
+  tail-calls with it, which the cursor turns into one addition per dispatch;
+  the wf session reported about 13% on CoreMark on x86-64 there (not
+  measured on Halo). Change: after Halo moves to a release with the cursor,
+  compute the constant-step `next` in the hot arms and keep helpers for the
+  operation itself, measured as a same-source pair. Reopen after that pin
+  move.
+
 - **Halo's oracle hides next/pairs hash iteration order.**
   `research/experiments/halo-oracle/scripts/lua-core/next-pairs.lua` sorts both
   observations; passing the oracle comparison proves contents, not order.
