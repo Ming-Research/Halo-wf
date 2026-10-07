@@ -18,7 +18,7 @@ local ids = {"1", "2", "3"}
 table.foreach(ids, function(k, v) ids[k] = tonumber(v) end)
 out[#out + 1] = type(ids[1]) .. ":" .. tostring(ids[1] + ids[2] + ids[3])
 table.foreach(KEYS, function(i, key) redis.call("SET", key, i * 7) end)
-out[#out + 1] = table.concat(redis.call("MGET", KEYS[1], KEYS[2]), ",")
+out[#out + 1] = redis.call("GET", KEYS[1]) .. "," .. redis.call("GET", KEYS[2])
 local function failure(f)
   local ok, message = pcall(f)
   out[#out + 1] = ok and "unexpected success" or tostring(message)
