@@ -4,6 +4,14 @@ Newest first. One entry per approved change of the tree: a dated title,
 `Nodes:` naming every node changed, `Owner-approved:` and `Summary:`; the
 owner-wide instructions' *Log format* owns the form.
 
+## 2026-10-07 Halo's concatenation joins each run of operands once
+
+Nodes: halo/dispatch
+
+Owner-approved: 2026-10-07 in the Halo session: "81 82 agreed" (Q82: concatenation's common case is every run of adjacent string or number operands, joined and converted in its handler; Q81, the performance candidates' order, changes no node).
+
+Summary: Concatenation's handler joins each run of adjacent string or number operands into one buffer, converting numbers in place, and interns the result once, as `luaV_concat` does, leaving `__concat` and errors to the slow executor; this narrows the rule that the slow executor performs coercion. Joining one pair at a time through the slow executor had allocated and interned every intermediate string, and the batch made the concat kernel 27% faster on the 14900K with no other kernel slower (`research/experiments/halo-bench/RESULTS.md`, "Batched concatenation").
+
 ## 2026-10-07 Halo's runtime type errors name their operand
 
 Nodes: halo/operand-names
