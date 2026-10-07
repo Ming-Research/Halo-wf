@@ -2089,3 +2089,28 @@ no twin-of-base noise control, and both Whitefoot and clang/LLD changed.
 These observations report only the upgrade's combined effect on these
 kernels on this host; they do not isolate Whitefoot's contribution or
 establish a causal explanation for individual changes.
+
+## Operand descriptions' cost
+
+### Criterion recorded before measurement
+
+Question: do the runtime type errors' operand descriptions (design node
+`design/halo/operand-names.md`) slow ordinary execution? Their handlers pass
+the faulting operand's register to the slow executor, and the compiler keeps
+local-variable ranges and upvalue names; the description itself is computed
+only when an error is raised, which no kernel does.
+
+Comparison: on the 14900K, Halo-wf main `526f67bef` and the branch head that
+adds the descriptions, both built with full LTO by the pinned release
+`wf-e1708490c384` and clang 22, run as interleaved pairs over all seven
+kernels (binary-trees depth 14), one sizing pair, three warm pairs, then six
+selected pairs; a copy of main's binary run against main the same way is the
+twin that measures noise. Then two interleaved `--check-module pkg::vm`
+samples per side. Workflow: `.github/workflows/bench-14900k.yml` at the
+measured head.
+
+Rejected if any kernel's six-pair median is slower than main's by more than
+the larger of the two variants' relative min–max ranges in those six pairs
+and more than the twin shows for that kernel, or if the median module-check
+time exceeds 1.25 times main's. A rejection is investigated before the
+change is kept.

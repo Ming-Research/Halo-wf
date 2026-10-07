@@ -1,9 +1,8 @@
-# Temporary, for Halo-wf#3: builds and times research/experiments/halo-bench
-# on the 14900K, for the Whitefoot upgrade's before/after comparison
-# (whitefoot-kit downstream.md, step 5) and the fixed-arity call entry's
-# runtime and check-time criterion (research/experiments/halo-bench/
-# RESULTS.md). STEP selects the one job a push of this file runs. Removed
-# before the pull request is marked ready.
+# Temporary, for Halo-wf#3: times research/experiments/halo-bench on the
+# 14900K for the operand descriptions' runtime and check-time criterion
+# (research/experiments/halo-bench/RESULTS.md, "Operand descriptions' cost").
+# A push of this file runs it. Removed before the pull request is marked
+# ready.
 name: bench-14900k
 
 on:
@@ -12,10 +11,8 @@ on:
     paths: [.github/workflows/bench-14900k.yml]
 
 env:
-  STEP: compare
-  # Halo-wf main 526f67bef with its pin wf-648338c31240: the upgrade's
-  # "before" source and compiler, built while /usr/bin/clang is still 18.
-  BEFORE_SOURCE: 526f67befe929bfdb33513a0c557d832d4868c43
+  # Halo-wf main 526f67bef: the source without operand descriptions.
+  BASE_SOURCE: 526f67befe929bfdb33513a0c557d832d4868c43
 
 defaults:
   run:
@@ -31,44 +28,11 @@ jobs:
           submodules: true
           fetch-depth: 0
 
-      - name: Build the upgrade's "before" halo-bench
-        if: env.STEP == 'build-before-upgrade'
-        run: |
-          set -euo pipefail
-          git checkout -q --detach "$BEFORE_SOURCE"
-          git submodule update -q --init
-          release=$(sed -n 's/^release = //p' whitefoot.pin)
-          make compiler
-          wfc="$PWD/build/whitefoot/$release/whitefootc"
-          out="$PWD/build/bench-out"
-          rm -rf "$out"; mkdir -p "$out"
-          start=$(date +%s)
-          "$wfc" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-before-upgrade"
-          echo "build seconds: $(( $(date +%s) - start ))"
-          {
-            echo "source $(git rev-parse HEAD)"
-            echo "release $release"
-            sha256sum "$wfc" "$out/halo-before-upgrade"
-            /usr/bin/clang --version | head -n 1
-            ld.lld --version | head -n 1
-            uname -a
-          } | tee "$out/manifest.txt"
-
-      # After the 14900K moved to clang 22: the upgrade's "after" (main's
-      # source, the new release) and the call entry (this branch), both
-      # with the new release; one sizing pair, three warm pairs, then the
-      # six selected pairs of each comparison, and the vm module check time.
-      - name: Download the upgrade's "before" halo-bench
-        if: env.STEP == 'compare'
-        uses: actions/download-artifact@v4
-        with:
-          name: halo-bench-build-before-upgrade
-          run-id: 37543253469
-          github-token: ${{ github.token }}
-          path: build/bench-before
-
-      - name: Build after the upgrade and compare
-        if: env.STEP == 'compare'
+      # Main and this branch built by the same pinned release; a copy of
+      # main's binary is the twin that measures noise. One sizing pair,
+      # three warm pairs, then the six selected pairs of each comparison,
+      # and two interleaved vm module-check samples per side.
+      - name: Build and compare
         run: |
           set -euo pipefail
           out="$PWD/build/bench-out"
@@ -80,18 +44,17 @@ jobs:
           wfc="$PWD/build/whitefoot/$release/whitefootc"
           sh research/experiments/halo-oracle/fetch-redis.sh "$PWD/build/redis"
           lua="$PWD/build/redis/redis-7.0.15/deps/lua/src/lua"
-          git archive "$BEFORE_SOURCE" | tar -x -C build/main-src
-          cp build/bench-before/halo-before-upgrade "$out/"
-          chmod +x "$out/halo-before-upgrade"
-          "$wfc" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-entry"
-          (cd build/main-src && "$wfc" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-after-upgrade")
+          git archive "$BASE_SOURCE" | tar -x -C build/main-src
+          (cd build/main-src && "$wfc" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-main")
+          cp "$out/halo-main" "$out/halo-main-twin"
+          "$wfc" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-names"
           {
-            echo "branch $(git rev-parse HEAD), main source $BEFORE_SOURCE, release $release"
-            cat build/bench-before/manifest.txt
+            echo "branch $(git rev-parse HEAD), main source $BASE_SOURCE, release $release"
             sha256sum "$wfc" "$out"/halo-*
             /usr/bin/clang --version | head -n 1
             ld.lld --version | head -n 1
-          } | tee "$out/manifest-after.txt"
+            uname -a
+          } | tee "$out/manifest.txt"
           kernels=fib,loop,integer-table,string-key,concat,sort,binary-trees
           compare() {
             label=$1; before=$2; after=$3
@@ -101,15 +64,15 @@ jobs:
                 --scale binary-trees=14 --runs "$runs" --out "$out/$label-$runs.json" --compiler "$wfc" \
                 > "$out/$label-$runs.log" 2>&1 || { cat "$out/$label-$runs.log"; exit 1; }
               echo "== $label, $runs pair(s)"
-              tail -n 25 "$out/$label-$runs.log"
+              grep 'ratio=' "$out/$label-$runs.log"
             done
           }
-          compare upgrade "$out/halo-before-upgrade" "$out/halo-after-upgrade"
-          compare entry "$out/halo-after-upgrade" "$out/halo-entry"
+          compare twin "$out/halo-main" "$out/halo-main-twin"
+          compare names "$out/halo-main" "$out/halo-names"
           TIMEFORMAT=%R
           for sample in 1 2; do
-            for side in main entry; do
-              dir=build/main-src; [ "$side" = entry ] && dir=.
+            for side in main names; do
+              dir=build/main-src; [ "$side" = names ] && dir=.
               seconds=$( { time (cd "$dir" && "$wfc" --graph lib/halo/modules.wfg --check-module pkg::vm > "$out/check-$side-$sample.log" 2>&1); } 2>&1 )
               echo "check-module pkg::vm $side sample $sample: $seconds s" | tee -a "$out/check-times.txt"
             done
@@ -118,6 +81,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: halo-bench-${{ env.STEP }}
+          name: halo-bench-names
           path: build/bench-out/
           retention-days: 30
