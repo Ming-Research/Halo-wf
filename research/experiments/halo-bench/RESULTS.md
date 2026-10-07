@@ -2554,3 +2554,33 @@ twin's; `--check-module pkg::vm` takes at most 1.25 times as long; and `make
 check` passes, the sort oracle cases at budgets 1, 7 and 1000 under collector
 stress included. Otherwise the change is reverted with its measurements
 kept.
+
+### Result
+
+[Run 37572825175](https://github.com/Ming-Research/Halo-wf/actions/runs/37572825175):
+main `734eceebf` against the branch at `8f5c60013`, whose engine differs from
+main only in `lib/halo/vm/library-sort.wf` (the run's own `git diff --stat`);
+six interleaved full-LTO pairs with `wf-0b7f5c5b9854`, medians in seconds:
+
+| Kernel | Main | Branch | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1046 | 0.1051 | 1.005 | 2.88% | 2.37% | 0.998 |
+| loop | 0.4345 | 0.4360 | 1.004 | 0.72% | 1.08% | 0.999 |
+| integer-table | 0.5974 | 0.5985 | 1.002 | 1.54% | 1.36% | 0.998 |
+| string-key | 0.0335 | 0.0336 | 1.003 | 2.38% | 0.81% | 1.013 |
+| concat | 0.0730 | 0.0730 | 1.000 | 1.44% | 6.19% | 0.991 |
+| sort | 0.5515 | 0.1936 | 0.351 | 0.66% | 1.33% | 1.001 |
+| binary-trees | 2.1252 | 2.1433 | 1.009 | 2.13% | 0.53% | 0.998 |
+
+`--check-module pkg::vm`: main 7.602 and 7.691 s, branch 7.677 and 7.683 s
+(1.005 times). `make check` passed at `3dffe7c2a`, the same engine
+([run 37572112536](https://github.com/Ming-Research/Halo-wf/actions/runs/37572112536)),
+with the new `table-sort-order` script's permutations, signed zeros and NaN
+included, equal to Redis's at budgets 1, 7 and 1000, ordinary and under
+collector stress.
+
+**The criterion passes and the change is kept.** The sort kernel takes 0.351
+times as long, far beyond both ranges and the twin, and no other kernel is
+slower beyond its bounds. Against PUC's 0.2580 s in the P1 run above, the
+kernel's 0.1936 s is about 0.75 times PUC's (not measured in one session):
+sort is the first kernel to meet P1.
