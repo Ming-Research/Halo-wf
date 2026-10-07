@@ -3,10 +3,11 @@
 # the local root cases pass with every root, and each fails once its sole
 # root is hidden from the collector or one marking call of mark_roots
 # (lib/halo/vm/collect.wf) is removed. An expected failure must be detected:
-# a reply/conversion difference, or the engine's own setup compile (3), setup
-# runtime (4), budget (5) or host-stop (6) exit; a crash by signal, a
-# transport failure (2), any other exit or a Traceback (such as a timeout)
-# rejects the control. A pure-shell classifier self-test runs first, before
+# every FAIL line must be a reply difference (any reason halo-e2e/run.py's
+# reason() gives, or a budget-dependent reply) or the engine's own setup
+# compile (3), setup runtime (4), budget (5) or host-stop (6) exit; a crash by
+# signal, a transport failure (2), any other exit, a timeout, an invalid
+# statistic or any other FAIL reason, or a Traceback, rejects the control. A pure-shell classifier self-test runs first, before
 # compiler setup. Mutants build in copies under the
 # scratch directory; the working tree is never edited. `make roots` runs it:
 #   WHITEFOOTC=<compiler> controls.sh <built e2e test program> <scratch directory>
@@ -18,8 +19,14 @@ is_detected_failure() (
     case "$line" in
       *Traceback*) return 1 ;;
       "FAIL "*": reply/conversion difference; inspect actual JSON") difference=0 ;;
+      "FAIL "*": error text/location difference: "*) difference=0 ;;
+      "FAIL "*": unavailable global/library: "*) difference=0 ;;
+      "FAIL "*": unsupported test-host command: "*) difference=0 ;;
+      "FAIL "*": missing library/host member: "*) difference=0 ;;
+      "FAIL "*": runtime/compile error: "*) difference=0 ;;
+      "FAIL "*": budget changes reply; "*) difference=0 ;;
       "FAIL "*": native exit "[3456]" ("*) difference=0 ;;
-      "FAIL "*": native exit "*) return 1 ;;
+      "FAIL "*) return 1 ;;
     esac
   done
   return "$difference"
@@ -48,6 +55,19 @@ FAIL apps/hash-cas budget=1 collections=None: native exit 4 (2 transport/I/O, 3 
 EOF
   if is_detected_failure <<'EOF'
 FAIL apps/hash-cas budget=1 collections=None: native exit 2 (2 transport/I/O, 3 setup compile, 4 setup runtime, 5 budget limit, 6 host stop)
+EOF
+  then return 1; fi
+  is_detected_failure <<'EOF' || return 1
+FAIL gc/suspended-stack.lua budget=1 collections=3: runtime/compile error: user_script:1: attempt to index a function value
+EOF
+  if is_detected_failure <<'EOF'
+FAIL gc/frame-closure.lua budget=1 collections=1: reply/conversion difference; inspect actual JSON
+FAIL gc/frame-closure.lua budget=7 collections=None: Command '['x']' timed out after 900 seconds
+EOF
+  then return 1; fi
+  if is_detected_failure <<'EOF'
+FAIL gc/frame-closure.lua budget=1 collections=1: reply/conversion difference; inspect actual JSON
+FAIL gc/frame-closure.lua budget=7 collections=0: stress performed no collection
 EOF
   then return 1; fi
   return 0
