@@ -2374,3 +2374,35 @@ dispatch function:
 One launch per kernel gives shares, not costs, and the arms are not yet
 mapped to instructions; the candidate is chosen after reading these paths
 against PUC's.
+
+### Candidate order
+
+A read of the hot paths against PUC's (concat, sort, integer-table stores,
+string-key lookup, the call path), ranked by expected recovery of each
+kernel's ratio and by risk to roots, handles and budget suspension, puts
+concatenation first: `concat_step` (`lib/halo/vm/continuations.wf`) folds
+the operands right to left one pair at a time, enters the slow executor for
+each pair, allocates and copies a fresh buffer per pair and interns every
+intermediate string, where PUC's `luaV_concat` joins every adjacent string
+or number operand in one buffer and creates one string. Sort's synchronous
+comparison, integer-table's store slot, string-key's lookup and the call path
+follow, each to be measured on its own.
+
+## Batched concatenation
+
+### Criterion, recorded before the change
+
+Change: `Concat` joins each maximal run of adjacent string or number
+operands, from the top as `luaV_concat` does, into one buffer and interns the
+result once; numbers convert with Lua's `%.14g`; an operand that is neither
+still goes to `__concat` with PUC's operand order, its errors and the
+continuation that budget suspension and callbacks need.
+
+Kept only if, on the 14900K, in six interleaved full-LTO pairs of the head
+before the change against the head after it, with a twin of the before
+binary: the concat kernel's median falls at least 15%, by more than both
+relative ranges and the twin's difference; no other kernel is slower beyond
+its larger range and the twin's; `--check-module pkg::vm` takes at most 1.25
+times as long; and `make check` passes, the oracle at budgets 1, 7 and 1000
+ordinary and under collector stress included. Otherwise the change is
+reverted with its measurements kept.
