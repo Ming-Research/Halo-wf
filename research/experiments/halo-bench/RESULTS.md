@@ -2582,6 +2582,26 @@ collector stress.
 **The criterion passes and the change is kept.** The sort kernel takes 0.351
 times as long, far beyond both ranges and the twin, and no other kernel is
 slower beyond its bounds. Against PUC's 0.2580 s in the P1 run above, the
-kernel's 0.1936 s is about 0.75 times PUC's; the two were measured in
-different runs, so this indicates, but does not establish, that sort meets
-P1, which a paired run against PUC would settle.
+kernel's 0.1936 s is about 0.75 times PUC's; the paired run below settles it.
+
+## P1 after the batched concatenation and the synchronous sort
+
+[Run 37575858701](https://github.com/Ming-Research/Halo-wf/actions/runs/37575858701),
+from a measurement-only branch since deleted: Halo-wf#9's head `4d8015ed9`
+(engine and pin; `wf-8b647edbbc95`) against Redis 7.0.15's bundled PUC Lua on
+the 14900K, six alternating pairs as in the first P1 run on this host
+(medians in seconds):
+
+| Kernel | PUC | Halo | Halo / PUC | Earlier ratio | PUC range | Halo range |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.0410 | 0.1049 | 2.557 | 2.584 | 3.71% | 3.08% |
+| loop | 0.2813 | 0.4353 | 1.548 | 1.544 | 1.69% | 1.92% |
+| integer-table | 0.2235 | 0.5959 | 2.666 | 2.688 | 4.22% | 1.94% |
+| string-key | 0.0198 | 0.0335 | 1.689 | 1.678 | 3.60% | 2.93% |
+| concat | 0.0415 | 0.0729 | 1.756 | 2.418 | 2.08% | 1.22% |
+| sort | 0.2574 | 0.1928 | 0.749 | 2.148 | 1.11% | 2.60% |
+| binary-trees | 0.8866 | 2.1496 | 2.424 | 2.434 | 3.17% | 1.19% |
+
+Sort meets P1 (0.749, measured in one paired run); concat moves from 2.42 to
+1.76; the other kernels are where the first run left them. P1 still fails on
+six kernels: integer-table, fib, binary-trees, concat, string-key and loop.
