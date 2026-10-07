@@ -2406,3 +2406,33 @@ its larger range and the twin's; `--check-module pkg::vm` takes at most 1.25
 times as long; and `make check` passes, the oracle at budgets 1, 7 and 1000
 ordinary and under collector stress included. Otherwise the change is
 reverted with its measurements kept.
+
+### Result
+
+[Run 37562788975](https://github.com/Ming-Research/Halo-wf/actions/runs/37562788975):
+main `7920b3c8d` against the branch at `f85c49c5b`, whose engine differs from
+main only in `lib/halo/vm/concat.wf`, `continuations.wf` and the license note
+(the run's own `git diff --stat`); six interleaved full-LTO pairs, medians in
+seconds:
+
+| Kernel | Main | Branch | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1049 | 0.1045 | 0.997 | 0.85% | 1.88% | 0.998 |
+| loop | 0.4360 | 0.4348 | 0.997 | 1.38% | 0.88% | 0.998 |
+| integer-table | 0.5944 | 0.5885 | 0.990 | 3.67% | 4.88% | 1.000 |
+| string-key | 0.0336 | 0.0338 | 1.005 | 1.09% | 2.70% | 1.009 |
+| concat | 0.1004 | 0.0730 | 0.727 | 0.94% | 0.79% | 0.998 |
+| sort | 0.5541 | 0.5516 | 0.996 | 0.53% | 0.35% | 1.002 |
+| binary-trees | 2.1019 | 2.1088 | 1.003 | 1.12% | 0.72% | 1.004 |
+
+`--check-module pkg::vm`: main 7.408 and 7.473 s, branch 7.551 and 7.544 s
+(1.014 times). `make check` passed at `6e9a50773`, the same engine
+([run 37562088965](https://github.com/Ming-Research/Halo-wf/actions/runs/37562088965)),
+the strengthened concatenation scripts and budgets 1, 7 and 1000 under
+collector stress included; their assertions also hold on Redis
+(oracle-reference run 37561720007).
+
+**The criterion passes and the change is kept.** Concat is 27.3% faster, far
+beyond both ranges and the twin, and no other kernel is slower beyond its
+bounds. Against PUC's median in the P1 run above, concat's ratio goes from
+2.42 to about 1.76 (not measured in one session).
