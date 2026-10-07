@@ -2436,3 +2436,21 @@ collector stress included; their assertions also hold on Redis
 beyond both ranges and the twin, and no other kernel is slower beyond its
 bounds. Against PUC's median in the P1 run above, concat's ratio goes from
 2.42 to about 1.76 (not measured in one session).
+
+## Whitefoot wf-0b7f5c5b9854 upgrade
+
+### Question, recorded before measuring
+
+`whitefoot.pin` moves from `wf-e1708490c384` (Whitefoot `e1708490c`,
+specification v0.93) to `wf-0b7f5c5b9854` (`0b7f5c5b9`, v0.94). The
+specification adds only scanning and clearing a `ConcurrentHashMap`, which
+Halo does not use; code generation changes through Whitefoot #258 (the
+match's code cursor), #261 (edges by their step; spill order) and #260. How do
+the kernels and the vm module-check time move? Whitefoot-kit's upgrade step 5
+asks for this comparison; it reports the difference and rejects nothing. The
+Whitefoot session measured Halo at `acb39ad7f` with #261's fix against the
+pre-cursor compiler: loop 1.000, fib 1.005.
+
+Comparison: the same source (this branch's engine) built with each release,
+six interleaved full-LTO pairs over the seven kernels, a twin of the old
+build, and two interleaved module-check samples per compiler.
