@@ -122,8 +122,8 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
     GetTableR(a: av, t: tv, c: cv) => {
       let continuation = fast_instruction_get_table_r(code: code, consts: consts, stack: stack, vm: vm, pc: pc, base: base, kbase: kbase, av: av^, tv: tv^, cv: cv^);
       match continuation {
-        Ok(value: handled) => {
-          if handled {
+        Ok(value: cursor) => {
+          if cursor.handled {
             let next = pc + 1_u64;
             if next < code^.inner.len {
               return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
@@ -142,8 +142,8 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
     GetTableK(a: av, t: tv, k: kv) => {
       let continuation = fast_instruction_get_table_k(code: code, consts: consts, stack: stack, vm: vm, pc: pc, base: base, kbase: kbase, av: av^, tv: tv^, kv: kv^);
       match continuation {
-        Ok(value: handled) => {
-          if handled {
+        Ok(value: cursor) => {
+          if cursor.handled {
             let next = pc + 1_u64;
             if next < code^.inner.len {
               return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
@@ -162,8 +162,8 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
     SetTableRR(t: tv, key: keyv, val: valv) => {
       let continuation = fast_instruction_set_table_rr(code: code, consts: consts, stack: stack, vm: vm, pc: pc, base: base, kbase: kbase, tv: tv^, keyv: keyv^, valv: valv^);
       match continuation {
-        Ok(value: handled) => {
-          if handled {
+        Ok(value: cursor) => {
+          if cursor.handled {
             let next = pc + 1_u64;
             if next < code^.inner.len {
               return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
@@ -198,8 +198,8 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
     SetTableKR(t: tv, key: keyv, val: valv) => {
       let continuation = fast_instruction_set_table_kr(code: code, consts: consts, stack: stack, vm: vm, pc: pc, base: base, kbase: kbase, tv: tv^, keyv: keyv^, valv: valv^);
       match continuation {
-        Ok(value: handled) => {
-          if handled {
+        Ok(value: cursor) => {
+          if cursor.handled {
             let next = pc + 1_u64;
             if next < code^.inner.len {
               return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
@@ -282,8 +282,8 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
     AddRR(a: av, b: bv, c: cv) => {
       let continuation = fast_instruction_add_rr(code: code, consts: consts, stack: stack, vm: vm, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
       match continuation {
-        Ok(value: handled) => {
-          if handled {
+        Ok(value: cursor) => {
+          if cursor.handled {
             let next = pc + 1_u64;
             if next < code^.inner.len {
               return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
@@ -302,8 +302,8 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
     AddRK(a: av, b: bv, c: cv) => {
       let continuation = fast_instruction_add_rk(code: code, consts: consts, stack: stack, vm: vm, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
       match continuation {
-        Ok(value: handled) => {
-          if handled {
+        Ok(value: cursor) => {
+          if cursor.handled {
             let next = pc + 1_u64;
             if next < code^.inner.len {
               return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
@@ -354,8 +354,8 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
     SubRR(a: av, b: bv, c: cv) => {
       let continuation = fast_instruction_sub_rr(code: code, consts: consts, stack: stack, vm: vm, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
       match continuation {
-        Ok(value: handled) => {
-          if handled {
+        Ok(value: cursor) => {
+          if cursor.handled {
             let next = pc + 1_u64;
             if next < code^.inner.len {
               return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
@@ -374,8 +374,8 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
     SubRK(a: av, b: bv, c: cv) => {
       let continuation = fast_instruction_sub_rk(code: code, consts: consts, stack: stack, vm: vm, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
       match continuation {
-        Ok(value: handled) => {
-          if handled {
+        Ok(value: cursor) => {
+          if cursor.handled {
             let next = pc + 1_u64;
             if next < code^.inner.len {
               return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
@@ -458,8 +458,8 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
     MulKR(a: av, b: bv, c: cv) => {
       let continuation = fast_instruction_mul_kr(code: code, consts: consts, stack: stack, vm: vm, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
       match continuation {
-        Ok(value: handled) => {
-          if handled {
+        Ok(value: cursor) => {
+          if cursor.handled {
             let next = pc + 1_u64;
             if next < code^.inner.len {
               return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
@@ -574,8 +574,8 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
     ModRK(a: av, b: bv, c: cv) => {
       let continuation = fast_instruction_mod_rk(code: code, consts: consts, stack: stack, vm: vm, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
       match continuation {
-        Ok(value: handled) => {
-          if handled {
+        Ok(value: cursor) => {
+          if cursor.handled {
             let next = pc + 1_u64;
             if next < code^.inner.len {
               return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
