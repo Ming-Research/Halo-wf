@@ -205,31 +205,50 @@ fn pow_integer(bits: u64) -> kind: u64 pure {
   return 2_u64;
 }
 
+const quiet_bit: u64 = 2251799813685248_u64;
+
+const default_nan: u64 = 18444492273895866368_u64;
+
 fn pow(a: f64, b: f64) -> value: f64 pure {
-  doc "Port of musl pow.c, Copyright (c) 2018 Arm Limited, MIT license (full terms in research/experiments/halo-number/README.md), with C pow's special values and its Arm FMA log/exp algorithm. The floating-point environment is round-to-nearest, as required by OP-3.";
+  doc "Port of musl pow.c, Copyright (c) 2018 Arm Limited, MIT license (full terms in research/experiments/halo-number/README.md), with its Arm FMA log/exp algorithm and the special values glibc's copy of it gives on x86-64, the reference: x + y keeps the first NaN operand, quieted; a signaling NaN is not absorbed by pow(x, 0) or pow(1, y); a NaN x is squared, so an odd integer y flips a negative NaN's sign; an invalid power is the x86 default NaN. The floating-point environment is round-to-nearest, as required by OP-3.";
   let original = reinterpret::<f64, u64>(a);
   let ybits = reinterpret::<f64, u64>(b);
   let ix = iand(original, 9223372036854775807_u64);
   let iy = iand(ybits, 9223372036854775807_u64);
   let negative_x = original >= sign_bit;
   let negative_y = ybits >= sign_bit;
+  let xnan = ix > infinity_bits;
+  let ynan = iy > infinity_bits;
+  let x_quiet = ior(original, quiet_bit);
+  let y_quiet = ior(ybits, quiet_bit);
+  let x_quiet_part = iand(original, quiet_bit);
+  let y_quiet_part = iand(ybits, quiet_bit);
+  let x_quiet_clear = x_quiet_part == 0_u64;
+  let y_quiet_clear = y_quiet_part == 0_u64;
+  let x_signaling = band(xnan, x_quiet_clear);
+  let y_signaling = band(ynan, y_quiet_clear);
   if iy == 0_u64 {
+    if x_signaling {
+      return reinterpret::<u64, f64>(x_quiet);
+    }
     return 1.0_f64;
   }
   if original == 4607182418800017408_u64 {
+    if y_signaling {
+      return reinterpret::<u64, f64>(y_quiet);
+    }
     return 1.0_f64;
   }
-  let xnan = ix > infinity_bits;
-  let ynan = iy > infinity_bits;
   if ynan {
-    let quiet = ior(ybits, 2251799813685248_u64);
-    return reinterpret::<u64, f64>(quiet);
-  }
-  if xnan {
-    let quiet = ior(original, 2251799813685248_u64);
-    return reinterpret::<u64, f64>(quiet);
+    if xnan {
+      return reinterpret::<u64, f64>(x_quiet);
+    }
+    return reinterpret::<u64, f64>(y_quiet);
   }
   if iy == infinity_bits {
+    if xnan {
+      return reinterpret::<u64, f64>(x_quiet);
+    }
     if ix == 4607182418800017408_u64 {
       return 1.0_f64;
     }
@@ -242,6 +261,13 @@ fn pow(a: f64, b: f64) -> value: f64 pure {
   let integer = pow_integer(bits: ybits);
   let odd = integer == 1_u64;
   let negative_result = band(negative_x, odd);
+  if xnan {
+    if negative_result {
+      let flipped = ixor(x_quiet, sign_bit);
+      return reinterpret::<u64, f64>(flipped);
+    }
+    return reinterpret::<u64, f64>(x_quiet);
+  }
   let zero = ix == 0_u64;
   let infinite = ix == infinity_bits;
   if bor(zero, infinite) {
@@ -256,7 +282,7 @@ fn pow(a: f64, b: f64) -> value: f64 pure {
   }
   if negative_x {
     if integer == 0_u64 {
-      return fnan::<f64>();
+      return reinterpret::<u64, f64>(default_nan);
     }
   }
   let exponent_y = ishr.wrap(iy, 52_u32);

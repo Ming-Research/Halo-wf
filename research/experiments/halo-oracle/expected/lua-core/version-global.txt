@@ -1,0 +1,13 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "bulk",
+      "bytes": "Lua 5.1"
+    },
+    {
+      "type": "bulk",
+      "bytes": "string"
+    }
+  ]
+}

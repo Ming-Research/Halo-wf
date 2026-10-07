@@ -1,6 +1,7 @@
-# Halo's gate: every push runs `make check`, which downloads the pinned
-# Whitefoot compiler release and runs every Halo check. The exact revision
-# that merges into main passes this first (the owner-wide merge requirements).
+# Halo's gate: every push runs `make check` as its three groups, core,
+# extended and reference, in parallel jobs (Makefile), after downloading the
+# pinned Whitefoot compiler release. The exact revision that merges into main
+# passes all three first (the owner-wide merge requirements).
 name: check
 
 on:
@@ -13,9 +14,13 @@ concurrency:
 
 jobs:
   check:
-    name: make check
+    name: make check-${{ matrix.group }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [core, extended, reference]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -35,19 +40,17 @@ jobs:
           echo "DESIGN_REVIEW_BASE=$design_review_base" >> "$GITHUB_ENV"
           git log --oneline -1 "$design_review_base"
 
-      # The pinned compiler links with /usr/bin/clang, and a cached build
-      # links its ThinLTO fragments with LLD on Linux, as Whitefoot's own
-      # gate installs them.
+      # The pinned release's Linux compiler runs /usr/bin/clang and links
+      # with LLD of the LLVM major its manifest names; make toolchain
+      # installs that major (whitefoot-kit, whitefoot.mk).
       - name: Install the host toolchain
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends clang lld
+          make toolchain
           ld.lld --version
-          /usr/bin/clang --version
           python3 --version
 
       - name: Check
-        run: make check
+        run: make -k check-${{ matrix.group }}
 
       # A failed comparison is read from the runner's report and the actual
       # replies it kept, which the job's log only summarizes.
@@ -55,10 +58,12 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: halo-e2e
+          name: halo-${{ matrix.group }}
           path: |
             build/halo-e2e/*.md
             build/halo-e2e/ordinary/
             build/halo-e2e/stress/
+            build/halo-roots/*.log
+            build/redis/lua-build.log
           if-no-files-found: ignore
           retention-days: 14

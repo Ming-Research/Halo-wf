@@ -11,7 +11,14 @@ if not bits then
         local mantissa = (high % 1048576) * 4294967296 + low
         local x
         if exponent == 2047 then
-            x = mantissa == 0 and math.huge or 0 / 0
+            if mantissa == 0 then
+                x = math.huge
+            else
+                -- 0/0 has the sign bit set on x86-64 and clear on arm64;
+                -- unary minus flips only the sign, so start from a positive NaN.
+                x = 0 / 0
+                if tostring(x):sub(1, 1) == "-" then x = -x end
+            end
         elseif exponent == 0 then
             x = math.ldexp(mantissa, -1074)
         else

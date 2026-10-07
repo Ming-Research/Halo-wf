@@ -1,0 +1,2968 @@
+{
+  "base_revision": "b374e880e6749fe5d1a0e4a40b0b2187f52f63b0",
+  "host": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "baseline_sources": {
+    "compiler/target/gate/whitefootc": "c71614ecb1da4ab8b5c4cfea7bec7afa3a39aeb967657e1aaa2019c76dbf3fc5",
+    "lib/halo/compile/assemble.wf": "7e272e23660b3ad4bebc3c7df3e8da3f6258be28bae893d9a777fcb6c3c78ff1",
+    "lib/halo/compile/bridge.wf": "5045ced98cb87533d3515dd7f946597be2c1e7f74fb6b44fae28d9b299320bfb",
+    "lib/halo/compile/code.wf": "4a0c75d59599654c91df1e79ac1724b6a3e63e8abf328f66bcfb2f8c07114861",
+    "lib/halo/compile/entry.wf": "734f82984a07eb424e579781af6e5dfda1122b6d16c293b807c2ee3099c14732",
+    "lib/halo/compile/expr.wf": "3ab2fc27cdfcd7085422ed7294838bd4595288aaba5970cc98c929d68ff9fc46",
+    "lib/halo/compile/module.wfm": "8d2fad42cabd09cfa9c2a7b4edb8c641a1f6c0b96800d282b3579dc1985d69f8",
+    "lib/halo/compile/parse_support.wf": "3ac5bebb5bfc12d35de68be96c439245b313323a08f8d4ac304a8cb277e0b429",
+    "lib/halo/compile/statements.wf": "272f81b0e03617c13d6449da1436cefcbe8ce108ee774fd78e6fdb9a87fa88d1",
+    "lib/halo/compile/support.wf": "4994946c342bbfc0a3712038e1a4702afae40bb6e1809ef2427753cea6976888",
+    "lib/halo/compile/verify.wf": "5b6656635ca8a04eb2debcde76fedb268b50e3ed146b95e2cccd2a056cda7adb",
+    "lib/halo/embed/engine.wf": "f328bea47550924792ab572f423eeac34a4d1a0929582c4bf1b4d673203ac4d2",
+    "lib/halo/embed/install.wf": "919ac491ea05e7995e6ac0eb886c4db19e1853d0f19805fde38edf8d82435f22",
+    "lib/halo/embed/module.wfm": "14c49e2a42c8968d244559f27ab2dd1a0771b9bbcafc2dd51b62216fed40dc3c",
+    "lib/halo/embed/redis-error.wf": "79a4ac2f71c36e011982f5169d4ffa91a9a8e1d689e3f33c3c4230af2cdd90cf",
+    "lib/halo/embed/sha1.wf": "6b41fa53fb8c78165d3352be10ee548c2e27c36a6bb59b540d3eefa3121e033c",
+    "lib/halo/embed/values.wf": "fd46f55b373a2c044224b9756f72520a7ee7e171d146f409217ac59e62ebe96d",
+    "lib/halo/heap/gc.wf": "020caee48b3badcfc3de5a80b532749b9b486021138f38ccb9665fe0550796f6",
+    "lib/halo/heap/module.wfm": "2b5e254d3e77c330c06b77c8bbd19fe0182a27e75380072eb332fa863371e372",
+    "lib/halo/heap/slabs.wf": "1a7833e5930f55050e4fa1e36297684a5374be7ace9133ca90fb5f7d56b0648d",
+    "lib/halo/heap/strings.wf": "625fc1cf41e830d5f95dba259f9f6c012a55d4e1b156bdd3047686eb7ee0e490",
+    "lib/halo/heap/tables.wf": "a72f70d0a1744e1d5813c0b99c67bfcf8cad6d167b3f4190b94cdad227ab043a",
+    "lib/halo/lex/error.wf": "a232a9f535bf7bf6738cfd3e692dd49f7a6575634edd02e7b81439d2f9d37cda",
+    "lib/halo/lex/lex.wf": "16040b47766f2b14697e73b443d498b0e944aee43f2556c2b8cd98d845d2ad21",
+    "lib/halo/lex/module.wfm": "3d0bfdd23dadc80ff6b0b9e33163bb6add59ba25b028340287b8c171c67671d8",
+    "lib/halo/lex/scan.wf": "5eee71bbb14a8b5ea941a85019961bd20d74716bf22dba709e6829a03e15078d",
+    "lib/halo/lex/support.wf": "0dc9493c850c6f441e98f2db62786bd32d87a7018001027b9ed73f6ed739008c",
+    "lib/halo/modules.wfg": "b7a0b5e45424788921418b5133ea5dad51357b528e5eed1cbd83d55650691936",
+    "lib/halo/number/decimal.wf": "8f1589d6d0f5bfee3f870099b1b7103847028a19b5156f03c981bd97ebb86797",
+    "lib/halo/number/format.wf": "65340adf8f5fa8b6d7bdb2086fc19b5e3fab8656dcf54b5813b4895a06da1dbd",
+    "lib/halo/number/math.wf": "652541ec554ddfb5ee144e0b5d64ccd7b23dba0f5a85d407a7af8535f99f9907",
+    "lib/halo/number/module.wfm": "098558648ddeef2f0805414866e687b8e61711b84669fb0a588d8d495ab10a8c",
+    "lib/halo/number/pow-data.wf": "efb5c13631311e235c57199c49dba39e1e220597b37c3e2ae09f58a8234b6635",
+    "lib/halo/number/pow.wf": "b7d5ebd29d5abdfaab428995e5efc6d6ddbcb8455f3c4f420175e4ee1a7e2bf0",
+    "lib/halo/number/read.wf": "957326a7e7d532f467a54cd66d80f93f272913319118efbfbe0fe9d49716177d",
+    "lib/halo/number/tests/check/check.wf": "8a08486b0104779fa8f6d775188edc4163241975071695efa9965a0ca7c6b7d4",
+    "lib/halo/number/tests/check/module.wfm": "f86fe277b71d2b8166bc69f68364a215821ab11e63ff1bc5862016c2fcea4769",
+    "lib/halo/value/module.wfm": "ee3fcd96704819565545ef6ea419c47feb8fcc36ac5854e5fc5a3f31d0e1f149",
+    "lib/halo/value/value.wf": "56c836f7597f8f8ba392da6848712f45a068519d7b7f994825d047eb9635e206",
+    "lib/halo/vm/builtins.wf": "1837a0332383e1673893009df8c3984f524404919c8f235607ae56641e83847a",
+    "lib/halo/vm/calls.wf": "15c454adb82eb82c6be526a7138630d29854f0a3a35c54f950a20740feef003d",
+    "lib/halo/vm/collect.wf": "025519ef055751caa9417c3967fb2d1cc21613f262709a20c73e323ce432af93",
+    "lib/halo/vm/continuations.wf": "9d2feb734c7caed6d6d65817181aa04c879c1dd06302b697f916bf952f04c599",
+    "lib/halo/vm/dispatch.wf": "5795a027da9e9ef165f0a74903e9d3703be005852f03378ece436adf2a636150",
+    "lib/halo/vm/handlers.wf": "91da01298fa926b7805cd376f5a11d6b2621b29b3511c8499f36cb535849f6fb",
+    "lib/halo/vm/instructions.wf": "e215c7d624b10adac7a955253f8dab2556c04f2da9489f9635fd733296ad412f",
+    "lib/halo/vm/library-base.wf": "ab069dfa3fb7a4cdd08ded923c01f3fad3d4b389f7a1b9eaee8c23f6aeaacc9b",
+    "lib/halo/vm/library-bit.wf": "3e02ac3a8bccbe05310116f06962edb7aa7a1c3268cae8627c40133abea08a7d",
+    "lib/halo/vm/library-callbacks.wf": "e0cea17b590965be92cda158da014ac69b1535a9b6fc60287467a7a22eba103a",
+    "lib/halo/vm/library-cjson-decode.wf": "a4fa99abdd656f4d0d14218a7e935522a543008354cd0e395099b4e04d8730f7",
+    "lib/halo/vm/library-cjson.wf": "4425355d2a042ff1d4eac57121441a4e7054e73207d8f947643a9012555c6cf2",
+    "lib/halo/vm/library-cmsgpack.wf": "701ddeb9e0676433efeb6fc32bf677d11fdecb3e0e62360d0285486dc636c416",
+    "lib/halo/vm/library-codecs.wf": "02ea53d45fd8624f171807acb41065ec94756e5d5a0e62b282419d3314d8d99e",
+    "lib/halo/vm/library-decimal.wf": "0c01d351582ec88f6101dcad997c4a3bbd7fcde0ce410761489962b9214cf2a0",
+    "lib/halo/vm/library-dispatch.wf": "7e503f0b0227d638eb892c2b4bfe9d075e0fe176305e69e6c7a553e6aade3a1a",
+    "lib/halo/vm/library-format.wf": "0aad72db13d19244d37c5a17bfd69e5b3ef9a5f951b56ebaef0501dbe54419aa",
+    "lib/halo/vm/library-hyperbolic.wf": "df2c7425d93ca4907a6f3f5101ced4505a448e2a684dfcfd123bab0a95550bde",
+    "lib/halo/vm/library-libm.wf": "49ebf733338dd82c43d53e82f4fe5ff8ef2bcafb23fc3e1c8724cd079cfe9196",
+    "lib/halo/vm/library-math.wf": "5f942f6fa8b1241f0b22a6681e8bcbb22506e1702594e2f02a7669d997c02dc5",
+    "lib/halo/vm/library-pattern-api.wf": "356bc1e0d57ab37a5f3a9e1ed24c023b8344137aff2371716c49db7e215a3641",
+    "lib/halo/vm/library-pattern-sub.wf": "06b88a60947461918503a86852a0576cf582103479a1f4d03598720c9ea60398",
+    "lib/halo/vm/library-pattern.wf": "eea41fe800af855b7755c6fd0b6e43328ea6b8db330b4c78c926fd5ea6e029fc",
+    "lib/halo/vm/library-sort.wf": "c68c2f874d4bb5ec55c11624a80c40b16d3ad7d8e09590277eb0a9d91dde611c",
+    "lib/halo/vm/library-string.wf": "eccfb26c443a65e9bf2094efd381706491543261591a5c2f9fbc59d9c69059e7",
+    "lib/halo/vm/library-struct.wf": "17e2f91082b77e9aa71d1ebd4aa0c800480d2bcd362847d17823308b021bb41b",
+    "lib/halo/vm/library-table.wf": "e660685a348ad7b50b11289fa2c0df3eb378ac0d694b3b99d181d45318f62869",
+    "lib/halo/vm/library-trig.wf": "ec5fdbf5b2ae83cca40bd9028dbf17d686d4ff743a698c25a4cd08ec50b31605",
+    "lib/halo/vm/library.wf": "e1c709af0c9f04e9b830fa3d82d27d044b9d4c3f4533b91020f28c09379bdd61",
+    "lib/halo/vm/module.wfm": "31ceb9bfc6eb46c55d49e5a772f0dba831bb95cda493673bafb61260367f3620",
+    "lib/halo/vm/slow.wf": "23e71263f199e75a4e5d76df57ced44c15f728de6be5da940661b634b4eb0349",
+    "lib/halo/vm/state.wf": "1dd7e9cecbaec94e68cf287127ace3dcb37bb96f7927ae273c7443c852c614c9"
+  },
+  "baseline_binary_sha256": "57559171811d75790fff664fe6d1ecc8c49971bb89fb7d2702c8f99c45e68625",
+  "commands": [],
+  "criterion_revision": "232b7d2b3a3d77e7b1a48e1552d9ad0a27fa3548",
+  "baseline_oracle_binary_sha256": "65e0c7db5bfb9c93ca07466df7ec156b2d3cd005d595f3c34f880852c1e0c313",
+  "witness": {
+    "source": "local function invoke(f, a, b)\n  local result = f(a, b)\n  return result\nend\nlocal native = invoke(math.abs, -17, 99)\nlocal iterator = string.gmatch(\"abc\", \"%a\")\nlocal sentinel = invoke(iterator)\nlocal ok, err = pcall(function()\n  local result = invoke(7, 1, 2)\n  return result\nend)\nlocal nilok, nilerr = pcall(function()\n  local result = invoke(nil, 1, 2)\n  return result\nend)\nlocal function vararg(a, ...)\n  return a + select(\"#\", ...)\nend\nlocal variable = invoke(vararg, 20, 30)\nreturn {native, sentinel, ok and 1 or 0,\n  string.find(err, \"attempt to call a number value\", 1, true) and 1 or 0,\n  nilok and 1 or 0,\n  string.find(nilerr, \"attempt to call a nil value\", 1, true) and 1 or 0,\n  variable}\n",
+    "expected": {
+      "type": "array",
+      "items": [
+        {
+          "type": "integer",
+          "value": 17
+        },
+        {
+          "type": "bulk",
+          "bytes": "a"
+        },
+        {
+          "type": "integer",
+          "value": 0
+        },
+        {
+          "type": "integer",
+          "value": 1
+        },
+        {
+          "type": "integer",
+          "value": 0
+        },
+        {
+          "type": "integer",
+          "value": 1
+        },
+        {
+          "type": "integer",
+          "value": 21
+        }
+      ]
+    },
+    "expected_bytes": "{\n  \"type\": \"array\",\n  \"items\": [\n    {\n      \"type\": \"integer\",\n      \"value\": 17\n    },\n    {\n      \"type\": \"bulk\",\n      \"bytes\": \"a\"\n    },\n    {\n      \"type\": \"integer\",\n      \"value\": 0\n    },\n    {\n      \"type\": \"integer\",\n      \"value\": 1\n    },\n    {\n      \"type\": \"integer\",\n      \"value\": 0\n    },\n    {\n      \"type\": \"integer\",\n      \"value\": 1\n    },\n    {\n      \"type\": \"integer\",\n      \"value\": 21\n    }\n  ]\n}\n",
+    "halo_entry_shape": "compile/statements.wf::retstat changes opcode to 29 (TailCall) only for a single direct call return expression (e.k == 13). invoke assigns f(a,b) to a local and returns the local; assemble.wf maps opcode 28 to Cell::Call, and dispatch.wf routes it to instruction_call."
+  },
+  "oracle_inputs_sha256": {
+    "research/experiments/halo-oracle/scripts/apps/hash-cas.lua": "9c3ef9d40acfe78de8059c3744a10cea3ad11704a150f7347e416305dc436be8",
+    "research/experiments/halo-oracle/scripts/apps/lock-extend.lua": "12908f631d8c491899959ca7b97dc8564d95d11143f7641a794ea4e00a1737cb",
+    "research/experiments/halo-oracle/scripts/apps/queue-move.lua": "c503a796ebf5162937a103d47e7e58473316b5879ccb451aa1f075855fe28077",
+    "research/experiments/halo-oracle/scripts/apps/rate-limiter.lua": "3e6a014a5b67628fe35a666b17f8c63aec5aabde2208837837cb5898a3362bc8",
+    "research/experiments/halo-oracle/scripts/apps/redlock-release.lua": "be43d2711ab3b5da3494647070343250bced2dfc6940452d387c557f014d7e30",
+    "research/experiments/halo-oracle/scripts/apps/sliding-window.lua": "04b819408a5072fd3bda8d8ebe632e15511a9cefa1921a3db446857ee6c52d49",
+    "research/experiments/halo-oracle/scripts/libs/bit-logical.lua": "c8b3f4993b24bb32df2165d3913328eb7d60ca3b9c26c36f2965c398b564d3d3",
+    "research/experiments/halo-oracle/scripts/libs/bit-shifts-hex.lua": "f220b0987e8e0124324c8286f486279235d12e476ab3eb51365754fc075c1b5a",
+    "research/experiments/halo-oracle/scripts/libs/cjson-arrays-nested.lua": "93a163cd64990d153adecc1577c33e7374720b6d2435ce6aa30bec3513792463",
+    "research/experiments/halo-oracle/scripts/libs/cjson-invalid.lua": "160a6bb7ad86a14c18f868877abfa64fce0e165668736627e6d27a815bc2ba99",
+    "research/experiments/halo-oracle/scripts/libs/cjson-numbers.lua": "e00773eb69af228c327d76c80ccab62eda3df69ffd49525130a09209f19c49b4",
+    "research/experiments/halo-oracle/scripts/libs/cjson-objects.lua": "86cedf057ce9828493d450a655e7a4f0825ea4a6b158a9d8da59f6590e69c275",
+    "research/experiments/halo-oracle/scripts/libs/cmsgpack-binary.lua": "83ae0dc1a1ea00854174b79d04d31ddf0dd7a88dcf57c5f9c33ab78fa7633fa2",
+    "research/experiments/halo-oracle/scripts/libs/cmsgpack-roundtrip.lua": "2c7ba206743e98b944da351f85c9ea3ae9ea6877371bff0d53939bb0df99cdee",
+    "research/experiments/halo-oracle/scripts/libs/struct-integers.lua": "d73fdd137e4c63112d21775b88bb06d8dfa5194f50702e5de7f2c37c01fe2cce",
+    "research/experiments/halo-oracle/scripts/libs/struct-strings-floats.lua": "36f745512e7ee4d112da7d27ae6a911f4be99c2c2dd31082c8d1e82d4909e894",
+    "research/experiments/halo-oracle/scripts/lua-core/array-holes.lua": "c8a78f227bb72091a28e1c08ddfcb729d59cb5ef9b3568febcff511630f66074",
+    "research/experiments/halo-oracle/scripts/lua-core/assert.lua": "ff432c38b4758bd9ae1dfe66fd879dc4e39c329f86a867fd4809bad53666f67e",
+    "research/experiments/halo-oracle/scripts/lua-core/concat-numbers.lua": "87b51e353f101350b017689b3a78715068c8809e382b6ae64e710bb9ef417c24",
+    "research/experiments/halo-oracle/scripts/lua-core/counter-closure.lua": "076d74aa760d58bd0b66cfe4bef403c7679e2a741966a45f1bae7252c1629df6",
+    "research/experiments/halo-oracle/scripts/lua-core/embedded-zero.lua": "05b616f756d6ad58084f225238979ac358acd8f7b5aaa2d504b5d66076963b74",
+    "research/experiments/halo-oracle/scripts/lua-core/error-levels.lua": "aefd742e8ce40166db570a61d6d35f736187843b3b7621837aefbceef221a482",
+    "research/experiments/halo-oracle/scripts/lua-core/error-values.lua": "66f5f8ae0bfce92d95644fd7c6568838264b2be9cc5f33571855ed0b55ba47a1",
+    "research/experiments/halo-oracle/scripts/lua-core/float-print.lua": "7b2f31b28b668e88fbf393ac0be04427a432adb4268242f4ca69ac1c975a3806",
+    "research/experiments/halo-oracle/scripts/lua-core/format-14g.lua": "13e9c2d987ea6fe72a94b3cfdc1fa1f3885a3b5eee4535aa094c9d6481b2cd80",
+    "research/experiments/halo-oracle/scripts/lua-core/integer-doubles.lua": "eb0fc8e18231b0459a74a12f37e865dd612044be8fbf816457d8c437fa7e7232",
+    "research/experiments/halo-oracle/scripts/lua-core/ipairs.lua": "a986243b888ed619d37097f42f8b4207bac69d5ca06b4092033903dd212569f8",
+    "research/experiments/halo-oracle/scripts/lua-core/loop-closures.lua": "21c825ee6425095603b9b73d8e629c185da2b6cc9ad53a3b3707631ed7a74b14",
+    "research/experiments/halo-oracle/scripts/lua-core/math-powers.lua": "a67e489397d571a454788d09d8a0ba5780cd032f00c9e5707ab75b2be4e88af6",
+    "research/experiments/halo-oracle/scripts/lua-core/math-random.lua": "8e9a40dbd1668f33aea83da8239da23eade62f5fed53b9643ac1e919574d7309",
+    "research/experiments/halo-oracle/scripts/lua-core/math-round-extrema.lua": "0a621eb32acdb12e971ac5804d64c653ed471dd3c21bd41f5f4fda9eaa2f0a6b",
+    "research/experiments/halo-oracle/scripts/lua-core/meta-call.lua": "88cff726288c485df2f9d87983c62dc19739d778cf7ab1896f2c4dd54c53046e",
+    "research/experiments/halo-oracle/scripts/lua-core/meta-comparisons.lua": "a185b2c8d01f67f467a404624e62da4234b119aa3135a9ea0ffa62751367fcee",
+    "research/experiments/halo-oracle/scripts/lua-core/meta-concat-tostring.lua": "c8f9684e667ac8b1f2d14b4d5337a36fcc9c418c2a343a823a17098d776253d7",
+    "research/experiments/halo-oracle/scripts/lua-core/meta-index.lua": "bae057f0263cd24c22ec5bdfa687e8a634b66e9fb60964e89c2989abaa47a25c",
+    "research/experiments/halo-oracle/scripts/lua-core/meta-le-fallback.lua": "8abb85449ebaefae232038a7cde07493b0fbb7ed9b49d5f368f9ce3c30a0ca86",
+    "research/experiments/halo-oracle/scripts/lua-core/meta-newindex.lua": "ecfeb9bef0a7eb2c80718ad10699fe77ae771620e5e1fc4c5b794c16801b81ca",
+    "research/experiments/halo-oracle/scripts/lua-core/meta-protection-raw.lua": "213046ad8f50369a3d944399f019e760095d519c73b7518cd460370701dc095e",
+    "research/experiments/halo-oracle/scripts/lua-core/meta-table-length.lua": "4018ce600a4bc93930aedf8cccc9fdadf5931858844d31a7c7506f223a2b5078",
+    "research/experiments/halo-oracle/scripts/lua-core/metamethod-error.lua": "47716919fd593e3e2b81943127349b786d1392cf6e201a49dda4110398978d0a",
+    "research/experiments/halo-oracle/scripts/lua-core/multiple-returns.lua": "f046d08b90e56cefc01157d56553ab35753f8c2431aaf3784318610e3424876b",
+    "research/experiments/halo-oracle/scripts/lua-core/negative-division.lua": "56458650112b906d4d1b462fadcfb0e6c0f3f593cc3f22258e1f36e96a4e2e2a",
+    "research/experiments/halo-oracle/scripts/lua-core/next-pairs.lua": "29cce28ee5b8f6e02fd352265ffa20d5a58e3de9a9f732072f09a4f8b4f3b0e7",
+    "research/experiments/halo-oracle/scripts/lua-core/nil-returns.lua": "48cc6b68e6c4e451c37ab48abe06ed9bbb708a872de24baa4f77157e39c5e595",
+    "research/experiments/halo-oracle/scripts/lua-core/nonfinite.lua": "801a4ce133de5223f9f52cf1d0a4669bbb00f16a26e5d8c33dd15ed35496fe52",
+    "research/experiments/halo-oracle/scripts/lua-core/numeric-coercion.lua": "34325552608037891c99f087c1117cbf094a0d28f23d5aff35d98b362bb85ec0",
+    "research/experiments/halo-oracle/scripts/lua-core/pcall-xpcall.lua": "19b7e51bbfe9401e0c4a2041c3934e907548c3584a36877d88a3a850c5ac294a",
+    "research/experiments/halo-oracle/scripts/lua-core/shared-upvalues.lua": "889b945e7ed876c5b66d19cdb09cce182a4eff6a3d4a96bc6708b2bad32577f0",
+    "research/experiments/halo-oracle/scripts/lua-core/string-byte-char.lua": "cb3d9e4513bb665a1a51ee5352874608628b44538ce84ab332abf3135be9c5a9",
+    "research/experiments/halo-oracle/scripts/lua-core/string-escapes.lua": "a0681b5e4737a58f7ea7bb48399b09f7d03e8ab3a6ed2fe39f50478ab053147a",
+    "research/experiments/halo-oracle/scripts/lua-core/string-find.lua": "c737f54e78027c64d51a7cf5dda122ad94b017f2de8a905ea2bdfc28ddf1cdb3",
+    "research/experiments/halo-oracle/scripts/lua-core/string-format.lua": "9240b829b7bf9523e6cda061fd9a1bbe6d8e6cef85ee1a308cc8a31138ad4c8a",
+    "research/experiments/halo-oracle/scripts/lua-core/string-gmatch.lua": "c2bfc418474087ad6cea3c712f87f06cc33d248b70c3d80fe98e35cb237529d9",
+    "research/experiments/halo-oracle/scripts/lua-core/string-gsub-dynamic.lua": "e144dc73c09d6c986470ff8bbd1d7b3e8b3185469e2b052d2e56356c74899922",
+    "research/experiments/halo-oracle/scripts/lua-core/string-gsub-string.lua": "7e554e3f0a5f9b179848677045c77733ea90627a8ba8412bea0c1f63f3d4d8c2",
+    "research/experiments/halo-oracle/scripts/lua-core/string-length-order.lua": "b5d2324990f19c8501e92100cd6f7b510bc934139fe77bf19351e6062e3950ae",
+    "research/experiments/halo-oracle/scripts/lua-core/string-match.lua": "a2eb7bc70358379c6b6e3561661a74836006ea12fdaa177c7041314e9a4fef2d",
+    "research/experiments/halo-oracle/scripts/lua-core/string-transforms.lua": "fdf1c8316abb9afdeb5e967f7ee7f9b81448195b9bec947d11b9d522bd7412ab",
+    "research/experiments/halo-oracle/scripts/lua-core/table-concat.lua": "55823186a27d9c672ac84b0999e156494f5010209ef3ee3560e12818b2945f80",
+    "research/experiments/halo-oracle/scripts/lua-core/table-insert-remove.lua": "9bc49a4c83ec9a0a2cbe10fa873b03291e8c6c91f73fe58a6df514b3bead3e41",
+    "research/experiments/halo-oracle/scripts/lua-core/table-parts.lua": "b1ee72df98426ceb44c0fe840a0aaddf1040262e2154c10f15a66e01a2ef3dbe",
+    "research/experiments/halo-oracle/scripts/lua-core/table-sort.lua": "c3f0bb869229777d7475742bd88735bfa28a6f1f368e81f4de89c608715f2e33",
+    "research/experiments/halo-oracle/scripts/lua-core/tail-recursion.lua": "8a7a1055962cd21235efd36e994b0f2397ee07e1800be5594f8011a209b7a59e",
+    "research/experiments/halo-oracle/scripts/lua-core/unpack-select-varargs.lua": "5111bd3834346c6ebf27a1224ec6b0a4d3b52ad3c45a0bcc2467b410498d1210",
+    "research/experiments/halo-oracle/scripts/redis-api/call-error.lua": "e9dbdf9a3d295c28faaff7f149e24aaaf6b1cabb57734baffbe85d2d02c50c6c",
+    "research/experiments/halo-oracle/scripts/redis-api/call-success.lua": "fa964f7568d66dbfaf3869157a755870252557e5a683d2d56c7534d5932d35ec",
+    "research/experiments/halo-oracle/scripts/redis-api/error-reply.lua": "e7a546dec0b98564459ea4f334fbd937b836019941681c830d5b197c738615d1",
+    "research/experiments/halo-oracle/scripts/redis-api/global-read.lua": "50910f7cb99e19744680ffe8dfc06c4fc4ad683282eea74559b1d7f8a0293ac4",
+    "research/experiments/halo-oracle/scripts/redis-api/global-write.lua": "7dc225e87d6ccb653f663c9f72307bc9aca2766f5d5c84896050335b7c499663",
+    "research/experiments/halo-oracle/scripts/redis-api/log-keys-argv.lua": "1570a5c596979a121980315ddfc0b9c7525259177d38d4397d413fcb191c88a3",
+    "research/experiments/halo-oracle/scripts/redis-api/lua-arrays.lua": "716e61a811baf03396971897c94a18298583613a05a9eacdccfe78ade18b72be",
+    "research/experiments/halo-oracle/scripts/redis-api/lua-nil.lua": "eaa67005f8242a4b6be80b1971c1e3245655601aa14c828371ec033806b0801a",
+    "research/experiments/halo-oracle/scripts/redis-api/lua-scalars.lua": "dc163b93fef394681160ffbed4aae075bf3402e6c7c251abe26dd649f686e0eb",
+    "research/experiments/halo-oracle/scripts/redis-api/pcall-success-error.lua": "8d870ab95d89bb359e5d837143465adb2f5c7a7a215b42518a8c6d48e5548a66",
+    "research/experiments/halo-oracle/scripts/redis-api/resp-error-raised.lua": "d8264542b798370c300e7817ec6a3142c880e4fed0e8ef17be78c5186ab90810",
+    "research/experiments/halo-oracle/scripts/redis-api/resp-values.lua": "2cad66167e566249fa46706ecdb24c48d094c95dbcc4dd6534d32343a5729371",
+    "research/experiments/halo-oracle/scripts/redis-api/return-error-table.lua": "112d3428b7f68cd68ed802c8e21b26a2ae0d981070366d57b92b2725307aa3a2",
+    "research/experiments/halo-oracle/scripts/redis-api/return-status-table.lua": "0140798e1a241a5b267cd8999299547582b8f6670f83d481d7ddf19131322c92",
+    "research/experiments/halo-oracle/scripts/redis-api/sha1hex.lua": "2d1648cd71aa5fd00016973ad5a52b00828886861392b8263989077bc7d0bc2e",
+    "research/experiments/halo-oracle/scripts/redis-api/status-reply.lua": "3682269e4197cc2d9444c749c15126eb3e9d4962bae9f47904f0473e933bf583",
+    "research/experiments/halo-oracle/expected/apps/hash-cas.txt": "112926ec78e1024e6c8f39c0252de1f67c790868f4a89b1ec06a74c366869991",
+    "research/experiments/halo-oracle/expected/apps/lock-extend.txt": "eab9af69b434acd246faab0c24f5ef9671a286ccecce8b773244d2476c6b7c1c",
+    "research/experiments/halo-oracle/expected/apps/queue-move.txt": "9bdb31dff9cb60039c96314600c377ee148c33adfb92f43e8b2261f0109c33a5",
+    "research/experiments/halo-oracle/expected/apps/rate-limiter.txt": "ce8eb07547516b659da667b5b6167bb0a3d4ea416a9c3e059f3f2b03333fc4ef",
+    "research/experiments/halo-oracle/expected/apps/redlock-release.txt": "b4410a7314e7bdf354e421e1c6261dfe58d1171145f49369edf20a2a47b3540c",
+    "research/experiments/halo-oracle/expected/apps/sliding-window.txt": "a52a4fd776d6a7c2f3804cab852ca01292d4d940ffb5cb92b8924eb3d2b88a49",
+    "research/experiments/halo-oracle/expected/libs/bit-logical.txt": "28db60c3b54277e28aa8664ed0ac14dea02fd985c3f27fea405618ec794225ce",
+    "research/experiments/halo-oracle/expected/libs/bit-shifts-hex.txt": "7089f622a4222008bec4e028c6f859c474eef0e2d55a08d6a155d65ea1a18374",
+    "research/experiments/halo-oracle/expected/libs/cjson-arrays-nested.txt": "c3e91beac787ef564aa06eba24c8fbf4e5dcc043dd599955a65aad06dd72e97e",
+    "research/experiments/halo-oracle/expected/libs/cjson-invalid.txt": "e51ec1f3fd81b553a534b135a696fad1a1861ebfdbe6b48ae14a4783013b7c0f",
+    "research/experiments/halo-oracle/expected/libs/cjson-numbers.txt": "6cb095d3aa152888893b439cd6fcc4d3377e317e7449d5ea3da71e61bf3c28bb",
+    "research/experiments/halo-oracle/expected/libs/cjson-objects.txt": "5afdc3793f160ca7c407c8e1449801bdbed127166884c7214ef00fec11f38d6b",
+    "research/experiments/halo-oracle/expected/libs/cmsgpack-binary.txt": "e9199c9bca247c592a5a4bf64926e77894e2a110a18017362a9a2b45579d1c9b",
+    "research/experiments/halo-oracle/expected/libs/cmsgpack-roundtrip.txt": "5ca3b0d3934f00fa858335f8f692407637df3f5aed2f11150ac506bd59b9e50c",
+    "research/experiments/halo-oracle/expected/libs/struct-integers.txt": "a893767d7837067b9d9f66437b493830ac2959270548a6f3624e4c33a15aa0c7",
+    "research/experiments/halo-oracle/expected/libs/struct-strings-floats.txt": "eac7155ecac297221e6f3c89a96ede8777b2fd35e62353880d5c33d330fb8a2e",
+    "research/experiments/halo-oracle/expected/lua-core/array-holes.txt": "16d2128926084647e31ad9cff1fe2ff8cda26bd3087d61c0e49b8937955273a9",
+    "research/experiments/halo-oracle/expected/lua-core/assert.txt": "0940eef93b7a48e5315d319a051b8f0981a59b5a07cfe5ab8b1c9a5af590f6c4",
+    "research/experiments/halo-oracle/expected/lua-core/concat-numbers.txt": "ff26795675d11168284bcb77da0cc0b20b355c88646466797e03b9de27e5691c",
+    "research/experiments/halo-oracle/expected/lua-core/counter-closure.txt": "0c473f5f3158d62106a1e2acc250eed3fb444d93327d012e97c36967e90e0814",
+    "research/experiments/halo-oracle/expected/lua-core/embedded-zero.txt": "b0d2dcfa017dd952c9f0acb55c6721178dad052421474532052b44277b29a83b",
+    "research/experiments/halo-oracle/expected/lua-core/error-levels.txt": "21281b738598d2d893e525cd2288bd0f25621dde927ab7b9a07e3457f3607b1e",
+    "research/experiments/halo-oracle/expected/lua-core/error-values.txt": "ae739a0754daaa5adb0b28b634a2dd98e928747955aea52d4ad2890a581a64fb",
+    "research/experiments/halo-oracle/expected/lua-core/float-print.txt": "cc7eca71497e65982f115944db08c43928eefdef814094fad37dc9e4994700c6",
+    "research/experiments/halo-oracle/expected/lua-core/format-14g.txt": "539f0100301199f7101a99d1ac3e83c94a66babdf841d601d9b9fecb97ffb878",
+    "research/experiments/halo-oracle/expected/lua-core/integer-doubles.txt": "a85b05e86ed46bf2baff90ab7bbe50ded5311edba1f6540e58be57cb6651abb5",
+    "research/experiments/halo-oracle/expected/lua-core/ipairs.txt": "f2a65597fc9a08b096c75364628d3a5f40fdefdeaa87b23a5fa116752deb6e09",
+    "research/experiments/halo-oracle/expected/lua-core/loop-closures.txt": "4e1ffb065dd43626150913b9482a52cd8b17e4712930217451518a16b3022129",
+    "research/experiments/halo-oracle/expected/lua-core/math-powers.txt": "170c2f963357c13aafdd3dfddcaff7570ddadd0d722b7be65031b76bf6571212",
+    "research/experiments/halo-oracle/expected/lua-core/math-random.txt": "83b510f27a653b6dd27311528eff43c14e3b81580d74466c00a40cd82191b879",
+    "research/experiments/halo-oracle/expected/lua-core/math-round-extrema.txt": "77b102ac174049bd85bb9e35bdc4c27bb5beb121db3f2573a5955a4e09ef2af7",
+    "research/experiments/halo-oracle/expected/lua-core/meta-call.txt": "83d2aa489fdfb6ef12b88db44c569a5be31310a6ead751b5ac109a199b6e7189",
+    "research/experiments/halo-oracle/expected/lua-core/meta-comparisons.txt": "3b9f07974d0d97a3122aaf4c53fdb3e7b9e3078939d4ffe6b741095a84861fa6",
+    "research/experiments/halo-oracle/expected/lua-core/meta-concat-tostring.txt": "cb864139fb2a037955d48fee8f1970ecf973c869d12e024ebbc00edf2b81fe31",
+    "research/experiments/halo-oracle/expected/lua-core/meta-index.txt": "1ff456984f7adb1b75bb8c88c4cb95a35f8fb78a09c1d0926c142a6a28935b91",
+    "research/experiments/halo-oracle/expected/lua-core/meta-le-fallback.txt": "af6569f7f24828c173f99db8eced852d1ee753d551af252e9885a3f4c84aced8",
+    "research/experiments/halo-oracle/expected/lua-core/meta-newindex.txt": "9d717716e2478bc45831d87a358a976ad8caf8533935835a03296d30043e6dca",
+    "research/experiments/halo-oracle/expected/lua-core/meta-protection-raw.txt": "69d8f8eb1480bd55fc535ed95db1548016946632c1f51e2d3d4a4a40752a4045",
+    "research/experiments/halo-oracle/expected/lua-core/meta-table-length.txt": "98342ad3a8b5e3414b1ef4de3f7643df6f36d370aedef3ff60a3fd67acca9d02",
+    "research/experiments/halo-oracle/expected/lua-core/metamethod-error.txt": "87b2257f57ac71c342be6e01b40b42d2ff6fc4150751f77677211a25a6601237",
+    "research/experiments/halo-oracle/expected/lua-core/multiple-returns.txt": "99cb918eee5ac5ea2ca85ed130e9d8d5a393d615309ac482420000e5f2cdc15c",
+    "research/experiments/halo-oracle/expected/lua-core/negative-division.txt": "511c9f9912bac2c4bfaa3d1ca388e547bfa8086e016575525888981e4c9f01d7",
+    "research/experiments/halo-oracle/expected/lua-core/next-pairs.txt": "6940d7aa8457d0eae5b35376c769e5c41104ff2489133f444348c305d1b269de",
+    "research/experiments/halo-oracle/expected/lua-core/nil-returns.txt": "887f7249606a64dbe27cf43c52d80f465ab8d990522cfe85c787830975e94b98",
+    "research/experiments/halo-oracle/expected/lua-core/nonfinite.txt": "dd7adb7c3fa201335716ddea1faf27fa6e89ad5be77959cf83359037c5837123",
+    "research/experiments/halo-oracle/expected/lua-core/numeric-coercion.txt": "64c4e8b4e41e336c1b1254851f8ce51814099237329c19aaf7ab7dcf30982234",
+    "research/experiments/halo-oracle/expected/lua-core/pcall-xpcall.txt": "66c70441d7955c887e13b223b5a646df88b81729fc4261cb4c32c4a7c3f5cba5",
+    "research/experiments/halo-oracle/expected/lua-core/shared-upvalues.txt": "295858c0007707c3186c30528b27cef4016f738d521a470376575ef18c022355",
+    "research/experiments/halo-oracle/expected/lua-core/string-byte-char.txt": "7d50363ba5b9d23f086a45942345e99e516ef34ab50409dcb5617c3d0b3bfa6a",
+    "research/experiments/halo-oracle/expected/lua-core/string-escapes.txt": "48b3618062201833d78fcf9898175189f3b0ff5ea305b1173b53c8e42c06f8a0",
+    "research/experiments/halo-oracle/expected/lua-core/string-find.txt": "34d663990d4b2fa1e2c1ae6a17f4b8774bff9c71f6e9df1f12258acf21a010b6",
+    "research/experiments/halo-oracle/expected/lua-core/string-format.txt": "80832d5bb9eab2e6df4eb49ff9f5ddd92355f34d8c281f169db8cb590904f67a",
+    "research/experiments/halo-oracle/expected/lua-core/string-gmatch.txt": "4ed9658fe56c9600ed3c7d0c62685fb6c893ec6d88d5b94b411372166eddab4c",
+    "research/experiments/halo-oracle/expected/lua-core/string-gsub-dynamic.txt": "39a4e0643697490ddcd33779ae112d5d234c0d233d5faefc441c5572208417ef",
+    "research/experiments/halo-oracle/expected/lua-core/string-gsub-string.txt": "ad9cc820f13fcbaa8f1d6a968ecc777f883ca0ab557e308dd5ccece560bab6d5",
+    "research/experiments/halo-oracle/expected/lua-core/string-length-order.txt": "aa47d059098d5e1b7d71e4b177f9689ba1e6f9980286066fd8aa88e695a79b60",
+    "research/experiments/halo-oracle/expected/lua-core/string-match.txt": "a2060222b29206224ea290d1b59cbfb0f9c4b26f35f5d38f1d6bd5663f514c02",
+    "research/experiments/halo-oracle/expected/lua-core/string-transforms.txt": "0e5ef0591bdfb012c9719aefc8e8481ee958ba167b1f8c020f4831b5943bb810",
+    "research/experiments/halo-oracle/expected/lua-core/table-concat.txt": "8e76e8c793eb80a429d93ca40d2919f957983ef4e809c715288670911bd25aae",
+    "research/experiments/halo-oracle/expected/lua-core/table-insert-remove.txt": "07070d8d50bd62ae935ecdc8686bc9d5ed83a847d874a74182192be87d2a2ff5",
+    "research/experiments/halo-oracle/expected/lua-core/table-parts.txt": "68952e78a2facaa6863626505dbd440b6d87633090990b507821d00ebb9486b6",
+    "research/experiments/halo-oracle/expected/lua-core/table-sort.txt": "705daf2ae262a743b696d65df6d5a66eecd537b85acd192fd622ab3f85fd5100",
+    "research/experiments/halo-oracle/expected/lua-core/tail-recursion.txt": "23c95a0682cbaab2f1346941de196b5c96b1e112adfe99548e2e2194bcd5e18b",
+    "research/experiments/halo-oracle/expected/lua-core/unpack-select-varargs.txt": "e032592438c7a4e65854573f56471bf303ac59c945372a2e27b4cd92364129df",
+    "research/experiments/halo-oracle/expected/redis-api/call-error.txt": "53e4ee327670535b1a85bdf7837d253cff2b8cbbb199eace41ae8640f414fc46",
+    "research/experiments/halo-oracle/expected/redis-api/call-success.txt": "2b6efb3b1925c4f8a484a7fc588f37211877548c4702fbe9fe3b0717bad8ca92",
+    "research/experiments/halo-oracle/expected/redis-api/error-reply.txt": "8f1c476810552887f853286b035383bb69b8214f8ebbbcbbca20830936bef589",
+    "research/experiments/halo-oracle/expected/redis-api/global-read.txt": "9fb33cede1435bbe64af10a3137c7e7fdf056eafd4cd08727d6851a5d49d1dc6",
+    "research/experiments/halo-oracle/expected/redis-api/global-write.txt": "89a77bc3cdd5231b3da266bec285af2f1007b1de0c88ba2986f5c57787873d81",
+    "research/experiments/halo-oracle/expected/redis-api/log-keys-argv.txt": "4d55bca02f483157006ea9ca67e855a3e6555c038442a469bf5d8d410a18a862",
+    "research/experiments/halo-oracle/expected/redis-api/lua-arrays.txt": "814588042605f3abb241140f40f58da953bbbf99cf31571d6329fe0733e52a77",
+    "research/experiments/halo-oracle/expected/redis-api/lua-nil.txt": "16c5031d08baf9202d5515830ab367b8e521d2ff0675ea9651431b3722323272",
+    "research/experiments/halo-oracle/expected/redis-api/lua-scalars.txt": "b53ec4fe774fcec42bc30e12c749e8e15626ada284978b14251cc4159e3d64a2",
+    "research/experiments/halo-oracle/expected/redis-api/pcall-success-error.txt": "d9a4fbf8e0be123cf16c71c50462e023ca0f377630578ab1ade477b782891dcb",
+    "research/experiments/halo-oracle/expected/redis-api/resp-error-raised.txt": "c3701fcdf55ce020bd659e817ef8348a19fdd9754974c360b1a9bd4187cad6bd",
+    "research/experiments/halo-oracle/expected/redis-api/resp-values.txt": "5e0172454c494b42995b3613cca51c83d9845661c8f8f56863f4f16c8958218b",
+    "research/experiments/halo-oracle/expected/redis-api/return-error-table.txt": "eb03f90ae3d06033267f613e1f93accd1a0a610913d383cfead1711516eae799",
+    "research/experiments/halo-oracle/expected/redis-api/return-status-table.txt": "d128f6025d3f3772d3b79199007445df82e5d33feeaac3634a11a07361d365a3",
+    "research/experiments/halo-oracle/expected/redis-api/sha1hex.txt": "4c076665c41e20b56eca25ec66e8c6cc73016b69c0355f6729c5875d5dced9b9",
+    "research/experiments/halo-oracle/expected/redis-api/status-reply.txt": "2e30a60c00d24ce860b49f39e359e199a4207410487c58f1c5ae2042fc87c0ab"
+  },
+  "check_before_seconds": [
+    296.96,
+    263.13
+  ],
+  "candidate_revision": "71173591704b4e3cc7e809f38b5534a92503a617",
+  "candidate_sources": {
+    "compiler/target/gate/whitefootc": "c71614ecb1da4ab8b5c4cfea7bec7afa3a39aeb967657e1aaa2019c76dbf3fc5",
+    "lib/halo/compile/assemble.wf": "7e272e23660b3ad4bebc3c7df3e8da3f6258be28bae893d9a777fcb6c3c78ff1",
+    "lib/halo/compile/bridge.wf": "5045ced98cb87533d3515dd7f946597be2c1e7f74fb6b44fae28d9b299320bfb",
+    "lib/halo/compile/code.wf": "4a0c75d59599654c91df1e79ac1724b6a3e63e8abf328f66bcfb2f8c07114861",
+    "lib/halo/compile/entry.wf": "734f82984a07eb424e579781af6e5dfda1122b6d16c293b807c2ee3099c14732",
+    "lib/halo/compile/expr.wf": "3ab2fc27cdfcd7085422ed7294838bd4595288aaba5970cc98c929d68ff9fc46",
+    "lib/halo/compile/module.wfm": "8d2fad42cabd09cfa9c2a7b4edb8c641a1f6c0b96800d282b3579dc1985d69f8",
+    "lib/halo/compile/parse_support.wf": "3ac5bebb5bfc12d35de68be96c439245b313323a08f8d4ac304a8cb277e0b429",
+    "lib/halo/compile/statements.wf": "272f81b0e03617c13d6449da1436cefcbe8ce108ee774fd78e6fdb9a87fa88d1",
+    "lib/halo/compile/support.wf": "4994946c342bbfc0a3712038e1a4702afae40bb6e1809ef2427753cea6976888",
+    "lib/halo/compile/verify.wf": "5b6656635ca8a04eb2debcde76fedb268b50e3ed146b95e2cccd2a056cda7adb",
+    "lib/halo/embed/engine.wf": "f328bea47550924792ab572f423eeac34a4d1a0929582c4bf1b4d673203ac4d2",
+    "lib/halo/embed/install.wf": "919ac491ea05e7995e6ac0eb886c4db19e1853d0f19805fde38edf8d82435f22",
+    "lib/halo/embed/module.wfm": "14c49e2a42c8968d244559f27ab2dd1a0771b9bbcafc2dd51b62216fed40dc3c",
+    "lib/halo/embed/redis-error.wf": "79a4ac2f71c36e011982f5169d4ffa91a9a8e1d689e3f33c3c4230af2cdd90cf",
+    "lib/halo/embed/sha1.wf": "6b41fa53fb8c78165d3352be10ee548c2e27c36a6bb59b540d3eefa3121e033c",
+    "lib/halo/embed/values.wf": "fd46f55b373a2c044224b9756f72520a7ee7e171d146f409217ac59e62ebe96d",
+    "lib/halo/heap/gc.wf": "020caee48b3badcfc3de5a80b532749b9b486021138f38ccb9665fe0550796f6",
+    "lib/halo/heap/module.wfm": "2b5e254d3e77c330c06b77c8bbd19fe0182a27e75380072eb332fa863371e372",
+    "lib/halo/heap/slabs.wf": "1a7833e5930f55050e4fa1e36297684a5374be7ace9133ca90fb5f7d56b0648d",
+    "lib/halo/heap/strings.wf": "625fc1cf41e830d5f95dba259f9f6c012a55d4e1b156bdd3047686eb7ee0e490",
+    "lib/halo/heap/tables.wf": "a72f70d0a1744e1d5813c0b99c67bfcf8cad6d167b3f4190b94cdad227ab043a",
+    "lib/halo/lex/error.wf": "a232a9f535bf7bf6738cfd3e692dd49f7a6575634edd02e7b81439d2f9d37cda",
+    "lib/halo/lex/lex.wf": "16040b47766f2b14697e73b443d498b0e944aee43f2556c2b8cd98d845d2ad21",
+    "lib/halo/lex/module.wfm": "3d0bfdd23dadc80ff6b0b9e33163bb6add59ba25b028340287b8c171c67671d8",
+    "lib/halo/lex/scan.wf": "5eee71bbb14a8b5ea941a85019961bd20d74716bf22dba709e6829a03e15078d",
+    "lib/halo/lex/support.wf": "0dc9493c850c6f441e98f2db62786bd32d87a7018001027b9ed73f6ed739008c",
+    "lib/halo/modules.wfg": "b7a0b5e45424788921418b5133ea5dad51357b528e5eed1cbd83d55650691936",
+    "lib/halo/number/decimal.wf": "8f1589d6d0f5bfee3f870099b1b7103847028a19b5156f03c981bd97ebb86797",
+    "lib/halo/number/format.wf": "65340adf8f5fa8b6d7bdb2086fc19b5e3fab8656dcf54b5813b4895a06da1dbd",
+    "lib/halo/number/math.wf": "652541ec554ddfb5ee144e0b5d64ccd7b23dba0f5a85d407a7af8535f99f9907",
+    "lib/halo/number/module.wfm": "098558648ddeef2f0805414866e687b8e61711b84669fb0a588d8d495ab10a8c",
+    "lib/halo/number/pow-data.wf": "efb5c13631311e235c57199c49dba39e1e220597b37c3e2ae09f58a8234b6635",
+    "lib/halo/number/pow.wf": "b7d5ebd29d5abdfaab428995e5efc6d6ddbcb8455f3c4f420175e4ee1a7e2bf0",
+    "lib/halo/number/read.wf": "957326a7e7d532f467a54cd66d80f93f272913319118efbfbe0fe9d49716177d",
+    "lib/halo/number/tests/check/check.wf": "8a08486b0104779fa8f6d775188edc4163241975071695efa9965a0ca7c6b7d4",
+    "lib/halo/number/tests/check/module.wfm": "f86fe277b71d2b8166bc69f68364a215821ab11e63ff1bc5862016c2fcea4769",
+    "lib/halo/value/module.wfm": "ee3fcd96704819565545ef6ea419c47feb8fcc36ac5854e5fc5a3f31d0e1f149",
+    "lib/halo/value/value.wf": "56c836f7597f8f8ba392da6848712f45a068519d7b7f994825d047eb9635e206",
+    "lib/halo/vm/builtins.wf": "1837a0332383e1673893009df8c3984f524404919c8f235607ae56641e83847a",
+    "lib/halo/vm/calls.wf": "db05f0b373830ad76b83f99328a78376bfd5f0a69a849aecc7d6d28826d37242",
+    "lib/halo/vm/collect.wf": "025519ef055751caa9417c3967fb2d1cc21613f262709a20c73e323ce432af93",
+    "lib/halo/vm/continuations.wf": "9d2feb734c7caed6d6d65817181aa04c879c1dd06302b697f916bf952f04c599",
+    "lib/halo/vm/dispatch.wf": "5795a027da9e9ef165f0a74903e9d3703be005852f03378ece436adf2a636150",
+    "lib/halo/vm/handlers.wf": "612f8e7c103ab4eb084a9a477862af336c9d80007ff68bbda7dfe24aaed1b516",
+    "lib/halo/vm/instructions.wf": "e215c7d624b10adac7a955253f8dab2556c04f2da9489f9635fd733296ad412f",
+    "lib/halo/vm/library-base.wf": "ab069dfa3fb7a4cdd08ded923c01f3fad3d4b389f7a1b9eaee8c23f6aeaacc9b",
+    "lib/halo/vm/library-bit.wf": "3e02ac3a8bccbe05310116f06962edb7aa7a1c3268cae8627c40133abea08a7d",
+    "lib/halo/vm/library-callbacks.wf": "e0cea17b590965be92cda158da014ac69b1535a9b6fc60287467a7a22eba103a",
+    "lib/halo/vm/library-cjson-decode.wf": "a4fa99abdd656f4d0d14218a7e935522a543008354cd0e395099b4e04d8730f7",
+    "lib/halo/vm/library-cjson.wf": "4425355d2a042ff1d4eac57121441a4e7054e73207d8f947643a9012555c6cf2",
+    "lib/halo/vm/library-cmsgpack.wf": "701ddeb9e0676433efeb6fc32bf677d11fdecb3e0e62360d0285486dc636c416",
+    "lib/halo/vm/library-codecs.wf": "02ea53d45fd8624f171807acb41065ec94756e5d5a0e62b282419d3314d8d99e",
+    "lib/halo/vm/library-decimal.wf": "0c01d351582ec88f6101dcad997c4a3bbd7fcde0ce410761489962b9214cf2a0",
+    "lib/halo/vm/library-dispatch.wf": "7e503f0b0227d638eb892c2b4bfe9d075e0fe176305e69e6c7a553e6aade3a1a",
+    "lib/halo/vm/library-format.wf": "0aad72db13d19244d37c5a17bfd69e5b3ef9a5f951b56ebaef0501dbe54419aa",
+    "lib/halo/vm/library-hyperbolic.wf": "df2c7425d93ca4907a6f3f5101ced4505a448e2a684dfcfd123bab0a95550bde",
+    "lib/halo/vm/library-libm.wf": "49ebf733338dd82c43d53e82f4fe5ff8ef2bcafb23fc3e1c8724cd079cfe9196",
+    "lib/halo/vm/library-math.wf": "5f942f6fa8b1241f0b22a6681e8bcbb22506e1702594e2f02a7669d997c02dc5",
+    "lib/halo/vm/library-pattern-api.wf": "356bc1e0d57ab37a5f3a9e1ed24c023b8344137aff2371716c49db7e215a3641",
+    "lib/halo/vm/library-pattern-sub.wf": "06b88a60947461918503a86852a0576cf582103479a1f4d03598720c9ea60398",
+    "lib/halo/vm/library-pattern.wf": "eea41fe800af855b7755c6fd0b6e43328ea6b8db330b4c78c926fd5ea6e029fc",
+    "lib/halo/vm/library-sort.wf": "c68c2f874d4bb5ec55c11624a80c40b16d3ad7d8e09590277eb0a9d91dde611c",
+    "lib/halo/vm/library-string.wf": "eccfb26c443a65e9bf2094efd381706491543261591a5c2f9fbc59d9c69059e7",
+    "lib/halo/vm/library-struct.wf": "17e2f91082b77e9aa71d1ebd4aa0c800480d2bcd362847d17823308b021bb41b",
+    "lib/halo/vm/library-table.wf": "e660685a348ad7b50b11289fa2c0df3eb378ac0d694b3b99d181d45318f62869",
+    "lib/halo/vm/library-trig.wf": "ec5fdbf5b2ae83cca40bd9028dbf17d686d4ff743a698c25a4cd08ec50b31605",
+    "lib/halo/vm/library.wf": "e1c709af0c9f04e9b830fa3d82d27d044b9d4c3f4533b91020f28c09379bdd61",
+    "lib/halo/vm/module.wfm": "31ceb9bfc6eb46c55d49e5a772f0dba831bb95cda493673bafb61260367f3620",
+    "lib/halo/vm/slow.wf": "23e71263f199e75a4e5d76df57ced44c15f728de6be5da940661b634b4eb0349",
+    "lib/halo/vm/state.wf": "1dd7e9cecbaec94e68cf287127ace3dcb37bb96f7927ae273c7443c852c614c9"
+  },
+  "candidate_patch": "diff --git a/lib/halo/vm/calls.wf b/lib/halo/vm/calls.wf\nindex 9d0987281..4e0fcc4c3 100644\n--- a/lib/halo/vm/calls.wf\n+++ b/lib/halo/vm/calls.wf\n@@ -230,6 +230,69 @@ fn enter_lua(vm: &Vm, stack: &Box<Slots<Value>>, h: u32, func: u64, argc: u64, w\n   return Step::Error();\n }\n \n+fn enter_fixed_lua(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, wanted: i64, return_pc: u64) -> r: Option<Step> writes(vm), writes(stack) contract {\n+  requires func < stack^.inner.len;\n+} {\n+  doc \"Qualifies fixed Lua calls once; other kinds retain the general prepare path.\";\n+  match func_of(v: stack^.inner[func]) {\n+    Lua(h: fixed_h) => {\n+      let hi = cvt::<u32, u64>(fixed_h);\n+      if hi < vm^.heap.closures.inner.len {\n+        if vm^.heap.closures.inner[hi].live {\n+          let proto = vm^.heap.closures.inner[hi].payload.proto;\n+          if proto != no_handle {\n+            let pi = cvt::<u32, u64>(proto);\n+            if pi < vm^.protos.inner.len {\n+              let p = vm^.protos.inner[pi];\n+              if bnot(p.is_vararg) {\n+                let fixed = cvt::<u8, u64>(p.numparams);\n+                let maxstack = cvt::<u8, u64>(p.maxstack);\n+                let kb = cvt::<u32, u64>(p.kbase);\n+                let start = cvt::<u32, u64>(p.start);\n+                let b = func +sat 1_u64;\n+                let room = b +sat 256_u64;\n+                if room == unlimited {\n+                  let ignored = raise_text(vm: vm, text: &calls_text_0[0_u64..14_u64]);\n+                  let failure = Step::Error();\n+                  return Some<Step>(value: failure);\n+                }\n+                ensure_stack(stack: stack, size: room);\n+                for (i in argc..fixed) {\n+                  let j = b +sat i;\n+                  if j < stack^.inner.len {\n+                    set stack^.inner[j] = Value::Nil();\n+                  }\n+                }\n+                for (i in fixed..maxstack) {\n+                  let j = b +sat i;\n+                  if j < stack^.inner.len {\n+                    set stack^.inner[j] = Value::Nil();\n+                  }\n+                }\n+                let top = b +sat maxstack;\n+                let vb = b +sat fixed;\n+                let f = Frame(func: func, base: b, return_pc: return_pc, kbase: kb, closure: fixed_h, nresults: wanted, activation: vm^.activation, flags: 0_u8, varbase: vb, varcount: 0_u64, frame_top: top);\n+                if push_frame(vm: vm, frame: f) {\n+                  set vm^.top = top;\n+                  let jump = Step::Jump(pc: start, base: b, kbase: kb);\n+                  return Some<Step>(value: jump);\n+                }\n+                let failure = Step::Error();\n+                return Some<Step>(value: failure);\n+              }\n+            }\n+          }\n+        }\n+      }\n+    }\n+    Native(..) => {\n+    }\n+    Other() => {\n+    }\n+  }\n+  return None<Step>();\n+}\n+\n fn prepare<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, stack: &Box<Slots<Value>>, env: &E, func: u64, argc: u64, wanted: i64, return_pc: u64, base: u64, kbase: u64, tail: Bool) -> r: Step reads(code), reads(consts), writes(vm), writes(stack), writes(env) {\n   let fslot = func;\n   let nargs = argc;\ndiff --git a/lib/halo/vm/handlers.wf b/lib/halo/vm/handlers.wf\nindex 28a02d6d0..092dc806a 100644\n--- a/lib/halo/vm/handlers.wf\n+++ b/lib/halo/vm/handlers.wf\n@@ -3258,7 +3258,15 @@ fn instruction_call<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slo\n     set wanted = cvt::<u64, i64>(nr);\n   }\n   let tailing = False();\n-  let step = prepare::<Host<E>>(code: code, consts: consts, vm: vm, stack: stack, env: env, func: ra, argc: argc, wanted: wanted, return_pc: next, base: base, kbase: kbase, tail: tailing);\n+  let step = Step::Error();\n+  match enter_fixed_lua(vm: vm, stack: stack, func: ra, argc: argc, wanted: wanted, return_pc: next) {\n+    Some(value: entered) => {\n+      set step = entered;\n+    }\n+    None() => {\n+      set step = prepare::<Host<E>>(code: code, consts: consts, vm: vm, stack: stack, env: env, func: ra, argc: argc, wanted: wanted, return_pc: next, base: base, kbase: kbase, tail: tailing);\n+    }\n+  }\n   let final_step = step;\n   match step {\n     Error() => {\n",
+  "baseline_stress_source_digest_note": "The stress runner hashes current candidate source inputs but executes the separately hash-verified baseline table-e2e binary; its printed source digest is not a binary build identity.",
+  "gc_cases_sha256": {
+    "research/experiments/halo-gc/cases/expected/gc/frame-closure.txt": "e68002e0247168a7480e56e81ce43cde67a3c93d32a41f088daf85ffce96c1ae",
+    "research/experiments/halo-gc/cases/expected/gc/open-upvalues.txt": "7494b97c2471c2461bc94d4516231ba9a5caaac9bb8039d8155f470399fc6db5",
+    "research/experiments/halo-gc/cases/expected/gc/suspended-stack.txt": "a2cd321cebd9fcfecba526e0f9ba3d3c19658198600cb1bdedb884cafcb7478c",
+    "research/experiments/halo-gc/cases/scripts/gc/frame-closure.lua": "3a7d52d2bb8fe8e61d9c54a4a8a057f340a7f7ca74577d4874a83e66c02e3eda",
+    "research/experiments/halo-gc/cases/scripts/gc/open-upvalues.lua": "0a51375fdd51b7988cb0e9d3f60fe8bb8287ba024b2ae1d96b483be6b55cec07",
+    "research/experiments/halo-gc/cases/scripts/gc/suspended-stack.lua": "5ecf56688b9783ec956198f8b93821e2155cca04e962958c180688f1f3cc969e"
+  },
+  "original_collector_sha256": "025519ef055751caa9417c3967fb2d1cc21613f262709a20c73e323ce432af93",
+  "check_after_seconds": [
+    278.31,
+    284.7
+  ],
+  "check_ratio": 1.0052134478387402,
+  "logs": {
+    "witness-bytecode.log": "== START halo-fixed-witness-bytecode (limit 1800s): <puc-source-root>/luac -l -p research/experiments/halo-bench/target/fixed-call/witness/scripts/call/fallbacks.lua ==\n\nmain <research/experiments/halo-bench/target/fixed-call/witness/scripts/call/fallbacks.lua:0,0> (74 instructions, 296 bytes at 0x105154180)\n0+ params, 21 slots, 0 upvalues, 10 locals, 16 constants, 4 functions\n\t1\t[4]\tCLOSURE  \t0 0\t; 0x105154370\n\t2\t[5]\tMOVE     \t1 0\n\t3\t[5]\tGETGLOBAL\t2 -1\t; math\n\t4\t[5]\tGETTABLE \t2 2 -2\t; \"abs\"\n\t5\t[5]\tLOADK    \t3 -3\t; -17\n\t6\t[5]\tLOADK    \t4 -4\t; 99\n\t7\t[5]\tCALL     \t1 4 2\n\t8\t[6]\tGETGLOBAL\t2 -5\t; string\n\t9\t[6]\tGETTABLE \t2 2 -6\t; \"gmatch\"\n\t10\t[6]\tLOADK    \t3 -7\t; \"abc\"\n\t11\t[6]\tLOADK    \t4 -8\t; \"%a\"\n\t12\t[6]\tCALL     \t2 3 2\n\t13\t[7]\tMOVE     \t3 0\n\t14\t[7]\tMOVE     \t4 2\n\t15\t[7]\tCALL     \t3 2 2\n\t16\t[8]\tGETGLOBAL\t4 -9\t; pcall\n\t17\t[11]\tCLOSURE  \t5 1\t; 0x105154520\n\t18\t[11]\tMOVE     \t0 0\n\t19\t[8]\tCALL     \t4 2 3\n\t20\t[12]\tGETGLOBAL\t6 -9\t; pcall\n\t21\t[15]\tCLOSURE  \t7 2\t; 0x105155180\n\t22\t[15]\tMOVE     \t0 0\n\t23\t[12]\tCALL     \t6 2 3\n\t24\t[18]\tCLOSURE  \t8 3\t; 0x1051546e0\n\t25\t[19]\tMOVE     \t9 0\n\t26\t[19]\tMOVE     \t10 8\n\t27\t[19]\tLOADK    \t11 -10\t; 20\n\t28\t[19]\tLOADK    \t12 -11\t; 30\n\t29\t[19]\tCALL     \t9 4 2\n\t30\t[20]\tNEWTABLE \t10 7 0\n\t31\t[20]\tMOVE     \t11 1\n\t32\t[20]\tMOVE     \t12 3\n\t33\t[20]\tTEST     \t4 0 0\n\t34\t[20]\tJMP      \t3\t; to 38\n\t35\t[20]\tLOADK    \t13 -12\t; 1\n\t36\t[20]\tTEST     \t13 0 1\n\t37\t[20]\tJMP      \t1\t; to 39\n\t38\t[20]\tLOADK    \t13 -13\t; 0\n\t39\t[21]\tGETGLOBAL\t14 -5\t; string\n\t40\t[21]\tGETTABLE \t14 14 -14\t; \"find\"\n\t41\t[21]\tMOVE     \t15 5\n\t42\t[21]\tLOADK    \t16 -15\t; \"attempt to call a number value\"\n\t43\t[21]\tLOADK    \t17 -12\t; 1\n\t44\t[21]\tLOADBOOL \t18 1 0\n\t45\t[21]\tCALL     \t14 5 2\n\t46\t[21]\tTEST     \t14 0 0\n\t47\t[21]\tJMP      \t3\t; to 51\n\t48\t[21]\tLOADK    \t14 -12\t; 1\n\t49\t[21]\tTEST     \t14 0 1\n\t50\t[21]\tJMP      \t1\t; to 52\n\t51\t[21]\tLOADK    \t14 -13\t; 0\n\t52\t[22]\tTEST     \t6 0 0\n\t53\t[22]\tJMP      \t3\t; to 57\n\t54\t[22]\tLOADK    \t15 -12\t; 1\n\t55\t[22]\tTEST     \t15 0 1\n\t56\t[22]\tJMP      \t1\t; to 58\n\t57\t[22]\tLOADK    \t15 -13\t; 0\n\t58\t[23]\tGETGLOBAL\t16 -5\t; string\n\t59\t[23]\tGETTABLE \t16 16 -14\t; \"find\"\n\t60\t[23]\tMOVE     \t17 7\n\t61\t[23]\tLOADK    \t18 -16\t; \"attempt to call a nil value\"\n\t62\t[23]\tLOADK    \t19 -12\t; 1\n\t63\t[23]\tLOADBOOL \t20 1 0\n\t64\t[23]\tCALL     \t16 5 2\n\t65\t[23]\tTEST     \t16 0 0\n\t66\t[23]\tJMP      \t3\t; to 70\n\t67\t[23]\tLOADK    \t16 -12\t; 1\n\t68\t[23]\tTEST     \t16 0 1\n\t69\t[23]\tJMP      \t1\t; to 71\n\t70\t[23]\tLOADK    \t16 -13\t; 0\n\t71\t[24]\tMOVE     \t17 9\n\t72\t[24]\tSETLIST  \t10 7 1\t; 1\n\t73\t[24]\tRETURN   \t10 2\n\t74\t[24]\tRETURN   \t0 1\n\nfunction <research/experiments/halo-bench/target/fixed-call/witness/scripts/call/fallbacks.lua:1,4> (6 instructions, 24 bytes at 0x105154370)\n3 params, 6 slots, 0 upvalues, 4 locals, 0 constants, 0 functions\n\t1\t[2]\tMOVE     \t3 0\n\t2\t[2]\tMOVE     \t4 1\n\t3\t[2]\tMOVE     \t5 2\n\t4\t[2]\tCALL     \t3 3 2\n\t5\t[3]\tRETURN   \t3 2\n\t6\t[4]\tRETURN   \t0 1\n\nfunction <research/experiments/halo-bench/target/fixed-call/witness/scripts/call/fallbacks.lua:8,11> (7 instructions, 28 bytes at 0x105154520)\n0 params, 4 slots, 1 upvalue, 1 local, 3 constants, 0 functions\n\t1\t[9]\tGETUPVAL \t0 0\t; invoke\n\t2\t[9]\tLOADK    \t1 -1\t; 7\n\t3\t[9]\tLOADK    \t2 -2\t; 1\n\t4\t[9]\tLOADK    \t3 -3\t; 2\n\t5\t[9]\tCALL     \t0 4 2\n\t6\t[10]\tRETURN   \t0 2\n\t7\t[11]\tRETURN   \t0 1\n\nfunction <research/experiments/halo-bench/target/fixed-call/witness/scripts/call/fallbacks.lua:12,15> (7 instructions, 28 bytes at 0x105155180)\n0 params, 4 slots, 1 upvalue, 1 local, 2 constants, 0 functions\n\t1\t[13]\tGETUPVAL \t0 0\t; invoke\n\t2\t[13]\tLOADNIL  \t1 1\n\t3\t[13]\tLOADK    \t2 -1\t; 1\n\t4\t[13]\tLOADK    \t3 -2\t; 2\n\t5\t[13]\tCALL     \t0 4 2\n\t6\t[14]\tRETURN   \t0 2\n\t7\t[15]\tRETURN   \t0 1\n\nfunction <research/experiments/halo-bench/target/fixed-call/witness/scripts/call/fallbacks.lua:16,18> (7 instructions, 28 bytes at 0x1051546e0)\n1+ param, 5 slots, 0 upvalues, 2 locals, 2 constants, 0 functions\n\t1\t[17]\tGETGLOBAL\t2 -1\t; select\n\t2\t[17]\tLOADK    \t3 -2\t; \"#\"\n\t3\t[17]\tVARARG   \t4 0\n\t4\t[17]\tCALL     \t2 0 2\n\t5\t[17]\tADD      \t2 0 2\n\t6\t[17]\tRETURN   \t2 2\n\t7\t[18]\tRETURN   \t0 1\nreal 0.01\nuser 0.00\nsys 0.00\n== END halo-fixed-witness-bytecode: 0.11 s, exit 0 ==\n",
+    "witness-before-stress.log": "== START halo-fixed-witness-before-stress (limit 1800s): python3 -B research/experiments/halo-e2e/run.py --compiler compiler/target/gate/whitefootc --binary research/experiments/halo-bench/target/table-e2e --scratch-root research/experiments/halo-bench/target --cases research/experiments/halo-bench/target/fixed-call/witness --budgets 1,7,1000 --gc-stress --actual research/experiments/halo-bench/target/fixed-call/witness-before-stress-actual --report research/experiments/halo-bench/target/fixed-call/witness-before-stress.md ==\nPASS call/fallbacks budget=1 collections=17: \nPASS call/fallbacks budget=7 collections=17: \nPASS call/fallbacks budget=1000 collections=17: \n3/3 passed\nreal 0.10\nuser 0.06\nsys 0.03\n== END halo-fixed-witness-before-stress: 0.21 s, exit 0 ==\n",
+    "check-after-2.log": "== START halo-fixed-check-after-2 (limit 1800s): compiler/target/gate/whitefootc --graph lib/halo/modules.wfg --check-module pkg::vm ==\n== RUNNING halo-fixed-check-after-2: 30 s, child 53815, group 53815 ==\n== RUNNING halo-fixed-check-after-2: 60 s, child 53815, group 53815 ==\n== RUNNING halo-fixed-check-after-2: 90 s, child 53815, group 53815 ==\n== RUNNING halo-fixed-check-after-2: 120 s, child 53815, group 53815 ==\n== RUNNING halo-fixed-check-after-2: 150 s, child 53815, group 53815 ==\n== RUNNING halo-fixed-check-after-2: 180 s, child 53815, group 53815 ==\n== RUNNING halo-fixed-check-after-2: 210 s, child 53815, group 53815 ==\n== RUNNING halo-fixed-check-after-2: 240 s, child 53815, group 53815 ==\n== RUNNING halo-fixed-check-after-2: 271 s, child 53815, group 53815 ==\npkg::vm: accepted\nreal 284.60\nuser 203.60\nsys 30.04\n== END halo-fixed-check-after-2: 284.70 s, exit 0 ==\n",
+    "check-before-2.log": "== START halo-fixed-check-before-2 (limit 1800s): compiler/target/gate/whitefootc --graph lib/halo/modules.wfg --check-module pkg::vm ==\n== RUNNING halo-fixed-check-before-2: 30 s, child 42718, group 42718 ==\n== RUNNING halo-fixed-check-before-2: 60 s, child 42718, group 42718 ==\n== RUNNING halo-fixed-check-before-2: 90 s, child 42718, group 42718 ==\n== RUNNING halo-fixed-check-before-2: 120 s, child 42718, group 42718 ==\n== RUNNING halo-fixed-check-before-2: 150 s, child 42718, group 42718 ==\n== RUNNING halo-fixed-check-before-2: 180 s, child 42718, group 42718 ==\n== RUNNING halo-fixed-check-before-2: 210 s, child 42718, group 42718 ==\n== RUNNING halo-fixed-check-before-2: 240 s, child 42718, group 42718 ==\npkg::vm: accepted\nreal 263.03\nuser 196.51\nsys 28.83\n== END halo-fixed-check-before-2: 263.13 s, exit 0 ==\n",
+    "check-before.log": "== START halo-fixed-check-before (limit 1800s): compiler/target/gate/whitefootc --graph lib/halo/modules.wfg --check-module pkg::vm ==\n== RUNNING halo-fixed-check-before: 30 s, child 40115, group 40115 ==\n== RUNNING halo-fixed-check-before: 60 s, child 40115, group 40115 ==\n== RUNNING halo-fixed-check-before: 90 s, child 40115, group 40115 ==\n== RUNNING halo-fixed-check-before: 120 s, child 40115, group 40115 ==\n== RUNNING halo-fixed-check-before: 150 s, child 40115, group 40115 ==\n== RUNNING halo-fixed-check-before: 180 s, child 40115, group 40115 ==\n== RUNNING halo-fixed-check-before: 210 s, child 40115, group 40115 ==\n== RUNNING halo-fixed-check-before: 240 s, child 40115, group 40115 ==\n== RUNNING halo-fixed-check-before: 270 s, child 40115, group 40115 ==\npkg::vm: accepted\nreal 296.86\nuser 194.75\nsys 30.98\n== END halo-fixed-check-before: 296.96 s, exit 0 ==\n",
+    "witness-before-stress-busy.log": "verification is already owned by another command:\n48145\nTue Oct  6 00:52:41 2026 UTC: <external-path> source-size /Library/Developer/CommandLineTools/usr/bin/make --no-print-directory source-size\nlock: <host-check-lock>; inspect the recorded PID before removing a stale lock\n",
+    "bench-build-busy-1.log": "verification is already owned by another command:\n56149\nTue Oct  6 01:02:46 2026 UTC: <external-path> firn-script-driver-build compiler/target/gate/whitefootc --cache <external-path> --graph tests/programs/firn-scripting/modules.wfg --entry test -o <external-path>\nlock: <host-check-lock>; inspect the recorded PID before removing a stale lock\n",
+    "bench-build-busy-2.log": "verification is already owned by another command:\n56149\nTue Oct  6 01:02:46 2026 UTC: <external-path> firn-script-driver-build compiler/target/gate/whitefootc --cache <external-path> --graph tests/programs/firn-scripting/modules.wfg --entry test -o <external-path>\nlock: <host-check-lock>; inspect the recorded PID before removing a stale lock\n",
+    "witness-bytecode-busy.log": "verification is already owned by another command:\n48145\nTue Oct  6 00:52:41 2026 UTC: <external-path> source-size /Library/Developer/CommandLineTools/usr/bin/make --no-print-directory source-size\nlock: <host-check-lock>; inspect the recorded PID before removing a stale lock\n",
+    "witness-before.log": "== START halo-fixed-witness-before (limit 1800s): python3 -B research/experiments/halo-e2e/run.py --compiler compiler/target/gate/whitefootc --binary research/experiments/halo-bench/target/table-e2e --scratch-root research/experiments/halo-bench/target --cases research/experiments/halo-bench/target/fixed-call/witness --budgets 1,7,1000 --actual research/experiments/halo-bench/target/fixed-call/witness-before-actual --report research/experiments/halo-bench/target/fixed-call/witness-before.md ==\nPASS call/fallbacks budget=1 collections=0: \nPASS call/fallbacks budget=7 collections=0: \nPASS call/fallbacks budget=1000 collections=0: \n3/3 passed\nreal 0.16\nuser 0.06\nsys 0.04\n== END halo-fixed-witness-before: 0.21 s, exit 0 ==\n",
+    "check-after.log": "== START halo-fixed-check-after (limit 1800s): compiler/target/gate/whitefootc --graph lib/halo/modules.wfg --check-module pkg::vm ==\n== RUNNING halo-fixed-check-after: 30 s, child 49761, group 49761 ==\n== RUNNING halo-fixed-check-after: 60 s, child 49761, group 49761 ==\n== RUNNING halo-fixed-check-after: 90 s, child 49761, group 49761 ==\n== RUNNING halo-fixed-check-after: 120 s, child 49761, group 49761 ==\n== RUNNING halo-fixed-check-after: 150 s, child 49761, group 49761 ==\n== RUNNING halo-fixed-check-after: 180 s, child 49761, group 49761 ==\n== RUNNING halo-fixed-check-after: 210 s, child 49761, group 49761 ==\n== RUNNING halo-fixed-check-after: 240 s, child 49761, group 49761 ==\n== RUNNING halo-fixed-check-after: 270 s, child 49761, group 49761 ==\npkg::vm: accepted\nreal 278.27\nuser 198.13\nsys 30.54\n== END halo-fixed-check-after: 278.31 s, exit 0 ==\n",
+    "bench-build.log": "== START halo-fixed-bench-build (limit 1800s): compiler/target/gate/whitefootc --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o research/experiments/halo-bench/target/fixed-call/halo-fixed ==\n== RUNNING halo-fixed-bench-build: 30 s, child 64221, group 64221 ==\n== RUNNING halo-fixed-bench-build: 60 s, child 64221, group 64221 ==\n== RUNNING halo-fixed-bench-build: 90 s, child 64221, group 64221 ==\n== RUNNING halo-fixed-bench-build: 120 s, child 64221, group 64221 ==\n== RUNNING halo-fixed-bench-build: 150 s, child 64221, group 64221 ==\n== RUNNING halo-fixed-bench-build: 180 s, child 64221, group 64221 ==\n== RUNNING halo-fixed-bench-build: 210 s, child 64221, group 64221 ==\n== RUNNING halo-fixed-bench-build: 240 s, child 64221, group 64221 ==\n== RUNNING halo-fixed-bench-build: 270 s, child 64221, group 64221 ==\n== RUNNING halo-fixed-bench-build: 300 s, child 64221, group 64221 ==\n== RUNNING halo-fixed-bench-build: 330 s, child 64221, group 64221 ==\n== RUNNING halo-fixed-bench-build: 361 s, child 64221, group 64221 ==\n== RUNNING halo-fixed-bench-build: 391 s, child 64221, group 64221 ==\n== RUNNING halo-fixed-bench-build: 421 s, child 64221, group 64221 ==\n== RUNNING halo-fixed-bench-build: 451 s, child 64221, group 64221 ==\n== RUNNING halo-fixed-bench-build: 481 s, child 64221, group 64221 ==\n== RUNNING halo-fixed-bench-build: 511 s, child 64221, group 64221 ==\n== RUNNING halo-fixed-bench-build: 541 s, child 64221, group 64221 ==\nreal 561.56\nuser 412.94\nsys 62.94\n== END halo-fixed-bench-build: 561.64 s, exit 0 ==\n",
+    "three-busy.log": "verification is already owned by another command:\n70229\nTue Oct  6 01:24:23 2026 UTC: <external-path> repository-invariants /Library/Developer/CommandLineTools/usr/bin/make --no-print-directory repository-invariants\nlock: <host-check-lock>; inspect the recorded PID before removing a stale lock\n",
+    "e2e-build-busy-2.log": "verification is already owned by another command:\n74791\nTue Oct  6 01:29:16 2026 UTC: <external-path> sg-build sh <external-path> 12000 900 <external-path> --cache <external-path> --fragments function --graph modules.wfg --check-module pkg::oracle::layout\nlock: <host-check-lock>; inspect the recorded PID before removing a stale lock\n",
+    "e2e-build-busy-3.log": "verification is already owned by another command:\n75554\nTue Oct  6 01:30:26 2026 UTC: <external-path> sg-build sh <external-path> 12000 900 <external-path> --cache <external-path> --fragments function --graph modules.wfg --check-module pkg::proto::style\nlock: <host-check-lock>; inspect the recorded PID before removing a stale lock\n",
+    "one.log": "== START halo-fixed-one (limit 1800s): python3 -B research/experiments/halo-bench/run.py --lua <puc-source-root>/lua --before-binary research/experiments/halo-bench/target/halo-table --binary research/experiments/halo-bench/target/fixed-call/halo-fixed --kernels fib,loop,integer-table,string-key,concat,sort,binary-trees --scale binary-trees=14 --runs 1 --out research/experiments/halo-bench/target/fixed-call/one.json ==\nfib 1/1 Before: 0.212587s exit=0 checksum=b'832040'\nfib 1/1 Halo: 0.626327s exit=0 checksum=b'832040'\nfib: ratio=2.946 before={'median': 0.21258724993094802, 'minimum': 0.21258724993094802, 'maximum': 0.21258724993094802, 'relative_range': 0.0, 'runs': 1} Halo={'median': 0.6263272915966809, 'minimum': 0.6263272915966809, 'maximum': 0.6263272915966809, 'relative_range': 0.0, 'runs': 1}\nloop 1/1 Before: 0.575999s exit=0 checksum=b'5.00000005e+15'\nloop 1/1 Halo: 0.573206s exit=0 checksum=b'5.00000005e+15'\nloop: ratio=0.995 before={'median': 0.5759987910278141, 'minimum': 0.5759987910278141, 'maximum': 0.5759987910278141, 'relative_range': 0.0, 'runs': 1} Halo={'median': 0.5732055841945112, 'minimum': 0.5732055841945112, 'maximum': 0.5732055841945112, 'relative_range': 0.0, 'runs': 1}\ninteger-table 1/1 Before: 0.638427s exit=0 checksum=b'50000005000000'\ninteger-table 1/1 Halo: 0.596227s exit=0 checksum=b'50000005000000'\ninteger-table: ratio=0.934 before={'median': 0.6384271667338908, 'minimum': 0.6384271667338908, 'maximum': 0.6384271667338908, 'relative_range': 0.0, 'runs': 1} Halo={'median': 0.5962270842865109, 'minimum': 0.5962270842865109, 'maximum': 0.5962270842865109, 'relative_range': 0.0, 'runs': 1}\nstring-key 1/1 Before: 0.040746s exit=0 checksum=b'28500000'\nstring-key 1/1 Halo: 0.040365s exit=0 checksum=b'28500000'\nstring-key: ratio=0.991 before={'median': 0.040745959151536226, 'minimum': 0.040745959151536226, 'maximum': 0.040745959151536226, 'relative_range': 0.0, 'runs': 1} Halo={'median': 0.040364665910601616, 'minimum': 0.040364665910601616, 'maximum': 0.040364665910601616, 'relative_range': 0.0, 'runs': 1}\nconcat 1/1 Before: 0.177790s exit=0 checksum=b'5000000'\nconcat 1/1 Halo: 0.179951s exit=0 checksum=b'5000000'\nconcat: ratio=1.012 before={'median': 0.17778979241847992, 'minimum': 0.17778979241847992, 'maximum': 0.17778979241847992, 'relative_range': 0.0, 'runs': 1} Halo={'median': 0.17995133297517896, 'minimum': 0.17995133297517896, 'maximum': 0.17995133297517896, 'relative_range': 0.0, 'runs': 1}\nsort 1/1 Before: 0.742443s exit=0 checksum=b'1.0733795172001e+15'\nsort 1/1 Halo: 0.818642s exit=0 checksum=b'1.0733795172001e+15'\nsort: ratio=1.103 before={'median': 0.7424426670186222, 'minimum': 0.7424426670186222, 'maximum': 0.7424426670186222, 'relative_range': 0.0, 'runs': 1} Halo={'median': 0.8186423745937645, 'minimum': 0.8186423745937645, 'maximum': 0.8186423745937645, 'relative_range': 0.0, 'runs': 1}\nbinary-trees 1/1 Before: 2.590436s exit=0 checksum=b'-43682'\nbinary-trees 1/1 Halo: 2.317185s exit=0 checksum=b'-43682'\nbinary-trees: ratio=0.895 before={'median': 2.5904364995658398, 'minimum': 2.5904364995658398, 'maximum': 2.5904364995658398, 'relative_range': 0.0, 'runs': 1} Halo={'median': 2.3171847499907017, 'minimum': 2.3171847499907017, 'maximum': 2.3171847499907017, 'relative_range': 0.0, 'runs': 1}\nreal 13.01\nuser 11.60\nsys 0.44\n== END halo-fixed-one: 13.10 s, exit 0 ==\n",
+    "six.log": "== START halo-fixed-six (limit 1800s): python3 -B research/experiments/halo-bench/run.py --lua <puc-source-root>/lua --before-binary research/experiments/halo-bench/target/halo-table --binary research/experiments/halo-bench/target/fixed-call/halo-fixed --kernels fib,loop,integer-table,string-key,concat,sort,binary-trees --scale binary-trees=14 --runs 6 --out research/experiments/halo-bench/target/fixed-call/six.json ==\nfib 1/6 Before: 0.202380s exit=0 checksum=b'832040'\nfib 1/6 Halo: 0.270310s exit=0 checksum=b'832040'\nfib 2/6 Halo: 0.161971s exit=0 checksum=b'832040'\nfib 2/6 Before: 0.203290s exit=0 checksum=b'832040'\nfib 3/6 Before: 0.204249s exit=0 checksum=b'832040'\nfib 3/6 Halo: 0.208316s exit=0 checksum=b'832040'\nfib 4/6 Halo: 0.166682s exit=0 checksum=b'832040'\nfib 4/6 Before: 0.204864s exit=0 checksum=b'832040'\nfib 5/6 Before: 0.200329s exit=0 checksum=b'832040'\nfib 5/6 Halo: 0.161962s exit=0 checksum=b'832040'\nfib 6/6 Halo: 0.159018s exit=0 checksum=b'832040'\nfib 6/6 Before: 0.201203s exit=0 checksum=b'832040'\nfib: ratio=0.810 before={'median': 0.20283481245860457, 'minimum': 0.20032925019040704, 'maximum': 0.20486441627144814, 'relative_range': 0.022358913768644396, 'runs': 6} Halo={'median': 0.16432647919282317, 'minimum': 0.1590175828896463, 'maximum': 0.2703100419603288, 'relative_range': 0.677264307112004, 'runs': 6}\nloop 1/6 Before: 0.592788s exit=0 checksum=b'5.00000005e+15'\nloop 1/6 Halo: 0.582855s exit=0 checksum=b'5.00000005e+15'\nloop 2/6 Halo: 0.608561s exit=0 checksum=b'5.00000005e+15'\nloop 2/6 Before: 0.575864s exit=0 checksum=b'5.00000005e+15'\nloop 3/6 Before: 0.569314s exit=0 checksum=b'5.00000005e+15'\nloop 3/6 Halo: 0.571914s exit=0 checksum=b'5.00000005e+15'\nloop 4/6 Halo: 0.565982s exit=0 checksum=b'5.00000005e+15'\nloop 4/6 Before: 0.589619s exit=0 checksum=b'5.00000005e+15'\nloop 5/6 Before: 0.578645s exit=0 checksum=b'5.00000005e+15'\nloop 5/6 Halo: 0.634371s exit=0 checksum=b'5.00000005e+15'\nloop 6/6 Halo: 0.581986s exit=0 checksum=b'5.00000005e+15'\nloop 6/6 Before: 0.583798s exit=0 checksum=b'5.00000005e+15'\nloop: ratio=1.002 before={'median': 0.5812212915625423, 'minimum': 0.5693137086927891, 'maximum': 0.5927880839444697, 'relative_range': 0.04038801673726134, 'runs': 6} Halo={'median': 0.5824209579732269, 'minimum': 0.5659819161519408, 'maximum': 0.6343706669285893, 'relative_range': 0.11742151418217381, 'runs': 6}\ninteger-table 1/6 Before: 0.594605s exit=0 checksum=b'50000005000000'\ninteger-table 1/6 Halo: 0.595528s exit=0 checksum=b'50000005000000'\ninteger-table 2/6 Halo: 0.612972s exit=0 checksum=b'50000005000000'\ninteger-table 2/6 Before: 0.599158s exit=0 checksum=b'50000005000000'\ninteger-table 3/6 Before: 0.586189s exit=0 checksum=b'50000005000000'\ninteger-table 3/6 Halo: 0.612180s exit=0 checksum=b'50000005000000'\ninteger-table 4/6 Halo: 0.588610s exit=0 checksum=b'50000005000000'\ninteger-table 4/6 Before: 0.599507s exit=0 checksum=b'50000005000000'\ninteger-table 5/6 Before: 0.579897s exit=0 checksum=b'50000005000000'\ninteger-table 5/6 Halo: 0.581595s exit=0 checksum=b'50000005000000'\ninteger-table 6/6 Halo: 0.595174s exit=0 checksum=b'50000005000000'\ninteger-table 6/6 Before: 0.621996s exit=0 checksum=b'50000005000000'\ninteger-table: ratio=0.997 before={'median': 0.5968814794905484, 'minimum': 0.5798970828764141, 'maximum': 0.6219964581541717, 'relative_range': 0.07053221908257297, 'runs': 6} Halo={'median': 0.5953510622493923, 'minimum': 0.5815952499397099, 'maximum': 0.6129724169149995, 'relative_range': 0.05270363818070371, 'runs': 6}\nstring-key 1/6 Before: 0.039494s exit=0 checksum=b'28500000'\nstring-key 1/6 Halo: 0.039896s exit=0 checksum=b'28500000'\nstring-key 2/6 Halo: 0.040081s exit=0 checksum=b'28500000'\nstring-key 2/6 Before: 0.039659s exit=0 checksum=b'28500000'\nstring-key 3/6 Before: 0.039616s exit=0 checksum=b'28500000'\nstring-key 3/6 Halo: 0.039166s exit=0 checksum=b'28500000'\nstring-key 4/6 Halo: 0.039908s exit=0 checksum=b'28500000'\nstring-key 4/6 Before: 0.039589s exit=0 checksum=b'28500000'\nstring-key 5/6 Before: 0.039160s exit=0 checksum=b'28500000'\nstring-key 5/6 Halo: 0.038994s exit=0 checksum=b'28500000'\nstring-key 6/6 Halo: 0.039626s exit=0 checksum=b'28500000'\nstring-key 6/6 Before: 0.039921s exit=0 checksum=b'28500000'\nstring-key: ratio=1.004 before={'median': 0.03960243728943169, 'minimum': 0.03915966581553221, 'maximum': 0.03992125019431114, 'relative_range': 0.019230745148662125, 'runs': 6} Halo={'median': 0.03976145852357149, 'minimum': 0.038993666879832745, 'maximum': 0.04008058272302151, 'relative_range': 0.027335914816716655, 'runs': 6}\nconcat 1/6 Before: 0.180136s exit=0 checksum=b'5000000'\nconcat 1/6 Halo: 0.182449s exit=0 checksum=b'5000000'\nconcat 2/6 Halo: 0.184416s exit=0 checksum=b'5000000'\nconcat 2/6 Before: 0.183694s exit=0 checksum=b'5000000'\nconcat 3/6 Before: 0.177550s exit=0 checksum=b'5000000'\nconcat 3/6 Halo: 0.183808s exit=0 checksum=b'5000000'\nconcat 4/6 Halo: 0.185361s exit=0 checksum=b'5000000'\nconcat 4/6 Before: 0.182270s exit=0 checksum=b'5000000'\nconcat 5/6 Before: 0.185815s exit=0 checksum=b'5000000'\nconcat 5/6 Halo: 0.176211s exit=0 checksum=b'5000000'\nconcat 6/6 Halo: 0.184594s exit=0 checksum=b'5000000'\nconcat 6/6 Before: 0.183484s exit=0 checksum=b'5000000'\nconcat: ratio=1.007 before={'median': 0.18287729215808213, 'minimum': 0.1775495419278741, 'maximum': 0.18581499997526407, 'relative_range': 0.04519674340018763, 'runs': 6} Halo={'median': 0.1841120624449104, 'minimum': 0.17621058272197843, 'maximum': 0.18536091735586524, 'relative_range': 0.049699810606514475, 'runs': 6}\nsort 1/6 Before: 0.738119s exit=0 checksum=b'1.0733795172001e+15'\nsort 1/6 Halo: 0.778439s exit=0 checksum=b'1.0733795172001e+15'\nsort 2/6 Halo: 0.747048s exit=0 checksum=b'1.0733795172001e+15'\nsort 2/6 Before: 0.750814s exit=0 checksum=b'1.0733795172001e+15'\nsort 3/6 Before: 0.816155s exit=0 checksum=b'1.0733795172001e+15'\nsort 3/6 Halo: 0.773394s exit=0 checksum=b'1.0733795172001e+15'\nsort 4/6 Halo: 0.768275s exit=0 checksum=b'1.0733795172001e+15'\nsort 4/6 Before: 0.776598s exit=0 checksum=b'1.0733795172001e+15'\nsort 5/6 Before: 0.779919s exit=0 checksum=b'1.0733795172001e+15'\nsort 5/6 Halo: 0.742343s exit=0 checksum=b'1.0733795172001e+15'\nsort 6/6 Halo: 0.740026s exit=0 checksum=b'1.0733795172001e+15'\nsort 6/6 Before: 0.738276s exit=0 checksum=b'1.0733795172001e+15'\nsort: ratio=0.992 before={'median': 0.7637062917929143, 'minimum': 0.7381190829910338, 'maximum': 0.8161547919735312, 'relative_range': 0.10218026199482658, 'runs': 6} Halo={'median': 0.7576617710292339, 'minimum': 0.740026209037751, 'maximum': 0.7784386659041047, 'relative_range': 0.0506986868483188, 'runs': 6}\n== RUNNING halo-fixed-six: 30 s, child 73826, group 73826 ==\nbinary-trees 1/6 Before: 2.483546s exit=0 checksum=b'-43682'\nbinary-trees 1/6 Halo: 2.266364s exit=0 checksum=b'-43682'\nbinary-trees 2/6 Halo: 2.265910s exit=0 checksum=b'-43682'\nbinary-trees 2/6 Before: 2.477504s exit=0 checksum=b'-43682'\nbinary-trees 3/6 Before: 2.475321s exit=0 checksum=b'-43682'\nbinary-trees 3/6 Halo: 2.266970s exit=0 checksum=b'-43682'\nbinary-trees 4/6 Halo: 2.266428s exit=0 checksum=b'-43682'\nbinary-trees 4/6 Before: 2.482587s exit=0 checksum=b'-43682'\nbinary-trees 5/6 Before: 2.483119s exit=0 checksum=b'-43682'\nbinary-trees 5/6 Halo: 2.260854s exit=0 checksum=b'-43682'\nbinary-trees 6/6 Halo: 2.261487s exit=0 checksum=b'-43682'\nbinary-trees 6/6 Before: 2.480321s exit=0 checksum=b'-43682'\nbinary-trees: ratio=0.913 before={'median': 2.4814537919592112, 'minimum': 2.475321166217327, 'maximum': 2.4835462090559304, 'relative_range': 0.00331460648804153, 'runs': 6} Halo={'median': 2.2661367289256305, 'minimum': 2.2608537087216973, 'maximum': 2.266970375087112, 'relative_range': 0.0026991603319164036, 'runs': 6}\nreal 59.55\nuser 56.34\nsys 2.17\n== END halo-fixed-six: 59.60 s, exit 0 ==\n",
+    "e2e-build.log": "== START halo-fixed-e2e-build (limit 1800s): compiler/target/gate/whitefootc --graph research/experiments/halo-e2e/modules.wfg --entry test --cache research/experiments/halo-bench/target/frame-gc-cache -o research/experiments/halo-bench/target/fixed-call/e2e-fixed ==\n== RUNNING halo-fixed-e2e-build: 30 s, child 85587, group 85587 ==\n== RUNNING halo-fixed-e2e-build: 60 s, child 85587, group 85587 ==\n== RUNNING halo-fixed-e2e-build: 90 s, child 85587, group 85587 ==\n== RUNNING halo-fixed-e2e-build: 120 s, child 85587, group 85587 ==\n== RUNNING halo-fixed-e2e-build: 150 s, child 85587, group 85587 ==\n== RUNNING halo-fixed-e2e-build: 180 s, child 85587, group 85587 ==\n== RUNNING halo-fixed-e2e-build: 210 s, child 85587, group 85587 ==\n== RUNNING halo-fixed-e2e-build: 240 s, child 85587, group 85587 ==\n== RUNNING halo-fixed-e2e-build: 270 s, child 85587, group 85587 ==\n== RUNNING halo-fixed-e2e-build: 300 s, child 85587, group 85587 ==\n== RUNNING halo-fixed-e2e-build: 330 s, child 85587, group 85587 ==\n== RUNNING halo-fixed-e2e-build: 361 s, child 85587, group 85587 ==\n== RUNNING halo-fixed-e2e-build: 391 s, child 85587, group 85587 ==\n== RUNNING halo-fixed-e2e-build: 421 s, child 85587, group 85587 ==\n== RUNNING halo-fixed-e2e-build: 451 s, child 85587, group 85587 ==\n== RUNNING halo-fixed-e2e-build: 481 s, child 85587, group 85587 ==\n== RUNNING halo-fixed-e2e-build: 511 s, child 85587, group 85587 ==\nreal 521.24\nuser 373.66\nsys 56.64\n== END halo-fixed-e2e-build: 521.32 s, exit 0 ==\n",
+    "e2e-build-busy.log": "verification is already owned by another command:\n74652\nTue Oct  6 01:29:07 2026 UTC: <external-path> sg-build sh <external-path> 12000 900 <external-path> --cache <external-path> --fragments function --graph modules.wfg --check-module pkg::oracle::css_color\nlock: <host-check-lock>; inspect the recorded PID before removing a stale lock\n",
+    "three.log": "== START halo-fixed-three (limit 1800s): python3 -B research/experiments/halo-bench/run.py --lua <puc-source-root>/lua --before-binary research/experiments/halo-bench/target/halo-table --binary research/experiments/halo-bench/target/fixed-call/halo-fixed --kernels fib,loop,integer-table,string-key,concat,sort,binary-trees --scale binary-trees=14 --runs 3 --out research/experiments/halo-bench/target/fixed-call/three.json ==\nfib 1/3 Before: 0.201046s exit=0 checksum=b'832040'\nfib 1/3 Halo: 0.160921s exit=0 checksum=b'832040'\nfib 2/3 Halo: 0.160134s exit=0 checksum=b'832040'\nfib 2/3 Before: 0.207556s exit=0 checksum=b'832040'\nfib 3/3 Before: 0.201348s exit=0 checksum=b'832040'\nfib 3/3 Halo: 0.160972s exit=0 checksum=b'832040'\nfib: ratio=0.799 before={'median': 0.20134845795109868, 'minimum': 0.2010456658899784, 'maximum': 0.20755558274686337, 'relative_range': 0.03233159530065045, 'runs': 3} Halo={'median': 0.16092054126784205, 'minimum': 0.16013354109600186, 'maximum': 0.16097212489694357, 'relative_range': 0.005211166917130462, 'runs': 3}\nloop 1/3 Before: 0.572457s exit=0 checksum=b'5.00000005e+15'\nloop 1/3 Halo: 0.569151s exit=0 checksum=b'5.00000005e+15'\nloop 2/3 Halo: 0.565684s exit=0 checksum=b'5.00000005e+15'\nloop 2/3 Before: 0.573894s exit=0 checksum=b'5.00000005e+15'\nloop 3/3 Before: 0.567274s exit=0 checksum=b'5.00000005e+15'\nloop 3/3 Halo: 0.574928s exit=0 checksum=b'5.00000005e+15'\nloop: ratio=0.994 before={'median': 0.5724573330953717, 'minimum': 0.5672741248272359, 'maximum': 0.5738935419358313, 'relative_range': 0.011563162398153038, 'runs': 3} Halo={'median': 0.5691508329473436, 'minimum': 0.5656844167970121, 'maximum': 0.5749281668104231, 'relative_range': 0.01624130103709477, 'runs': 3}\ninteger-table 1/3 Before: 0.575565s exit=0 checksum=b'50000005000000'\ninteger-table 1/3 Halo: 0.622719s exit=0 checksum=b'50000005000000'\ninteger-table 2/3 Halo: 0.591329s exit=0 checksum=b'50000005000000'\ninteger-table 2/3 Before: 0.630341s exit=0 checksum=b'50000005000000'\ninteger-table 3/3 Before: 0.595223s exit=0 checksum=b'50000005000000'\ninteger-table 3/3 Halo: 0.580759s exit=0 checksum=b'50000005000000'\ninteger-table: ratio=0.993 before={'median': 0.5952226249501109, 'minimum': 0.5755648342892528, 'maximum': 0.6303410418331623, 'relative_range': 0.09202642044814856, 'runs': 3} Halo={'median': 0.5913289580494165, 'minimum': 0.5807586247101426, 'maximum': 0.622719167266041, 'relative_range': 0.07095972890336928, 'runs': 3}\nstring-key 1/3 Before: 0.040045s exit=0 checksum=b'28500000'\nstring-key 1/3 Halo: 0.040114s exit=0 checksum=b'28500000'\nstring-key 2/3 Halo: 0.041440s exit=0 checksum=b'28500000'\nstring-key 2/3 Before: 0.039939s exit=0 checksum=b'28500000'\nstring-key 3/3 Before: 0.039636s exit=0 checksum=b'28500000'\nstring-key 3/3 Halo: 0.040965s exit=0 checksum=b'28500000'\nstring-key: ratio=1.026 before={'median': 0.039938750211149454, 'minimum': 0.03963624965399504, 'maximum': 0.040044874884188175, 'relative_range': 0.010231297374925487, 'runs': 3} Halo={'median': 0.040964541025459766, 'minimum': 0.04011366702616215, 'maximum': 0.04143954208120704, 'relative_range': 0.032366408163119614, 'runs': 3}\nconcat 1/3 Before: 0.176809s exit=0 checksum=b'5000000'\nconcat 1/3 Halo: 0.187443s exit=0 checksum=b'5000000'\nconcat 2/3 Halo: 0.183339s exit=0 checksum=b'5000000'\nconcat 2/3 Before: 0.179188s exit=0 checksum=b'5000000'\nconcat 3/3 Before: 0.181654s exit=0 checksum=b'5000000'\nconcat 3/3 Halo: 0.184942s exit=0 checksum=b'5000000'\nconcat: ratio=1.032 before={'median': 0.17918808292597532, 'minimum': 0.17680933326482773, 'maximum': 0.18165425024926662, 'relative_range': 0.027038165179993513, 'runs': 3} Halo={'median': 0.1849423749372363, 'minimum': 0.1833386248908937, 'maximum': 0.18744287500157952, 'relative_range': 0.022192048264107565, 'runs': 3}\nsort 1/3 Before: 0.719865s exit=0 checksum=b'1.0733795172001e+15'\nsort 1/3 Halo: 0.717480s exit=0 checksum=b'1.0733795172001e+15'\nsort 2/3 Halo: 0.721408s exit=0 checksum=b'1.0733795172001e+15'\nsort 2/3 Before: 0.723356s exit=0 checksum=b'1.0733795172001e+15'\nsort 3/3 Before: 0.780706s exit=0 checksum=b'1.0733795172001e+15'\nsort 3/3 Halo: 0.726138s exit=0 checksum=b'1.0733795172001e+15'\nsort: ratio=0.997 before={'median': 0.7233562916517258, 'minimum': 0.7198649579659104, 'maximum': 0.7807059586048126, 'relative_range': 0.0841093128532506, 'runs': 3} Halo={'median': 0.7214079168625176, 'minimum': 0.7174801249057055, 'maximum': 0.7261375826783478, 'relative_range': 0.012000780099967034, 'runs': 3}\nbinary-trees 1/3 Before: 2.574319s exit=0 checksum=b'-43682'\nbinary-trees 1/3 Halo: 2.323704s exit=0 checksum=b'-43682'\nbinary-trees 2/3 Halo: 2.285760s exit=0 checksum=b'-43682'\nbinary-trees 2/3 Before: 2.510642s exit=0 checksum=b'-43682'\nbinary-trees 3/3 Before: 2.561788s exit=0 checksum=b'-43682'\n== RUNNING halo-fixed-three: 30 s, child 72908, group 72908 ==\nbinary-trees 3/3 Halo: 2.287935s exit=0 checksum=b'-43682'\nbinary-trees: ratio=0.893 before={'median': 2.561787832994014, 'minimum': 2.510641874745488, 'maximum': 2.5743185840547085, 'relative_range': 0.0248563555846075, 'runs': 3} Halo={'median': 2.2879350422881544, 'minimum': 2.285760125145316, 'maximum': 2.323703625239432, 'relative_range': 0.016584168428212278, 'runs': 3}\nreal 31.16\nuser 29.33\nsys 1.25\n== END halo-fixed-three: 31.25 s, exit 0 ==\n",
+    "six-busy.log": "verification is already owned by another command:\n73165\nTue Oct  6 01:25:50 2026 UTC: <external-path> sg-build sh <external-path> 12000 900 <external-path> --cache <external-path> --fragments function --graph modules.wfg --entry style_oracle -o ../build/m1/style_seq\nlock: <host-check-lock>; inspect the recorded PID before removing a stale lock\n",
+    "sample.log": "== START halo-fixed-sample (limit 1800s): python3 -B research/experiments/halo-e2e/run.py --compiler compiler/target/gate/whitefootc --binary research/experiments/halo-bench/target/fixed-call/e2e-fixed --scratch-root research/experiments/halo-bench/target --budgets 1,7,1000 --filter lua-core/counter-closure --actual research/experiments/halo-bench/target/fixed-call/sample-actual --report research/experiments/halo-bench/target/fixed-call/sample.md ==\nPASS lua-core/counter-closure budget=1 collections=0: \nPASS lua-core/counter-closure budget=7 collections=0: \nPASS lua-core/counter-closure budget=1000 collections=0: \n3/3 passed\nreal 0.36\nuser 0.06\nsys 0.03\n== END halo-fixed-sample: 0.42 s, exit 0 ==\n",
+    "e2e-build-busy-4.log": "verification is already owned by another command:\n76319\nTue Oct  6 01:31:27 2026 UTC: <external-path> firn-script/driver-build compiler/target/gate/whitefootc --graph tests/programs/firn-scripting/modules.wfg --entry test --cache <external-path> -o <external-path>\nlock: <host-check-lock>; inspect the recorded PID before removing a stale lock\n",
+    "oracle.log": "verification is already owned by another command:\n92056\nTue Oct  6 01:57:22 2026 UTC: <external-path> sg-build sh <external-path> 12000 900 <external-path> --cache <external-path> --fragments function --par --graph modules.wfg --entry layout_oracle -o <external-path>\nlock: <host-check-lock>; inspect the recorded PID before removing a stale lock\n",
+    "sample-stress.log": "== START halo-fixed-sample-stress (limit 1800s): python3 -B research/experiments/halo-e2e/run.py --compiler compiler/target/gate/whitefootc --binary research/experiments/halo-bench/target/fixed-call/e2e-fixed --scratch-root research/experiments/halo-bench/target --budgets 1,7,1000 --filter lua-core/counter-closure --gc-stress --actual research/experiments/halo-bench/target/fixed-call/sample-stress-actual --report research/experiments/halo-bench/target/fixed-call/sample-stress.md ==\nPASS lua-core/counter-closure budget=1 collections=8: \nPASS lua-core/counter-closure budget=7 collections=8: \nPASS lua-core/counter-closure budget=1000 collections=8: \n3/3 passed\nreal 0.11\nuser 0.07\nsys 0.03\n== END halo-fixed-sample-stress: 0.21 s, exit 0 ==\n"
+  },
+  "reports": {
+    "witness-before.md": "# Halo end-to-end comparison\n\nLocal parent revision: `232b7d2b3a3d77e7b1a48e1552d9ad0a27fa3548`. Source digest: `cd5158e2c3d9d47fab0ccec25b0246fe6911cb16233f8a6f5f2200fae92fd221`.\nGC stress: False; suspended checkpoint probe: False; frame alias isolation: False; parked root omitted: False.\nThe digest includes every Halo module, the graph, host and runner; it identifies uncommitted source bytes too.\n\nExecutable SHA-256: `65e0c7db5bfb9c93ca07466df7ec156b2d3cd005d595f3c34f880852c1e0c313`.\nCompiler SHA-256: `c71614ecb1da4ab8b5c4cfea7bec7afa3a39aeb967657e1aaa2019c76dbf3fc5`.\n\n| Group | Budget | Passed | Failed |\n| --- | --- | ---: | ---: |\n| call | 1 | 1 | 0 |\n| call | 7 | 1 | 0 |\n| call | 1000 | 1 | 0 |\n\n| Budget | Collections | Execution seconds | Zero-collection scripts |\n| ---: | ---: | ---: | ---: |\n| 1 | 0 | 0.014787 | 1 |\n| 7 | 0 | 0.003668 | 1 |\n| 1000 | 0 | 0.004337 | 1 |\n\n| Case | Budget | Result | Seconds | Collections | Failure reason |\n| --- | ---: | --- | ---: | ---: | --- |\n| call/fallbacks | 1 | PASS | 0.0148 | 0 |  |\n| call/fallbacks | 7 | PASS | 0.0037 | 0 |  |\n| call/fallbacks | 1000 | PASS | 0.0043 | 0 |  |\n\nNo scripts or expected replies were changed. No network or Redis server was used.\nThe reference is the selected local cases and their independently stated expected replies.\nBudget comparisons use fresh stores. They compare replies; atomic kill/restart and host Stop store preservation require separate checks.\n",
+    "witness-before-stress.md": "# Halo end-to-end comparison\n\nLocal parent revision: `71173591704b4e3cc7e809f38b5534a92503a617`. Source digest: `eba3771194071ba2e69293f873840c856fd76ff3c1555c69ed2a27f9580ddacb`.\nGC stress: True; suspended checkpoint probe: False; frame alias isolation: False; parked root omitted: False.\nThe digest includes every Halo module, the graph, host and runner; it identifies uncommitted source bytes too.\n\nExecutable SHA-256: `65e0c7db5bfb9c93ca07466df7ec156b2d3cd005d595f3c34f880852c1e0c313`.\nCompiler SHA-256: `c71614ecb1da4ab8b5c4cfea7bec7afa3a39aeb967657e1aaa2019c76dbf3fc5`.\n\n| Group | Budget | Passed | Failed |\n| --- | --- | ---: | ---: |\n| call | 1 | 1 | 0 |\n| call | 7 | 1 | 0 |\n| call | 1000 | 1 | 0 |\n\n| Budget | Collections | Execution seconds | Zero-collection scripts |\n| ---: | ---: | ---: | ---: |\n| 1 | 17 | 0.004406 | 0 |\n| 7 | 17 | 0.003590 | 0 |\n| 1000 | 17 | 0.003979 | 0 |\n\n| Case | Budget | Result | Seconds | Collections | Failure reason |\n| --- | ---: | --- | ---: | ---: | --- |\n| call/fallbacks | 1 | PASS | 0.0044 | 17 |  |\n| call/fallbacks | 7 | PASS | 0.0036 | 17 |  |\n| call/fallbacks | 1000 | PASS | 0.0040 | 17 |  |\n\nNo scripts or expected replies were changed. No network or Redis server was used.\nThe reference is the selected local cases and their independently stated expected replies.\nBudget comparisons use fresh stores. They compare replies; atomic kill/restart and host Stop store preservation require separate checks.\n",
+    "sample-stress.md": "# Halo end-to-end comparison\n\nLocal parent revision: `9e223ad791a535c92c2485a074d9b41e1026d3b0`. Source digest: `9f1474928df16e1b06354e028039b3646a4466580a69060f367e42483be13b5d`.\nGC stress: True; suspended checkpoint probe: False; frame alias isolation: False; parked root omitted: False.\nThe digest includes every Halo module, the graph, host and runner; it identifies uncommitted source bytes too.\n\nExecutable SHA-256: `4c5481b96749b6d5a7ecae9a3ebb7b4c48b8ddecce02042d37ca36feceedc063`.\nCompiler SHA-256: `c71614ecb1da4ab8b5c4cfea7bec7afa3a39aeb967657e1aaa2019c76dbf3fc5`.\n\n| Group | Budget | Passed | Failed |\n| --- | --- | ---: | ---: |\n| lua-core | 1 | 1 | 0 |\n| lua-core | 7 | 1 | 0 |\n| lua-core | 1000 | 1 | 0 |\n\n| Budget | Collections | Execution seconds | Zero-collection scripts |\n| ---: | ---: | ---: | ---: |\n| 1 | 8 | 0.004597 | 0 |\n| 7 | 8 | 0.003881 | 0 |\n| 1000 | 8 | 0.003829 | 0 |\n\n| Case | Budget | Result | Seconds | Collections | Failure reason |\n| --- | ---: | --- | ---: | ---: | --- |\n| lua-core/counter-closure | 1 | PASS | 0.0046 | 8 |  |\n| lua-core/counter-closure | 7 | PASS | 0.0039 | 8 |  |\n| lua-core/counter-closure | 1000 | PASS | 0.0038 | 8 |  |\n\nNo scripts or expected replies were changed. No network or Redis server was used.\nThe reference is the stored Redis 7.0.15 RESP2 corpus.\nBudget comparisons use fresh stores. They compare replies; atomic kill/restart and host Stop store preservation require separate checks.\n",
+    "sample.md": "# Halo end-to-end comparison\n\nLocal parent revision: `9e223ad791a535c92c2485a074d9b41e1026d3b0`. Source digest: `9f1474928df16e1b06354e028039b3646a4466580a69060f367e42483be13b5d`.\nGC stress: False; suspended checkpoint probe: False; frame alias isolation: False; parked root omitted: False.\nThe digest includes every Halo module, the graph, host and runner; it identifies uncommitted source bytes too.\n\nExecutable SHA-256: `4c5481b96749b6d5a7ecae9a3ebb7b4c48b8ddecce02042d37ca36feceedc063`.\nCompiler SHA-256: `c71614ecb1da4ab8b5c4cfea7bec7afa3a39aeb967657e1aaa2019c76dbf3fc5`.\n\n| Group | Budget | Passed | Failed |\n| --- | --- | ---: | ---: |\n| lua-core | 1 | 1 | 0 |\n| lua-core | 7 | 1 | 0 |\n| lua-core | 1000 | 1 | 0 |\n\n| Budget | Collections | Execution seconds | Zero-collection scripts |\n| ---: | ---: | ---: | ---: |\n| 1 | 0 | 0.242427 | 1 |\n| 7 | 0 | 0.004033 | 1 |\n| 1000 | 0 | 0.004329 | 1 |\n\n| Case | Budget | Result | Seconds | Collections | Failure reason |\n| --- | ---: | --- | ---: | ---: | --- |\n| lua-core/counter-closure | 1 | PASS | 0.2424 | 0 |  |\n| lua-core/counter-closure | 7 | PASS | 0.0040 | 0 |  |\n| lua-core/counter-closure | 1000 | PASS | 0.0043 | 0 |  |\n\nNo scripts or expected replies were changed. No network or Redis server was used.\nThe reference is the stored Redis 7.0.15 RESP2 corpus.\nBudget comparisons use fresh stores. They compare replies; atomic kill/restart and host Stop store preservation require separate checks.\n"
+  },
+  "cpu": "Apple M1 Pro",
+  "memory_bytes": 34359738368,
+  "clang_version": "Apple clang version 21.0.0 (clang-2100.3.34.2), arm64-apple-darwin25.6.0",
+  "baseline_broader_input_audit": {
+    "from_revision": "ca75ec503382099fe915dc0384d0a5f00fd8e2c2",
+    "to_revision": "b374e880e6749fe5d1a0e4a40b0b2187f52f63b0",
+    "paths": [
+      "lib",
+      "runtime",
+      "research/experiments/halo-bench/host",
+      "research/experiments/halo-bench/modules.wfg",
+      "research/experiments/halo-e2e/test",
+      "research/experiments/halo-e2e/modules.wfg"
+    ],
+    "changed_paths": [],
+    "compiler_note": "Compiler source changes do not rebuild the supplied executable; both variants use its separately verified SHA-256. Native runtime constants are include_str! data in compiler/src/backend/runtime.rs."
+  },
+  "one_pairs": {
+    "revision": "57bf7c57258c85b25ac904c09f23eb84cc25634c",
+    "host": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+    "started_utc": "2026-10-06T01:24:07Z",
+    "binary_sha256": "7f7fadad7e57ede7efbfb0a1640eb27b7a1d39a2d83161d1f4d7c902c2006ef0",
+    "lua_sha256": "b6b64032ec45c39084dfabd605b6d06626cc38a9c43f0ece61132ad7aff2fb4a",
+    "compiler_sha256": "c71614ecb1da4ab8b5c4cfea7bec7afa3a39aeb967657e1aaa2019c76dbf3fc5",
+    "host_sources_sha256": {
+      "modules.wfg": "dae3b0320fcfb9d8223b537ee27b7d1342e277a639dddf4582b5736d4b865230",
+      "host/module.wfm": "6b555158bf47efd20cbd81a123f4906b55d5213364ee829b7c0253a89820a939",
+      "host/driver.wf": "bda376ab2c19d8fbd27b3e18cc28dc9cbc15b077f01c8120bf334e01704a5fbc"
+    },
+    "budget": "large",
+    "profile": false,
+    "reference_only": false,
+    "scales": {
+      "binary-trees": 14
+    },
+    "kernels": {
+      "fib": {
+        "source_sha256": "dbbbf86920c5e832958c523d378e5d28fd593739008327d2db30ba61548b44ab",
+        "pairs": [
+          {
+            "halo": 0.6263272915966809,
+            "checksum": "832040",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.21258724993094802,
+            "before_suspends": 0,
+            "before_collections": 0
+          }
+        ],
+        "independent_reference": {
+          "exit": 0,
+          "stdout": "832040\n"
+        },
+        "before": {
+          "median": 0.21258724993094802,
+          "minimum": 0.21258724993094802,
+          "maximum": 0.21258724993094802,
+          "relative_range": 0.0,
+          "runs": 1
+        },
+        "halo": {
+          "median": 0.6263272915966809,
+          "minimum": 0.6263272915966809,
+          "maximum": 0.6263272915966809,
+          "relative_range": 0.0,
+          "runs": 1
+        },
+        "ratio": 2.9462128693048277
+      },
+      "loop": {
+        "source_sha256": "109c6f96fd9809ccf6525f982b11baa2f6dbe352990a28a60c474807be9265da",
+        "pairs": [
+          {
+            "halo": 0.5732055841945112,
+            "checksum": "5.00000005e+15",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.5759987910278141,
+            "before_suspends": 0,
+            "before_collections": 0
+          }
+        ],
+        "independent_reference": {
+          "exit": 0,
+          "stdout": "5.00000005e+15\n"
+        },
+        "before": {
+          "median": 0.5759987910278141,
+          "minimum": 0.5759987910278141,
+          "maximum": 0.5759987910278141,
+          "relative_range": 0.0,
+          "runs": 1
+        },
+        "halo": {
+          "median": 0.5732055841945112,
+          "minimum": 0.5732055841945112,
+          "maximum": 0.5732055841945112,
+          "relative_range": 0.0,
+          "runs": 1
+        },
+        "ratio": 0.9951506724027688
+      },
+      "integer-table": {
+        "source_sha256": "0281334766512a9e620a543d5b429f7c0d61b8ea2ff82927224d52b1e72ee3ce",
+        "pairs": [
+          {
+            "halo": 0.5962270842865109,
+            "checksum": "50000005000000",
+            "suspends": 0,
+            "collections": 5,
+            "before": 0.6384271667338908,
+            "before_suspends": 0,
+            "before_collections": 5
+          }
+        ],
+        "independent_reference": {
+          "exit": 0,
+          "stdout": "50000005000000\n"
+        },
+        "before": {
+          "median": 0.6384271667338908,
+          "minimum": 0.6384271667338908,
+          "maximum": 0.6384271667338908,
+          "relative_range": 0.0,
+          "runs": 1
+        },
+        "halo": {
+          "median": 0.5962270842865109,
+          "minimum": 0.5962270842865109,
+          "maximum": 0.5962270842865109,
+          "relative_range": 0.0,
+          "runs": 1
+        },
+        "ratio": 0.9338999268103363
+      },
+      "string-key": {
+        "source_sha256": "585821f9c9800736ce0e3af1f83bbb2b1f6a7d274e04c83b0494a4ae38b74cea",
+        "pairs": [
+          {
+            "halo": 0.040364665910601616,
+            "checksum": "28500000",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.040745959151536226,
+            "before_suspends": 0,
+            "before_collections": 0
+          }
+        ],
+        "independent_reference": {
+          "exit": 0,
+          "stdout": "28500000\n"
+        },
+        "before": {
+          "median": 0.040745959151536226,
+          "minimum": 0.040745959151536226,
+          "maximum": 0.040745959151536226,
+          "relative_range": 0.0,
+          "runs": 1
+        },
+        "halo": {
+          "median": 0.040364665910601616,
+          "minimum": 0.040364665910601616,
+          "maximum": 0.040364665910601616,
+          "relative_range": 0.0,
+          "runs": 1
+        },
+        "ratio": 0.9906421827127307
+      },
+      "concat": {
+        "source_sha256": "2fa66325e51e5d25ee67972f779b3c88d47326557f4cbf9393195799c3a7525c",
+        "pairs": [
+          {
+            "halo": 0.17995133297517896,
+            "checksum": "5000000",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.17778979241847992,
+            "before_suspends": 0,
+            "before_collections": 0
+          }
+        ],
+        "independent_reference": {
+          "exit": 0,
+          "stdout": "5000000\n"
+        },
+        "before": {
+          "median": 0.17778979241847992,
+          "minimum": 0.17778979241847992,
+          "maximum": 0.17778979241847992,
+          "relative_range": 0.0,
+          "runs": 1
+        },
+        "halo": {
+          "median": 0.17995133297517896,
+          "minimum": 0.17995133297517896,
+          "maximum": 0.17995133297517896,
+          "relative_range": 0.0,
+          "runs": 1
+        },
+        "ratio": 1.0121578439757173
+      },
+      "sort": {
+        "source_sha256": "96bb6c47b3062381dca7a9b5ae09186792d28ca5dd7cbfe7d6b3432fb8e4807d",
+        "pairs": [
+          {
+            "halo": 0.8186423745937645,
+            "checksum": "1.0733795172001e+15",
+            "suspends": 0,
+            "collections": 3,
+            "before": 0.7424426670186222,
+            "before_suspends": 0,
+            "before_collections": 3
+          }
+        ],
+        "independent_reference": {
+          "exit": 0,
+          "stdout": "1.0733795172001e+15\n"
+        },
+        "before": {
+          "median": 0.7424426670186222,
+          "minimum": 0.7424426670186222,
+          "maximum": 0.7424426670186222,
+          "relative_range": 0.0,
+          "runs": 1
+        },
+        "halo": {
+          "median": 0.8186423745937645,
+          "minimum": 0.8186423745937645,
+          "maximum": 0.8186423745937645,
+          "relative_range": 0.0,
+          "runs": 1
+        },
+        "ratio": 1.1026337937731037
+      },
+      "binary-trees": {
+        "source_sha256": "01f28ad8804be0bc1b8539aabfc7942da18b928b1a270cf7cb9300367f1eebd6",
+        "pairs": [
+          {
+            "halo": 2.3171847499907017,
+            "checksum": "-43682",
+            "suspends": 0,
+            "collections": 176,
+            "before": 2.5904364995658398,
+            "before_suspends": 0,
+            "before_collections": 176
+          }
+        ],
+        "independent_reference": {
+          "exit": 0,
+          "stdout": "-43682\n"
+        },
+        "before": {
+          "median": 2.5904364995658398,
+          "minimum": 2.5904364995658398,
+          "maximum": 2.5904364995658398,
+          "relative_range": 0.0,
+          "runs": 1
+        },
+        "halo": {
+          "median": 2.3171847499907017,
+          "minimum": 2.3171847499907017,
+          "maximum": 2.3171847499907017,
+          "relative_range": 0.0,
+          "runs": 1
+        },
+        "ratio": 0.8945151716241895
+      }
+    },
+    "launches": [
+      {
+        "kernel": "fib",
+        "run": 1,
+        "engine": "Before",
+        "seconds": 0.21258724993094802,
+        "exit": 0,
+        "stdout": "832040\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "fib",
+        "run": 1,
+        "engine": "Halo",
+        "seconds": 0.6263272915966809,
+        "exit": 0,
+        "stdout": "832040\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "loop",
+        "run": 1,
+        "engine": "Before",
+        "seconds": 0.5759987910278141,
+        "exit": 0,
+        "stdout": "5.00000005e+15\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "loop",
+        "run": 1,
+        "engine": "Halo",
+        "seconds": 0.5732055841945112,
+        "exit": 0,
+        "stdout": "5.00000005e+15\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "integer-table",
+        "run": 1,
+        "engine": "Before",
+        "seconds": 0.6384271667338908,
+        "exit": 0,
+        "stdout": "50000005000000\n",
+        "stderr": "0\n5\n"
+      },
+      {
+        "kernel": "integer-table",
+        "run": 1,
+        "engine": "Halo",
+        "seconds": 0.5962270842865109,
+        "exit": 0,
+        "stdout": "50000005000000\n",
+        "stderr": "0\n5\n"
+      },
+      {
+        "kernel": "string-key",
+        "run": 1,
+        "engine": "Before",
+        "seconds": 0.040745959151536226,
+        "exit": 0,
+        "stdout": "28500000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "string-key",
+        "run": 1,
+        "engine": "Halo",
+        "seconds": 0.040364665910601616,
+        "exit": 0,
+        "stdout": "28500000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "concat",
+        "run": 1,
+        "engine": "Before",
+        "seconds": 0.17778979241847992,
+        "exit": 0,
+        "stdout": "5000000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "concat",
+        "run": 1,
+        "engine": "Halo",
+        "seconds": 0.17995133297517896,
+        "exit": 0,
+        "stdout": "5000000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "sort",
+        "run": 1,
+        "engine": "Before",
+        "seconds": 0.7424426670186222,
+        "exit": 0,
+        "stdout": "1.0733795172001e+15\n",
+        "stderr": "0\n3\n"
+      },
+      {
+        "kernel": "sort",
+        "run": 1,
+        "engine": "Halo",
+        "seconds": 0.8186423745937645,
+        "exit": 0,
+        "stdout": "1.0733795172001e+15\n",
+        "stderr": "0\n3\n"
+      },
+      {
+        "kernel": "binary-trees",
+        "run": 1,
+        "engine": "Before",
+        "seconds": 2.5904364995658398,
+        "exit": 0,
+        "stdout": "-43682\n",
+        "stderr": "0\n176\n"
+      },
+      {
+        "kernel": "binary-trees",
+        "run": 1,
+        "engine": "Halo",
+        "seconds": 2.3171847499907017,
+        "exit": 0,
+        "stdout": "-43682\n",
+        "stderr": "0\n176\n"
+      }
+    ],
+    "before_binary_sha256": "57559171811d75790fff664fe6d1ecc8c49971bb89fb7d2702c8f99c45e68625",
+    "before_budget": "large"
+  },
+  "three_pairs": {
+    "revision": "57bf7c57258c85b25ac904c09f23eb84cc25634c",
+    "host": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+    "started_utc": "2026-10-06T01:25:10Z",
+    "binary_sha256": "7f7fadad7e57ede7efbfb0a1640eb27b7a1d39a2d83161d1f4d7c902c2006ef0",
+    "lua_sha256": "b6b64032ec45c39084dfabd605b6d06626cc38a9c43f0ece61132ad7aff2fb4a",
+    "compiler_sha256": "c71614ecb1da4ab8b5c4cfea7bec7afa3a39aeb967657e1aaa2019c76dbf3fc5",
+    "host_sources_sha256": {
+      "modules.wfg": "dae3b0320fcfb9d8223b537ee27b7d1342e277a639dddf4582b5736d4b865230",
+      "host/module.wfm": "6b555158bf47efd20cbd81a123f4906b55d5213364ee829b7c0253a89820a939",
+      "host/driver.wf": "bda376ab2c19d8fbd27b3e18cc28dc9cbc15b077f01c8120bf334e01704a5fbc"
+    },
+    "budget": "large",
+    "profile": false,
+    "reference_only": false,
+    "scales": {
+      "binary-trees": 14
+    },
+    "kernels": {
+      "fib": {
+        "source_sha256": "dbbbf86920c5e832958c523d378e5d28fd593739008327d2db30ba61548b44ab",
+        "pairs": [
+          {
+            "halo": 0.16092054126784205,
+            "checksum": "832040",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.2010456658899784,
+            "before_suspends": 0,
+            "before_collections": 0
+          },
+          {
+            "halo": 0.16013354109600186,
+            "checksum": "832040",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.20755558274686337,
+            "before_suspends": 0,
+            "before_collections": 0
+          },
+          {
+            "halo": 0.16097212489694357,
+            "checksum": "832040",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.20134845795109868,
+            "before_suspends": 0,
+            "before_collections": 0
+          }
+        ],
+        "independent_reference": {
+          "exit": 0,
+          "stdout": "832040\n"
+        },
+        "before": {
+          "median": 0.20134845795109868,
+          "minimum": 0.2010456658899784,
+          "maximum": 0.20755558274686337,
+          "relative_range": 0.03233159530065045,
+          "runs": 3
+        },
+        "halo": {
+          "median": 0.16092054126784205,
+          "minimum": 0.16013354109600186,
+          "maximum": 0.16097212489694357,
+          "relative_range": 0.005211166917130462,
+          "runs": 3
+        },
+        "ratio": 0.7992141728094321
+      },
+      "loop": {
+        "source_sha256": "109c6f96fd9809ccf6525f982b11baa2f6dbe352990a28a60c474807be9265da",
+        "pairs": [
+          {
+            "halo": 0.5691508329473436,
+            "checksum": "5.00000005e+15",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.5724573330953717,
+            "before_suspends": 0,
+            "before_collections": 0
+          },
+          {
+            "halo": 0.5656844167970121,
+            "checksum": "5.00000005e+15",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.5738935419358313,
+            "before_suspends": 0,
+            "before_collections": 0
+          },
+          {
+            "halo": 0.5749281668104231,
+            "checksum": "5.00000005e+15",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.5672741248272359,
+            "before_suspends": 0,
+            "before_collections": 0
+          }
+        ],
+        "independent_reference": {
+          "exit": 0,
+          "stdout": "5.00000005e+15\n"
+        },
+        "before": {
+          "median": 0.5724573330953717,
+          "minimum": 0.5672741248272359,
+          "maximum": 0.5738935419358313,
+          "relative_range": 0.011563162398153038,
+          "runs": 3
+        },
+        "halo": {
+          "median": 0.5691508329473436,
+          "minimum": 0.5656844167970121,
+          "maximum": 0.5749281668104231,
+          "relative_range": 0.01624130103709477,
+          "runs": 3
+        },
+        "ratio": 0.9942240234217119
+      },
+      "integer-table": {
+        "source_sha256": "0281334766512a9e620a543d5b429f7c0d61b8ea2ff82927224d52b1e72ee3ce",
+        "pairs": [
+          {
+            "halo": 0.622719167266041,
+            "checksum": "50000005000000",
+            "suspends": 0,
+            "collections": 5,
+            "before": 0.5755648342892528,
+            "before_suspends": 0,
+            "before_collections": 5
+          },
+          {
+            "halo": 0.5913289580494165,
+            "checksum": "50000005000000",
+            "suspends": 0,
+            "collections": 5,
+            "before": 0.6303410418331623,
+            "before_suspends": 0,
+            "before_collections": 5
+          },
+          {
+            "halo": 0.5807586247101426,
+            "checksum": "50000005000000",
+            "suspends": 0,
+            "collections": 5,
+            "before": 0.5952226249501109,
+            "before_suspends": 0,
+            "before_collections": 5
+          }
+        ],
+        "independent_reference": {
+          "exit": 0,
+          "stdout": "50000005000000\n"
+        },
+        "before": {
+          "median": 0.5952226249501109,
+          "minimum": 0.5755648342892528,
+          "maximum": 0.6303410418331623,
+          "relative_range": 0.09202642044814856,
+          "runs": 3
+        },
+        "halo": {
+          "median": 0.5913289580494165,
+          "minimum": 0.5807586247101426,
+          "maximum": 0.622719167266041,
+          "relative_range": 0.07095972890336928,
+          "runs": 3
+        },
+        "ratio": 0.9934584695919099
+      },
+      "string-key": {
+        "source_sha256": "585821f9c9800736ce0e3af1f83bbb2b1f6a7d274e04c83b0494a4ae38b74cea",
+        "pairs": [
+          {
+            "halo": 0.04011366702616215,
+            "checksum": "28500000",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.040044874884188175,
+            "before_suspends": 0,
+            "before_collections": 0
+          },
+          {
+            "halo": 0.04143954208120704,
+            "checksum": "28500000",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.039938750211149454,
+            "before_suspends": 0,
+            "before_collections": 0
+          },
+          {
+            "halo": 0.040964541025459766,
+            "checksum": "28500000",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.03963624965399504,
+            "before_suspends": 0,
+            "before_collections": 0
+          }
+        ],
+        "independent_reference": {
+          "exit": 0,
+          "stdout": "28500000\n"
+        },
+        "before": {
+          "median": 0.039938750211149454,
+          "minimum": 0.03963624965399504,
+          "maximum": 0.040044874884188175,
+          "relative_range": 0.010231297374925487,
+          "runs": 3
+        },
+        "halo": {
+          "median": 0.040964541025459766,
+          "minimum": 0.04011366702616215,
+          "maximum": 0.04143954208120704,
+          "relative_range": 0.032366408163119614,
+          "runs": 3
+        },
+        "ratio": 1.02568409899877
+      },
+      "concat": {
+        "source_sha256": "2fa66325e51e5d25ee67972f779b3c88d47326557f4cbf9393195799c3a7525c",
+        "pairs": [
+          {
+            "halo": 0.18744287500157952,
+            "checksum": "5000000",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.17680933326482773,
+            "before_suspends": 0,
+            "before_collections": 0
+          },
+          {
+            "halo": 0.1833386248908937,
+            "checksum": "5000000",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.17918808292597532,
+            "before_suspends": 0,
+            "before_collections": 0
+          },
+          {
+            "halo": 0.1849423749372363,
+            "checksum": "5000000",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.18165425024926662,
+            "before_suspends": 0,
+            "before_collections": 0
+          }
+        ],
+        "independent_reference": {
+          "exit": 0,
+          "stdout": "5000000\n"
+        },
+        "before": {
+          "median": 0.17918808292597532,
+          "minimum": 0.17680933326482773,
+          "maximum": 0.18165425024926662,
+          "relative_range": 0.027038165179993513,
+          "runs": 3
+        },
+        "halo": {
+          "median": 0.1849423749372363,
+          "minimum": 0.1833386248908937,
+          "maximum": 0.18744287500157952,
+          "relative_range": 0.022192048264107565,
+          "runs": 3
+        },
+        "ratio": 1.0321131401000487
+      },
+      "sort": {
+        "source_sha256": "96bb6c47b3062381dca7a9b5ae09186792d28ca5dd7cbfe7d6b3432fb8e4807d",
+        "pairs": [
+          {
+            "halo": 0.7174801249057055,
+            "checksum": "1.0733795172001e+15",
+            "suspends": 0,
+            "collections": 3,
+            "before": 0.7198649579659104,
+            "before_suspends": 0,
+            "before_collections": 3
+          },
+          {
+            "halo": 0.7214079168625176,
+            "checksum": "1.0733795172001e+15",
+            "suspends": 0,
+            "collections": 3,
+            "before": 0.7233562916517258,
+            "before_suspends": 0,
+            "before_collections": 3
+          },
+          {
+            "halo": 0.7261375826783478,
+            "checksum": "1.0733795172001e+15",
+            "suspends": 0,
+            "collections": 3,
+            "before": 0.7807059586048126,
+            "before_suspends": 0,
+            "before_collections": 3
+          }
+        ],
+        "independent_reference": {
+          "exit": 0,
+          "stdout": "1.0733795172001e+15\n"
+        },
+        "before": {
+          "median": 0.7233562916517258,
+          "minimum": 0.7198649579659104,
+          "maximum": 0.7807059586048126,
+          "relative_range": 0.0841093128532506,
+          "runs": 3
+        },
+        "halo": {
+          "median": 0.7214079168625176,
+          "minimum": 0.7174801249057055,
+          "maximum": 0.7261375826783478,
+          "relative_range": 0.012000780099967034,
+          "runs": 3
+        },
+        "ratio": 0.9973064797919167
+      },
+      "binary-trees": {
+        "source_sha256": "01f28ad8804be0bc1b8539aabfc7942da18b928b1a270cf7cb9300367f1eebd6",
+        "pairs": [
+          {
+            "halo": 2.323703625239432,
+            "checksum": "-43682",
+            "suspends": 0,
+            "collections": 176,
+            "before": 2.5743185840547085,
+            "before_suspends": 0,
+            "before_collections": 176
+          },
+          {
+            "halo": 2.285760125145316,
+            "checksum": "-43682",
+            "suspends": 0,
+            "collections": 176,
+            "before": 2.510641874745488,
+            "before_suspends": 0,
+            "before_collections": 176
+          },
+          {
+            "halo": 2.2879350422881544,
+            "checksum": "-43682",
+            "suspends": 0,
+            "collections": 176,
+            "before": 2.561787832994014,
+            "before_suspends": 0,
+            "before_collections": 176
+          }
+        ],
+        "independent_reference": {
+          "exit": 0,
+          "stdout": "-43682\n"
+        },
+        "before": {
+          "median": 2.561787832994014,
+          "minimum": 2.510641874745488,
+          "maximum": 2.5743185840547085,
+          "relative_range": 0.0248563555846075,
+          "runs": 3
+        },
+        "halo": {
+          "median": 2.2879350422881544,
+          "minimum": 2.285760125145316,
+          "maximum": 2.323703625239432,
+          "relative_range": 0.016584168428212278,
+          "runs": 3
+        },
+        "ratio": 0.8931009089906551
+      }
+    },
+    "launches": [
+      {
+        "kernel": "fib",
+        "run": 1,
+        "engine": "Before",
+        "seconds": 0.2010456658899784,
+        "exit": 0,
+        "stdout": "832040\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "fib",
+        "run": 1,
+        "engine": "Halo",
+        "seconds": 0.16092054126784205,
+        "exit": 0,
+        "stdout": "832040\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "fib",
+        "run": 2,
+        "engine": "Halo",
+        "seconds": 0.16013354109600186,
+        "exit": 0,
+        "stdout": "832040\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "fib",
+        "run": 2,
+        "engine": "Before",
+        "seconds": 0.20755558274686337,
+        "exit": 0,
+        "stdout": "832040\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "fib",
+        "run": 3,
+        "engine": "Before",
+        "seconds": 0.20134845795109868,
+        "exit": 0,
+        "stdout": "832040\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "fib",
+        "run": 3,
+        "engine": "Halo",
+        "seconds": 0.16097212489694357,
+        "exit": 0,
+        "stdout": "832040\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "loop",
+        "run": 1,
+        "engine": "Before",
+        "seconds": 0.5724573330953717,
+        "exit": 0,
+        "stdout": "5.00000005e+15\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "loop",
+        "run": 1,
+        "engine": "Halo",
+        "seconds": 0.5691508329473436,
+        "exit": 0,
+        "stdout": "5.00000005e+15\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "loop",
+        "run": 2,
+        "engine": "Halo",
+        "seconds": 0.5656844167970121,
+        "exit": 0,
+        "stdout": "5.00000005e+15\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "loop",
+        "run": 2,
+        "engine": "Before",
+        "seconds": 0.5738935419358313,
+        "exit": 0,
+        "stdout": "5.00000005e+15\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "loop",
+        "run": 3,
+        "engine": "Before",
+        "seconds": 0.5672741248272359,
+        "exit": 0,
+        "stdout": "5.00000005e+15\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "loop",
+        "run": 3,
+        "engine": "Halo",
+        "seconds": 0.5749281668104231,
+        "exit": 0,
+        "stdout": "5.00000005e+15\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "integer-table",
+        "run": 1,
+        "engine": "Before",
+        "seconds": 0.5755648342892528,
+        "exit": 0,
+        "stdout": "50000005000000\n",
+        "stderr": "0\n5\n"
+      },
+      {
+        "kernel": "integer-table",
+        "run": 1,
+        "engine": "Halo",
+        "seconds": 0.622719167266041,
+        "exit": 0,
+        "stdout": "50000005000000\n",
+        "stderr": "0\n5\n"
+      },
+      {
+        "kernel": "integer-table",
+        "run": 2,
+        "engine": "Halo",
+        "seconds": 0.5913289580494165,
+        "exit": 0,
+        "stdout": "50000005000000\n",
+        "stderr": "0\n5\n"
+      },
+      {
+        "kernel": "integer-table",
+        "run": 2,
+        "engine": "Before",
+        "seconds": 0.6303410418331623,
+        "exit": 0,
+        "stdout": "50000005000000\n",
+        "stderr": "0\n5\n"
+      },
+      {
+        "kernel": "integer-table",
+        "run": 3,
+        "engine": "Before",
+        "seconds": 0.5952226249501109,
+        "exit": 0,
+        "stdout": "50000005000000\n",
+        "stderr": "0\n5\n"
+      },
+      {
+        "kernel": "integer-table",
+        "run": 3,
+        "engine": "Halo",
+        "seconds": 0.5807586247101426,
+        "exit": 0,
+        "stdout": "50000005000000\n",
+        "stderr": "0\n5\n"
+      },
+      {
+        "kernel": "string-key",
+        "run": 1,
+        "engine": "Before",
+        "seconds": 0.040044874884188175,
+        "exit": 0,
+        "stdout": "28500000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "string-key",
+        "run": 1,
+        "engine": "Halo",
+        "seconds": 0.04011366702616215,
+        "exit": 0,
+        "stdout": "28500000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "string-key",
+        "run": 2,
+        "engine": "Halo",
+        "seconds": 0.04143954208120704,
+        "exit": 0,
+        "stdout": "28500000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "string-key",
+        "run": 2,
+        "engine": "Before",
+        "seconds": 0.039938750211149454,
+        "exit": 0,
+        "stdout": "28500000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "string-key",
+        "run": 3,
+        "engine": "Before",
+        "seconds": 0.03963624965399504,
+        "exit": 0,
+        "stdout": "28500000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "string-key",
+        "run": 3,
+        "engine": "Halo",
+        "seconds": 0.040964541025459766,
+        "exit": 0,
+        "stdout": "28500000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "concat",
+        "run": 1,
+        "engine": "Before",
+        "seconds": 0.17680933326482773,
+        "exit": 0,
+        "stdout": "5000000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "concat",
+        "run": 1,
+        "engine": "Halo",
+        "seconds": 0.18744287500157952,
+        "exit": 0,
+        "stdout": "5000000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "concat",
+        "run": 2,
+        "engine": "Halo",
+        "seconds": 0.1833386248908937,
+        "exit": 0,
+        "stdout": "5000000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "concat",
+        "run": 2,
+        "engine": "Before",
+        "seconds": 0.17918808292597532,
+        "exit": 0,
+        "stdout": "5000000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "concat",
+        "run": 3,
+        "engine": "Before",
+        "seconds": 0.18165425024926662,
+        "exit": 0,
+        "stdout": "5000000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "concat",
+        "run": 3,
+        "engine": "Halo",
+        "seconds": 0.1849423749372363,
+        "exit": 0,
+        "stdout": "5000000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "sort",
+        "run": 1,
+        "engine": "Before",
+        "seconds": 0.7198649579659104,
+        "exit": 0,
+        "stdout": "1.0733795172001e+15\n",
+        "stderr": "0\n3\n"
+      },
+      {
+        "kernel": "sort",
+        "run": 1,
+        "engine": "Halo",
+        "seconds": 0.7174801249057055,
+        "exit": 0,
+        "stdout": "1.0733795172001e+15\n",
+        "stderr": "0\n3\n"
+      },
+      {
+        "kernel": "sort",
+        "run": 2,
+        "engine": "Halo",
+        "seconds": 0.7214079168625176,
+        "exit": 0,
+        "stdout": "1.0733795172001e+15\n",
+        "stderr": "0\n3\n"
+      },
+      {
+        "kernel": "sort",
+        "run": 2,
+        "engine": "Before",
+        "seconds": 0.7233562916517258,
+        "exit": 0,
+        "stdout": "1.0733795172001e+15\n",
+        "stderr": "0\n3\n"
+      },
+      {
+        "kernel": "sort",
+        "run": 3,
+        "engine": "Before",
+        "seconds": 0.7807059586048126,
+        "exit": 0,
+        "stdout": "1.0733795172001e+15\n",
+        "stderr": "0\n3\n"
+      },
+      {
+        "kernel": "sort",
+        "run": 3,
+        "engine": "Halo",
+        "seconds": 0.7261375826783478,
+        "exit": 0,
+        "stdout": "1.0733795172001e+15\n",
+        "stderr": "0\n3\n"
+      },
+      {
+        "kernel": "binary-trees",
+        "run": 1,
+        "engine": "Before",
+        "seconds": 2.5743185840547085,
+        "exit": 0,
+        "stdout": "-43682\n",
+        "stderr": "0\n176\n"
+      },
+      {
+        "kernel": "binary-trees",
+        "run": 1,
+        "engine": "Halo",
+        "seconds": 2.323703625239432,
+        "exit": 0,
+        "stdout": "-43682\n",
+        "stderr": "0\n176\n"
+      },
+      {
+        "kernel": "binary-trees",
+        "run": 2,
+        "engine": "Halo",
+        "seconds": 2.285760125145316,
+        "exit": 0,
+        "stdout": "-43682\n",
+        "stderr": "0\n176\n"
+      },
+      {
+        "kernel": "binary-trees",
+        "run": 2,
+        "engine": "Before",
+        "seconds": 2.510641874745488,
+        "exit": 0,
+        "stdout": "-43682\n",
+        "stderr": "0\n176\n"
+      },
+      {
+        "kernel": "binary-trees",
+        "run": 3,
+        "engine": "Before",
+        "seconds": 2.561787832994014,
+        "exit": 0,
+        "stdout": "-43682\n",
+        "stderr": "0\n176\n"
+      },
+      {
+        "kernel": "binary-trees",
+        "run": 3,
+        "engine": "Halo",
+        "seconds": 2.2879350422881544,
+        "exit": 0,
+        "stdout": "-43682\n",
+        "stderr": "0\n176\n"
+      }
+    ],
+    "before_binary_sha256": "57559171811d75790fff664fe6d1ecc8c49971bb89fb7d2702c8f99c45e68625",
+    "before_budget": "large"
+  },
+  "candidate_benchmark_binary_sha256": "7f7fadad7e57ede7efbfb0a1640eb27b7a1d39a2d83161d1f4d7c902c2006ef0",
+  "six_pairs": {
+    "revision": "57bf7c57258c85b25ac904c09f23eb84cc25634c",
+    "host": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+    "started_utc": "2026-10-06T01:27:22Z",
+    "binary_sha256": "7f7fadad7e57ede7efbfb0a1640eb27b7a1d39a2d83161d1f4d7c902c2006ef0",
+    "lua_sha256": "b6b64032ec45c39084dfabd605b6d06626cc38a9c43f0ece61132ad7aff2fb4a",
+    "compiler_sha256": "c71614ecb1da4ab8b5c4cfea7bec7afa3a39aeb967657e1aaa2019c76dbf3fc5",
+    "host_sources_sha256": {
+      "modules.wfg": "dae3b0320fcfb9d8223b537ee27b7d1342e277a639dddf4582b5736d4b865230",
+      "host/module.wfm": "6b555158bf47efd20cbd81a123f4906b55d5213364ee829b7c0253a89820a939",
+      "host/driver.wf": "bda376ab2c19d8fbd27b3e18cc28dc9cbc15b077f01c8120bf334e01704a5fbc"
+    },
+    "budget": "large",
+    "profile": false,
+    "reference_only": false,
+    "scales": {
+      "binary-trees": 14
+    },
+    "kernels": {
+      "fib": {
+        "source_sha256": "dbbbf86920c5e832958c523d378e5d28fd593739008327d2db30ba61548b44ab",
+        "pairs": [
+          {
+            "halo": 0.2703100419603288,
+            "checksum": "832040",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.20237962482497096,
+            "before_suspends": 0,
+            "before_collections": 0
+          },
+          {
+            "halo": 0.16197137534618378,
+            "checksum": "832040",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.2032900000922382,
+            "before_suspends": 0,
+            "before_collections": 0
+          },
+          {
+            "halo": 0.2083161249756813,
+            "checksum": "832040",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.2042489997111261,
+            "before_suspends": 0,
+            "before_collections": 0
+          },
+          {
+            "halo": 0.16668158303946257,
+            "checksum": "832040",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.20486441627144814,
+            "before_suspends": 0,
+            "before_collections": 0
+          },
+          {
+            "halo": 0.16196179203689098,
+            "checksum": "832040",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.20032925019040704,
+            "before_suspends": 0,
+            "before_collections": 0
+          },
+          {
+            "halo": 0.1590175828896463,
+            "checksum": "832040",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.20120324986055493,
+            "before_suspends": 0,
+            "before_collections": 0
+          }
+        ],
+        "independent_reference": {
+          "exit": 0,
+          "stdout": "832040\n"
+        },
+        "before": {
+          "median": 0.20283481245860457,
+          "minimum": 0.20032925019040704,
+          "maximum": 0.20486441627144814,
+          "relative_range": 0.022358913768644396,
+          "runs": 6
+        },
+        "halo": {
+          "median": 0.16432647919282317,
+          "minimum": 0.1590175828896463,
+          "maximum": 0.2703100419603288,
+          "relative_range": 0.677264307112004,
+          "runs": 6
+        },
+        "ratio": 0.8101492894685406
+      },
+      "loop": {
+        "source_sha256": "109c6f96fd9809ccf6525f982b11baa2f6dbe352990a28a60c474807be9265da",
+        "pairs": [
+          {
+            "halo": 0.5828554159961641,
+            "checksum": "5.00000005e+15",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.5927880839444697,
+            "before_suspends": 0,
+            "before_collections": 0
+          },
+          {
+            "halo": 0.6085605416446924,
+            "checksum": "5.00000005e+15",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.5758638340048492,
+            "before_suspends": 0,
+            "before_collections": 0
+          },
+          {
+            "halo": 0.5719139999710023,
+            "checksum": "5.00000005e+15",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.5693137086927891,
+            "before_suspends": 0,
+            "before_collections": 0
+          },
+          {
+            "halo": 0.5659819161519408,
+            "checksum": "5.00000005e+15",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.5896187499165535,
+            "before_suspends": 0,
+            "before_collections": 0
+          },
+          {
+            "halo": 0.6343706669285893,
+            "checksum": "5.00000005e+15",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.5786449583247304,
+            "before_suspends": 0,
+            "before_collections": 0
+          },
+          {
+            "halo": 0.5819864999502897,
+            "checksum": "5.00000005e+15",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.5837976248003542,
+            "before_suspends": 0,
+            "before_collections": 0
+          }
+        ],
+        "independent_reference": {
+          "exit": 0,
+          "stdout": "5.00000005e+15\n"
+        },
+        "before": {
+          "median": 0.5812212915625423,
+          "minimum": 0.5693137086927891,
+          "maximum": 0.5927880839444697,
+          "relative_range": 0.04038801673726134,
+          "runs": 6
+        },
+        "halo": {
+          "median": 0.5824209579732269,
+          "minimum": 0.5659819161519408,
+          "maximum": 0.6343706669285893,
+          "relative_range": 0.11742151418217381,
+          "runs": 6
+        },
+        "ratio": 1.0020640441568467
+      },
+      "integer-table": {
+        "source_sha256": "0281334766512a9e620a543d5b429f7c0d61b8ea2ff82927224d52b1e72ee3ce",
+        "pairs": [
+          {
+            "halo": 0.5955276666209102,
+            "checksum": "50000005000000",
+            "suspends": 0,
+            "collections": 5,
+            "before": 0.5946049587801099,
+            "before_suspends": 0,
+            "before_collections": 5
+          },
+          {
+            "halo": 0.6129724169149995,
+            "checksum": "50000005000000",
+            "suspends": 0,
+            "collections": 5,
+            "before": 0.5991580002009869,
+            "before_suspends": 0,
+            "before_collections": 5
+          },
+          {
+            "halo": 0.612180208787322,
+            "checksum": "50000005000000",
+            "suspends": 0,
+            "collections": 5,
+            "before": 0.58618920808658,
+            "before_suspends": 0,
+            "before_collections": 5
+          },
+          {
+            "halo": 0.5886100833304226,
+            "checksum": "50000005000000",
+            "suspends": 0,
+            "collections": 5,
+            "before": 0.5995070841163397,
+            "before_suspends": 0,
+            "before_collections": 5
+          },
+          {
+            "halo": 0.5815952499397099,
+            "checksum": "50000005000000",
+            "suspends": 0,
+            "collections": 5,
+            "before": 0.5798970828764141,
+            "before_suspends": 0,
+            "before_collections": 5
+          },
+          {
+            "halo": 0.5951744578778744,
+            "checksum": "50000005000000",
+            "suspends": 0,
+            "collections": 5,
+            "before": 0.6219964581541717,
+            "before_suspends": 0,
+            "before_collections": 5
+          }
+        ],
+        "independent_reference": {
+          "exit": 0,
+          "stdout": "50000005000000\n"
+        },
+        "before": {
+          "median": 0.5968814794905484,
+          "minimum": 0.5798970828764141,
+          "maximum": 0.6219964581541717,
+          "relative_range": 0.07053221908257297,
+          "runs": 6
+        },
+        "halo": {
+          "median": 0.5953510622493923,
+          "minimum": 0.5815952499397099,
+          "maximum": 0.6129724169149995,
+          "relative_range": 0.05270363818070371,
+          "runs": 6
+        },
+        "ratio": 0.9974359780061155
+      },
+      "string-key": {
+        "source_sha256": "585821f9c9800736ce0e3af1f83bbb2b1f6a7d274e04c83b0494a4ae38b74cea",
+        "pairs": [
+          {
+            "halo": 0.03989645792171359,
+            "checksum": "28500000",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.03949420806020498,
+            "before_suspends": 0,
+            "before_collections": 0
+          },
+          {
+            "halo": 0.04008058272302151,
+            "checksum": "28500000",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.039658958092331886,
+            "before_suspends": 0,
+            "before_collections": 0
+          },
+          {
+            "halo": 0.039166000206023455,
+            "checksum": "28500000",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.039615791756659746,
+            "before_suspends": 0,
+            "before_collections": 0
+          },
+          {
+            "halo": 0.03990770922973752,
+            "checksum": "28500000",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.039589082822203636,
+            "before_suspends": 0,
+            "before_collections": 0
+          },
+          {
+            "halo": 0.038993666879832745,
+            "checksum": "28500000",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.03915966581553221,
+            "before_suspends": 0,
+            "before_collections": 0
+          },
+          {
+            "halo": 0.03962645912542939,
+            "checksum": "28500000",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.03992125019431114,
+            "before_suspends": 0,
+            "before_collections": 0
+          }
+        ],
+        "independent_reference": {
+          "exit": 0,
+          "stdout": "28500000\n"
+        },
+        "before": {
+          "median": 0.03960243728943169,
+          "minimum": 0.03915966581553221,
+          "maximum": 0.03992125019431114,
+          "relative_range": 0.019230745148662125,
+          "runs": 6
+        },
+        "halo": {
+          "median": 0.03976145852357149,
+          "minimum": 0.038993666879832745,
+          "maximum": 0.04008058272302151,
+          "relative_range": 0.027335914816716655,
+          "runs": 6
+        },
+        "ratio": 1.0040154405896184
+      },
+      "concat": {
+        "source_sha256": "2fa66325e51e5d25ee67972f779b3c88d47326557f4cbf9393195799c3a7525c",
+        "pairs": [
+          {
+            "halo": 0.1824489999562502,
+            "checksum": "5000000",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.18013637512922287,
+            "before_suspends": 0,
+            "before_collections": 0
+          },
+          {
+            "halo": 0.18441583262756467,
+            "checksum": "5000000",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.1836937079206109,
+            "before_suspends": 0,
+            "before_collections": 0
+          },
+          {
+            "halo": 0.18380829226225615,
+            "checksum": "5000000",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.1775495419278741,
+            "before_suspends": 0,
+            "before_collections": 0
+          },
+          {
+            "halo": 0.18536091735586524,
+            "checksum": "5000000",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.18227045889943838,
+            "before_suspends": 0,
+            "before_collections": 0
+          },
+          {
+            "halo": 0.17621058272197843,
+            "checksum": "5000000",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.18581499997526407,
+            "before_suspends": 0,
+            "before_collections": 0
+          },
+          {
+            "halo": 0.18459412502124906,
+            "checksum": "5000000",
+            "suspends": 0,
+            "collections": 0,
+            "before": 0.18348412541672587,
+            "before_suspends": 0,
+            "before_collections": 0
+          }
+        ],
+        "independent_reference": {
+          "exit": 0,
+          "stdout": "5000000\n"
+        },
+        "before": {
+          "median": 0.18287729215808213,
+          "minimum": 0.1775495419278741,
+          "maximum": 0.18581499997526407,
+          "relative_range": 0.04519674340018763,
+          "runs": 6
+        },
+        "halo": {
+          "median": 0.1841120624449104,
+          "minimum": 0.17621058272197843,
+          "maximum": 0.18536091735586524,
+          "relative_range": 0.049699810606514475,
+          "runs": 6
+        },
+        "ratio": 1.0067519060035126
+      },
+      "sort": {
+        "source_sha256": "96bb6c47b3062381dca7a9b5ae09186792d28ca5dd7cbfe7d6b3432fb8e4807d",
+        "pairs": [
+          {
+            "halo": 0.7784386659041047,
+            "checksum": "1.0733795172001e+15",
+            "suspends": 0,
+            "collections": 3,
+            "before": 0.7381190829910338,
+            "before_suspends": 0,
+            "before_collections": 3
+          },
+          {
+            "halo": 0.7470484999939799,
+            "checksum": "1.0733795172001e+15",
+            "suspends": 0,
+            "collections": 3,
+            "before": 0.7508142916485667,
+            "before_suspends": 0,
+            "before_collections": 3
+          },
+          {
+            "halo": 0.7733941674232483,
+            "checksum": "1.0733795172001e+15",
+            "suspends": 0,
+            "collections": 3,
+            "before": 0.8161547919735312,
+            "before_suspends": 0,
+            "before_collections": 3
+          },
+          {
+            "halo": 0.7682750420644879,
+            "checksum": "1.0733795172001e+15",
+            "suspends": 0,
+            "collections": 3,
+            "before": 0.7765982919372618,
+            "before_suspends": 0,
+            "before_collections": 3
+          },
+          {
+            "halo": 0.7423425000160933,
+            "checksum": "1.0733795172001e+15",
+            "suspends": 0,
+            "collections": 3,
+            "before": 0.7799188341014087,
+            "before_suspends": 0,
+            "before_collections": 3
+          },
+          {
+            "halo": 0.740026209037751,
+            "checksum": "1.0733795172001e+15",
+            "suspends": 0,
+            "collections": 3,
+            "before": 0.7382755000144243,
+            "before_suspends": 0,
+            "before_collections": 3
+          }
+        ],
+        "independent_reference": {
+          "exit": 0,
+          "stdout": "1.0733795172001e+15\n"
+        },
+        "before": {
+          "median": 0.7637062917929143,
+          "minimum": 0.7381190829910338,
+          "maximum": 0.8161547919735312,
+          "relative_range": 0.10218026199482658,
+          "runs": 6
+        },
+        "halo": {
+          "median": 0.7576617710292339,
+          "minimum": 0.740026209037751,
+          "maximum": 0.7784386659041047,
+          "relative_range": 0.0506986868483188,
+          "runs": 6
+        },
+        "ratio": 0.9920852809140934
+      },
+      "binary-trees": {
+        "source_sha256": "01f28ad8804be0bc1b8539aabfc7942da18b928b1a270cf7cb9300367f1eebd6",
+        "pairs": [
+          {
+            "halo": 2.2663635830394924,
+            "checksum": "-43682",
+            "suspends": 0,
+            "collections": 176,
+            "before": 2.4835462090559304,
+            "before_suspends": 0,
+            "before_collections": 176
+          },
+          {
+            "halo": 2.2659098748117685,
+            "checksum": "-43682",
+            "suspends": 0,
+            "collections": 176,
+            "before": 2.4775037500075996,
+            "before_suspends": 0,
+            "before_collections": 176
+          },
+          {
+            "halo": 2.266970375087112,
+            "checksum": "-43682",
+            "suspends": 0,
+            "collections": 176,
+            "before": 2.475321166217327,
+            "before_suspends": 0,
+            "before_collections": 176
+          },
+          {
+            "halo": 2.2664283327758312,
+            "checksum": "-43682",
+            "suspends": 0,
+            "collections": 176,
+            "before": 2.482586749829352,
+            "before_suspends": 0,
+            "before_collections": 176
+          },
+          {
+            "halo": 2.2608537087216973,
+            "checksum": "-43682",
+            "suspends": 0,
+            "collections": 176,
+            "before": 2.483118833042681,
+            "before_suspends": 0,
+            "before_collections": 176
+          },
+          {
+            "halo": 2.261487083043903,
+            "checksum": "-43682",
+            "suspends": 0,
+            "collections": 176,
+            "before": 2.4803208340890706,
+            "before_suspends": 0,
+            "before_collections": 176
+          }
+        ],
+        "independent_reference": {
+          "exit": 0,
+          "stdout": "-43682\n"
+        },
+        "before": {
+          "median": 2.4814537919592112,
+          "minimum": 2.475321166217327,
+          "maximum": 2.4835462090559304,
+          "relative_range": 0.00331460648804153,
+          "runs": 6
+        },
+        "halo": {
+          "median": 2.2661367289256305,
+          "minimum": 2.2608537087216973,
+          "maximum": 2.266970375087112,
+          "relative_range": 0.0026991603319164036,
+          "runs": 6
+        },
+        "ratio": 0.913229469059112
+      }
+    },
+    "launches": [
+      {
+        "kernel": "fib",
+        "run": 1,
+        "engine": "Before",
+        "seconds": 0.20237962482497096,
+        "exit": 0,
+        "stdout": "832040\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "fib",
+        "run": 1,
+        "engine": "Halo",
+        "seconds": 0.2703100419603288,
+        "exit": 0,
+        "stdout": "832040\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "fib",
+        "run": 2,
+        "engine": "Halo",
+        "seconds": 0.16197137534618378,
+        "exit": 0,
+        "stdout": "832040\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "fib",
+        "run": 2,
+        "engine": "Before",
+        "seconds": 0.2032900000922382,
+        "exit": 0,
+        "stdout": "832040\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "fib",
+        "run": 3,
+        "engine": "Before",
+        "seconds": 0.2042489997111261,
+        "exit": 0,
+        "stdout": "832040\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "fib",
+        "run": 3,
+        "engine": "Halo",
+        "seconds": 0.2083161249756813,
+        "exit": 0,
+        "stdout": "832040\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "fib",
+        "run": 4,
+        "engine": "Halo",
+        "seconds": 0.16668158303946257,
+        "exit": 0,
+        "stdout": "832040\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "fib",
+        "run": 4,
+        "engine": "Before",
+        "seconds": 0.20486441627144814,
+        "exit": 0,
+        "stdout": "832040\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "fib",
+        "run": 5,
+        "engine": "Before",
+        "seconds": 0.20032925019040704,
+        "exit": 0,
+        "stdout": "832040\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "fib",
+        "run": 5,
+        "engine": "Halo",
+        "seconds": 0.16196179203689098,
+        "exit": 0,
+        "stdout": "832040\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "fib",
+        "run": 6,
+        "engine": "Halo",
+        "seconds": 0.1590175828896463,
+        "exit": 0,
+        "stdout": "832040\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "fib",
+        "run": 6,
+        "engine": "Before",
+        "seconds": 0.20120324986055493,
+        "exit": 0,
+        "stdout": "832040\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "loop",
+        "run": 1,
+        "engine": "Before",
+        "seconds": 0.5927880839444697,
+        "exit": 0,
+        "stdout": "5.00000005e+15\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "loop",
+        "run": 1,
+        "engine": "Halo",
+        "seconds": 0.5828554159961641,
+        "exit": 0,
+        "stdout": "5.00000005e+15\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "loop",
+        "run": 2,
+        "engine": "Halo",
+        "seconds": 0.6085605416446924,
+        "exit": 0,
+        "stdout": "5.00000005e+15\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "loop",
+        "run": 2,
+        "engine": "Before",
+        "seconds": 0.5758638340048492,
+        "exit": 0,
+        "stdout": "5.00000005e+15\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "loop",
+        "run": 3,
+        "engine": "Before",
+        "seconds": 0.5693137086927891,
+        "exit": 0,
+        "stdout": "5.00000005e+15\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "loop",
+        "run": 3,
+        "engine": "Halo",
+        "seconds": 0.5719139999710023,
+        "exit": 0,
+        "stdout": "5.00000005e+15\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "loop",
+        "run": 4,
+        "engine": "Halo",
+        "seconds": 0.5659819161519408,
+        "exit": 0,
+        "stdout": "5.00000005e+15\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "loop",
+        "run": 4,
+        "engine": "Before",
+        "seconds": 0.5896187499165535,
+        "exit": 0,
+        "stdout": "5.00000005e+15\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "loop",
+        "run": 5,
+        "engine": "Before",
+        "seconds": 0.5786449583247304,
+        "exit": 0,
+        "stdout": "5.00000005e+15\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "loop",
+        "run": 5,
+        "engine": "Halo",
+        "seconds": 0.6343706669285893,
+        "exit": 0,
+        "stdout": "5.00000005e+15\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "loop",
+        "run": 6,
+        "engine": "Halo",
+        "seconds": 0.5819864999502897,
+        "exit": 0,
+        "stdout": "5.00000005e+15\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "loop",
+        "run": 6,
+        "engine": "Before",
+        "seconds": 0.5837976248003542,
+        "exit": 0,
+        "stdout": "5.00000005e+15\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "integer-table",
+        "run": 1,
+        "engine": "Before",
+        "seconds": 0.5946049587801099,
+        "exit": 0,
+        "stdout": "50000005000000\n",
+        "stderr": "0\n5\n"
+      },
+      {
+        "kernel": "integer-table",
+        "run": 1,
+        "engine": "Halo",
+        "seconds": 0.5955276666209102,
+        "exit": 0,
+        "stdout": "50000005000000\n",
+        "stderr": "0\n5\n"
+      },
+      {
+        "kernel": "integer-table",
+        "run": 2,
+        "engine": "Halo",
+        "seconds": 0.6129724169149995,
+        "exit": 0,
+        "stdout": "50000005000000\n",
+        "stderr": "0\n5\n"
+      },
+      {
+        "kernel": "integer-table",
+        "run": 2,
+        "engine": "Before",
+        "seconds": 0.5991580002009869,
+        "exit": 0,
+        "stdout": "50000005000000\n",
+        "stderr": "0\n5\n"
+      },
+      {
+        "kernel": "integer-table",
+        "run": 3,
+        "engine": "Before",
+        "seconds": 0.58618920808658,
+        "exit": 0,
+        "stdout": "50000005000000\n",
+        "stderr": "0\n5\n"
+      },
+      {
+        "kernel": "integer-table",
+        "run": 3,
+        "engine": "Halo",
+        "seconds": 0.612180208787322,
+        "exit": 0,
+        "stdout": "50000005000000\n",
+        "stderr": "0\n5\n"
+      },
+      {
+        "kernel": "integer-table",
+        "run": 4,
+        "engine": "Halo",
+        "seconds": 0.5886100833304226,
+        "exit": 0,
+        "stdout": "50000005000000\n",
+        "stderr": "0\n5\n"
+      },
+      {
+        "kernel": "integer-table",
+        "run": 4,
+        "engine": "Before",
+        "seconds": 0.5995070841163397,
+        "exit": 0,
+        "stdout": "50000005000000\n",
+        "stderr": "0\n5\n"
+      },
+      {
+        "kernel": "integer-table",
+        "run": 5,
+        "engine": "Before",
+        "seconds": 0.5798970828764141,
+        "exit": 0,
+        "stdout": "50000005000000\n",
+        "stderr": "0\n5\n"
+      },
+      {
+        "kernel": "integer-table",
+        "run": 5,
+        "engine": "Halo",
+        "seconds": 0.5815952499397099,
+        "exit": 0,
+        "stdout": "50000005000000\n",
+        "stderr": "0\n5\n"
+      },
+      {
+        "kernel": "integer-table",
+        "run": 6,
+        "engine": "Halo",
+        "seconds": 0.5951744578778744,
+        "exit": 0,
+        "stdout": "50000005000000\n",
+        "stderr": "0\n5\n"
+      },
+      {
+        "kernel": "integer-table",
+        "run": 6,
+        "engine": "Before",
+        "seconds": 0.6219964581541717,
+        "exit": 0,
+        "stdout": "50000005000000\n",
+        "stderr": "0\n5\n"
+      },
+      {
+        "kernel": "string-key",
+        "run": 1,
+        "engine": "Before",
+        "seconds": 0.03949420806020498,
+        "exit": 0,
+        "stdout": "28500000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "string-key",
+        "run": 1,
+        "engine": "Halo",
+        "seconds": 0.03989645792171359,
+        "exit": 0,
+        "stdout": "28500000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "string-key",
+        "run": 2,
+        "engine": "Halo",
+        "seconds": 0.04008058272302151,
+        "exit": 0,
+        "stdout": "28500000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "string-key",
+        "run": 2,
+        "engine": "Before",
+        "seconds": 0.039658958092331886,
+        "exit": 0,
+        "stdout": "28500000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "string-key",
+        "run": 3,
+        "engine": "Before",
+        "seconds": 0.039615791756659746,
+        "exit": 0,
+        "stdout": "28500000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "string-key",
+        "run": 3,
+        "engine": "Halo",
+        "seconds": 0.039166000206023455,
+        "exit": 0,
+        "stdout": "28500000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "string-key",
+        "run": 4,
+        "engine": "Halo",
+        "seconds": 0.03990770922973752,
+        "exit": 0,
+        "stdout": "28500000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "string-key",
+        "run": 4,
+        "engine": "Before",
+        "seconds": 0.039589082822203636,
+        "exit": 0,
+        "stdout": "28500000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "string-key",
+        "run": 5,
+        "engine": "Before",
+        "seconds": 0.03915966581553221,
+        "exit": 0,
+        "stdout": "28500000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "string-key",
+        "run": 5,
+        "engine": "Halo",
+        "seconds": 0.038993666879832745,
+        "exit": 0,
+        "stdout": "28500000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "string-key",
+        "run": 6,
+        "engine": "Halo",
+        "seconds": 0.03962645912542939,
+        "exit": 0,
+        "stdout": "28500000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "string-key",
+        "run": 6,
+        "engine": "Before",
+        "seconds": 0.03992125019431114,
+        "exit": 0,
+        "stdout": "28500000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "concat",
+        "run": 1,
+        "engine": "Before",
+        "seconds": 0.18013637512922287,
+        "exit": 0,
+        "stdout": "5000000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "concat",
+        "run": 1,
+        "engine": "Halo",
+        "seconds": 0.1824489999562502,
+        "exit": 0,
+        "stdout": "5000000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "concat",
+        "run": 2,
+        "engine": "Halo",
+        "seconds": 0.18441583262756467,
+        "exit": 0,
+        "stdout": "5000000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "concat",
+        "run": 2,
+        "engine": "Before",
+        "seconds": 0.1836937079206109,
+        "exit": 0,
+        "stdout": "5000000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "concat",
+        "run": 3,
+        "engine": "Before",
+        "seconds": 0.1775495419278741,
+        "exit": 0,
+        "stdout": "5000000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "concat",
+        "run": 3,
+        "engine": "Halo",
+        "seconds": 0.18380829226225615,
+        "exit": 0,
+        "stdout": "5000000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "concat",
+        "run": 4,
+        "engine": "Halo",
+        "seconds": 0.18536091735586524,
+        "exit": 0,
+        "stdout": "5000000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "concat",
+        "run": 4,
+        "engine": "Before",
+        "seconds": 0.18227045889943838,
+        "exit": 0,
+        "stdout": "5000000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "concat",
+        "run": 5,
+        "engine": "Before",
+        "seconds": 0.18581499997526407,
+        "exit": 0,
+        "stdout": "5000000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "concat",
+        "run": 5,
+        "engine": "Halo",
+        "seconds": 0.17621058272197843,
+        "exit": 0,
+        "stdout": "5000000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "concat",
+        "run": 6,
+        "engine": "Halo",
+        "seconds": 0.18459412502124906,
+        "exit": 0,
+        "stdout": "5000000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "concat",
+        "run": 6,
+        "engine": "Before",
+        "seconds": 0.18348412541672587,
+        "exit": 0,
+        "stdout": "5000000\n",
+        "stderr": "0\n0\n"
+      },
+      {
+        "kernel": "sort",
+        "run": 1,
+        "engine": "Before",
+        "seconds": 0.7381190829910338,
+        "exit": 0,
+        "stdout": "1.0733795172001e+15\n",
+        "stderr": "0\n3\n"
+      },
+      {
+        "kernel": "sort",
+        "run": 1,
+        "engine": "Halo",
+        "seconds": 0.7784386659041047,
+        "exit": 0,
+        "stdout": "1.0733795172001e+15\n",
+        "stderr": "0\n3\n"
+      },
+      {
+        "kernel": "sort",
+        "run": 2,
+        "engine": "Halo",
+        "seconds": 0.7470484999939799,
+        "exit": 0,
+        "stdout": "1.0733795172001e+15\n",
+        "stderr": "0\n3\n"
+      },
+      {
+        "kernel": "sort",
+        "run": 2,
+        "engine": "Before",
+        "seconds": 0.7508142916485667,
+        "exit": 0,
+        "stdout": "1.0733795172001e+15\n",
+        "stderr": "0\n3\n"
+      },
+      {
+        "kernel": "sort",
+        "run": 3,
+        "engine": "Before",
+        "seconds": 0.8161547919735312,
+        "exit": 0,
+        "stdout": "1.0733795172001e+15\n",
+        "stderr": "0\n3\n"
+      },
+      {
+        "kernel": "sort",
+        "run": 3,
+        "engine": "Halo",
+        "seconds": 0.7733941674232483,
+        "exit": 0,
+        "stdout": "1.0733795172001e+15\n",
+        "stderr": "0\n3\n"
+      },
+      {
+        "kernel": "sort",
+        "run": 4,
+        "engine": "Halo",
+        "seconds": 0.7682750420644879,
+        "exit": 0,
+        "stdout": "1.0733795172001e+15\n",
+        "stderr": "0\n3\n"
+      },
+      {
+        "kernel": "sort",
+        "run": 4,
+        "engine": "Before",
+        "seconds": 0.7765982919372618,
+        "exit": 0,
+        "stdout": "1.0733795172001e+15\n",
+        "stderr": "0\n3\n"
+      },
+      {
+        "kernel": "sort",
+        "run": 5,
+        "engine": "Before",
+        "seconds": 0.7799188341014087,
+        "exit": 0,
+        "stdout": "1.0733795172001e+15\n",
+        "stderr": "0\n3\n"
+      },
+      {
+        "kernel": "sort",
+        "run": 5,
+        "engine": "Halo",
+        "seconds": 0.7423425000160933,
+        "exit": 0,
+        "stdout": "1.0733795172001e+15\n",
+        "stderr": "0\n3\n"
+      },
+      {
+        "kernel": "sort",
+        "run": 6,
+        "engine": "Halo",
+        "seconds": 0.740026209037751,
+        "exit": 0,
+        "stdout": "1.0733795172001e+15\n",
+        "stderr": "0\n3\n"
+      },
+      {
+        "kernel": "sort",
+        "run": 6,
+        "engine": "Before",
+        "seconds": 0.7382755000144243,
+        "exit": 0,
+        "stdout": "1.0733795172001e+15\n",
+        "stderr": "0\n3\n"
+      },
+      {
+        "kernel": "binary-trees",
+        "run": 1,
+        "engine": "Before",
+        "seconds": 2.4835462090559304,
+        "exit": 0,
+        "stdout": "-43682\n",
+        "stderr": "0\n176\n"
+      },
+      {
+        "kernel": "binary-trees",
+        "run": 1,
+        "engine": "Halo",
+        "seconds": 2.2663635830394924,
+        "exit": 0,
+        "stdout": "-43682\n",
+        "stderr": "0\n176\n"
+      },
+      {
+        "kernel": "binary-trees",
+        "run": 2,
+        "engine": "Halo",
+        "seconds": 2.2659098748117685,
+        "exit": 0,
+        "stdout": "-43682\n",
+        "stderr": "0\n176\n"
+      },
+      {
+        "kernel": "binary-trees",
+        "run": 2,
+        "engine": "Before",
+        "seconds": 2.4775037500075996,
+        "exit": 0,
+        "stdout": "-43682\n",
+        "stderr": "0\n176\n"
+      },
+      {
+        "kernel": "binary-trees",
+        "run": 3,
+        "engine": "Before",
+        "seconds": 2.475321166217327,
+        "exit": 0,
+        "stdout": "-43682\n",
+        "stderr": "0\n176\n"
+      },
+      {
+        "kernel": "binary-trees",
+        "run": 3,
+        "engine": "Halo",
+        "seconds": 2.266970375087112,
+        "exit": 0,
+        "stdout": "-43682\n",
+        "stderr": "0\n176\n"
+      },
+      {
+        "kernel": "binary-trees",
+        "run": 4,
+        "engine": "Halo",
+        "seconds": 2.2664283327758312,
+        "exit": 0,
+        "stdout": "-43682\n",
+        "stderr": "0\n176\n"
+      },
+      {
+        "kernel": "binary-trees",
+        "run": 4,
+        "engine": "Before",
+        "seconds": 2.482586749829352,
+        "exit": 0,
+        "stdout": "-43682\n",
+        "stderr": "0\n176\n"
+      },
+      {
+        "kernel": "binary-trees",
+        "run": 5,
+        "engine": "Before",
+        "seconds": 2.483118833042681,
+        "exit": 0,
+        "stdout": "-43682\n",
+        "stderr": "0\n176\n"
+      },
+      {
+        "kernel": "binary-trees",
+        "run": 5,
+        "engine": "Halo",
+        "seconds": 2.2608537087216973,
+        "exit": 0,
+        "stdout": "-43682\n",
+        "stderr": "0\n176\n"
+      },
+      {
+        "kernel": "binary-trees",
+        "run": 6,
+        "engine": "Halo",
+        "seconds": 2.261487083043903,
+        "exit": 0,
+        "stdout": "-43682\n",
+        "stderr": "0\n176\n"
+      },
+      {
+        "kernel": "binary-trees",
+        "run": 6,
+        "engine": "Before",
+        "seconds": 2.4803208340890706,
+        "exit": 0,
+        "stdout": "-43682\n",
+        "stderr": "0\n176\n"
+      }
+    ],
+    "before_binary_sha256": "57559171811d75790fff664fe6d1ecc8c49971bb89fb7d2702c8f99c45e68625",
+    "before_budget": "large"
+  },
+  "runtime_summary": {
+    "fib": {
+      "before_median": 0.20283481245860457,
+      "candidate_median": 0.16432647919282317,
+      "improvement_percent": 18.98507105314594,
+      "before_range": 0.022358913768644396,
+      "candidate_range": 0.677264307112004,
+      "noise_gate": true
+    },
+    "loop": {
+      "before_median": 0.5812212915625423,
+      "candidate_median": 0.5824209579732269,
+      "improvement_percent": -0.20640441568466894,
+      "before_range": 0.04038801673726134,
+      "candidate_range": 0.11742151418217381,
+      "noise_gate": true
+    },
+    "integer-table": {
+      "before_median": 0.5968814794905484,
+      "candidate_median": 0.5953510622493923,
+      "improvement_percent": 0.2564021993884502,
+      "before_range": 0.07053221908257297,
+      "candidate_range": 0.05270363818070371,
+      "noise_gate": true
+    },
+    "string-key": {
+      "before_median": 0.03960243728943169,
+      "candidate_median": 0.03976145852357149,
+      "improvement_percent": -0.40154405896184464,
+      "before_range": 0.019230745148662125,
+      "candidate_range": 0.027335914816716655,
+      "noise_gate": true
+    },
+    "concat": {
+      "before_median": 0.18287729215808213,
+      "candidate_median": 0.1841120624449104,
+      "improvement_percent": -0.6751906003512609,
+      "before_range": 0.04519674340018763,
+      "candidate_range": 0.049699810606514475,
+      "noise_gate": true
+    },
+    "sort": {
+      "before_median": 0.7637062917929143,
+      "candidate_median": 0.7576617710292339,
+      "improvement_percent": 0.7914719085906574,
+      "before_range": 0.10218026199482658,
+      "candidate_range": 0.0506986868483188,
+      "noise_gate": true
+    },
+    "binary-trees": {
+      "before_median": 2.4814537919592112,
+      "candidate_median": 2.2661367289256305,
+      "improvement_percent": 8.677053094088805,
+      "before_range": 0.00331460648804153,
+      "candidate_range": 0.0026991603319164036,
+      "noise_gate": true
+    }
+  },
+  "root_mutants": {
+    "open": {
+      "source_sha256": "3d61b02f7c7791bbe17c6073e30e97ec90046c4f14509a3b5adfd8758a46a615",
+      "patch": "--- collect.wf\n+++ collect-open.wf\n@@ -59,7 +59,6 @@\n   loop {\n     if i < vm^.open_upvalues.inner.len {\n       let u = vm^.open_upvalues.inner[i];\n-      pkg::heap::gc_mark_upvalue(heap: &vm^.heap, h: u);\n       set i = i +wrap 1_u64;\n     } else {\n       break;\n"
+    },
+    "frame": {
+      "source_sha256": "06a30dc2645c9b4c8ca1f6861bcdeaea52c5e8d767f19c1a77ba861f1d359997",
+      "patch": "--- collect.wf\n+++ collect-frame.wf\n@@ -48,7 +48,6 @@\n       let c = vm^.frames.inner[i].closure;\n       if c != no_handle {\n         let f = Value::Fun(h: c);\n-        pkg::heap::gc_mark(heap: &vm^.heap, v: f);\n       }\n       set i = i +wrap 1_u64;\n     } else {\n"
+    },
+    "constants": {
+      "source_sha256": "8022dccb413dee84302a7f5c7ef1b25a308d2c6dce0e51b43476457f22a6ad1b",
+      "patch": "--- collect.wf\n+++ collect-constants.wf\n@@ -84,7 +84,6 @@\n   loop {\n     if i < consts^.inner.len {\n       let k = consts^.inner[i];\n-      pkg::heap::gc_mark(heap: &vm^.heap, v: k);\n       set i = i +wrap 1_u64;\n     } else {\n       break;\n"
+    }
+  },
+  "candidate_oracle_binary_sha256": "4c5481b96749b6d5a7ecae9a3ebb7b4c48b8ddecce02042d37ca36feceedc063"
+}

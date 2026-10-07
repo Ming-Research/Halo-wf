@@ -30,6 +30,7 @@ fn compile(heap: &Heap, chunk_name: &[u8], source: &[u8]) -> result_value: Resul
   if p.token.kind != 287_u16 {
     expected(p: &p, kind: 287_u16);
   }
+  removelocals(p: &p, level: 0_i64);
   let final = k_emit(p: &p, op: 30_u8, a: 0_i64, b: 1_i64, c: 0_i64);
   checkbad(p: &p);
   if p.failed {
@@ -51,5 +52,5 @@ fn compile(heap: &Heap, chunk_name: &[u8], source: &[u8]) -> result_value: Resul
     let error = CompileError(line: arg_205, message: move result);
     return Err<Script, CompileError>(error: move error);
   }
-  return assemble(p: &p);
+  return assemble(p: &p, heap: heap);
 }

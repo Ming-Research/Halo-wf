@@ -1,12 +1,51 @@
 fn fmod(a: f64, b: f64) -> value: f64 pure {
-  doc "C fmod is the exact LLVM frem operation [OP-8].";
+  doc "Observed behavior of the reference's fmod on x86-64: with two NaNs, quiet both and return the one with the larger fraction, choosing the positive one on a tie; with one NaN, return that NaN quieted; otherwise the exact LLVM frem operation [OP-8].";
+  let dividend = reinterpret::<f64, u64>(a);
+  let dividend_magnitude = iand(dividend, 9223372036854775807_u64);
+  let divisor = reinterpret::<f64, u64>(b);
+  let magnitude = iand(divisor, 9223372036854775807_u64);
+  if dividend_magnitude > infinity_bits {
+    let quiet = ior(dividend, quiet_bit);
+    if magnitude > infinity_bits {
+      let divisor_quiet = ior(divisor, quiet_bit);
+      let dividend_fraction = iand(quiet, fraction_mask);
+      let divisor_fraction = iand(divisor_quiet, fraction_mask);
+      if dividend_fraction > divisor_fraction {
+        return reinterpret::<u64, f64>(quiet);
+      } else if dividend_fraction < divisor_fraction {
+        return reinterpret::<u64, f64>(divisor_quiet);
+      }
+      let dividend_sign = iand(dividend, sign_bit);
+      if dividend_sign == 0_u64 {
+        return reinterpret::<u64, f64>(quiet);
+      }
+      return reinterpret::<u64, f64>(divisor_quiet);
+    }
+    return reinterpret::<u64, f64>(quiet);
+  }
+  if magnitude > infinity_bits {
+    let quiet = ior(divisor, quiet_bit);
+    return reinterpret::<u64, f64>(quiet);
+  }
   return frem(a, b);
 }
 
 fn floor(value: f64) -> rounded: f64 pure {
+  doc "Rounds toward negative infinity using ffloor; a NaN, signaling or quiet, comes back with its bits unchanged, as glibc's floor returns it on x86-64.";
+  let bits = reinterpret::<f64, u64>(value);
+  let magnitude = iand(bits, 9223372036854775807_u64);
+  if magnitude > infinity_bits {
+    return value;
+  }
   return ffloor(value);
 }
 
 fn ceil(value: f64) -> rounded: f64 pure {
+  doc "Rounds toward positive infinity using fceil; a NaN, signaling or quiet, comes back with its bits unchanged, as glibc's ceil returns it on x86-64.";
+  let bits = reinterpret::<f64, u64>(value);
+  let magnitude = iand(bits, 9223372036854775807_u64);
+  if magnitude > infinity_bits {
+    return value;
+  }
   return fceil(value);
 }

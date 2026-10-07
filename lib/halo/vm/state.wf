@@ -1,3 +1,5 @@
+alias DebugName = pkg::value::DebugName;
+alias LocalVariable = pkg::value::LocalVariable;
 alias no_handle = pkg::heap::no_handle;
 alias Value = pkg::value::Value;
 alias Cell = pkg::value::Cell;
@@ -305,6 +307,9 @@ fn vm_new(limit: u64) -> r: Vm pure {
   let opens = box_slots_new::<u32>(capacity: 0_u64);
   let protos = box_slots_new::<Proto>(capacity: 0_u64);
   let lineinfo = box_slots_new::<u32>(capacity: 0_u64);
+  let debug_names = box_slots_new::<u8>(capacity: 0_u64);
+  let local_variables = box_slots_new::<LocalVariable>(capacity: 0_u64);
+  let upvalue_names = box_slots_new::<DebugName>(capacity: 0_u64);
   let source = box_slots_new::<u8>(capacity: 0_u64);
   let nil = Value::Nil();
   let stopped_stack = box_slots_new::<Value>(capacity: 0_u64);
@@ -318,7 +323,7 @@ fn vm_new(limit: u64) -> r: Vm pure {
   let cjson_configs = box_slots_new::<CjsonConfig>(capacity: 16_u64);
   let pcall_field = box_slots_new::<u8>(capacity: 0_u64);
   let no_call = PendingCall(id: 0_u32, argc: 0_u64, func: 0_u64, wanted: 0_i64, return_pc: 0_u64, base: 0_u64, kbase: 0_u64, tail: atom3, activation: 0_u32, top: 0_u64);
-  return Vm(pattern_subs: move pattern_subs, cjson_configs: move cjson_configs, cjson_active_config: 0_u64, library_contexts: move library_contexts, sort_frames: move sort_frames, random_state: 20017429951246_u64, heap: move heap, frames: move frames, open_upvalues: move opens, protos: move protos, lineinfo: move lineinfo, source: move source, top: 0_u64, budget: unlimited, saved_pc: 0_u64, saved_base: 0_u64, saved_kbase: 0_u64, error: nil, activation: 0_u32, globals: gh, type_metatables: type_metatables, host_stopped: atom3, stopped_stack: move stopped_stack, callback_plan: callback_plan, callbacks: move callbacks, suspended: atom3, pending: no_call, call_pending: atom3, raise_pc: 0_u64, pcall_field: move pcall_field);
+  return Vm(pattern_subs: move pattern_subs, cjson_configs: move cjson_configs, cjson_active_config: 0_u64, library_contexts: move library_contexts, sort_frames: move sort_frames, random_state: 20017429951246_u64, heap: move heap, frames: move frames, open_upvalues: move opens, protos: move protos, lineinfo: move lineinfo, source: move source, top: 0_u64, budget: unlimited, saved_pc: 0_u64, saved_base: 0_u64, saved_kbase: 0_u64, error: nil, activation: 0_u32, globals: gh, type_metatables: type_metatables, host_stopped: atom3, stopped_stack: move stopped_stack, callback_plan: callback_plan, callbacks: move callbacks, suspended: atom3, pending: no_call, call_pending: atom3, raise_pc: 0_u64, pcall_field: move pcall_field, debug_names: move debug_names, local_variables: move local_variables, upvalue_names: move upvalue_names);
 }
 
 fn raise_text(vm: &Vm, text: &[u8]) -> r: Bool reads(text), writes(vm) {
@@ -728,25 +733,73 @@ fn restore_stopped_stack(vm: &Vm, stack: &Box<Slots<Value>>) -> r: unit writes(v
   return unit;
 }
 
-fn type_error(vm: &Vm, v: Value, op: u8) -> r: Bool writes(vm) {
+fn unnamed_type_error(vm: &Vm, v: Value, op: u8) -> r: Bool writes(vm) {
+  doc "Raises a type error for a value outside a Lua frame's register window.";
   let rejected = raw_type_error(vm: vm, v: v, op: op);
-  let count = vm^.frames.inner.len;
-  if count == 0_u64 {
-    return rejected;
+  locate_type_error(vm: vm);
+  return rejected;
+}
+
+fn type_error(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, v: Value, op: u8, reg: u64) -> r: Bool reads(code), reads(consts), writes(vm) {
+  doc "luaG_typeerror: reg is frame-relative, or unlimited for an operand outside the Lua stack. Descriptions are recovered only on this error path.";
+  let description = box_slots_new::<u8>(capacity: 0_u64);
+  let named = describe_operand(code: code, consts: consts, vm: vm, reg: reg, bytes: &description);
+  if named {
+    let bytes = box_slots_new::<u8>(capacity: 0_u64);
+    bytes_append(bytes: &bytes, text: &operand_text_attempt[0_u64..11_u64]);
+    if op == 0_u8 {
+      bytes_append(bytes: &bytes, text: &operand_text_arithmetic[0_u64..21_u64]);
+    } else if op == 1_u8 {
+      bytes_append(bytes: &bytes, text: &operand_text_index[0_u64..5_u64]);
+    } else if op == 2_u8 {
+      bytes_append(bytes: &bytes, text: &operand_text_call[0_u64..4_u64]);
+    } else if op == 3_u8 {
+      bytes_append(bytes: &bytes, text: &operand_text_concat[0_u64..11_u64]);
+    } else {
+      bytes_append(bytes: &bytes, text: &operand_text_length[0_u64..13_u64]);
+    }
+    bytes_push(bytes: &bytes, byte: 32_u8);
+    let length = description.inner.len;
+    bytes_append(bytes: &bytes, text: &description.inner[0_u64..length]);
+    bytes_append(bytes: &bytes, text: &operand_text_type_prefix[0_u64..4_u64]);
+    let typename = kind_name(vm: vm, v: v);
+    bytes_string(vm: vm, bytes: &bytes, value: typename);
+    bytes_append(bytes: &bytes, text: &operand_text_type_suffix[0_u64..7_u64]);
+    set vm^.error = bytes_value(vm: vm, bytes: &bytes);
+    locate_type_error(vm: vm);
+    return False();
   }
-  let last = count - 1_u64;
-  let frame = vm^.frames.inner[last];
-  if frame.activation != vm^.activation {
-    return rejected;
-  }
+  return unnamed_type_error(vm: vm, v: v, op: op);
+}
+
+fn fault_cell(vm: &Vm) -> r: u64 reads(vm.callback_plan) {
+  doc "The faulting cell shared by operand descriptions and error_location, including resumed concatenations.";
   let plan = vm^.callback_plan;
   let pc = plan.pc;
   if plan.kind != 2_u8 {
     set pc = pc -sat 1_u64;
   }
+  return pc;
+}
+
+fn locate_type_error(vm: &Vm) -> r: unit writes(vm) {
+  doc "ldebug.c addinfo locates errors only in a Lua frame. A library callback plan denotes a native operation such as gsub's lua_gettable, whose runtime error has no caller prefix. Lua callback instructions install their own plans; luaL_error locations remain the library wrapper's responsibility.";
+  if vm^.callback_plan.kind == 4_u8 {
+    return unit;
+  }
+  let count = vm^.frames.inner.len;
+  if count == 0_u64 {
+    return unit;
+  }
+  let last = count - 1_u64;
+  let frame = vm^.frames.inner[last];
+  if frame.activation != vm^.activation {
+    return unit;
+  }
+  let pc = fault_cell(vm: vm);
   let message = vm^.error;
   set vm^.error = error_location(vm: vm, pc: pc, level: 1_u64, message: message);
-  return rejected;
+  return unit;
 }
 
 const cj_nullarith: Array<u8, 49> = "attempt to perform arithmetic on a userdata value";
@@ -758,3 +811,562 @@ const cj_nullcall: Array<u8, 32> = "attempt to call a userdata value";
 const cj_nullconcat: Array<u8, 39> = "attempt to concatenate a userdata value";
 
 const cj_nulllen: Array<u8, 41> = "attempt to get length of a userdata value";
+
+struct NameOrigin {
+  kind: u8;
+  index: u64;
+}
+
+const operand_text_attempt: Array<u8, 11> = "attempt to ";
+
+const operand_text_arithmetic: Array<u8, 21> = "perform arithmetic on";
+
+const operand_text_index: Array<u8, 5> = "index";
+
+const operand_text_call: Array<u8, 4> = "call";
+
+const operand_text_concat: Array<u8, 11> = "concatenate";
+
+const operand_text_length: Array<u8, 13> = "get length of";
+
+const operand_text_type_prefix: Array<u8, 4> = " (a ";
+
+const operand_text_type_suffix: Array<u8, 7> = " value)";
+
+const operand_text_local: Array<u8, 5> = "local";
+
+const operand_text_global: Array<u8, 6> = "global";
+
+const operand_text_field: Array<u8, 5> = "field";
+
+const operand_text_upvalue: Array<u8, 7> = "upvalue";
+
+const operand_text_method: Array<u8, 6> = "method";
+
+fn symbolic_name(code: &Box<Slots<Cell>>, vm: &Vm, proto: Proto, lastpc: u64, reg: u64) -> r: NameOrigin reads(code), reads(vm.protos) {
+  doc "Ports Lua 5.1 ldebug.c symbexec/getobjname/kname and lfunc.c luaF_getlocalname under the Lua MIT notice in LICENSE.md. Tracks the last writer before lastpc using lopcodes.c's A column and opcode-specific writes; neutral origin is the final RETURN default, and kind 6 is MOVE recursion, not a displayed kind. LOADBOOL does not skip; SELF gives both destinations the method origin; CALL/TAILCALL invalidate registers >= A; VARARG writes only A. Visit absorbed JMPs after tests, including TFORLOOP; cell targets already include pc++, and backward edges are ignored. SETLIST's count word is absorbed; CLOSURE skips retained capture pseudo-cells by nup. Validation already checked the stream.";
+  let last = NameOrigin(kind: 0_u8, index: 0_u64);
+  let pc = cvt::<u32, u64>(proto.start);
+  loop {
+    if pc >= lastpc {
+      break;
+    }
+    if pc >= code^.inner.len {
+      break;
+    }
+    let cell = code^.inner[pc];
+    let changed = False();
+    let origin = NameOrigin(kind: 0_u8, index: 0_u64);
+    let next = pc +sat 1_u64;
+    let jump = unlimited;
+    match cell {
+      Move(a: traced_a, b: traced_b) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+        if traced_b < traced_a {
+          let source = cvt::<u8, u64>(traced_b);
+          set origin = NameOrigin(kind: 6_u8, index: source);
+        }
+      }
+      LoadK(a: traced_a, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+      }
+      LoadKx(a: traced_a, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+      }
+      LoadBool(a: traced_a, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+      }
+      LoadNil(a: traced_a, b: traced_b) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+        let end = cvt::<u8, u64>(traced_b);
+        let above = dest <= reg;
+        let below = reg <= end;
+        set changed = band(above, below);
+      }
+      GetUpval(a: traced_a, u: traced_u) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+        let index = cvt::<u8, u64>(traced_u);
+        set origin = NameOrigin(kind: 4_u8, index: index);
+      }
+      SetUpval(..) => {
+      }
+      GetGlobal(a: traced_a, k: traced_k) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+        let index = cvt::<u8, u64>(traced_k);
+        set origin = NameOrigin(kind: 2_u8, index: index);
+      }
+      SetGlobal(..) => {
+      }
+      GetGlobalX(a: traced_a, k: traced_k) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+        let index = cvt::<u32, u64>(traced_k);
+        set origin = NameOrigin(kind: 2_u8, index: index);
+      }
+      SetGlobalX(..) => {
+      }
+      GetTableR(a: traced_a, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+        set origin = NameOrigin(kind: 3_u8, index: unlimited);
+      }
+      GetTableK(a: traced_a, k: traced_k, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+        let index = cvt::<u8, u64>(traced_k);
+        set origin = NameOrigin(kind: 3_u8, index: index);
+      }
+      SetTableRR(..) => {
+      }
+      SetTableRK(..) => {
+      }
+      SetTableKR(..) => {
+      }
+      SetTableKK(..) => {
+      }
+      NewTable(a: traced_a, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+      }
+      SelfR(a: traced_a, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+        let self = dest + 1_u64;
+        let receiver = self == reg;
+        set changed = bor(changed, receiver);
+        set origin = NameOrigin(kind: 5_u8, index: unlimited);
+      }
+      SelfK(a: traced_a, k: traced_k, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+        let self = dest + 1_u64;
+        let receiver = self == reg;
+        set changed = bor(changed, receiver);
+        let index = cvt::<u8, u64>(traced_k);
+        set origin = NameOrigin(kind: 5_u8, index: index);
+      }
+      AddRR(a: traced_a, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+      }
+      AddRK(a: traced_a, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+      }
+      AddKR(a: traced_a, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+      }
+      AddKK(a: traced_a, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+      }
+      SubRR(a: traced_a, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+      }
+      SubRK(a: traced_a, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+      }
+      SubKR(a: traced_a, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+      }
+      SubKK(a: traced_a, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+      }
+      MulRR(a: traced_a, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+      }
+      MulRK(a: traced_a, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+      }
+      MulKR(a: traced_a, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+      }
+      MulKK(a: traced_a, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+      }
+      DivRR(a: traced_a, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+      }
+      DivRK(a: traced_a, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+      }
+      DivKR(a: traced_a, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+      }
+      DivKK(a: traced_a, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+      }
+      ModRR(a: traced_a, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+      }
+      ModRK(a: traced_a, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+      }
+      ModKR(a: traced_a, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+      }
+      ModKK(a: traced_a, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+      }
+      PowRR(a: traced_a, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+      }
+      PowRK(a: traced_a, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+      }
+      PowKR(a: traced_a, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+      }
+      PowKK(a: traced_a, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+      }
+      Unm(a: traced_a, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+      }
+      Not(a: traced_a, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+      }
+      Len(a: traced_a, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+      }
+      Concat(a: traced_a, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+      }
+      Jmp(target: traced_target) => {
+        set jump = cvt::<u32, u64>(traced_target);
+      }
+      EqJmpRR(target: traced_target, ..) => {
+        set jump = cvt::<u32, u64>(traced_target);
+      }
+      EqJmpRK(target: traced_target, ..) => {
+        set jump = cvt::<u32, u64>(traced_target);
+      }
+      EqJmpKR(target: traced_target, ..) => {
+        set jump = cvt::<u32, u64>(traced_target);
+      }
+      EqJmpKK(target: traced_target, ..) => {
+        set jump = cvt::<u32, u64>(traced_target);
+      }
+      LtJmpRR(target: traced_target, ..) => {
+        set jump = cvt::<u32, u64>(traced_target);
+      }
+      LtJmpRK(target: traced_target, ..) => {
+        set jump = cvt::<u32, u64>(traced_target);
+      }
+      LtJmpKR(target: traced_target, ..) => {
+        set jump = cvt::<u32, u64>(traced_target);
+      }
+      LtJmpKK(target: traced_target, ..) => {
+        set jump = cvt::<u32, u64>(traced_target);
+      }
+      LeJmpRR(target: traced_target, ..) => {
+        set jump = cvt::<u32, u64>(traced_target);
+      }
+      LeJmpRK(target: traced_target, ..) => {
+        set jump = cvt::<u32, u64>(traced_target);
+      }
+      LeJmpKR(target: traced_target, ..) => {
+        set jump = cvt::<u32, u64>(traced_target);
+      }
+      LeJmpKK(target: traced_target, ..) => {
+        set jump = cvt::<u32, u64>(traced_target);
+      }
+      TestJmp(a: traced_a, target: traced_target, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+        set jump = cvt::<u32, u64>(traced_target);
+      }
+      TestSetJmp(a: traced_a, target: traced_target, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+        set jump = cvt::<u32, u64>(traced_target);
+      }
+      Call(a: traced_a, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+        set changed = reg >= dest;
+      }
+      TailCall(a: traced_a, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+        set changed = reg >= dest;
+      }
+      Return(..) => {
+      }
+      ForLoop(a: traced_a, target: traced_target) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+        set jump = cvt::<u32, u64>(traced_target);
+      }
+      ForPrep(a: traced_a, target: traced_target) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+        set jump = cvt::<u32, u64>(traced_target);
+      }
+      TForLoop(a: traced_a, target: traced_target, ..) => {
+        let base = cvt::<u8, u64>(traced_a);
+        let first = base + 2_u64;
+        set changed = reg >= first;
+        set jump = cvt::<u32, u64>(traced_target);
+      }
+      SetList(..) => {
+      }
+      Close(..) => {
+      }
+      Closure(a: traced_a, proto: child_proto) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+        let child = cvt::<u32, u64>(child_proto);
+        if child < vm^.protos.inner.len {
+          let count = vm^.protos.inner[child].nups;
+          let captures = cvt::<u8, u64>(count);
+          set next = next +sat captures;
+        }
+      }
+      VarArg(a: traced_a, ..) => {
+        let dest = cvt::<u8, u64>(traced_a);
+        set changed = dest == reg;
+      }
+    }
+    if changed {
+      set last = origin;
+    }
+    if pc < jump {
+      if jump <= lastpc {
+        set next = jump;
+      }
+    }
+    set pc = next;
+  }
+  return last;
+}
+
+fn local_name(vm: &Vm, proto: Proto, pc: u64, reg: u64) -> r: Option<DebugName> reads(vm.local_variables) {
+  doc "luaF_getlocalname counts active declarations in registration order, not register assignments.";
+  let remaining = reg;
+  for (i in 0_u64..proto.local_count) {
+    let at = proto.local_base +sat i;
+    if at < vm^.local_variables.inner.len {
+      let record = vm^.local_variables.inner[at];
+      let start = cvt::<u32, u64>(record.startcell);
+      let end = cvt::<u32, u64>(record.endcell);
+      if start > pc {
+        break;
+      }
+      if pc < end {
+        if remaining == 0_u64 {
+          return Some<DebugName>(value: record.name);
+        }
+        set remaining = remaining - 1_u64;
+      }
+    }
+  }
+  return None<DebugName>();
+}
+
+fn append_debug_name(vm: &Vm, bytes: &Box<Slots<u8>>, name: DebugName) -> r: unit reads(vm.debug_names), writes(bytes) {
+  doc "Appends a name from non-heap script metadata, with Lua's C-string boundary.";
+  for (i in 0_u64..name.length) {
+    let at = name.offset +sat i;
+    if at < vm^.debug_names.inner.len {
+      let byte = vm^.debug_names.inner[at];
+      if byte == 0_u8 {
+        break;
+      }
+      bytes_push(bytes: bytes, byte: byte);
+    }
+  }
+  return unit;
+}
+
+fn append_constant_name(consts: &Box<Slots<Value>>, vm: &Vm, proto: Proto, index: u64, bytes: &Box<Slots<u8>>) -> r: unit reads(consts), reads(vm.heap), writes(bytes) {
+  doc "ldebug.c kname: only a string constant supplies text; register and non-string keys supply question mark. luaG_runerror uses percent-s, so embedded NUL ends the name.";
+  let base = cvt::<u32, u64>(proto.kbase);
+  let at = base +sat index;
+  if at < consts^.inner.len {
+    let value = consts^.inner[at];
+    match pkg::value::str_of(v: value) {
+      Handle(h: handle) => {
+        let h = cvt::<u32, u64>(handle);
+        if h < vm^.heap.strings.inner.len {
+          let length = vm^.heap.strings.inner[h].payload.bytes.inner.len;
+          for (i in 0_u64..length) {
+            if i < vm^.heap.strings.inner[h].payload.bytes.inner.len {
+              let byte = vm^.heap.strings.inner[h].payload.bytes.inner[i];
+              if byte == 0_u8 {
+                break;
+              }
+              bytes_push(bytes: bytes, byte: byte);
+            }
+          }
+          return unit;
+        }
+      }
+      NoHandle() => {
+      }
+    }
+  }
+  bytes_push(bytes: bytes, byte: 63_u8);
+  return unit;
+}
+
+fn describe_operand(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, reg: u64, bytes: &Box<Slots<u8>>) -> r: Bool reads(code), reads(consts), reads(vm), writes(bytes) {
+  doc "getobjname tries active locals first, then the symbolic last writer, recursing on decreasing MOVE sources at the same faulting cell; a MOVE source that does not decrease ends the walk without a name, which bounds it. Native frames and external values have no name.";
+  if reg == unlimited {
+    return False();
+  }
+  let count = vm^.frames.inner.len;
+  if count == 0_u64 {
+    return False();
+  }
+  let last = count - 1_u64;
+  let frame = vm^.frames.inner[last];
+  if frame.activation != vm^.activation {
+    return False();
+  }
+  let closure = cvt::<u32, u64>(frame.closure);
+  if closure >= vm^.heap.closures.inner.len {
+    return False();
+  }
+  let callee = vm^.heap.closures.inner[closure].payload.callee;
+  let id = unlimited;
+  match callee {
+    Lua(proto: index) => {
+      set id = cvt::<u32, u64>(index);
+    }
+    Native(..) => {
+      return False();
+    }
+  }
+  if id >= vm^.protos.inner.len {
+    return False();
+  }
+  let proto = vm^.protos.inner[id];
+  let pc = fault_cell(vm: vm);
+  let position = reg;
+  loop {
+    let local = local_name(vm: vm, proto: proto, pc: pc, reg: position);
+    match local {
+      Some(value: name) => {
+        bytes_append(bytes: bytes, text: &operand_text_local[0_u64..5_u64]);
+        bytes_push(bytes: bytes, byte: 32_u8);
+        bytes_push(bytes: bytes, byte: 39_u8);
+        append_debug_name(vm: vm, bytes: bytes, name: name);
+        bytes_push(bytes: bytes, byte: 39_u8);
+        return True();
+      }
+      None() => {
+      }
+    }
+    let origin = symbolic_name(code: code, vm: vm, proto: proto, lastpc: pc, reg: position);
+    if origin.kind == 6_u8 {
+      if origin.index >= position {
+        break;
+      }
+      set position = origin.index;
+    } else {
+      if origin.kind == 0_u8 {
+        return False();
+      }
+      if origin.kind == 2_u8 {
+        bytes_append(bytes: bytes, text: &operand_text_global[0_u64..6_u64]);
+      } else if origin.kind == 3_u8 {
+        bytes_append(bytes: bytes, text: &operand_text_field[0_u64..5_u64]);
+      } else if origin.kind == 4_u8 {
+        bytes_append(bytes: bytes, text: &operand_text_upvalue[0_u64..7_u64]);
+      } else {
+        bytes_append(bytes: bytes, text: &operand_text_method[0_u64..6_u64]);
+      }
+      bytes_push(bytes: bytes, byte: 32_u8);
+      bytes_push(bytes: bytes, byte: 39_u8);
+      if origin.kind == 4_u8 {
+        let at = proto.upvalue_name_base +sat origin.index;
+        if at < vm^.upvalue_names.inner.len {
+          let name = vm^.upvalue_names.inner[at];
+          append_debug_name(vm: vm, bytes: bytes, name: name);
+        } else {
+          bytes_push(bytes: bytes, byte: 63_u8);
+        }
+      } else {
+        append_constant_name(consts: consts, vm: vm, proto: proto, index: origin.index, bytes: bytes);
+      }
+      bytes_push(bytes: bytes, byte: 39_u8);
+      return True();
+    }
+  }
+  return False();
+}
+
+fn call_type_error(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, v: Value, func: u64, return_pc: u64) -> r: Bool reads(code), reads(consts), writes(vm) {
+  doc "ldo.c tryfuncTM describes CALL/TAILCALL's function slot. CALL's fast path installs no callback plan, so an actual Lua caller supplies return_pc for the error location; a pcall marker is a native frame. TFORLOOP uses A+3 in its Lua caller even though Halo invokes the iterator through a nested activation; builtin callbacks have no Lua operand.";
+  let reg = unlimited;
+  let activation = vm^.activation;
+  let saved_plan = vm^.callback_plan;
+  let count = vm^.frames.inner.len;
+  if count > 0_u64 {
+    let last = count - 1_u64;
+    let frame = vm^.frames.inner[last];
+    if frame.activation == activation {
+      if frame.closure != no_handle {
+        let plan = saved_plan;
+        set plan.pc = return_pc;
+        set plan.base = frame.base;
+        set plan.kbase = frame.kbase;
+        set plan.kind = 0_u8;
+        set vm^.callback_plan = plan;
+      }
+      let base = frame.base;
+      let top = frame.frame_top;
+      if func >= base {
+        if func < top {
+          set reg = func - base;
+        }
+      }
+    } else {
+      let nested = frame.activation +sat 1_u32;
+      if nested == activation {
+        let plan = vm^.callback_plan;
+        if plan.kind == 3_u8 {
+          set reg = plan.dest -sat plan.base;
+          set vm^.activation = frame.activation;
+        }
+      }
+    }
+  }
+  let failed = type_error(code: code, consts: consts, vm: vm, v: v, op: 2_u8, reg: reg);
+  set vm^.activation = activation;
+  set vm^.callback_plan = saved_plan;
+  return failed;
+}

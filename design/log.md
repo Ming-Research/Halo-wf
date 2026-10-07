@@ -4,6 +4,14 @@ Newest first. One entry per approved change of the tree: a dated title,
 `Nodes:` naming every node changed, `Owner-approved:` and `Summary:`; the
 owner-wide instructions' *Log format* owns the form.
 
+## 2026-10-07 Halo's runtime type errors name their operand
+
+Nodes: halo/operand-names
+
+Owner-approved: 2026-10-07 in the Halo session: "Q80 agreed" (the operand-name design: descriptions found when the error is raised, by walking Halo's cells, with names kept as bytes outside the Lua heap).
+
+Summary: A runtime type error names its operand as Lua 5.1's `getobjname` does (`local`, `global`, `field`, `upvalue`, `method`), so error replies match Redis 7.0.15's. The description is found only when the error is raised, by walking the faulting prototype's cells with `symbexec`'s rules, instead of precomputing one per faultable instruction at compile time; the walk reads Halo's own cells rather than a second copy of PUC's instruction words; and the compiler's local-variable ranges and upvalue names are kept per prototype as bytes outside the Lua heap, so the collector and its roots are unchanged. The oracle corpus gained nine scripts recorded from Redis, and the 14900K measurements of its cost are in `research/experiments/halo-bench/RESULTS.md` ("Operand descriptions' cost").
+
 ## 2026-10-06 Halo's engine tree, host calls, error lines and pcall's error field
 
 Nodes: halo, halo/values, halo/heap, halo/heap/closures, halo/heap/collector-validation, halo/heap/tables, halo/heap/tables/growth, halo/calls, halo/instructions, halo/dispatch, halo/dispatch/continuations, halo/compiler, halo/embedding, halo/embedding/root-bridge

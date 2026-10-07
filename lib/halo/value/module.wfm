@@ -103,6 +103,9 @@ public struct Proto {
   public is_vararg: Bool;
   public maxstack: u8;
   public nups: u8;
+  public local_base: u64;
+  public local_count: u64;
+  public upvalue_name_base: u64;
 }
 
 public const builtin_host_base: u32 = 4096_u32;
@@ -115,10 +118,24 @@ public fn tab_of(v: Value) -> r: HandleView pure doc "The table handle a value h
 
 public fn truthy(v: Value) -> r: Bool pure doc "Lua truth: every value except nil and false is true.";
 
+public struct DebugName {
+  public offset: u64;
+  public length: u64;
+}
+
+public struct LocalVariable {
+  public name: DebugName;
+  public startcell: u32;
+  public endcell: u32;
+}
+
 public struct Script {
   public code: Box<Slots<Cell>>;
   public consts: Box<Slots<Value>>;
   public protos: Box<Slots<Proto>>;
   public lineinfo: Box<Slots<u32>>;
   public source: Box<Slots<u8>>;
+  public debug_names: Box<Slots<u8>>;
+  public local_variables: Box<Slots<LocalVariable>>;
+  public upvalue_names: Box<Slots<DebugName>>;
 }

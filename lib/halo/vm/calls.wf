@@ -1,3 +1,5 @@
+alias DebugName = pkg::value::DebugName;
+alias LocalVariable = pkg::value::LocalVariable;
 alias no_handle = pkg::heap::no_handle;
 alias Value = pkg::value::Value;
 alias Cell = pkg::value::Cell;
@@ -343,7 +345,7 @@ fn prepare<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
       Native(id: bound_id_1) => {
         set vm^.cjson_active_config = codec_config;
         if bound_id_1 == 111_u32 {
-          let ignored = type_error(vm: vm, v: v, op: 2_u8);
+          let ignored = call_type_error(code: code, consts: consts, vm: vm, v: v, func: fslot, return_pc: return_pc);
           return Step::Error();
         }
         if bound_id_1 == builtin_pcall {
@@ -462,7 +464,7 @@ fn prepare<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
         let tm = metamethod(vm: vm, v: v, name: &calls_text_4[0_u64..6_u64]);
         match func_of(v: tm) {
           Other() => {
-            let ignored = type_error(vm: vm, v: v, op: 2_u8);
+            let ignored = call_type_error(code: code, consts: consts, vm: vm, v: v, func: fslot, return_pc: return_pc);
             return Step::Error();
           }
           Lua(..) => {
@@ -526,6 +528,30 @@ fn start<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm,
     }
   }
   set vm^.source = move name;
+  let debug_names = box_slots_new::<u8>(capacity: script^.debug_names.inner.len);
+  for (i in 0_u64..script^.debug_names.inner.len) {
+    if debug_names.inner.len < debug_names.inner.cap {
+      let record = script^.debug_names.inner[i];
+      place_back(window: &debug_names.inner, value: record);
+    }
+  }
+  set vm^.debug_names = move debug_names;
+  let local_variables = box_slots_new::<LocalVariable>(capacity: script^.local_variables.inner.len);
+  for (i in 0_u64..script^.local_variables.inner.len) {
+    if local_variables.inner.len < local_variables.inner.cap {
+      let record = script^.local_variables.inner[i];
+      place_back(window: &local_variables.inner, value: record);
+    }
+  }
+  set vm^.local_variables = move local_variables;
+  let upvalue_names = box_slots_new::<DebugName>(capacity: script^.upvalue_names.inner.len);
+  for (i in 0_u64..script^.upvalue_names.inner.len) {
+    if upvalue_names.inner.len < upvalue_names.inner.cap {
+      let record = script^.upvalue_names.inner[i];
+      place_back(window: &upvalue_names.inner, value: record);
+    }
+  }
+  set vm^.upvalue_names = move upvalue_names;
   set vm^.budget = budget;
   let empty = array_filled::<u32, 0>(value: 0_u32);
   let cl = pkg::heap::new_closure(heap: &vm^.heap, proto: proto, upvals: &empty[0_u64..0_u64]);

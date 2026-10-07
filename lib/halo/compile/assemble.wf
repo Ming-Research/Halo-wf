@@ -1,3 +1,5 @@
+alias DebugName = pkg::value::DebugName;
+alias LocalVariable = pkg::value::LocalVariable;
 alias Value = pkg::value::Value;
 alias Cell = pkg::value::Cell;
 alias Proto = pkg::value::Proto;
@@ -298,11 +300,14 @@ fn to_cell(i: &Ins, t: u32) -> result_value: Cell reads(i) {
   return Cell::Return(a: 0_u8, b: 1_u8);
 }
 
-fn assemble(p: &Parser) -> result_value: Result<Script, CompileError> reads(p) {
+fn assemble(p: &Parser, heap: &Heap) -> result_value: Result<Script, CompileError> reads(p), reads(heap) {
   let code = box_slots_new::<Cell>(capacity: 0_u64);
   let consts = box_slots_new::<Value>(capacity: 0_u64);
   let protos = box_slots_new::<Proto>(capacity: 0_u64);
   let lineinfo = box_slots_new::<u32>(capacity: 0_u64);
+  let debug_names = box_slots_new::<u8>(capacity: 0_u64);
+  let local_variables = box_slots_new::<LocalVariable>(capacity: 0_u64);
+  let upvalue_names = box_slots_new::<DebugName>(capacity: 0_u64);
   for (id in 0_u64..p^.funcs.inner.len) {
     let s = &p^.funcs.inner[id];
     let start = code.inner.len;
@@ -319,7 +324,23 @@ fn assemble(p: &Parser) -> result_value: Result<Script, CompileError> reads(p) {
     let arg_188 = s^.maxstack;
     let arg_189 = cvt.wrap::<i64, u8>(arg_188);
     let arg_190 = cvt.wrap::<u64, u8>(nups);
-    let proto = Proto(start: arg_182, kbase: arg_183, nk: arg_184, numparams: arg_186, is_vararg: arg_187, maxstack: arg_189, nups: arg_190);
+    let local_base = local_variables.inner.len;
+    let local_count = s^.local_debug.inner.len;
+    let upvalue_name_base = upvalue_names.inner.len;
+    for (j in 0_u64..s^.local_debug.inner.len) {
+      let record = s^.local_debug.inner[j];
+      let name = copy_debug_name(heap: heap, names: &debug_names, handle: record.name);
+      let startcell = target(map: &map, at: record.startpc);
+      let endcell = target(map: &map, at: record.endpc);
+      let local = LocalVariable(name: name, startcell: startcell, endcell: endcell);
+      push_local_variable(buf: &local_variables, v: local);
+    }
+    for (j in 0_u64..s^.ups.inner.len) {
+      let handle = s^.ups.inner[j].name;
+      let name = copy_debug_name(heap: heap, names: &debug_names, handle: handle);
+      push_debug_name(buf: &upvalue_names, v: name);
+    }
+    let proto = Proto(start: arg_182, kbase: arg_183, nk: arg_184, numparams: arg_186, is_vararg: arg_187, maxstack: arg_189, nups: arg_190, local_base: local_base, local_count: local_count, upvalue_name_base: upvalue_name_base);
     push_proto(buf: &protos, v: proto);
     for (k in 0_u64..s^.ks.inner.len) {
       let arg_191 = s^.ks.inner[k];
@@ -374,6 +395,48 @@ fn assemble(p: &Parser) -> result_value: Result<Script, CompileError> reads(p) {
   let source = box_slots_new::<u8>(capacity: 0_u64);
   let chunk_length = p^.chunk.inner.len;
   pkg::lex::format_chunk(chunk: &p^.chunk.inner[0_u64..chunk_length], size: 60_u64, output: &source);
-  let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lineinfo, source: move source);
+  let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lineinfo, source: move source, debug_names: move debug_names, local_variables: move local_variables, upvalue_names: move upvalue_names);
   return Ok<Script, CompileError>(value: move script);
+}
+
+fn push_local_variable(buf: &Box<Slots<LocalVariable>>, v: LocalVariable) -> result_value: unit writes(buf) {
+  doc "Appends one compiler debug record.";
+  let n = buf^.inner.len;
+  let cap = buf^.inner.cap;
+  if n == cap {
+    let doubled = cap +sat cap;
+    let capacity = imax(doubled, 32_u64);
+    grow(cell: buf, capacity: capacity);
+  }
+  if buf^.inner.len < buf^.inner.cap {
+    place_back(window: &buf^.inner, value: v);
+  }
+  return unit;
+}
+
+fn push_debug_name(buf: &Box<Slots<DebugName>>, v: DebugName) -> result_value: unit writes(buf) {
+  doc "Appends one compiler debug record.";
+  let n = buf^.inner.len;
+  let cap = buf^.inner.cap;
+  if n == cap {
+    let doubled = cap +sat cap;
+    let capacity = imax(doubled, 32_u64);
+    grow(cell: buf, capacity: capacity);
+  }
+  if buf^.inner.len < buf^.inner.cap {
+    place_back(window: &buf^.inner, value: v);
+  }
+  return unit;
+}
+
+fn copy_debug_name(heap: &Heap, names: &Box<Slots<u8>>, handle: u32) -> result_value: DebugName reads(heap), writes(names) {
+  doc "Copies parser-interned names into script-owned bytes, outside the Lua heap and collector roots.";
+  let offset = names^.inner.len;
+  let index = cvt::<u32, u64>(handle);
+  if index < heap^.strings.inner.len {
+    let length = heap^.strings.inner[index].payload.bytes.inner.len;
+    text(buf: names, s: &heap^.strings.inner[index].payload.bytes.inner[0_u64..length]);
+  }
+  let length = names^.inner.len -sat offset;
+  return DebugName(offset: offset, length: length);
 }

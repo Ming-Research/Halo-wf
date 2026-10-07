@@ -27,7 +27,14 @@ struct Ins {
   line: u64;
 }
 
+struct LocalDebug {
+  name: u32;
+  startpc: i64;
+  endpc: i64;
+}
+
 struct Up {
+  name: u32;
   k: u8;
   info: i64;
 }
@@ -55,6 +62,7 @@ struct Fs {
   code: Box<Slots<Ins>>;
   ks: Box<Slots<Value>>;
   locals: Box<Slots<u32>>;
+  local_debug: Box<Slots<LocalDebug>>;
   ups: Box<Slots<Up>>;
   blocks: Box<Slots<Block>>;
   bad: u8;
@@ -288,14 +296,15 @@ fn tag_value(v: Value) -> result_value: Tag pure {
 }
 
 fn new_fs(parent: u64, line: u64) -> result_value: Fs pure {
-  doc "Each prototype owns its PUC instruction records, constants, active-local names, upvalue descriptions and block stack. Local instruction indexes survive parsing; only assembly fuses pairs and assigns script-wide indexes. parent is an index, so prototype growth cannot invalidate a reference held by recursive parsing.";
+  doc "Each prototype owns its PUC instruction records, constants, active-local declaration indexes, debug lifetimes, named upvalue descriptions and block stack. Local instruction indexes survive parsing; only assembly fuses pairs and assigns script-wide indexes. parent is an index, so prototype growth cannot invalidate a reference held by recursive parsing.";
   let code = box_slots_new::<Ins>(capacity: 0_u64);
   let ks = box_slots_new::<Value>(capacity: 0_u64);
   let locals = box_slots_new::<u32>(capacity: 0_u64);
+  let local_debug = box_slots_new::<LocalDebug>(capacity: 0_u64);
   let ups = box_slots_new::<Up>(capacity: 0_u64);
   let blocks = box_slots_new::<Block>(capacity: 0_u64);
   let arg_15 = False();
-  return Fs(parent: parent, line: line, lastline: 1_u64, lasttarget: -1_i64, jpc: -1_i64, freereg: 0_i64, nactvar: 0_i64, maxstack: 2_i64, numparams: 0_i64, nlocals: 0_u64, nchildren: 0_u64, vararg: arg_15, code: move code, ks: move ks, locals: move locals, ups: move ups, blocks: move blocks, bad: 0_u8);
+  return Fs(parent: parent, line: line, lastline: 1_u64, lasttarget: -1_i64, jpc: -1_i64, freereg: 0_i64, nactvar: 0_i64, maxstack: 2_i64, numparams: 0_i64, nlocals: 0_u64, nchildren: 0_u64, vararg: arg_15, code: move code, ks: move ks, locals: move locals, local_debug: move local_debug, ups: move ups, blocks: move blocks, bad: 0_u8);
 }
 
 fn push_exp(buf: &Box<Slots<Exp>>, v: Exp) -> result_value: unit writes(buf) {
@@ -305,6 +314,21 @@ fn push_exp(buf: &Box<Slots<Exp>>, v: Exp) -> result_value: unit writes(buf) {
     let arg_160 = cap +sat cap;
     let target = imax(arg_160, 32_u64);
     grow(cell: buf, capacity: target);
+  }
+  if buf^.inner.len < buf^.inner.cap {
+    place_back(window: &buf^.inner, value: v);
+  }
+  return unit;
+}
+
+fn push_local_debug(buf: &Box<Slots<LocalDebug>>, v: LocalDebug) -> result_value: unit writes(buf) {
+  doc "Appends one compiler debug record.";
+  let n = buf^.inner.len;
+  let cap = buf^.inner.cap;
+  if n == cap {
+    let doubled = cap +sat cap;
+    let capacity = imax(doubled, 32_u64);
+    grow(cell: buf, capacity: capacity);
   }
   if buf^.inner.len < buf^.inner.cap {
     place_back(window: &buf^.inner, value: v);

@@ -1,0 +1,41 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "bulk",
+      "bytes": "user_script:10: attempt to index local 'x' (a userdata value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:11: attempt to index local 'x' (a userdata value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:12: attempt to call local 'x' (a userdata value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:13: attempt to perform arithmetic on local 'x' (a userdata value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:14: attempt to perform arithmetic on local 'x' (a userdata value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:15: attempt to concatenate local 'x' (a userdata value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:16: attempt to concatenate local 'x' (a userdata value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:17: attempt to get length of local 'x' (a userdata value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:18: attempt to call field 'null' (a userdata value)"
+    }
+  ]
+}

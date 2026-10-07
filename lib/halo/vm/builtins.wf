@@ -442,7 +442,8 @@ fn builtin<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
     }
   } else {
     let nil = Value::Nil();
-    let ignored = type_error(vm: vm, v: nil, op: 2_u8);
+    let ignored = raw_type_error(vm: vm, v: nil, op: 2_u8);
+    library_raw_error(vm: vm);
     return HostOutcome::Raised();
   }
   if func < stack^.inner.len {

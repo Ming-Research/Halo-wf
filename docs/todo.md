@@ -41,37 +41,27 @@ example apart from the engine code that exposed it
 
 ## Engine
 
-- **The gate runs the oracle corpus and the embedding probe only.**
-  `make check` builds the end-to-end test program, runs its embedding probe
-  and compares every oracle script at budgets 1, 7 and 1000 in ordinary and
-  collector-stress modes. Not in the gate: the JSON and MessagePack
-  comparisons (`research/experiments/json`, `research/experiments/msgpack`,
-  the latter needing its C reference), the number library's checks
-  (`lib/halo/number/tests`), the runner's error, SHA-1 and memory probes
-  (`--verify-errors`, `--verify-sha1`, `--verify-memory`), the removed-root
-  controls of `research/experiments/halo-gc`, which must fail, and the
-  builds of the `halo-vm`, `halo-lib` and `halo-bench` hosts, so a change to
-  an engine interface they use is checked there only when an experiment
-  rebuilds them. Its fixtures and runner
-  also still live under `research/`. Impact: a regression in those paths
-  passes the gate. Change: wire each into `make check` with a control that
-  shows it detects a wrong result, and move the gate's fixtures and runner
-  to `tests/`. Reopen at the next gate change.
+- **The gate's fixtures and runners still live under `research/`.**
+  Impact: maintained regression checks share a home with experiments, so
+  their location does not distinguish gate dependencies from research
+  tooling. Change: move the gate's fixtures and runners to `tests/` and
+  update their callers and references. Reopen at the next gate change.
 
-- **Runtime type errors do not name the variable.** PUC Lua 5.1 describes
-  the operand of a failed index, call, arithmetic or concatenation by where
-  it came from, `attempt to index local 't' (a nil value)` (also `global`,
-  `field`, `upvalue`, `method`), recovered from the bytecode by `getobjname`
-  in `ldebug.c`; Halo says `attempt to index a nil value`. Witness: inside a
-  function, `local t=nil return t.x` on line 9 gives Redis 7.0.15's reply
-  `ERR user_script:9: attempt to index local 't' (a nil value) script: …`
-  (oracle-reference run 37491234734, script `lua-core/error-rethrow-local`
-  at c5ebccc50). Impact: the text of every error reply and `pcall` message
-  from a runtime type error differs from Redis's, and the oracle corpus has
-  no runtime type-error case to show it. Change: describe the faulting
-  register by the same symbolic walk over Halo's cells at the failing pc,
-  with an oracle case for each description. Reopen before clients compare
-  error text, or with the next error-message work.
+- **Argument errors hardcode the called function's name.** Lua 5.1's
+  `luaL_argerror` uses `getfuncname` (`getobjname` at the caller's CALL
+  register), so `bad argument #N to 'NAME'` names a local alias or a field,
+  and for a method it subtracts the implicit self argument and reports a bad
+  self as `calling 'NAME' on bad self`. Halo's builtins hardcode their names,
+  for example `bad argument #1 to 'select'` in `lib/halo/vm/builtins.wf`.
+  Witness: `local f=bit.tobit; return f(false)` gives Redis 7.0.15's
+  `bad argument #1 to 'f' (number expected, got boolean)` and Halo's
+  `... to 'tobit' ...` (`research/experiments/halo-luacodecs/RESULTS.md`,
+  case cjson/222). Impact: aliases, field calls and methods can disagree in
+  both name and argument number. Change: route argument errors through the
+  operand description at the caller's call cell and apply `luaL_argerror`'s
+  method adjustment. Validate with recorded oracle replies for local aliases,
+  fields, methods and bad self. Reopen before clients compare argument-error
+  text.
 
 - **pcall's error field is read raw.** With an error field named
   (`set_pcall_error_field`), `pcall` reads it with a raw lookup; Redis's
@@ -111,17 +101,6 @@ example apart from the engine code that exposed it
   or before claiming every-allocation validation; verify omitted-reference
   controls and allocating helpers with live temporary values.
 
-- **Halo codec error names need Lua debug metadata.** The library comparison
-  in `research/experiments/halo-luacodecs/RESULTS.md` includes
-  `local f=bit.tobit; return f(false)` and operations on `cjson.null`.
-  Halo reports the builtin's static name or a generic userdata error;
-  Redis reports the local or field name. `pkg::value::Script` carries lines
-  but no local-name ranges. Impact: alias and field-call error text differs
-  from Redis. Change: preserve the compiler's local names and
-  Lua's register-origin information, then use them in argument and type
-  errors. Validate alias, field, upvalue and unnamed calls against Redis.
-  Reopen before claiming byte-exact Lua library error compatibility.
-
 - **Halo retains cjson instance configurations after collection.**
   `Vm.cjson_configs` owns settings and reusable encoding buffers; native
   closures select an instance, but collecting its last closure does not
@@ -160,19 +139,32 @@ example apart from the engine code that exposed it
   [bounded call-entry trial](../research/experiments/halo-bench/RESULTS.md#sentinel-qualification-defect-found-before-selection)
   improves fib by 19.47% but is reverted because prototype bounds alone do not
   preserve explicit native-sentinel routing for the public prototype window.
-  Change: repeat fixed Lua entry with explicit sentinel exclusion, preserving
-  every native/invalid/vararg fallback; establish that exclusion independent
-  of the prototype count and repeat the full runtime, check-time, oracle and
-  removed-root criterion. Frame/result transport and residual table copying
-  remain separate attribution targets. Compare these, the VM.md candidates
+  The [sentinel-qualified repeat on the 14900K](../research/experiments/halo-bench/RESULTS.md#14900k-repeat-with-wf-e1708490c384)
+  failed its criterion with `wf-e1708490c384` and clang 22: fib improved only
+  1.7% against the required 10%, and sort regressed beyond the recorded
+  noise limit. It was reverted in `46cad3c17`; the module-check limit passed,
+  and the earlier oracle and removed-root gates passed.
+  Change: investigate frame/result transport and residual table copying as
+  separate attribution targets. Compare these, the VM.md candidates
   and library/heap paths with same-source,
   full-LTO pairs, preserving checksums, normal GC, roots and handle validity.
   Reopen at the next performance experiment; require a discriminating native
   comparison before selecting a candidate or claiming a causal speedup.
 
+- **A slow-executor call inside a hot library function may slow its fast
+  path.** Moving `sort_compare`'s call to `slow` into its own function made
+  the sort kernel 25% faster on the 14900K in a same-source, twinned pair
+  ([seventh run](../research/experiments/halo-bench/RESULTS.md#seventh-run-the-splits-share-and-the-heads-check-time));
+  why is not established, and other library functions that call `slow` or
+  callbacks beside a fast path (string comparison and pattern matching,
+  `table.concat`, the codecs) were not examined. Change: inspect the
+  compiled code of `sort_compare` before and after to name the cause, then
+  apply the split where the same pattern holds, each with a same-source
+  pair. Reopen at the next performance experiment.
+
 - **Halo's oracle hides next/pairs hash iteration order.**
   `research/experiments/halo-oracle/scripts/lua-core/next-pairs.lua` sorts both
-  observations; passing the 240 comparison rows proves contents, not order.
+  observations; passing the oracle comparison proves contents, not order.
   Impact: a table-layout change can pass while diverging from the selected
   Redis Lua order. Change: add an independent unsorted table-growth and
   iteration observation in the oracle's existing home, with recorded Redis
@@ -180,6 +172,17 @@ example apart from the engine code that exposed it
   coverage update; validate that an order-only permutation fails comparison.
   The [bounded growth experiment](../research/experiments/halo-bench/RESULTS.md#iteration-order-evidence-correction)
   uses scratch unsorted PUC comparisons to qualify its own change.
+
+- **Halo reused-binary reports identify current inputs, not build inputs.**
+  `research/experiments/halo-e2e/run.py --binary` hashes the current library
+  and harness source even when the supplied executable was built from other
+  bytes. Impact: the printed source digest can be mistaken for the binary's
+  provenance; the fixed-call repeat uses separately retained source and
+  executable hashes for its before build. Change: accept and verify an
+  explicit build-input manifest for reused binaries, and label current
+  fixture/runner inputs separately. Reopen at the next reused-binary
+  experiment; validate that a mismatched source/binary manifest fails and
+  that current fixture changes remain identified independently.
 
 - **Halo's C1 fast variants repeat operation logic in full handlers.**
   Callback-free variants make next-pc summaries available outside the VM's
@@ -192,17 +195,6 @@ example apart from the engine code that exposed it
   changing cold code can also change native placement. Reopen when an affected
   instruction changes or the next VM performance experiment compares that
   factoring; C1's measured source stays fixed for this bounded experiment.
-
-- **Halo's number parsing was checked on macOS only.** The oracle corpus and
-  the codec corpus now run on the reference platform (Redis 7.0.15 built
-  from source on x86-64 Linux; research/experiments/halo-oracle,
-  research/experiments/halo-luacodecs). Still macOS-only: `lib/halo/number`'s
-  `strtod` details (NaN payloads, hexadecimal forms, range errors), compared
-  with Redis's bundled Lua built on macOS (research/experiments/halo-number).
-  Impact: Linux parsing parity remains unverified. Change: run that
-  comparison on x86-64 Linux against Redis 7.0.15's bundled Lua built there,
-  and adopt its behavior wherever they differ. Reopen before Halo's first
-  release or when firn's EVAL lands.
 
 - **The Halo embedding boundary record's witnesses are unchecked against
   the current revision.** `research/experiments/halo-e2e/GAPS.md` records

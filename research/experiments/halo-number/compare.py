@@ -38,6 +38,11 @@ def isnan(raw):
     return raw & (SIGN - 1) > INF
 
 
+def fallback_bits(raw):
+    """The input oracle.lua's pure-Lua fallback builds: every NaN becomes the default quiet NaN of its sign."""
+    return (raw & SIGN) | 0x7ff8000000000000 if isnan(raw) else raw
+
+
 def ulps(a, b):
     if isnan(a) or isnan(b):
         return None
@@ -71,6 +76,10 @@ def strings():
         b'2.2250738585072014e-308', b'2.2250738585072011e-308',
         b'4.9406564584124654e-324', b'2.4703282292062327e-324',
         b'2.4703282292062328e-324',
+        # A subnormal where only the bit after the first 53 significant bits
+        # decides the rounding: glibc drops that bit in hex; decimal has a separate path.
+        b'0x1.00000000000018p-1023', b'0x1.00000000000008p-1023',
+        b'1.1125369292536010620943507396011101645362026413971951890715156691871755365962210e-308',
         b'1.00000000000000011102230246251565404236316680908203125',
         b'1.000000000000000111022302462515654042363166809082031251',
         b'1.' + b'0'*850 + b'1', b'0.'+b'0'*800+b'1e801',
@@ -166,7 +175,7 @@ def run(command, **kwargs):
     return result.stdout, time.monotonic()-started
 
 
-def compare(cases, expected, actual):
+def compare(cases, expected, actual, limit=8):
     expected, actual = expected.splitlines(), actual.splitlines()
     if len(expected) != len(cases) or len(actual) != len(cases):
         raise RuntimeError(f'record count: {len(cases)} expected, {len(expected)} Lua, {len(actual)} Halo')
@@ -191,7 +200,7 @@ def compare(cases, expected, actual):
                 stat['max_ulp'] = max(stat['max_ulp'], distance)
                 hist = stat['ulp_histogram']; key = str(distance)
                 hist[key] = hist.get(key, 0) + 1
-        if sum(e['group'] == group for e in examples) < 8:
+        if sum(e['group'] == group for e in examples) < limit:
             examples.append(dict(group=group, op=op, x=x.hex() if isinstance(x, bytes) else f'{x:016x}',
                 y=f'{y:016x}', oracle=want.decode(), halo=got.decode(), ulp=distance))
     return groups, examples
@@ -264,6 +273,7 @@ def main():
     parser.add_argument('--samples', type=int, default=10000)
     parser.add_argument('--musl-source', type=Path, help='optional local musl src/math path for independent port comparison')
     parser.add_argument('--results', type=Path, help='write measured Markdown results')
+    parser.add_argument('--examples', type=int, default=8, help='mismatches listed per group')
     cache_arguments(parser, 'halo-number', timing=True)
     args = parser.parse_args()
     compiler, lua = args.compiler.resolve(), args.lua.resolve()
@@ -287,6 +297,9 @@ def main():
         for case, host_line, executable_line in zip(cases, host_lines, executable_lines):
             if host_line == executable_line:
                 continue
+            numeric = (case[1], case[2]) if case[0] != 'S' else ()
+            if any(fallback_bits(value) != value for value in numeric):
+                continue  # The fallback cannot build this NaN's payload or signaling bit; the archive host is exact.
             if case[0] != 'F' and host_line != b'nil' and executable_line != b'nil':
                 host_bits, executable_bits = int(host_line,16), int(executable_line,16)
                 if isnan(host_bits) and isnan(executable_bits):
@@ -304,7 +317,7 @@ def main():
             for stat in musl_report['groups'].values():
                 if stat['mismatches'] != stat['nan_bit_mismatches']:
                     raise RuntimeError('Whitefoot power differs from original musl on a non-NaN result')
-    groups, examples = compare(cases, expected, actual)
+    groups, examples = compare(cases, expected, actual, args.examples)
     print(json.dumps(dict(build_seconds=build_seconds, lua_seconds=lua_seconds,
                           halo_seconds=halo_seconds, executable_seconds=executable_seconds, musl=musl_report, groups=groups, examples=examples), indent=2))
     if args.results:
@@ -327,17 +340,16 @@ def main():
         for group, s in groups.items():
             lines.append(f"| {group} | {s['count']} | {s['mismatches']} | {s['nan_bit_mismatches']} | {s['nonfinite_mismatches']} | {s['max_ulp']} |")
         lines += ['', f'Build: {build_seconds:.3f} s; Lua execution: {lua_seconds:.3f} s; Halo execution: {halo_seconds:.3f} s. These are sizing observations, not a performance comparison.', '',
-                  f'The reference executable also ran all {len(cases)} cases in {executable_seconds:.3f} s and agreed with the archive host on every finite bit, parse verdict and format byte, and every NaN classification. NaN signs and payloads are extracted only by the archive host.', '',
+                  f'The reference executable also ran all {len(cases)} cases in {executable_seconds:.3f} s. The executable/archive cross-check covers format bytes, parse verdicts, finite/infinite result bits and NaN classifications only for inputs the executable can reconstruct exactly; it does not establish agreement for signaling or nondefault-payload NaN inputs. The archive host remains the exact-bit oracle for every case, including all NaN results.', '',
                   'Every returned line and all process exit codes were checked. Comparator controls detect a changed format byte, parse verdict, power bit and missing record.', '',
                   'Finite mismatch ULP histograms:', '', '```json', json.dumps({g:s['ulp_histogram'] for g,s in groups.items() if s['mismatches']},indent=2), '```', '',
                   'First mismatches per group (inputs are hexadecimal IEEE bits, except S inputs are hexadecimal bytes):', '', '```json',json.dumps(examples,indent=2),'```','']
         if musl_report:
-            lines += ['Independent comparison with the original local musl C FMA path (same power inputs). NaN payload priority intentionally follows the macOS oracle; the musl C comparison additionally confirms every non-NaN result bit of the port:', '',
+            lines += ['Independent comparison with the original local musl C FMA path (same power inputs). NaN payload priority intentionally follows the x86-64 Linux reference; the musl C comparison additionally confirms every sampled non-NaN result bit of the port:', '',
                       '```json', json.dumps(musl_report, indent=2), '```', '']
         args.results.write_text('\n'.join(lines))
-    # Powers are measured, with differences reported rather than concealed.
-    mandatory = [g for g in groups if not g.startswith('pow-')]
-    if any(groups[g]['mismatches'] for g in mandatory):
+    # Every group is mandatory: any mismatch, including powers, fails the comparison.
+    if any(stat['mismatches'] for stat in groups.values()):
         raise SystemExit(1)
 
 

@@ -1,0 +1,21 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "bulk",
+      "bytes": "user_script:10: attempt to call method 'missing' (a nil value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:11: attempt to call method 'bad' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:12: attempt to call method 'missing' (a nil value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:13: attempt to index local 't' (a nil value)"
+    }
+  ]
+}

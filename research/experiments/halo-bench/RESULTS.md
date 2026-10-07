@@ -1755,3 +1755,545 @@ from locked timing claims and repeated under `perl .github/run-check.pl
 halo-call-design-lint make design-lint`. No performance or compilation stage
 was concurrent in this worktree; activity elsewhere during that unwrapped
 sample is not established. The record does not present it as a locked run.
+
+
+## Sentinel-qualified fixed Lua entry repeat
+
+### Repeat criterion recorded before measurement
+
+Task base: `b374e880e6749fe5d1a0e4a40b0b2187f52f63b0`. Repeat the reverted entry helper with an explicit
+`proto != no_handle` guard before prototype lookup, independent of prototype
+window length. Every native, invalid-callee and vararg miss retains `prepare`;
+room, frame-depth and dispatch window facts, roots and return handling remain.
+Keep only if fib(30) improves at least 10% in six interleaved full-LTO pairs
+against this base, no other kernel regresses beyond noise, median
+`--check-module pkg::vm` time is at most 1.25 times before, ordinary and
+GC-stress oracle batches each pass 240/240 at budgets 1, 7 and 1000, every
+existing removed-root control fails as required, and a new ordinary-CALL
+witness for native (including sentinel closure), invalid and vararg callees
+retains the independently specified reply on before and candidate.
+
+Noise means a median loss exceeding the larger variant's relative min–max
+range in the selected six pairs, as in the prior trial. Use all seven kernels,
+binary-trees depth 14 and the original remaining counts; retain launches,
+checksums and GC counts. Size with one pair then three warm pairs; size each
+check/build with its smallest useful existing entry and each behavior batch
+with one relevant case. Use two module-check samples initially, lengthening
+only near the 1.25 threshold or if spread prevents a decision.
+
+The helper owns qualification and fixed stack preparation; existing
+`push_frame` owns frame capacity and `finish` owns results. Changing frames,
+return handling or public representation would mix another cost into this
+comparison and remains deferred. This preserves the C1 window contracts and
+shared frame-changing epilogue. The owner's task selects this bounded
+direction; any kept decision belongs in the Halo tree, pending its ruling.
+
+No network, Cargo, push or PR actions. All heavy commands use their own
+direct host-lock wrapper and retry exit 75 after waiting. Scratch sources,
+logs, binaries and probes live in the existing ignored benchmark target and
+are removed after retaining their evidence; `fixed-call-measurements.json`
+in this experiment retains raw observations until this repeat is superseded.
+On any failed criterion, restore source bytes to the task base and commit
+the reversion while retaining the results.
+
+
+### Repeat baseline sizing and routing assessment
+
+Baseline module checks pass in 296.96 and 263.13 s (wrapper wall),
+median 280.045 s, relative range 12.08%.
+Two candidate checks are selected initially; the threshold is 350.0562 s.
+The first baseline command started after the criterion file was written but
+before its milestone commit: Git staging initially failed (exit 128) because the
+linked worktree metadata is outside the sandbox. Local Git authorization
+then permitted the milestone; no network or publication was attempted.
+
+The candidate checks `proto != no_handle` before conversion and lookup, so
+for every u64 prototype-window length the sentinel returns `None` and enters
+unchanged `prepare`. Builtin and nonfunction tags, out-of-range/dead handles,
+invalid prototypes and varargs also return `None` without stack/frame changes.
+The ordinary call retains its budget charge and collector safepoint. Its
+function-slot fact follows from the existing 256-slot dispatch precondition;
+the shared `checked_step` still establishes the next code/stack/constants
+windows before C1 dispatch. No public type, frame, root or return path changes.
+
+The scratch fallback witness expects `[17, "a", 0, 1, 0, 1, 21]`: `math.abs`,
+a sentinel-backed gmatch iterator, number and nil call failures (with their
+message classes), and a vararg argument count. Each callee is invoked as
+`local result = f(a, b)`, forcing ordinary CALL rather than a tail call.
+The independently stated typed reply passes 3/3 on the verified before
+correctness binary; stress and candidate observations are recorded below.
+The script and expected bytes are retained in the raw JSON and leave the
+original oracle untouched. The pre-existing CJSON/iterator sentinel overlap
+remains recorded in TODO and the general routing order remains unchanged.
+
+
+### Repeat module-check result
+
+Candidate checks pass in 278.31 and 284.70 s, median 281.505 s
+(relative range 2.27%), versus before 280.045 s:
+**1.0052×**, +0.52% median change. Even the slower candidate
+against the faster baseline is 1.0820×, below 1.25.
+The samples are sufficient for this threshold; no checking-speed improvement
+is established. Baseline stress fallback replies pass 3/3, with 17 collections
+each; PUC's bytecode listing confirms ordinary CALL in the invocation helper.
+The baseline stress runner's current-input digest names candidate sources,
+but executes the separately hash-verified before binary; it is not a build
+identity. This reused-binary reporting limitation is recorded in TODO.
+
+A single full-LTO benchmark construction is the smallest executable sample
+for this comparison; do not batch or repeat constructions without a failure.
+Execution is sized separately after that construction.
+
+
+### Repeat runtime sizing
+
+Full-LTO benchmark construction passes in 561.64 s, exit 0. The one-pair
+launch sample takes 13.10 s and the three warm pairs 31.25 s, exits 0.
+Warm fib improves 20.08% with before/candidate relative ranges
+3.23%/0.52%; select the six requested interleaved
+pairs. Sizing remains outside selected medians. Every sizing checksum agrees
+with PUC. Some other-kernel sizing losses are close to their ranges; the six
+pairs, not these sizing results, determine the fixed noise gate.
+
+All library/runtime and benchmark/oracle host inputs are unchanged between
+the retained baseline construction revision and the task base. Compiler
+source has advanced, but the supplied compiler executable hash matches the
+baseline, and its native runtime sources are embedded with `include_str!`.
+Both variants use that executable; it is not rebuilt at current source HEAD.
+The source/binary maps and broader input audit are retained in the raw JSON.
+
+
+### Repeat six-pair runtime result
+
+Selected six-pair batch: 59.60 s, exit 0. Process wall times include startup,
+Lua source compilation, execution and teardown, M1 Pro/macOS, normal GC,
+unlimited budget. Both benchmark binaries use full LTO and the same supplied
+compiler; their inputs and all selected launches are retained in
+[fixed-call-measurements.json](fixed-call-measurements.json).
+
+| Kernel | Before median s | Candidate median s | Improvement | Before min–max s | Candidate min–max s | Before/candidate range |
+|---|---:|---:|---:|---|---|---|
+| fib | 0.202835 | 0.164326 | 18.99% | 0.200329–0.204864 | 0.159018–0.270310 | 2.24% / 67.73% |
+| loop | 0.581221 | 0.582421 | -0.21% | 0.569314–0.592788 | 0.565982–0.634371 | 4.04% / 11.74% |
+| integer-table | 0.596881 | 0.595351 | 0.26% | 0.579897–0.621996 | 0.581595–0.612972 | 7.05% / 5.27% |
+| string-key | 0.039602 | 0.039761 | -0.40% | 0.039160–0.039921 | 0.038994–0.040081 | 1.92% / 2.73% |
+| concat | 0.182877 | 0.184112 | -0.68% | 0.177550–0.185815 | 0.176211–0.185361 | 4.52% / 4.97% |
+| sort | 0.763706 | 0.757662 | 0.79% | 0.738119–0.816155 | 0.740026–0.778439 | 10.22% / 5.07% |
+| binary-trees | 2.481454 | 2.266137 | 8.68% | 2.475321–2.483546 | 2.260854–2.266970 | 0.33% / 0.27% |
+
+Fib improves 18.99%, passing 10%. Every other loss is below
+the larger relative range: the runtime noise gate passes. Every native and
+PUC exit is 0, printed checksums agree, suspensions are zero, and paired GC
+counts agree. Two fib candidate launches (0.270310 and 0.208316 s) are
+slower than the remaining four (0.159018–0.166682 s); their causes are
+unmeasured and every launch is retained, not discarded. Leaving out any
+one pair gives 17.64–20.32% fib median improvement, an exploratory robustness
+observation, not a replacement selection batch. Loop and sort also have wide
+spread, limiting stronger performance claims. This measures the combined
+entry qualification/helper and code-layout change, not isolated cycle shares.
+The check-time and runtime gates pass; selection awaits behavior/root gates.
+For the subsequent selection verdict, see the [14900K repeat](#14900k-repeat-with-wf-e1708490c384).
+
+
+### Repeat correctness construction and sizing
+
+The candidate oracle host builds in 521.32 s, exit 0, from the measured
+candidate library bytes. It uses the existing module cache for behavior
+checks only; all benchmark pairs use full LTO. The counter-closure sample
+passes 3/3 ordinary in 0.42 s and 3/3 at stress in 0.21 s, exits 0, at
+budgets 1, 7 and 1000. These samples justify the complete batches. Build,
+source and binary hashes and sample reports are retained in the raw JSON.
+
+
+### Repeat correctness gates on Halo-wf
+
+Checked on x86-64 Linux (GitHub `ubuntu-24.04`, release `wf-648338c31240`)
+at `3c3926fc2`: the candidate entry, now selecting by the closure's explicit
+callee kind (`6f050f3d6`), merged with Halo-wf main `526f67bef`.
+
+- Oracle, `make check` (run 37531183552): the embedding probe passes, and 92
+  scripts at budgets 1, 7 and 1000 pass 276/276 ordinary and 276/276 under
+  collector stress.
+- Removed-root controls (`.github/workflows/fixed-call-gates.yml`, run
+  37531185040; logs in its artifact). Each mutant removes one marking line of
+  `mark_roots` and is rebuilt; the parked-root control uses the harness flag.
+
+| Root | Positive observation | Removal observation | Runner exit |
+|---|---|---|---:|
+| Open upvalues | `kept`, budgets 1, 7, 1000 at stress | 0/3: reply differs | 1 |
+| Frame closure | `qqq`, isolated, budget 1 | 0/1: `invalid upvalue index` | 1 |
+| Constants | stress corpus 276/276 | 99/276 pass, 177 fail | 1 |
+| Parked stack | `zzz`, collected while parked, budget 1 | 0/1: `attempt to index a function value` | 1 |
+
+- Call-kind witness: the scratch witness is now the oracle script
+  `lua-core/call-kinds`. Its first form matched the error text Halo prints;
+  Redis 7.0.15 names the variable ("attempt to call local 'f' (a number
+  value)", run 37529328302), a known gap in `docs/todo.md`. The script now
+  matches the error's kind and value type, and its reply recorded on the
+  reference platform (run 37530330415) is `[17, "a", 0, 1, 0, 1, 21]`.
+  Before (main `526f67bef`) and candidate each pass 3/3 ordinary and 3/3 at
+  stress.
+
+The behavior and root gates pass. The runtime and check-time gates stay as
+measured on the M1 Pro above until the 14900K repeat, which waits for that
+runner's move to clang 22 so the result holds for the toolchain that follows.
+That repeat is now recorded [below](#14900k-repeat-with-wf-e1708490c384), including the failed criterion and reversion.
+
+
+### 14900K repeat with wf-e1708490c384
+
+The repeat ran on the owner's i9-14900K CI runner, x86-64 Linux
+6.8.0-142-generic with glibc 2.39, in
+[run 37547846309](https://github.com/Ming-Research/Halo-wf/actions/runs/37547846309).
+The `STEP: compare` workflow at
+[`c35c53b59`](https://github.com/Ming-Research/Halo-wf/blob/c35c53b594ec4a3fb412224bb1b6c150af087200/.github/workflows/bench-14900k.yml)
+built both entry-comparison binaries with full LTO, Whitefoot release
+`wf-e1708490c384` (built with LLVM 22), `/usr/bin/clang` 22.1.8 and LLD
+22.1.8. The before binary, `halo-after-upgrade`, uses main source
+`526f67befe929bfdb33513a0c557d832d4868c43`; `halo-entry` uses branch
+`c35c53b594ec4a3fb412224bb1b6c150af087200`. Thus this repeats the criterion
+against the merged main baseline, rather than the original task base. The
+branch also contains number-library and gate changes; of the kernels, only
+binary-trees reaches the number library, through `^` (`pkg::number::pow`,
+whose NaN handling changed), and its ratio stayed within noise; Lua's `%`
+in sort uses `ffloor` directly. This is the candidate comparison,
+not an attribution of isolated entry costs.
+
+The run's `halo-bench-compare` artifact holds `manifest-after.txt`,
+`entry-{1,3,6}.json`, `upgrade-{1,3,6}.json`, their logs and
+`check-times.txt`. The manifest maps sources and compiler releases to the
+executables; the JSON's current checkout revision alone is not a binary's
+build provenance. Recorded SHA-256s:
+
+| Executable | SHA-256 |
+|---|---|
+| `wf-e1708490c384/whitefootc` | `a413e443c702681c931635cae9a536682591b0d47ef2a5e702cdf60f6779400e` |
+| `halo-after-upgrade` | `ac982b1843b33a24485c6658d480c71a63ba2eaf525ff9bb8a9f259378e8cbe5` |
+| `halo-entry` | `9d3ecfac06a29204518c594ba6f63a27da477f9c3f50d8d9a1c3c3b6c02bd7f5` |
+
+The workflow first prepares the pinned compiler with `make compiler`, checks
+the host toolchain with `make toolchain-check`, fetches Redis 7.0.15's Lua
+with `sh research/experiments/halo-oracle/fetch-redis.sh "$PWD/build/redis"`,
+and archives the main baseline into `build/main-src`. Its build and timing
+commands are reproduced below; the workflow also records each command's
+logs and stops on failure. `compare upgrade` runs before `compare entry`.
+
+```sh
+release=wf-e1708490c384
+wfc="$PWD/build/whitefoot/$release/whitefootc"
+out="$PWD/build/bench-out"
+lua="$PWD/build/redis/redis-7.0.15/deps/lua/src/lua"
+"$wfc" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-entry"
+(cd build/main-src && "$wfc" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-after-upgrade")
+kernels=fib,loop,integer-table,string-key,concat,sort,binary-trees
+compare() {
+  label=$1; before=$2; after=$3
+  for runs in 1 3 6; do
+    python3 -B research/experiments/halo-bench/run.py --lua "$lua" \
+      --before-binary "$before" --binary "$after" --kernels "$kernels" \
+      --scale binary-trees=14 --runs "$runs" --out "$out/$label-$runs.json" --compiler "$wfc" \
+      > "$out/$label-$runs.log" 2>&1 || { cat "$out/$label-$runs.log"; exit 1; }
+  done
+}
+compare upgrade "$out/halo-before-upgrade" "$out/halo-after-upgrade"
+compare entry "$out/halo-after-upgrade" "$out/halo-entry"
+TIMEFORMAT=%R
+for sample in 1 2; do
+  for side in main entry; do
+    dir=build/main-src; [ "$side" = entry ] && dir=.
+    seconds=$( { time (cd "$dir" && "$wfc" --graph lib/halo/modules.wfg --check-module pkg::vm > "$out/check-$side-$sample.log" 2>&1); } 2>&1 )
+    echo "check-module pkg::vm $side sample $sample: $seconds s" | tee -a "$out/check-times.txt"
+  done
+done
+```
+
+One sizing pair and three warm pairs precede each selected six-pair batch;
+they are not pooled into the selected medians. The entry batch starts at
+`2026-10-07T00:09:41Z`. Process wall times include startup, Lua compilation,
+execution and teardown, with normal GC and unlimited budget. Launch order
+alternates before/after and after/before. Binary-trees uses depth 14; the
+other kernel counts are unchanged. In `entry-6.json`, ratio is candidate
+median / main median; each relative range is `(maximum - minimum) / median`.
+
+| Kernel | Main median s | Entry median s | Entry/main ratio | Main relative range | Entry relative range |
+|---|---:|---:|---:|---:|---:|
+| fib | 0.102447 | 0.100728 | 0.983 | 1.647% | 1.995% |
+| loop | 0.436116 | 0.435895 | 0.999 | 2.010% | 0.768% |
+| integer-table | 0.591408 | 0.593963 | 1.004 | 1.458% | 1.642% |
+| string-key | 0.033935 | 0.033974 | 1.001 | 3.394% | 2.787% |
+| concat | 0.101048 | 0.100705 | 0.997 | 0.698% | 0.952% |
+| sort | 0.726625 | 0.734516 | 1.011 | 0.764% | 0.978% |
+| binary-trees | 2.086497 | 2.108678 | 1.011 | 1.482% | 1.549% |
+
+**The retention criterion fails.** Fib improves only 1.678% (about 1.7%),
+below the required 10%. The earlier M1 Pro result (-18.99% time) was not
+reproduced on this host and compiler; this comparison does not establish
+why. The other-kernel noise gate also fails: sort's median loss is 1.086%,
+exceeding the larger of its two relative ranges, 0.978%. Integer-table's
+0.432%, string-key's 0.114% and binary-trees' 1.063% losses are below their
+respective larger ranges; loop and concat improve. This applies the recorded
+noise definition using unrounded JSON values. It corrects the reversion
+commit message's claim that all other kernels stayed within noise.
+
+The interleaved module-check samples in `check-times.txt` are main
+7.158 / 7.163 s and entry 7.252 / 7.143 s. Their medians are 7.1605 and
+7.1975 s, respectively: 1.0052×, within the 1.25× limit. The two samples
+per side suffice for this threshold. All selected benchmark and independent
+PUC reference exits are zero, checksums agree, suspensions are zero and
+paired GC counts agree. The full oracle and removed-root gate passes remain
+the earlier results at `3c3926fc2`
+([correctness gates](#repeat-correctness-gates-on-halo-wf)); this benchmark
+run does not rerun those gates or validate the subsequent reversion.
+
+Under the pre-recorded rule to revert on any failed criterion, commit
+[`46cad3c17`](https://github.com/Ming-Research/Halo-wf/commit/46cad3c17e4e96e174eaa37582cb7d58d82bb872)
+removed `enter_fixed_lua` and restored ordinary CALL's direct `prepare` path
+in `calls.wf` and `handlers.wf`, retaining this branch's later operand-error
+description changes. The fixed-entry change is reverted; its measurements
+remain as evidence.
+
+
+## Whitefoot wf-e1708490c384 upgrade comparison
+
+The same [14900K run](https://github.com/Ming-Research/Halo-wf/actions/runs/37547846309)
+also records the compiler-upgrade comparison required by
+[downstream.md, upgrade step 5](../../../whitefoot-kit/downstream.md#upgrading-whitefoot).
+Both sides use main source `526f67bef` and full LTO. The before executable,
+`halo-before-upgrade`, was built by
+[run 37543253469](https://github.com/Ming-Research/Halo-wf/actions/runs/37543253469)
+with `wf-648338c31240`, clang 18.1.3 and LLD 18.1.3, then downloaded for
+this run. Its SHA-256 is
+`b1558f4c72ce5e53d448a6af17ddd0cdd2c6851a74e459bb90d80328ee9b0c7e`;
+the old compiler's is
+`07b0969d5b1b6d761321f04153c6990e307c9cd30e2b14f1f2405f12891e4171`.
+The after executable is `halo-after-upgrade`, built with
+`wf-e1708490c384`, clang/LLD 22.1.8 as identified above. Both build steps use
+`--graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto`.
+
+`upgrade-6.json` (batch start `2026-10-07T00:08:13Z`) supplies these selected
+six-pair results after one sizing pair and three warm pairs, with the same
+host, commands, kernel sizes, normal GC and unlimited budget described above.
+Ratio is after median / before median; ranges use each side's own median.
+
+| Kernel | Before median s | After median s | After/before ratio | Before relative range | After relative range |
+|---|---:|---:|---:|---:|---:|
+| loop | 0.499451 | 0.436068 | 0.873 | 0.517% | 0.737% |
+| fib | 0.106292 | 0.102975 | 0.969 | 3.306% | 2.404% |
+| sort | 0.747802 | 0.725945 | 0.971 | 0.569% | 0.412% |
+| binary-trees | 2.140436 | 2.079276 | 0.971 | 1.400% | 0.961% |
+| integer-table | 0.603874 | 0.595150 | 0.986 | 2.299% | 2.059% |
+| concat | 0.101707 | 0.100784 | 0.991 | 1.154% | 1.013% |
+| string-key | 0.033770 | 0.033947 | 1.005 | 3.953% | 1.373% |
+
+All selected benchmark and independent PUC reference exits are zero,
+checksums agree, suspensions are zero and paired GC counts agree. There is
+no twin-of-base noise control, and both Whitefoot and clang/LLD changed.
+These observations report only the upgrade's combined effect on these
+kernels on this host; they do not isolate Whitefoot's contribution or
+establish a causal explanation for individual changes.
+
+## Operand descriptions' cost
+
+### Criterion recorded before measurement
+
+Question: do the runtime type errors' operand descriptions (design node
+`design/halo/operand-names.md`) slow ordinary execution? Their handlers pass
+the faulting operand's register to the slow executor, and the compiler keeps
+local-variable ranges and upvalue names; the description itself is computed
+only when an error is raised, which no kernel does.
+
+Comparison: on the 14900K, Halo-wf main `526f67bef` and the branch head that
+adds the descriptions, both built with full LTO by the pinned release
+`wf-e1708490c384` and clang 22, run as interleaved pairs over all seven
+kernels (binary-trees depth 14), one sizing pair, three warm pairs, then six
+selected pairs; a copy of main's binary run against main the same way is the
+twin that measures noise. Then two interleaved `--check-module pkg::vm`
+samples per side. Workflow: `.github/workflows/bench-14900k.yml` at the
+measured head.
+
+Rejected if any kernel's six-pair median is slower than main's by more than
+the larger of the two variants' relative min–max ranges in those six pairs
+and more than the twin shows for that kernel, or if the median module-check
+time exceeds 1.25 times main's. A rejection is investigated before the
+change is kept.
+
+### First run stopped by the same-work guard
+
+[Run 37553543866](https://github.com/Ming-Research/Halo-wf/actions/runs/37553543866)
+at `c4ab50d03` completed the twin's 1, 3 and 6 pairs, then stopped in the
+first operand-description pair: `run.py` refuses a pair whose collection
+counts differ, and binary-trees collected 176 times on main and 178 on the
+branch. The other six kernels' counts agreed. The branch also adds the
+`_VERSION` global, a one-time allocation at engine creation, and the
+compiler's local-variable records live outside the Lua heap, so the
+hypothesis is that the difference is a shift in the collector's timing, not
+added allocation per operation.
+
+Second run, recorded before it ran: the timing criterion above is evaluated
+on the six kernels whose counts agree; and each binary runs binary-trees once
+at depths 12, 13, 14, 15 and 16 (`local N` replaced), recording its
+collection count. The hypothesis is rejected if the branch's extra
+collections grow with depth (roughly with the work) rather than staying
+within a few collections at every depth; a rejection is investigated before
+the change is kept.
+
+### Second run and the third run's hypothesis
+
+[Run 37554171249](https://github.com/Ming-Research/Halo-wf/actions/runs/37554171249)
+at `987cb9435`, six selected pairs (branch median / main median; relative
+ranges main, branch):
+
+| Kernel | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|
+| fib | 1.018 | 2.25% | 1.91% | 0.994 |
+| loop | 1.002 | 0.27% | 0.61% | 1.000 |
+| integer-table | 1.004 | 1.40% | 2.17% | 0.996 |
+| string-key | 0.990 | 4.15% | 0.89% | 1.000 |
+| concat | 0.999 | 1.11% | 1.37% | 1.001 |
+| sort | 1.022 | 1.12% | 0.34% | 1.002 |
+
+Sort is 2.2% slower, beyond both its 1.12% range and the twin's 0.2%, so the
+criterion rejects the change as measured; fib's 1.8% is inside its range.
+`--check-module pkg::vm` took 7.407 and 7.402 s against main's 7.198 and
+7.174 s (1.03 times). Binary-trees' collection counts, main then branch:
+depth 12, 144 and 142; 13, 152 and 154; 14, 176 and 178; 15, 186 and 186;
+16, 214 and 212. The difference stays within two collections and does not
+grow with the work, so the timing-shift hypothesis stands.
+
+Third run, recorded before it ran: the change inserted its three debug-data
+fields into the `Vm` record after `source`, ahead of fields the dispatch and
+the library touch on every call (`top`, `budget`, `saved_pc`,
+`callback_plan` and the rest after `source`), moving each by three box
+widths. Hypothesis:
+that shift, not added work, slows sort. The third run repeats the second
+after moving the three fields to the end of `Vm`. The hypothesis is rejected
+if sort stays slower than main beyond the same bounds; the next suspect is
+then `sort_compare`'s larger slow branch.
+
+### Third run and the phase localization
+
+[Run 37555046795](https://github.com/Ming-Research/Halo-wf/actions/runs/37555046795)
+at `f2bf5b6e4`, with the three fields at the end of `Vm`, six selected pairs:
+
+| Kernel | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|
+| fib | 1.017 | 8.12% | 2.00% | 0.998 |
+| loop | 0.999 | 0.53% | 0.43% | 1.001 |
+| integer-table | 0.992 | 2.00% | 0.90% | 0.998 |
+| string-key | 0.991 | 2.04% | 5.60% | 1.000 |
+| concat | 1.002 | 0.98% | 1.26% | 0.992 |
+| sort | 1.016 | 0.82% | 0.46% | 0.999 |
+
+Sort is still 1.6% slower, beyond its 0.82% range and the twin's, so the
+field-shift hypothesis is rejected. Module check 7.329 and 7.362 s against
+7.130 and 7.134 s (1.03 times); binary-trees' collection counts repeat the
+second run's.
+
+Fourth run, recorded before it ran: sort.lua has three phases, building the
+table (`*`, `%`, table writes), `table.sort` (the library's `sort_compare`,
+whose slow branch grew) and the check loop (a native `assert` call per
+element, through the call path and the builtin dispatcher, which both
+changed). Each binary runs three cumulative prefixes of the kernel (build;
+build and sort; the whole kernel) in eight interleaved launches each, and the
+phase cost is the difference of medians. The phase whose cost rises by most
+of sort's 1.6% (about 12 ms) is the one to repair; if none does, the
+difference is not localized by phase and the next step is a code-layout
+comparison.
+
+### Phase result and the `_VERSION` hypothesis
+
+[Run 37555535049](https://github.com/Ming-Research/Halo-wf/actions/runs/37555535049),
+eight interleaved launches of each prefix, medians main then branch: build
+0.0376 and 0.0383 s; build and sort 0.6498 and 0.6886 s (+6%); the whole
+kernel 0.7298 and 0.7438 s (+1.9%). The prefixes do not add up: the check
+loop alone would be 25 ms faster on the branch, which no change to its path
+explains. A difference that depends on where the run stops points to the
+collector's timing, which binary-trees' shifted counts already showed, rather
+than to a per-operation cost.
+
+Fifth run, recorded before it ran. Hypothesis: the `_VERSION` global, a
+one-time allocation at engine creation that PUC also makes, shifts when
+collections run and how much they find live; the operand descriptions add no
+cost. Three binaries: main, main with only the `_VERSION` change (the
+branch's diff of `lib/halo/vm/library.wf` applied to main), and the branch.
+Each runs the three prefixes in eight rotating launches, recording time and
+collection count; then `run.py` compares the branch against main with
+`_VERSION` over the six kernels, one, three and six pairs, under the
+criterion above; then binary-trees' collection counts at depths 12 to 16 for
+those two. The hypothesis is rejected if main with `_VERSION` stays as fast
+as main where the branch is slower, or if the branch is slower than main
+with `_VERSION` beyond the criterion's bounds; the noise twins of the second
+and third runs (all kernels within 0.8%) stand for this run's.
+
+### Fifth run: `_VERSION` explains the collection counts, not all of sort
+
+[Run 37556088935](https://github.com/Ming-Research/Halo-wf/actions/runs/37556088935).
+Binary-trees' collection counts of main with only the `_VERSION` change equal
+the branch's at every depth (142, 154, 178, 186 and 212 against main's 144,
+152, 176, 186 and 214), so the one-time allocation alone shifts them. Sort's
+prefixes, medians of main, main with `_VERSION` and the branch, all with three
+collections: build 0.0382, 0.0379 and 0.0381 s; build and sort 0.6489,
+0.6574 and 0.6866 s; the whole kernel 0.7282, 0.7346 and 0.7407 s. Against
+main with `_VERSION`, six pairs: fib 1.016 (ranges 1.64% and 1.18%), loop
+1.002, integer-table 1.001, string-key 1.000, concat 1.001 and sort 1.011
+(ranges 0.46% and 0.53%). `_VERSION` accounts for the collection shift and
+part of sort's difference; the branch's own code still makes sort 1.1%
+slower, beyond its ranges, and the sort phase is where it differs most.
+
+Sixth run, recorded before it ran: the branch grew `sort_compare`'s slow
+branch, the code that remains of the change on the sort phase's path. The
+sixth run repeats the fifth after moving that branch's body into its own
+function, `sort_compare_slow`, so `sort_compare` has main's shape. The
+change is kept if sort against main with `_VERSION` is then within the
+criterion's bounds; if not, the remaining difference is reported to the
+owner with these measurements rather than chased further in this change.
+
+### Sixth run and the verdict
+
+[Run 37556822953](https://github.com/Ming-Research/Halo-wf/actions/runs/37556822953)
+at `e2bf5852a`, after the `sort_compare_slow` split. Against main with
+`_VERSION`, six pairs: fib 1.020 (ranges 11.75% and 2.01%), loop 0.998,
+integer-table 0.996, string-key 1.002, concat 0.997 and sort 0.755 (ranges
+0.53% and 0.68%). Sort's prefixes, medians of main, main with `_VERSION` and
+the branch, three collections each: build 0.0381, 0.0378 and 0.0387 s; build
+and sort 0.6515, 0.6592 and 0.5057 s; the whole kernel 0.7285, 0.7356 and
+0.5542 s. Binary-trees' collection counts repeat the fifth run's. Outputs and
+checksums agreed throughout.
+
+**The runtime part of the criterion passes.** No kernel is slower than its
+baseline beyond the bounds, and the collection shift and part of the earlier
+sort difference belong to the `_VERSION` global, which PUC also allocates.
+The module check was last measured at `f2bf5b6e4` (1.03 times), before the
+split; the final head's is measured in the seventh run.
+
+Sort ran 24.5% faster than main with `_VERSION` in this run. The fifth and
+sixth runs compare against the same baseline source and differ on the branch
+only by the split, which moved `sort_compare`'s call to the slow executor
+into a function of its own (sort 1.011 then 0.755), but they were not
+interleaved with each other and had no twin, so they do not attribute the
+speedup to the split.
+
+Seventh run, recorded before it ran: the source before the split
+(`f70f0a8af`) and after it (the head; the two differ in
+`lib/halo/vm/library-sort.wf` only), built alike, run as interleaved
+`run.py` pairs on the sort kernel (one, three and six pairs), with a copy of
+the pre-split binary as the twin; then two interleaved `--check-module
+pkg::vm` samples each for main and the head. The split's speedup is
+attributed if the post-split median is faster than the pre-split one by more
+than both ranges and more than the twin's difference; the module-check part
+of the criterion passes at the head if its median is at most 1.25 times
+main's.
+
+### Seventh run: the split's share and the head's check time
+
+[Run 37557695747](https://github.com/Ming-Research/Halo-wf/actions/runs/37557695747)
+at `22aadda57`. The pre-split (`f70f0a8af`) and post-split (head) sources
+differ in `lib/halo/vm/library-sort.wf` only, as the run's own `git diff
+--stat` showed. Sort kernel, six interleaved pairs: pre-split median
+0.7406 s (range 0.39%), post-split 0.5530 s (range 0.80%), ratio 0.747; the
+twin, the pre-split binary against its copy, 1.001 (ranges 0.60% and
+0.71%). One and three pairs gave 0.748 and 0.748. The split's 25% speedup is
+attributed: it exceeds both ranges and the twin by far.
+`--check-module pkg::vm`: main 7.155 and 7.121 s, head 7.476 and 7.460 s,
+1.046 times; within 1.25. **The criterion passes at the head and the change
+is kept.**
