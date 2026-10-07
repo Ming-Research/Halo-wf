@@ -2498,3 +2498,34 @@ loop kernel's median falls at least 5%, by more than both ranges and the
 twin's difference; no kernel is slower beyond its larger range and the
 twin's; `--check-module pkg::vm` takes at most 1.25 times as long; and `make
 check` passes. Otherwise the change is reverted with its measurements kept.
+
+### Result
+
+[Run 37569342705](https://github.com/Ming-Research/Halo-wf/actions/runs/37569342705):
+the branch before the change (`bb4ff27cd`) against after it (`1abb228cc`,
+whose engine differs only in `dispatch.wf`, `handlers.wf` and
+`continuations.wf`), both built with `wf-0b7f5c5b9854`; six interleaved
+full-LTO pairs, medians in seconds. `make check` passed on the changed engine
+([run 37568872363](https://github.com/Ming-Research/Halo-wf/actions/runs/37568872363)).
+
+| Kernel | Before | After | Ratio | Before range | After range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1048 | 0.1042 | 0.994 | 1.12% | 1.37% | 1.005 |
+| loop | 0.4348 | 0.4263 | 0.981 | 0.69% | 0.40% | 1.000 |
+| integer-table | 0.5921 | 0.5868 | 0.991 | 1.84% | 2.41% | 1.004 |
+| string-key | 0.0335 | 0.0329 | 0.982 | 4.02% | 2.13% | 0.991 |
+| concat | 0.0728 | 0.0764 | 1.049 | 1.93% | 3.15% | 0.999 |
+| sort | 0.5520 | 0.5377 | 0.974 | 0.36% | 0.68% | 1.001 |
+| binary-trees | 2.1265 | 2.0928 | 0.984 | 1.80% | 1.92% | 0.995 |
+
+`--check-module pkg::vm`: before 7.548 and 7.529 s, after 8.384 and 8.417 s
+(1.114 times).
+
+**The criterion fails and the change is reverted.** Loop improves only 1.9%
+against the required 5%, and concat is 4.9% slower, beyond its 3.15% range
+and the twin. Sort improves 2.6% beyond its bounds; the other kernels move
+within theirs. The checker also needed the 31 arms that used to reach the
+shared epilogue to check the stack window themselves, because their helpers'
+postconditions could not carry it, so those arms gained a comparison as
+well as the constant step. `dispatch.wf`, `handlers.wf` and
+`continuations.wf` return to their bytes at `bb4ff27cd`.
