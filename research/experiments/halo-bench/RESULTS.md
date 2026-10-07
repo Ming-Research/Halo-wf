@@ -2346,3 +2346,31 @@ Halo (cycles, default frequency, one launch), reported by symbol, the top 30.
 The first candidate is chosen from these: the kernel with the largest ratio
 whose profile shows one attributable cost, with a criterion recorded before
 its change.
+
+### Profile result
+
+[Run 37560653349](https://github.com/Ming-Research/Halo-wf/actions/runs/37560653349).
+The runner is a Hyper-V guest without hardware performance counters: every
+`perf stat` event reported `<not supported>` for both engines, so the
+separation of work from speed planned above is not available here. `perf
+record` sampled Halo (one launch per kernel); the leading symbols, as shares
+of samples, with `vm.run` arms named by their arm number in the compiled
+dispatch function:
+
+- fib: arm 63 18.8%, `enter_lua` 16.6%, `push_frame` 14.7%, arm 54 12.6%,
+  arm 5 11.9%, `finish` 7.4%, arm 65 6.9%, `prepare` 3.8%; the call path's
+  four functions together take 42%.
+- concat: `heap.intern` 21.7%, arm 11 20.2%, `vm.slow` 16.3%,
+  `concat_strings` 7.8%, `concat_step` 4.4%, `malloc` 4.2%.
+- binary-trees: `heap.node_find` 13.8%, `collect_if_due` 5.5%, libc
+  `_int_malloc`, `malloc` and `calloc` 13.4% together.
+- string-key: arm 11 55.6%, `heap.node_find` 19.0%.
+- integer-table: arm 13 24.0%, arm 11 16.4%, `heap.rehash` 9.3%, arm 66
+  6.9%, `vm.slow` 6.8%.
+- sort: `sort_run` 55.0%, `heap.table_set` 13.8%, `raw_assign` 7.3%,
+  `sort_compare` 4.9%.
+- loop: arm 66 63.4%, arm 20 36.6%.
+
+One launch per kernel gives shares, not costs, and the arms are not yet
+mapped to instructions; the candidate is chosen after reading these paths
+against PUC's.
