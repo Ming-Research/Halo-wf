@@ -154,7 +154,30 @@ fn is_readonly(vm: &Vm, v: Value) -> r: Bool reads(vm) {
   return False();
 }
 
+fn raw_table_key_error(vm: &Vm) -> r: Bool reads(vm) {
+  doc "Recognizes primitive nil and NaN key errors that native table stores must keep unlocated.";
+  let bytes = box_slots_new::<u8>(capacity: 18_u64);
+  bytes_string(vm: vm, bytes: &bytes, value: vm^.error);
+  if bytes.inner.len != 18_u64 {
+    return False();
+  }
+  let nil_error = True();
+  let nan_error = True();
+  for (i in 0_u64..18_u64) {
+    if i < bytes.inner.len {
+      if bytes.inner[i] != slow_text_1[i] {
+        set nil_error = False();
+      }
+      if bytes.inner[i] != slow_text_2[i] {
+        set nan_error = False();
+      }
+    }
+  }
+  return bor(nil_error, nan_error);
+}
+
 fn raw_assign(vm: &Vm, t: Value, key: Value, v: Value) -> r: Bool writes(vm) {
+  doc "Keeps primitive key errors bare for native callers; Lua stores reject invalid keys in the slow executor with their instruction's callback plan.";
   if is_readonly(vm: vm, v: t) {
     return raise_text(vm: vm, text: &slow_text_0[0_u64..34_u64]);
   }
@@ -403,13 +426,19 @@ fn slow<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, 
         let tm = metamethod(vm: vm, v: t, name: &slow_text_11[0_u64..10_u64]);
         match tab_of(v: t) {
           Handle(..) => {
-            if is_nil(v: c) {
-              return raise_text(vm: vm, text: &slow_text_12[0_u64..18_u64]);
+            let nil_key = is_nil(v: c);
+            if nil_key {
+              let rejected = raise_text(vm: vm, text: &slow_text_12[0_u64..18_u64]);
+              locate_type_error(vm: vm);
+              return rejected;
             }
             match num_of(v: c) {
               Is(x: bound_x_11) => {
-                if fne(bound_x_11, bound_x_11) {
-                  return raise_text(vm: vm, text: &slow_text_13[0_u64..18_u64]);
+                let nan_key = fne(bound_x_11, bound_x_11);
+                if nan_key {
+                  let rejected = raise_text(vm: vm, text: &slow_text_13[0_u64..18_u64]);
+                  locate_type_error(vm: vm);
+                  return rejected;
                 }
               }
               Not() => {

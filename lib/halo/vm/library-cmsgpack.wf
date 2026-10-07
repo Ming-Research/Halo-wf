@@ -511,31 +511,6 @@ fn mp_request_error(vm: &Vm, offset: i64, length: u64, invalid: Bool) -> r: Host
   return lib_failure(vm: vm, text: &bytes_v108.inner[0_u64..n_v117]);
 }
 
-const mp_key_nil: Array<u8, 18> = "table index is nil";
-
-const mp_key_nan: Array<u8, 18> = "table index is NaN";
-
-fn cmsgpack_raw_error(vm: &Vm) -> r: Bool reads(vm) {
-  let bytes = box_slots_new::<u8>(capacity: 18_u64);
-  bytes_string(vm: vm, bytes: &bytes, value: vm^.error);
-  if bytes.inner.len != 18_u64 {
-    return False();
-  }
-  let nil_error = True();
-  let nan_error = True();
-  for (i in 0_u64..18_u64) {
-    if i < bytes.inner.len {
-      if bytes.inner[i] != mp_key_nil[i] {
-        set nil_error = False();
-      }
-      if bytes.inner[i] != mp_key_nan[i] {
-        set nan_error = False();
-      }
-    }
-  }
-  return bor(nil_error, nan_error);
-}
-
 const mp_stack_values: Array<u8, 88> = "stack overflow (too many return values at once; use unpack_one or unpack_limit instead.)";
 
 const mp_stack_array: Array<u8, 51> = "stack overflow (in function mp_decode_to_lua_array)";

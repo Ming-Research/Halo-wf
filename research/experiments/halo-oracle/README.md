@@ -7,7 +7,7 @@ Halo's `make check-core` compares the corpus through the `oracle` target;
 recording reference replies remains the job of
 [oracle-reference.yml](../../../.github/workflows/oracle-reference.yml).
 
-There are 102 scripts: 62 `lua-core`, 23 `redis-api`, 6 `apps`, and 11 `libs`.
+There are 103 scripts: 63 `lua-core`, 23 `redis-api`, 6 `apps`, and 11 `libs`.
 The scripts, replies and runner belong here until the oracle is replaced or
 Halo/firn scripting is retired. Each case is consumed by `run.sh`; the table
 below is the index of the observations it protects.
@@ -209,6 +209,7 @@ not automatically used to overwrite this baseline.
 | lua-core | [error-names-upvalue](scripts/lua-core/error-names-upvalue.lua) | Upvalue names and ordering survive two closure levels and every operand error family. |
 | lua-core | [error-names-userdata](scripts/lua-core/error-names-userdata.lua) | cjson.null uses the same operand descriptions with userdata as its Lua type. |
 | lua-core | [error-rethrow-local](scripts/lua-core/error-rethrow-local.lua) | An error caught by pcall and raised through a local error alias is located at the rethrow. |
+| lua-core | [error-table-index](scripts/lua-core/error-table-index.lua) | Nil and NaN store keys carry Lua instruction locations; rawset keeps bare errors. |
 | lua-core | [error-values](scripts/lua-core/error-values.lua) | pcall preserves string and table error objects without stringifying tables. |
 | lua-core | [float-print](scripts/lua-core/float-print.lua) | tostring uses Lua number formatting and exponent notation. |
 | lua-core | [format-14g](scripts/lua-core/format-14g.lua) | Explicit %.14g rounding at fourteen significant digits. |

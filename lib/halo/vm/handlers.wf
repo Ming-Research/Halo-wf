@@ -3960,8 +3960,22 @@ fn fast_instruction_get_table_k(code: &Box<Slots<Cell>>, consts: &Box<Slots<Valu
   return Err<FastCursor, Step>(error: failure);
 }
 
-fn fast_table_can_insert(vm: &Vm, t: Value) -> r: Bool reads(vm) {
-  doc "Allows a missing-key raw store only into a live writable table without a metatable.";
+fn fast_table_can_insert(vm: &Vm, t: Value, key: Value) -> r: Bool reads(vm) {
+  doc "Allows a valid missing-key raw store only into a live writable table without a metatable; invalid keys need the full handler's fault location.";
+  let nil_key = is_nil(v: key);
+  if nil_key {
+    return False();
+  }
+  match num_of(v: key) {
+    Is(x: number) => {
+      let nan_key = fne(number, number);
+      if nan_key {
+        return False();
+      }
+    }
+    Not() => {
+    }
+  }
   match tab_of(v: t) {
     Handle(h: handle) => {
       let i = cvt::<u32, u64>(handle);
@@ -4002,7 +4016,7 @@ fn fast_instruction_set_table_rr(code: &Box<Slots<Cell>>, consts: &Box<Slots<Val
   if bnot(atom37) {
     set ok = raw_assign(vm: vm, t: t, key: key, v: value);
   } else {
-    let insertable = fast_table_can_insert(vm: vm, t: t);
+    let insertable = fast_table_can_insert(vm: vm, t: t, key: key);
     if insertable {
       set ok = raw_assign(vm: vm, t: t, key: key, v: value);
     } else {
@@ -4057,7 +4071,7 @@ fn fast_instruction_set_table_kr(code: &Box<Slots<Cell>>, consts: &Box<Slots<Val
   if bnot(atom43) {
     set ok = raw_assign(vm: vm, t: t, key: key, v: value);
   } else {
-    let insertable = fast_table_can_insert(vm: vm, t: t);
+    let insertable = fast_table_can_insert(vm: vm, t: t, key: key);
     if insertable {
       set ok = raw_assign(vm: vm, t: t, key: key, v: value);
     } else {
