@@ -389,7 +389,8 @@ H3 is a Whitefoot checker gap kept in Whitefoot's `docs/todo.md`.
   firn's own reference (it already prints a negative NaN as `-nan`, as
   glibc does). The number library formats NaN with its sign accordingly.
   The oracle and codec corpora now run against that platform; the number
-  parser's comparison is still macOS-only (docs/todo.md).
+  parser also matched it in the
+  [Linux number comparison](../../experiments/halo-number/RESULTS.md#linux-reference-comparison-2026-10-06).
 
 - H1 (revised during implementation). The first heap, open addressing as
   section 2 says, gave a different `#` from Redis's Lua on 68 of 2,336

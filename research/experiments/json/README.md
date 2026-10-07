@@ -14,7 +14,8 @@ Reused binaries must have been built with the corresponding mode.
 The package graph is [lib/json/modules.wfg](../../../lib/json/modules.wfg).
 Its four modules depend only on each other. The native adapter in `check/`
 imports the package plus standard process/IO modules; the Python runner is an
-independent oracle, explicitly invoked here rather than wired into a gate.
+independent oracle. Halo's `make check-extended` runs this comparison through
+the `json` target, with `JSON_SAMPLES=20` by default.
 These fixtures stay here while the package API is experimental; promote useful
 cases into maintained library tests when the package acquires that test owner.
 

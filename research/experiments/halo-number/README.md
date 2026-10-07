@@ -11,44 +11,55 @@ have unvalidated differences from full LTO and are only sizing observations.
 Use the default or explicit `--full-lto` for runtime performance measurements.
 Reused binaries must have been built with the corresponding mode.
 
-This explicitly invoked experiment checks `lib/halo/number` against the local
-Redis 7.0.15 bundled PUC Lua 5.1.5. It is not wired into a compiler gate.
+This comparison checks `lib/halo/number` against Redis 7.0.15's bundled
+PUC Lua 5.1.5 with Redis's patches, built on x86-64 Linux with glibc in the
+C locale. It runs in Halo's gate through `make check-reference`.
 `compare.py` builds the standalone Whitefoot adapter in
 `lib/halo/number/tests/modules.wfg`, runs the oracles, checks each result and
-process exit code, and optionally writes [RESULTS.md](RESULTS.md).
+process exit code, and optionally writes a Markdown report with `--results`.
+[RESULTS.md](RESULTS.md) retains dated comparisons.
 
-From the repository root, using an existing v0.90 compiler and the reference
-Lua executable with its adjacent headers and `liblua.a`:
+From the repository root on x86-64 Linux, with both submodules checked out
+and git, curl, Python 3 and a C compiler available:
 
 ```sh
-whitefootc --cache "${WHITEFOOT_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/whitefoot}/halo-number" \
-  --graph lib/halo/modules.wfg --check-modules
-python3 research/experiments/halo-number/compare.py \
-  --compiler /path/to/whitefootc --incremental --lua /path/to/lua/src/lua --samples 100
-perl .github/run-check.pl halo-number-oracle \
-  python3 research/experiments/halo-number/compare.py \
-  --compiler /path/to/whitefootc --full-lto --lua /path/to/lua/src/lua \
-  --samples 10000 --musl-source /path/to/musl/src/math \
-  --results research/experiments/halo-number/RESULTS.md
+make toolchain
+make number
 ```
 
-On macOS, the current formatter follows Linux/glibc's signed-NaN spelling:
-two fixed format cases produce `-nan` where the local Lua oracle produces `nan`.
-The `--samples 1` cached and uncached full-LTO runs both exit 1 with identical
-mismatch groups and examples. This is the existing platform difference
-recorded under [Later change](RESULTS.md#later-change); it is not normalized
-away by the runner. Linux reference qualification remains separate.
+`make toolchain` obtains the pinned Whitefoot compiler and installs its LLVM
+toolchain. `make number` uses that compiler with `--incremental` and runs
+`make reference-lua`, whose
+[fetch-redis.sh](../halo-oracle/fetch-redis.sh) verifies the Redis source
+archive and builds Lua with Redis's dependency Makefile. The executable,
+headers and `liblua.a` are under `build/redis/redis-7.0.15/deps/lua/src`.
+The default `NUMBER_SAMPLES=100` and `NUMBER_EXAMPLES=8` control random
+sampling and the maximum mismatch examples printed per group.
+`make check-reference` runs this comparison and the MessagePack comparison;
+CI runs it alongside `check-core` and `check-extended` as the three groups
+of `make check`.
 
-The small run sizes the batch first. The program builds and temporary files
-stay beneath this experiment directory and are deleted after each run. Python
-3 and a C11 compiler are required; neither the Whitefoot compiler nor Lua is
-rebuilt. The source/test digest in the results covers every number `.wf` and
+For a direct invocation with an existing compiler and reference build:
+
+```sh
+python3 research/experiments/halo-number/compare.py \
+  --compiler /path/to/whitefootc --incremental \
+  --lua build/redis/redis-7.0.15/deps/lua/src/lua --samples 100
+```
+
+The runner itself requires Python 3 and a C11 compiler and rebuilds neither
+Whitefoot nor Lua. Its adapter, C oracle host and temporary files stay
+beneath this experiment directory and are deleted after each run; the
+Makefile's reference build remains under `build/`. The source/test digest
+in a generated report covers every number `.wf` and
 `.wfm` file and the standalone test graph; executable and archive digests
 identify the tested tools. Durations size correctness runs and do not measure
 VM performance. Rerun when number code or the corpus changes; retain results
-as dated evidence when the implementation is superseded. The adapter and
-oracle transport files serve this comparison and can be removed when this
-library no longer needs PUC parity experiments.
+as dated evidence when the implementation is superseded. `--results` replaces
+its destination, so use a separate output file when retaining earlier results.
+`--musl-source /path/to/musl/src/math` enables the independent port comparison
+described below. Other libc or architecture results are platform comparisons,
+not qualification against Halo's reference.
 
 ## Oracle construction
 
@@ -69,10 +80,12 @@ copy doubles to/from `uint64_t` using `memcpy`, and runs the same script. All
 number operations still execute inside the reference Lua library. The script
 also runs in the supplied reference executable over the entire corpus. The
 comparison requires agreement between the archive host and executable on
-every format byte, parse verdict and finite/infinite result bit, and every
-NaN classification. Exact NaN result bits come from the archive host. This
-cross-check does not independently establish signalling-NaN payload behavior
-in the executable; its payload-preserving transport is unavailable.
+format bytes, parse verdicts, finite/infinite result bits and NaN
+classifications only where the executable can reconstruct the input exactly.
+For signaling or nondefault-payload NaN inputs, the executable cross-check
+does not establish agreement: its fallback substitutes a default quiet NaN
+of the requested sign. The archive host remains the exact-bit oracle for
+every case, including those inputs and all NaN results.
 
 The standalone Whitefoot adapter accepts a 17-byte header: one opcode and
 two little-endian `u64` words. Opcodes 1, 3, 4, 5 and 6 select format, pow,
@@ -85,7 +98,9 @@ nonzero. The formatter receives its minimum permitted 32-byte buffer.
 
 ## Corpus and interpretation
 
-The fixed seed is in `compare.py`. At the default scale the corpus includes:
+The fixed seed is in `compare.py`. The direct runner defaults to
+`--samples 10000`; `make number` uses 100. At the direct runner's default
+scale the corpus includes:
 
 - 10,000 random double bit patterns, plus signed zero, signed infinities,
   quiet/signalling NaNs, subnormal boundaries, integers, powers of two and
@@ -100,9 +115,8 @@ The fixed seed is in `compare.py`. At the default scale the corpus includes:
   cross product;
 - supplementary exact-bit comparisons for fmod, floor and ceil.
 
-Format and parse mismatches make the experiment fail, as do supplementary
-wrapper mismatches. Power differences are reported without changing the
-oracle or expected result. ULP distance is the difference of monotonically
+Every group is mandatory: any mismatch, including powers, fails the
+comparison with exit status 1. ULP distance is the difference of monotonically
 ordered IEEE encodings for finite results; negative and positive zero are
 adjacent under this metric. NaN differences and other nonfinite differences
 are counted separately and have no ULP distance. Bit equality is the primary
@@ -115,44 +129,66 @@ power bit and row count, and verify that each alteration is detected.
 The decimal conversion and formatter adapt Firn's
 `apps/firn/scores/{decimal,read,write}.wf`; formatting always rounds the exact
 binary value to 14 significant digits, removing Firn's integer shortcut.
-`fmod`, floor and ceil use the specification's `frem`, `ffloor` and `fceil`.
+For non-NaN operands, `fmod`, floor and ceil use the specification's `frem`,
+`ffloor` and `fceil`; their NaN handling follows the reference as described
+below.
 
 The power algorithm and tables port musl's Arm `pow.c`, `pow_data.c` and
 `exp_data.c` from the local Emscripten SDK musl tree (SDK 3.1.12). The FMA log
 path and compensated exponential path retain the original operation order;
 all arithmetic is explicit Whitefoot `.strict`. The original stated
 worst-case error is 0.54 ULP, not a promise of bit equality with another C
-library. Host-observed NaN propagation (sign, payload and argument priority)
-follows the macOS oracle explicitly. Floating exception flags and non-nearest rounding modes are outside Whitefoot's
+library. NaN propagation (sign, payload and argument priority) follows the
+x86-64 Linux reference explicitly. Floating exception flags and non-nearest
+rounding modes are outside Whitefoot's
 floating-operation interface. The optional `--musl-source` comparison compiles
 the original local C FMA algorithm and tables with contraction disabled. It changes only dependency
 includes and the exported function name, and supplies bit helpers and
 round-to-nearest exception-result adapters. It uses `WANT_SNAN=0`, as the local
 musl header does, and disables rounding-mode branches that have the same
-returned bits in round-to-nearest. The measured port agrees on every non-NaN
-result. NaN propagation differs deliberately to match the macOS C oracle.
+returned bits in round-to-nearest. The [earlier musl comparison](RESULTS.md)
+agreed on every sampled non-NaN result. NaN propagation differs deliberately
+to match the reference C library.
 This separates algorithm differences between musl and the host C library from
 translation defects. The sampled comparison is evidence, not a proof for all
 binary64 argument pairs.
 
-The library targets the macOS C locale of this task's oracle. In particular,
-macOS printf writes both NaN signs as `nan`, while strtod preserves the sign
-and a numeric payload. Its payload grammar uses decimal, leading-zero octal
-or lowercase `0x` hexadecimal; other payload text still gives a NaN with a
-zero payload. C99 hexadecimal fractions are read by strtod before Lua's
-strtoul fallback would be reached. All other trailing nonspace bytes are
-refused. Behavior on another libc or locale has not been established.
+The library implements these glibc behaviors on x86-64, where the macOS
+oracle used for the earlier results differs:
 
-## Finding while adapting Firn
+- `pow` quiets NaN operands and selects the base's NaN when both operands
+  are NaNs. A quiet NaN is absorbed by `pow(x, 0)` or `pow(1, y)`, producing
+  one; a signaling NaN is quieted and returned instead. A negative NaN base
+  with a finite odd integer exponent becomes a positive quiet NaN with the
+  same payload. An invalid power returns `0xfff8000000000000`.
+- `fmod` with two NaN operands quiets both and selects the one with the
+  larger fraction, choosing the positive one when the fractions tie. With
+  one NaN operand it returns that NaN quieted. This rule is based on the
+  fourteen observed pairs recorded in the
+  [Linux comparison](RESULTS.md#linux-reference-comparison-2026-10-06).
+- `floor` and `ceil` return a NaN unchanged, including its sign, payload and
+  signaling bit.
+- `strtod` NaN syntax is case-insensitive `nan`, optionally followed by
+  parentheses containing an empty sequence or ASCII letters, digits and
+  underscores (the n-char sequence). Other parenthesized text is left
+  unread by glibc, so Halo's whole-string conversion refuses it. A numeric
+  payload uses `strtoull` base 0: decimal, leading-zero octal, or `0x`/`0X`
+  hexadecimal, saturating at `2^64 - 1` before masking to the fraction and
+  setting the quiet bit. A valid sequence not wholly read as a number
+  supplies no payload. The input sign is preserved.
+- Hexadecimal subnormal conversion follows glibc's rounding, which drops
+  the bit after the first 53 significant bits. The corpus witnesses are
+  `0x1.00000000000018p-1023` and `0x1.00000000000008p-1023`.
+  Decimal conversion retains its separate rounding path, witnessed by
+  `1.1125369292536010620943507396011101645362026413971951890715156691871755365962210e-308`.
+- Number formatting prints a positive NaN as `nan` and a negative NaN as
+  `-nan`; macOS's `printf` prints both as `nan`.
 
-Firn's existing `score_text` in `apps/firn/scores/write.wf` prepends the sign
-before its NaN branch, so a negative NaN would produce `-nan`. The macOS
-printf oracle here produces `nan` for that bit pattern. Firn's sorted-set
-reader rejects NaN, which limits the immediate impact, but `reply_score` has
-an unrestricted f64 parameter and documents printf formatting. This existing
-writer discrepancy is outside this task's allowed files and was left
-unchanged; reopen if that writer receives NaNs or is reused for arbitrary
-floating values. Halo's formatter handles this platform behavior explicitly.
+C99 hexadecimal fractions are read by `strtod` before Lua's `strtoul`
+fallback would be reached. The first NUL terminates the input; surrounding
+ASCII whitespace and range errors are accepted, while trailing nonspace
+bytes are refused. Other locales, floating exception flags and non-nearest
+rounding modes are outside this comparison's coverage.
 
 ## musl license
 
