@@ -152,7 +152,7 @@ public fn new_table(heap: &Heap, asize: u32, hsize: u32) -> r: Value writes(heap
 
 public fn table_get(heap: &Heap, t: Value, key: Value) -> r: Value reads(heap) doc "Raw lookup; absent keys give Nil.";
 
-public fn table_get_str(heap: &Heap, t: Value, h: u32) -> r: Value reads(heap) doc "Raw lookup for an interned string handle, equivalent to table_get with Str(h); invalid handles use the generic lookup.";
+public fn table_get_str(heap: &Heap, t: Value, h: u32) -> r: Value reads(heap) doc "Raw lookup for an interned string handle, equivalent to table_get with Str(h) for every node vector length: both share the string chain walk, and insertion and lookup mask the cached hash with the node count less one. Empty vectors give Nil; invalid table or string handles use the generic lookup.";
 
 public fn table_set(heap: &Heap, t: Value, key: Value, val: Value) -> r: Result<unit, TableError> writes(heap) doc "Raw PUC Lua 5.1 assignment, including lookup of retained keys with nil values, Brent relocation and rehash; callers enforce read_only. NilKey, NanKey and InvalidNext mean table index is nil, table index is NaN and invalid key to 'next'.";
 

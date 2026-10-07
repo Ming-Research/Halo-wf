@@ -1035,7 +1035,7 @@ fn budget_seven() -> r: ExitStatus pure {
 }
 
 fn fixture_string_table_three_nodes() -> r: Bool pure {
-  doc "An alloc_table payload with three nodes must preserve string lookup equivalence: key a hashes to 128, so table_set would select bucket 2, while masking selects empty bucket 0.";
+  doc "Specialised and generic lookups agree on an alloc_table node vector whose length is not a power of two. Insert a through table_set into three empty nodes and require both lookups to return 42: its hash 128 selects bucket 0 by masking but bucket 2 by modulus, so differing insertion and lookup rules fail.";
   let heap = halo::heap::heap_new(limit: 67108864_u64);
   let key = halo::heap::intern(heap: &heap, bytes: &string_table_key[0_u64..1_u64]);
   let string_handle = no_handle;
@@ -1052,10 +1052,6 @@ fn fixture_string_table_three_nodes() -> r: Bool pure {
   for (index in 0_u64..3_u64) {
     let node_key = Value::Nil();
     let node_value = Value::Nil();
-    if index == 2_u64 {
-      set node_key = key;
-      set node_value = Value::Num(n: 42.0_f64);
-    }
     let node = Node(next: no_handle, key: node_key, val: node_value);
     if nodes.inner.len < nodes.inner.cap {
       place_back(window: &nodes.inner, value: node);
@@ -1064,10 +1060,18 @@ fn fixture_string_table_three_nodes() -> r: Bool pure {
     }
   }
   let read_only = False();
-  let payload = Table(array: move array, nodes: move nodes, node_count: 1_u32, lastfree: 3_u64, meta: no_handle, read_only: read_only, flags: 255_u8);
+  let payload = Table(array: move array, nodes: move nodes, node_count: 0_u32, lastfree: 3_u64, meta: no_handle, read_only: read_only, flags: 255_u8);
   match halo::heap::alloc_table(heap: &heap, payload: move payload) {
     Some(value: table_handle) => {
       let table_value = Value::Tab(h: table_handle);
+      let stored = Value::Num(n: 42.0_f64);
+      match halo::heap::table_set(heap: &heap, t: table_value, key: key, val: stored) {
+        Ok(..) => {
+        }
+        Err(..) => {
+          return False();
+        }
+      }
       let generic = halo::heap::table_get(heap: &heap, t: table_value, key: key);
       let specialized = halo::heap::table_get_str(heap: &heap, t: table_value, h: string_handle);
       match num_of(v: generic) {

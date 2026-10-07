@@ -261,38 +261,35 @@ fn table_handle(heap: &Heap, t: Value) -> r: Option<u64> reads(heap) {
 }
 
 fn main_position(heap: &Heap, key: Value, n: u64) -> r: u64 reads(heap.strings) {
-  doc "Bundled Redis ltable.c hashnum sums the unchanged double words modulo 2^32, with zero normalized. Strings and booleans use hashpow2; numbers and handles use hashmod. A zero-size hash has virtual dummy index zero.";
+  doc "Bundled Redis ltable.c hashnum sums the unchanged double words modulo 2^32, with zero normalized. Strings, booleans and Nil mask the hash with n - 1; numbers and handles use hashmod. Masking equals modulus for the power-of-two lengths created by new_table and rehash; insertion and lookup share this rule for every other length. A zero-size hash has virtual dummy index zero.";
   if n == 0_u64 {
     return 0_u64;
   }
   let hash = key_hash(heap: heap, key: key);
-  let modulus = n;
+  let last = n - 1_u64;
   match key {
     Str(..) => {
+      return iand(hash, last);
     }
     False() => {
+      return iand(hash, last);
     }
     True() => {
+      return iand(hash, last);
     }
     Nil() => {
+      return iand(hash, last);
     }
     Num(..) => {
-      let last = n - 1_u64;
-      set modulus = ior(last, 1_u64);
     }
     Tab(..) => {
-      let last = n - 1_u64;
-      set modulus = ior(last, 1_u64);
     }
     Fun(..) => {
-      let last = n - 1_u64;
-      set modulus = ior(last, 1_u64);
     }
     Builtin(..) => {
-      let last = n - 1_u64;
-      set modulus = ior(last, 1_u64);
     }
   }
+  let modulus = ior(last, 1_u64);
   if modulus > 0_u64 {
     return hash % modulus;
   }
@@ -300,10 +297,37 @@ fn main_position(heap: &Heap, key: Value, n: u64) -> r: u64 reads(heap.strings) 
 }
 
 fn node_find(heap: &Heap, nodes: &Box<Slots<Node>>, key: Value) -> r: Option<u64> reads(heap.strings), reads(nodes) {
+  doc "Find a retained key's node index, including nil-valued keys. Live strings share the cached-hash, handle-only walk with table_get_str; other keys and invalid string handles retain the generic equality walk.";
+  match key {
+    Str(h: handle) => {
+      let si = cvt::<u32, u64>(handle);
+      if si < heap^.strings.inner.len {
+        if heap^.strings.inner[si].live {
+          let hash = heap^.strings.inner[si].payload.hash;
+          return node_find_str(nodes: nodes, h: handle, hash: hash);
+        }
+      }
+    }
+    Nil() => {
+    }
+    False() => {
+    }
+    True() => {
+    }
+    Num(..) => {
+    }
+    Tab(..) => {
+    }
+    Fun(..) => {
+    }
+    Builtin(..) => {
+    }
+  }
   let i = main_position(heap: heap, key: key, n: nodes^.inner.len);
   loop @chain {
     if i < nodes^.inner.len {
-      if equal(a: nodes^.inner[i].key, b: key) {
+      let matched_key = equal(a: nodes^.inner[i].key, b: key);
+      if matched_key {
         return Some<u64>(value: i);
       }
       set i = cvt::<u32, u64>(nodes^.inner[i].next);
@@ -409,8 +433,13 @@ fn table_get(heap: &Heap, t: Value, key: Value) -> r: Value reads(heap) {
   return Value::Nil();
 }
 
-fn node_get_str(nodes: &Box<Slots<Node>>, h: u32, hash: u64, mask: u64) -> r: Value reads(nodes) {
-  doc "Raw string lookup in a power-of-two node vector: cached hash masking selects the same bucket as main_position, and interned handles determine equality.";
+fn node_find_str(nodes: &Box<Slots<Node>>, h: u32, hash: u64) -> r: Option<u64> reads(nodes) {
+  doc "Find an interned string's node index, including nil-valued keys: cached hash masking selects the same bucket as main_position for every nonempty node vector length, and interned handles determine equality. Empty vectors return None.";
+  let n = nodes^.inner.len;
+  if n == 0_u64 {
+    return None<u64>();
+  }
+  let mask = n - 1_u64;
   let i = iand(hash, mask);
   loop @chain {
     if i < nodes^.inner.len {
@@ -418,7 +447,7 @@ fn node_get_str(nodes: &Box<Slots<Node>>, h: u32, hash: u64, mask: u64) -> r: Va
       match key {
         Str(h: handle) => {
           if handle == h {
-            return nodes^.inner[i].val;
+            return Some<u64>(value: i);
           }
         }
         Nil() => {
@@ -438,14 +467,14 @@ fn node_get_str(nodes: &Box<Slots<Node>>, h: u32, hash: u64, mask: u64) -> r: Va
       }
       set i = cvt::<u32, u64>(nodes^.inner[i].next);
     } else {
-      return Value::Nil();
+      return None<u64>();
     }
   }
-  return Value::Nil();
+  return None<u64>();
 }
 
 fn table_get_str(heap: &Heap, t: Value, h: u32) -> r: Value reads(heap) {
-  doc "Raw lookup for an interned string handle; invalid handles and non-power-of-two node vectors retain table_get behavior through the generic lookup.";
+  doc "Raw lookup for an interned string handle, equivalent to table_get with Str(h) for every node vector length because both use the same string chain walk and main_position masks alike. Invalid table or string handles retain the generic lookup.";
   match table_handle(heap: heap, t: t) {
     Some(value: ti) => {
       if ti < heap^.tables.inner.len {
@@ -456,12 +485,17 @@ fn table_get_str(heap: &Heap, t: Value, h: u32) -> r: Value reads(heap) {
             if n == 0_u64 {
               return Value::Nil();
             }
-            let mask = n - 1_u64;
-            let non_power = iand(n, mask);
-            if non_power == 0_u64 {
-              let hash = heap^.strings.inner[si].payload.hash;
-              return node_get_str(nodes: &heap^.tables.inner[ti].payload.nodes, h: h, hash: hash, mask: mask);
+            let hash = heap^.strings.inner[si].payload.hash;
+            match node_find_str(nodes: &heap^.tables.inner[ti].payload.nodes, h: h, hash: hash) {
+              Some(value: i) => {
+                if i < heap^.tables.inner[ti].payload.nodes.inner.len {
+                  return heap^.tables.inner[ti].payload.nodes.inner[i].val;
+                }
+              }
+              None() => {
+              }
             }
+            return Value::Nil();
           }
         }
       }
