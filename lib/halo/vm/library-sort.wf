@@ -95,9 +95,265 @@ fn sort_compare_slow<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Sl
 }
 
 fn sort_start<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, stack: &Box<Slots<Value>>, env: &E, table: Value, comparator: Value, func: u64, upper: i64) -> r: Bool reads(code), reads(consts), writes(vm), writes(stack), writes(env) {
+  doc "Select a synchronous raw-array auxsort only for homogeneous numbers or strings without a comparator; all other calls retain the resumable sort frames.";
+  if is_nil(v: comparator) {
+    match sort_array_table(vm: vm, table: table, upper: upper) {
+      Some(value: slot) => {
+        let sorted = sort_array_run(vm: vm, slot: slot, lower: 1_i64, upper: upper);
+        return sorted;
+      }
+      None() => {
+      }
+    }
+  }
   let local_context_14 = vm^.library_contexts.inner.len -sat 1_u64;
   sort_push(vm: vm, context: local_context_14, lower: 1_i64, upper: upper);
   return sort_run::<Host<E>>(code: code, consts: consts, vm: vm, stack: stack, env: env, context: local_context_14);
+}
+
+fn sort_array_table(vm: &Vm, table: Value, upper: i64) -> r: Option<u64> reads(vm) {
+  doc "Require a live writable table whose entire aux_getn prefix is in its array and is all numbers or all live strings. Read-only tables retain the old swap-time refusal; metatables do not affect raw values.";
+  if upper < 0_i64 {
+    return None<u64>();
+  }
+  let count = cvt.wrap::<i64, u64>(upper);
+  match pkg::value::tab_of(v: table) {
+    Handle(h: handle) => {
+      let slot = cvt::<u32, u64>(handle);
+      if slot < vm^.heap.tables.inner.len {
+        if bnot(vm^.heap.tables.inner[slot].live) {
+          return None<u64>();
+        }
+        if vm^.heap.tables.inner[slot].payload.read_only {
+          return None<u64>();
+        }
+        if count > vm^.heap.tables.inner[slot].payload.array.inner.len {
+          return None<u64>();
+        }
+        let sort_kind = 0_u8;
+        for (index in 0_u64..count) {
+          if index < vm^.heap.tables.inner[slot].payload.array.inner.len {
+            let item = vm^.heap.tables.inner[slot].payload.array.inner[index];
+            match num_of(v: item) {
+              Is(..) => {
+                if sort_kind == 2_u8 {
+                  return None<u64>();
+                }
+                set sort_kind = 1_u8;
+              }
+              Not() => {
+                if sort_kind == 1_u8 {
+                  return None<u64>();
+                }
+                match str_of(v: item) {
+                  Handle(h: string_handle) => {
+                    let string_slot = cvt::<u32, u64>(string_handle);
+                    if string_slot >= vm^.heap.strings.inner.len {
+                      return None<u64>();
+                    }
+                    if bnot(vm^.heap.strings.inner[string_slot].live) {
+                      return None<u64>();
+                    }
+                    set sort_kind = 2_u8;
+                  }
+                  NoHandle() => {
+                    return None<u64>();
+                  }
+                }
+              }
+            }
+          } else {
+            return None<u64>();
+          }
+        }
+        return Some<u64>(value: slot);
+      }
+    }
+    NoHandle() => {
+    }
+  }
+  return None<u64>();
+}
+
+fn sort_array_at(vm: &Vm, slot: u64, index: i64) -> r: Value reads(vm.heap.tables) {
+  doc "Read a one-based raw array index with slab liveness and window checks. Selection and auxsort's sentinels keep every accessed index in this array.";
+  if slot < vm^.heap.tables.inner.len {
+    if vm^.heap.tables.inner[slot].live {
+      if index > 0_i64 {
+        let offset = index - 1_i64;
+        let at = cvt.wrap::<i64, u64>(offset);
+        if at < vm^.heap.tables.inner[slot].payload.array.inner.len {
+          return vm^.heap.tables.inner[slot].payload.array.inner[at];
+        }
+      }
+    }
+  }
+  return Value::Nil();
+}
+
+fn sort_array_swap(vm: &Vm, slot: u64, i: i64, j: i64, a: Value, b: Value) -> r: Bool writes(vm.heap.tables) {
+  doc "Perform set2's two writes in order without table lookup, allocation or a safepoint. The selected table stays writable and live throughout synchronous sorting.";
+  if slot < vm^.heap.tables.inner.len {
+    if vm^.heap.tables.inner[slot].live {
+      if i > 0_i64 {
+        if j > 0_i64 {
+          let left_offset = i - 1_i64;
+          let right_offset = j - 1_i64;
+          let left = cvt.wrap::<i64, u64>(left_offset);
+          let right = cvt.wrap::<i64, u64>(right_offset);
+          if left < vm^.heap.tables.inner[slot].payload.array.inner.len {
+            if right < vm^.heap.tables.inner[slot].payload.array.inner.len {
+              set vm^.heap.tables.inner[slot].payload.flags = 0_u8;
+              set vm^.heap.tables.inner[slot].payload.array.inner[left] = b;
+              set vm^.heap.tables.inner[slot].payload.array.inner[right] = a;
+              return True();
+            }
+          }
+        }
+      }
+    }
+  }
+  return False();
+}
+
+fn sort_array_less(vm: &Vm, a: Value, b: Value) -> r: Bool reads(vm) {
+  doc "The selected homogeneous values use exactly Lua's double less-than, including false for NaNs, or string_order's byte comparison including embedded zeros; neither operation calls Lua.";
+  match num_of(v: a) {
+    Is(x: left_number) => {
+      match num_of(v: b) {
+        Is(x: right_number) => {
+          return flt(left_number, right_number);
+        }
+        Not() => {
+        }
+      }
+    }
+    Not() => {
+    }
+  }
+  match str_of(v: a) {
+    Handle(h: left_string) => {
+      match str_of(v: b) {
+        Handle(h: right_string) => {
+          let order = string_order(vm: vm, b: left_string, c: right_string);
+          return order < 0_i64;
+        }
+        NoHandle() => {
+        }
+      }
+    }
+    NoHandle() => {
+    }
+  }
+  return False();
+}
+
+fn sort_array_run(vm: &Vm, slot: u64, lower: i64, upper: i64) -> r: Bool writes(vm) {
+  doc "PUC Lua 5.1 ltablib.c auxsort (license in LICENSE.md): retain median-of-three comparisons and swaps, post-comparison invalid-order checks, smaller-half recursion and larger-half iteration. No Lua calls, budget charges, continuations or successful-path allocations occur.";
+  let lo = lower;
+  let hi = upper;
+  loop {
+    if lo >= hi {
+      break;
+    }
+    let gap = hi -wrap lo;
+    let a = sort_array_at(vm: vm, slot: slot, index: lo);
+    let b = sort_array_at(vm: vm, slot: slot, index: hi);
+    if sort_array_less(vm: vm, a: b, b: a) {
+      let swapped = sort_array_swap(vm: vm, slot: slot, i: lo, j: hi, a: a, b: b);
+      if bnot(swapped) {
+        return False();
+      }
+    }
+    if gap == 1_i64 {
+      break;
+    }
+    let sum = lo +wrap hi;
+    let middle = sum / 2_i64;
+    set a = sort_array_at(vm: vm, slot: slot, index: middle);
+    set b = sort_array_at(vm: vm, slot: slot, index: lo);
+    if sort_array_less(vm: vm, a: a, b: b) {
+      let swapped = sort_array_swap(vm: vm, slot: slot, i: middle, j: lo, a: a, b: b);
+      if bnot(swapped) {
+        return False();
+      }
+    } else {
+      set b = sort_array_at(vm: vm, slot: slot, index: hi);
+      if sort_array_less(vm: vm, a: b, b: a) {
+        let swapped = sort_array_swap(vm: vm, slot: slot, i: middle, j: hi, a: a, b: b);
+        if bnot(swapped) {
+          return False();
+        }
+      }
+    }
+    if gap == 2_i64 {
+      break;
+    }
+    let pivot = sort_array_at(vm: vm, slot: slot, index: middle);
+    let previous = hi -wrap 1_i64;
+    let displaced = sort_array_at(vm: vm, slot: slot, index: previous);
+    let pivot_moved = sort_array_swap(vm: vm, slot: slot, i: middle, j: previous, a: pivot, b: displaced);
+    if bnot(pivot_moved) {
+      return False();
+    }
+    let i = lo;
+    let j = previous;
+    loop @partition {
+      loop @scan_left {
+        set i = i +wrap 1_i64;
+        set a = sort_array_at(vm: vm, slot: slot, index: i);
+        let less = sort_array_less(vm: vm, a: a, b: pivot);
+        if bnot(less) {
+          break @scan_left;
+        }
+        if i > hi {
+          return raise_text(vm: vm, text: &library_sort_sort_order_error[0_u64..34_u64]);
+        }
+      }
+      loop @scan_right {
+        set j = j -wrap 1_i64;
+        set b = sort_array_at(vm: vm, slot: slot, index: j);
+        let less = sort_array_less(vm: vm, a: pivot, b: b);
+        if bnot(less) {
+          break @scan_right;
+        }
+        if j < lo {
+          return raise_text(vm: vm, text: &library_sort_sort_order_error[0_u64..34_u64]);
+        }
+      }
+      if j < i {
+        break @partition;
+      }
+      let swapped = sort_array_swap(vm: vm, slot: slot, i: i, j: j, a: a, b: b);
+      if bnot(swapped) {
+        return False();
+      }
+    }
+    set a = sort_array_at(vm: vm, slot: slot, index: previous);
+    set b = sort_array_at(vm: vm, slot: slot, index: i);
+    let pivot_placed = sort_array_swap(vm: vm, slot: slot, i: previous, j: i, a: a, b: b);
+    if bnot(pivot_placed) {
+      return False();
+    }
+    let left_size = i -wrap lo;
+    let right_size = hi -wrap i;
+    let before = i -wrap 1_i64;
+    let after = i +wrap 1_i64;
+    if left_size < right_size {
+      let sorted = sort_array_run(vm: vm, slot: slot, lower: lo, upper: before);
+      if bnot(sorted) {
+        return False();
+      }
+      set lo = after;
+    } else {
+      let sorted = sort_array_run(vm: vm, slot: slot, lower: after, upper: hi);
+      if bnot(sorted) {
+        return False();
+      }
+      set hi = before;
+    }
+  }
+  return True();
 }
 
 fn sort_run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, stack: &Box<Slots<Value>>, env: &E, context: u64) -> r: Bool reads(code), reads(consts), writes(vm), writes(stack), writes(env) {
