@@ -2762,3 +2762,23 @@ the same job is within 2% of the first run; the runner had just come back
 online.
 The spread is too large to decide, so the comparison is repeated once, six
 pairs on the same branch, and that repeat decides; both runs stay recorded.
+
+The repeat ([run 37601538830, attempt 2](https://github.com/Ming-Research/Halo-wf/actions/runs/37601538830/attempts/2)),
+the same three binaries by hash:
+
+| Kernel | Main | Branch | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1043 | 0.1050 | 1.006 | 0.54% | 1.07% | 1.000 |
+| loop | 0.4332 | 0.4330 | 0.999 | 0.85% | 1.02% | 0.995 |
+| integer-table | 0.5277 | 0.5098 | 0.966 | 2.36% | 2.88% | 0.995 |
+| string-key | 0.0336 | 0.0259 | 0.771 | 1.50% | 1.21% | 0.997 |
+| concat | 0.0729 | 0.0740 | 1.016 | 2.77% | 1.02% | 1.006 |
+| sort | 0.1845 | 0.1754 | 0.951 | 0.78% | 2.96% | 1.008 |
+| binary-trees | 1.9616 | 1.9592 | 0.999 | 1.98% | 1.22% | 1.000 |
+
+`--check-module pkg::vm`: main 7.610 and 7.619 s, branch 7.603 and 7.586 s
+(0.998 times).
+
+**The criterion passes at the final engine.** String-key takes 0.771 times
+as long, beyond both ranges and the twin; no kernel is slower beyond its
+larger range and the twin's (concat's 1.016 is inside its 2.77% range).
