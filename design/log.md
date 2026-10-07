@@ -4,6 +4,14 @@ Newest first. One entry per approved change of the tree: a dated title,
 `Nodes:` naming every node changed, `Owner-approved:` and `Summary:`; the
 owner-wide instructions' *Log format* owns the form.
 
+## 2026-10-07 Halo sorts plain arrays synchronously
+
+Nodes: halo/calls
+
+Owner-approved: 2026-10-07 in the Halo session: "Q83 A" (the synchronous default sort, option A).
+
+Summary: `table.sort` without a comparator, over elements `1..n` that all lie in the array part and are all numbers or all strings, sorts them in place synchronously by the steps of PUC's `auxsort`, so the permutation and errors are PUC's, while a comparator or any other case keeps the resumable state machine whose comparisons can call back and be suspended. The default comparison of such values calls no Lua and cannot suspend; the state machine's frames and result slots had made the sort kernel 2.8 times slower, and a paired run now measures it at 0.75 times PUC's time (`research/experiments/halo-bench/RESULTS.md`, "Synchronous default sort").
+
 ## 2026-10-07 Halo's concatenation joins each run of operands once
 
 Nodes: halo/dispatch
