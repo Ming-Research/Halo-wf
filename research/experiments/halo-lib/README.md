@@ -15,7 +15,9 @@ This experiment compiles Lua source with `pkg::compile`, runs it with
 `pkg::vm::start`, and compares printed text with Redis's bundled Lua 5.1.5.
 It serves the slice 1 library and number wiring described in
 `research/investigations/halo/VM.md`, sections 3 and 8. The adapter, corpus,
-and comparison runner live here, outside the compiler gates; remove the
+and comparison runner live here. Halo's `make check-extended` includes the
+`hosts` target, which builds this experiment's `run` entry but executes only
+halo-vm's smoke and suite; it does not run this library comparison. Remove the
 adapter and runner when an embedding-level oracle replaces this experiment.
 
 Work is local to this worktree, with no Cargo invocation or network access.
@@ -79,9 +81,11 @@ differences remain observable. These tests cover the requested functions and
 selected boundaries, rather than exhaustively certifying every floating
 input or platform-dependent C conversion.
 
-`string.format` follows the supplied macOS Lua's NaN flag behavior: NaN
-suppresses sign flags, while infinity retains them. Script metadata currently
-provides line numbers but no original source name or local debug names. Error
-locations therefore use the existing `user_script` convention and registered
-builtin names; aliases and method calls cannot reproduce every PUC debug name
-without metadata changes outside this task's file boundary.
+`string.format` follows glibc's NaN sign behavior: negative NaNs retain their
+minus sign, and positive NaNs honor the `+` and space flags, as infinities do.
+The compiler accepts a host-supplied chunk name; this adapter passes
+`@user_script`, matching `reference.lua`. Script metadata provides line
+numbers and local and upvalue names, which runtime type errors use to name
+their operand. Argument errors still use registered builtin names, so
+aliases and method calls cannot reproduce PUC's `bad argument` names
+(docs/todo.md).

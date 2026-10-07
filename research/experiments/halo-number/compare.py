@@ -77,7 +77,7 @@ def strings():
         b'4.9406564584124654e-324', b'2.4703282292062327e-324',
         b'2.4703282292062328e-324',
         # A subnormal where only the bit after the first 53 significant bits
-        # decides the rounding: glibc drops that bit, in hex and maybe decimal.
+        # decides the rounding: glibc drops that bit in hex; decimal has a separate path.
         b'0x1.00000000000018p-1023', b'0x1.00000000000008p-1023',
         b'1.1125369292536010620943507396011101645362026413971951890715156691871755365962210e-308',
         b'1.00000000000000011102230246251565404236316680908203125',
@@ -340,17 +340,16 @@ def main():
         for group, s in groups.items():
             lines.append(f"| {group} | {s['count']} | {s['mismatches']} | {s['nan_bit_mismatches']} | {s['nonfinite_mismatches']} | {s['max_ulp']} |")
         lines += ['', f'Build: {build_seconds:.3f} s; Lua execution: {lua_seconds:.3f} s; Halo execution: {halo_seconds:.3f} s. These are sizing observations, not a performance comparison.', '',
-                  f'The reference executable also ran all {len(cases)} cases in {executable_seconds:.3f} s and agreed with the archive host on every finite bit, parse verdict and format byte, and every NaN classification. NaN signs and payloads are extracted only by the archive host.', '',
+                  f'The reference executable also ran all {len(cases)} cases in {executable_seconds:.3f} s. The executable/archive cross-check covers format bytes, parse verdicts, finite/infinite result bits and NaN classifications only for inputs the executable can reconstruct exactly; it does not establish agreement for signaling or nondefault-payload NaN inputs. The archive host remains the exact-bit oracle for every case, including all NaN results.', '',
                   'Every returned line and all process exit codes were checked. Comparator controls detect a changed format byte, parse verdict, power bit and missing record.', '',
                   'Finite mismatch ULP histograms:', '', '```json', json.dumps({g:s['ulp_histogram'] for g,s in groups.items() if s['mismatches']},indent=2), '```', '',
                   'First mismatches per group (inputs are hexadecimal IEEE bits, except S inputs are hexadecimal bytes):', '', '```json',json.dumps(examples,indent=2),'```','']
         if musl_report:
-            lines += ['Independent comparison with the original local musl C FMA path (same power inputs). NaN payload priority intentionally follows the macOS oracle; the musl C comparison additionally confirms every non-NaN result bit of the port:', '',
+            lines += ['Independent comparison with the original local musl C FMA path (same power inputs). NaN payload priority intentionally follows the x86-64 Linux reference; the musl C comparison additionally confirms every sampled non-NaN result bit of the port:', '',
                       '```json', json.dumps(musl_report, indent=2), '```', '']
         args.results.write_text('\n'.join(lines))
-    # Powers are measured, with differences reported rather than concealed.
-    mandatory = [g for g in groups if not g.startswith('pow-')]
-    if any(groups[g]['mismatches'] for g in mandatory):
+    # Every group is mandatory: any mismatch, including powers, fails the comparison.
+    if any(stat['mismatches'] for stat in groups.values()):
         raise SystemExit(1)
 
 
