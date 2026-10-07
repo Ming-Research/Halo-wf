@@ -2582,5 +2582,6 @@ collector stress.
 **The criterion passes and the change is kept.** The sort kernel takes 0.351
 times as long, far beyond both ranges and the twin, and no other kernel is
 slower beyond its bounds. Against PUC's 0.2580 s in the P1 run above, the
-kernel's 0.1936 s is about 0.75 times PUC's (not measured in one session):
-sort is the first kernel to meet P1.
+kernel's 0.1936 s is about 0.75 times PUC's; the two were measured in
+different runs, so this indicates, but does not establish, that sort meets
+P1, which a paired run against PUC would settle.
