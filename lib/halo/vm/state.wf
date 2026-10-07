@@ -746,25 +746,25 @@ fn type_error(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, v: V
   let named = describe_operand(code: code, consts: consts, vm: vm, reg: reg, bytes: &description);
   if named {
     let bytes = box_slots_new::<u8>(capacity: 0_u64);
-    bytes_append(bytes: &bytes, text: &name_attempt[0_u64..11_u64]);
+    bytes_append(bytes: &bytes, text: &operand_text_attempt[0_u64..11_u64]);
     if op == 0_u8 {
-      bytes_append(bytes: &bytes, text: &name_arithmetic[0_u64..21_u64]);
+      bytes_append(bytes: &bytes, text: &operand_text_arithmetic[0_u64..21_u64]);
     } else if op == 1_u8 {
-      bytes_append(bytes: &bytes, text: &name_index[0_u64..5_u64]);
+      bytes_append(bytes: &bytes, text: &operand_text_index[0_u64..5_u64]);
     } else if op == 2_u8 {
-      bytes_append(bytes: &bytes, text: &name_call[0_u64..4_u64]);
+      bytes_append(bytes: &bytes, text: &operand_text_call[0_u64..4_u64]);
     } else if op == 3_u8 {
-      bytes_append(bytes: &bytes, text: &name_concat[0_u64..11_u64]);
+      bytes_append(bytes: &bytes, text: &operand_text_concat[0_u64..11_u64]);
     } else {
-      bytes_append(bytes: &bytes, text: &name_length[0_u64..13_u64]);
+      bytes_append(bytes: &bytes, text: &operand_text_length[0_u64..13_u64]);
     }
     bytes_push(bytes: &bytes, byte: 32_u8);
     let length = description.inner.len;
     bytes_append(bytes: &bytes, text: &description.inner[0_u64..length]);
-    bytes_append(bytes: &bytes, text: &name_type_prefix[0_u64..4_u64]);
+    bytes_append(bytes: &bytes, text: &operand_text_type_prefix[0_u64..4_u64]);
     let typename = kind_name(vm: vm, v: v);
     bytes_string(vm: vm, bytes: &bytes, value: typename);
-    bytes_append(bytes: &bytes, text: &name_type_suffix[0_u64..7_u64]);
+    bytes_append(bytes: &bytes, text: &operand_text_type_suffix[0_u64..7_u64]);
     set vm^.error = bytes_value(vm: vm, bytes: &bytes);
     locate_type_error(vm: vm);
     return False();
@@ -814,31 +814,31 @@ struct NameOrigin {
   index: u64;
 }
 
-const name_attempt: Array<u8, 11> = "attempt to ";
+const operand_text_attempt: Array<u8, 11> = "attempt to ";
 
-const name_arithmetic: Array<u8, 21> = "perform arithmetic on";
+const operand_text_arithmetic: Array<u8, 21> = "perform arithmetic on";
 
-const name_index: Array<u8, 5> = "index";
+const operand_text_index: Array<u8, 5> = "index";
 
-const name_call: Array<u8, 4> = "call";
+const operand_text_call: Array<u8, 4> = "call";
 
-const name_concat: Array<u8, 11> = "concatenate";
+const operand_text_concat: Array<u8, 11> = "concatenate";
 
-const name_length: Array<u8, 13> = "get length of";
+const operand_text_length: Array<u8, 13> = "get length of";
 
-const name_type_prefix: Array<u8, 4> = " (a ";
+const operand_text_type_prefix: Array<u8, 4> = " (a ";
 
-const name_type_suffix: Array<u8, 7> = " value)";
+const operand_text_type_suffix: Array<u8, 7> = " value)";
 
-const name_local: Array<u8, 5> = "local";
+const operand_text_local: Array<u8, 5> = "local";
 
-const name_global: Array<u8, 6> = "global";
+const operand_text_global: Array<u8, 6> = "global";
 
-const name_field: Array<u8, 5> = "field";
+const operand_text_field: Array<u8, 5> = "field";
 
-const name_upvalue: Array<u8, 7> = "upvalue";
+const operand_text_upvalue: Array<u8, 7> = "upvalue";
 
-const name_method: Array<u8, 6> = "method";
+const operand_text_method: Array<u8, 6> = "method";
 
 fn symbolic_name(code: &Box<Slots<Cell>>, vm: &Vm, proto: Proto, lastpc: u64, reg: u64) -> r: NameOrigin reads(code), reads(vm.protos) {
   doc "Ports Lua 5.1 ldebug.c symbexec/getobjname/kname and lfunc.c luaF_getlocalname under the Lua MIT notice in LICENSE.md. Tracks the last writer before lastpc using lopcodes.c's A column and opcode-specific writes; neutral origin is the final RETURN default, and kind 6 is MOVE recursion, not a displayed kind. LOADBOOL does not skip; SELF gives both destinations the method origin; CALL/TAILCALL invalidate registers >= A; VARARG writes only A. Visit absorbed JMPs after tests, including TFORLOOP; cell targets already include pc++, and backward edges are ignored. SETLIST's count word is absorbed; CLOSURE skips retained capture pseudo-cells by nup. Validation already checked the stream.";
@@ -1277,7 +1277,7 @@ fn describe_operand(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm
     let local = local_name(vm: vm, proto: proto, pc: pc, reg: position);
     match local {
       Some(value: name) => {
-        bytes_append(bytes: bytes, text: &name_local[0_u64..5_u64]);
+        bytes_append(bytes: bytes, text: &operand_text_local[0_u64..5_u64]);
         bytes_push(bytes: bytes, byte: 32_u8);
         bytes_push(bytes: bytes, byte: 39_u8);
         append_debug_name(vm: vm, bytes: bytes, name: name);
@@ -1295,13 +1295,13 @@ fn describe_operand(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm
         return False();
       }
       if origin.kind == 2_u8 {
-        bytes_append(bytes: bytes, text: &name_global[0_u64..6_u64]);
+        bytes_append(bytes: bytes, text: &operand_text_global[0_u64..6_u64]);
       } else if origin.kind == 3_u8 {
-        bytes_append(bytes: bytes, text: &name_field[0_u64..5_u64]);
+        bytes_append(bytes: bytes, text: &operand_text_field[0_u64..5_u64]);
       } else if origin.kind == 4_u8 {
-        bytes_append(bytes: bytes, text: &name_upvalue[0_u64..7_u64]);
+        bytes_append(bytes: bytes, text: &operand_text_upvalue[0_u64..7_u64]);
       } else {
-        bytes_append(bytes: bytes, text: &name_method[0_u64..6_u64]);
+        bytes_append(bytes: bytes, text: &operand_text_method[0_u64..6_u64]);
       }
       bytes_push(bytes: bytes, byte: 32_u8);
       bytes_push(bytes: bytes, byte: 39_u8);
