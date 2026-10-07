@@ -2,10 +2,50 @@
 # The collector's removed-root controls ("Local root witnesses" in README.md):
 # the local root cases pass with every root, and each fails once its sole
 # root is hidden from the collector or one marking call of mark_roots
-# (lib/halo/vm/collect.wf) is removed. Mutants build in copies under the
+# (lib/halo/vm/collect.wf) is removed. Expected failures require a reply/conversion
+# difference, with no native-exit failure or Traceback. A pure-shell classifier
+# self-test runs first, before compiler setup. Mutants build in copies under the
 # scratch directory; the working tree is never edited. `make roots` runs it:
 #   WHITEFOOTC=<compiler> controls.sh <built e2e test program> <scratch directory>
 set -u
+
+is_reply_failure() (
+  difference=1
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in
+      *Traceback*|"FAIL "*": native exit "*) return 1 ;;
+      "FAIL "*": reply/conversion difference; inspect actual JSON") difference=0 ;;
+    esac
+  done
+  return "$difference"
+)
+
+classifier_self_test() {
+  is_reply_failure <<'EOF' || return 1
+FAIL gc/frame-closure.lua budget=1 collections=1: reply/conversion difference; inspect actual JSON
+EOF
+  if is_reply_failure <<'EOF'
+FAIL gc/frame-closure.lua budget=1 collections=1: reply/conversion difference; inspect actual JSON
+FAIL gc/frame-closure.lua budget=7 collections=None: native exit -11 (2 transport/I/O, 3 setup compile, 4 setup runtime, 5 budget limit, 6 host stop)
+EOF
+  then return 1; fi
+  if is_reply_failure <<'EOF'
+FAIL gc/frame-closure.lua budget=1 collections=1: reply/conversion difference; inspect actual JSON
+Traceback (most recent call last):
+EOF
+  then return 1; fi
+  if is_reply_failure <<'EOF'
+1/1 passed
+EOF
+  then return 1; fi
+  return 0
+}
+
+if ! classifier_self_test; then
+  echo "roots classifier self-test: failed" >&2
+  exit 1
+fi
+
 root=$(CDPATH= cd -- "$(dirname -- "$0")/../../.." && pwd -P)
 wfc=${WHITEFOOTC:?set WHITEFOOTC to the Whitefoot compiler}
 binary=${1:?usage: controls.sh <e2e test program> <scratch directory>}
@@ -26,7 +66,7 @@ expect() {
   echo "roots $label: exit $got (want $want), $(grep -E 'passed$' "$out/$label.log" | tail -1)"
   if [ "$got" != "$want" ]; then status=1; cat "$out/$label.log"; return; fi
   if [ "$want" = 1 ]; then
-    if ! grep -q '^FAIL ' "$out/$label.log" || grep -q 'Traceback' "$out/$label.log"; then
+    if ! is_reply_failure < "$out/$label.log"; then
       echo "roots $label: did not fail by a reply comparison"; status=1; cat "$out/$label.log"
     fi
   fi
