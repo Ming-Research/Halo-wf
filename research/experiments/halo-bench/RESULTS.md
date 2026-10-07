@@ -2768,3 +2768,28 @@ and the 14900K was offline), and that the loads stall (inferred from the
 store and load widths in the disassembly, not counted). The call-path change
 waits for `loop { match }` dispatch, since the arms and the epilogue it would
 change are being rewritten, and the compiler-side copies go to the owner.
+
+### The entry copy of a by-value parameter, measured
+
+The owner chose (Q90) to measure each compiler-side copy before bringing it
+to Whitefoot. The first is the entry copy: every Whitefoot definition copies
+a by-value aggregate parameter into a slot of its own at entry, which
+`push_frame`'s 80-byte `Frame` shows above. Whitefoot's
+`compiler/storage-placement` keeps that copy and reopens the question "when
+a measured program shows the entry copy surviving inlining at a cost"; the
+implementation that reads such a parameter in place is on Whitefoot's branch
+`research/in-place-parameters`.
+
+Question: what does the entry copy cost Halo? Comparison: this branch's
+source built twice with full LTO, once with `wf-8b647edbbc95` (the pin) and
+once with `wf-exp-5a3c70fc3351`, which is Whitefoot `8b647edbb` with that
+branch's two commits (`0db7321fc` and `e35cc5f95`) cherry-picked onto it,
+its gate passed; six interleaved pairs over the seven kernels on the 14900K
+with a twin of the pinned build, and both builds' disassembly of
+`push_frame`. The comparison tests the hypothesis only if `push_frame` loses
+its entry copy in the experiment build; the stall may remain without it,
+since the frames vector is still filled by wide loads of the caller's
+field-by-field stores. A fib median below the pinned build's by more than
+both ranges and the twin's difference is a measured cost of the entry copy;
+anything else is no evidence of one. The result goes to the owner either
+way; no Halo source changes.
