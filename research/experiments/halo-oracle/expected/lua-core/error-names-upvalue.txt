@@ -1,0 +1,49 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "bulk",
+      "bytes": "user_script:13: attempt to index upvalue 'x' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:14: attempt to index upvalue 'x' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:15: attempt to call upvalue 'x' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:16: attempt to perform arithmetic on upvalue 'x' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:17: attempt to perform arithmetic on upvalue 'y' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:18: attempt to perform arithmetic on upvalue 'y' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:19: attempt to concatenate upvalue 'x' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:20: attempt to concatenate upvalue 'y' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:21: attempt to get length of upvalue 'x' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:22: attempt to perform arithmetic on upvalue 'y' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:23: attempt to index upvalue 'y' (a boolean value)"
+    }
+  ]
+}

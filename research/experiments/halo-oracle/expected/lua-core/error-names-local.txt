@@ -1,0 +1,69 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "bulk",
+      "bytes": "user_script:10: attempt to index local 't' (a nil value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:11: attempt to index local 't' (a nil value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:12: attempt to call local 'f' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:13: attempt to call local 'f' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:14: attempt to perform arithmetic on local 'a' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:15: attempt to perform arithmetic on local 'b' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:16: attempt to perform arithmetic on local 'b' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:17: attempt to perform arithmetic on local 'a' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:18: attempt to get length of local 'a' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:19: attempt to concatenate local 'a' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:20: attempt to concatenate local 'a' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:21: attempt to concatenate local 'a' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:22: attempt to index local 'a' (a nil value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:23: attempt to index local 'current' (a nil value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:24: attempt to call local 'f' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:25: attempt to index local 'a' (a nil value)"
+    }
+  ]
+}

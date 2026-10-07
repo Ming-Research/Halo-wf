@@ -1,0 +1,85 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "bulk",
+      "bytes": "user_script:11: attempt to index a boolean value"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:12: attempt to call a boolean value"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:13: attempt to perform arithmetic on a boolean value"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:14: attempt to get length of a boolean value"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:15: attempt to call a table value"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:16: attempt to perform arithmetic on a table value"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:17: attempt to concatenate a table value"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:18: attempt to concatenate a table value"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:19: attempt to perform arithmetic on a string value"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:20: attempt to perform arithmetic on a string value"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:21: attempt to perform arithmetic on a string value"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:22: attempt to index a number value"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:23: attempt to index a number value"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:24: attempt to call a nil value"
+    },
+    {
+      "type": "bulk",
+      "bytes": "attempt to call a boolean value"
+    },
+    {
+      "type": "bulk",
+      "bytes": "attempt to call a boolean value"
+    },
+    {
+      "type": "bulk",
+      "bytes": "attempt to call a boolean value"
+    },
+    {
+      "type": "bulk",
+      "bytes": "attempt to index a number value"
+    },
+    {
+      "type": "bulk",
+      "bytes": "attempt to call a boolean value"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:41: Script attempted to access nonexistent global variable 'error_names_missing_global'"
+    }
+  ]
+}

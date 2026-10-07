@@ -1,0 +1,45 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "bulk",
+      "bytes": "user_script:12: attempt to perform arithmetic on field 'bad' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:16: attempt to perform arithmetic on field 'bad' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:20: attempt to perform arithmetic on a table value"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:25: attempt to call local 'x' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:30: attempt to index local 'x' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:35: attempt to index local 'x' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:39: attempt to perform arithmetic on field 'bad' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:43: attempt to perform arithmetic on field 'bad' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:47: attempt to perform arithmetic on field 'bad' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:51: attempt to perform arithmetic on global 'type' (a function value)"
+    }
+  ]
+}

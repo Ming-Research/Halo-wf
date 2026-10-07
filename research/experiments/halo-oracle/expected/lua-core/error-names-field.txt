@@ -1,0 +1,65 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "bulk",
+      "bytes": "user_script:11: attempt to index field 'bad' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:12: attempt to index field 'bad' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:13: attempt to call field 'bad' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:14: attempt to perform arithmetic on field 'bad' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:15: attempt to perform arithmetic on field 'bad' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:16: attempt to perform arithmetic on field 'bad' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:17: attempt to concatenate field 'bad' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:18: attempt to concatenate field 'bad' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:19: attempt to get length of field 'bad' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:20: attempt to perform arithmetic on field 'bad' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:21: attempt to index field '?' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:22: attempt to call field '?' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:23: attempt to perform arithmetic on field '?' (a nil value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:24: attempt to get length of field '?' (a boolean value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:25: attempt to index field 'zero' (a nil value)"
+    }
+  ]
+}

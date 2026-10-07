@@ -1,0 +1,49 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "bulk",
+      "bytes": "user_script:10: attempt to index global 'type' (a function value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:11: attempt to index global 'type' (a function value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:12: attempt to call global '_VERSION' (a string value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:13: attempt to call global '_VERSION' (a string value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:14: attempt to perform arithmetic on global '_VERSION' (a string value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:15: attempt to perform arithmetic on global '_VERSION' (a string value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:16: attempt to perform arithmetic on global '_VERSION' (a string value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:17: attempt to concatenate global 'type' (a function value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:18: attempt to concatenate global 'type' (a function value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:19: attempt to get length of global 'type' (a function value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:20: attempt to perform arithmetic on global 'type' (a function value)"
+    }
+  ]
+}
