@@ -28,6 +28,7 @@ fn sort_store(vm: &Vm, index: u64, frame: SortFrame) -> r: unit writes(vm) {
 }
 
 fn sort_compare<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, context: u64, a: Value, b: Value) -> r: Bool reads(code), reads(consts), writes(stack), writes(vm), writes(env) {
+  doc "ltablib.c sort_comp uses lua_lessthan in its native frame. Preserve both direct comparison errors and metamethod errors without adding the sort caller's location.";
   if context < vm^.library_contexts.inner.len {
     library_plan(vm: vm, index: context);
     let local_call_5 = vm^.library_contexts.inner[context];
@@ -70,6 +71,12 @@ fn sort_compare<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<V
       let local_op_13 = SlowOp::Lt();
       if local_dest_6 < stack^.inner.len {
         let compared = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: local_op_13, dest: local_dest_6, b: a, c: b, v: local_nil_7, breg: unlimited, creg: unlimited);
+        let interrupted = bor(vm^.suspended, vm^.host_stopped);
+        if bnot(interrupted) {
+          if bnot(compared) {
+            library_raw_error(vm: vm);
+          }
+        }
         return compared;
       }
       return False();

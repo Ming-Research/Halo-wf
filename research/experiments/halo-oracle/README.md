@@ -7,7 +7,7 @@ Halo's `make check-core` compares the corpus through the `oracle` target;
 recording reference replies remains the job of
 [oracle-reference.yml](../../../.github/workflows/oracle-reference.yml).
 
-There are 100 scripts: 60 `lua-core`, 23 `redis-api`, 6 `apps`, and 11 `libs`.
+There are 101 scripts: 61 `lua-core`, 23 `redis-api`, 6 `apps`, and 11 `libs`.
 The scripts, replies and runner belong here until the oracle is replaced or
 Halo/firn scripting is retired. Each case is consumed by `run.sh`; the table
 below is the index of the observations it protects.
@@ -251,6 +251,7 @@ not automatically used to overwrite this baseline.
 | lua-core | [table-sort](scripts/lua-core/table-sort.lua) | Default and custom comparator sort numbers into opposite orders. |
 | lua-core | [tail-recursion](scripts/lua-core/tail-recursion.lua) | Proper tail calls allow deep recursion without growing call stack. |
 | lua-core | [unpack-select-varargs](scripts/lua-core/unpack-select-varargs.lua) | unpack ranges and select preserve vararg count including nil. |
+| lua-core | [version-global](scripts/lua-core/version-global.lua) | The base library exposes _VERSION as the string Lua 5.1. |
 | redis-api | [call-error](scripts/redis-api/call-error.lua) | redis.call raises command errors to the EVAL reply. |
 | redis-api | [call-error-in-callback](scripts/redis-api/call-error-in-callback.lua) | A redis.call error inside a sort comparator ends the script with an error reply. |
 | redis-api | [call-in-callback](scripts/redis-api/call-in-callback.lua) | redis.call and redis.pcall return to sort, gsub and __tostring callbacks; pcall inside a comparator catches a redis.call error. |

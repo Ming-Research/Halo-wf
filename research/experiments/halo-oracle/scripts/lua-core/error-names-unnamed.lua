@@ -39,4 +39,22 @@ end)
 -- GETGLOBAL indexes the environment through a non-stack copy. The sandbox
 -- intercepts this missing name with its own error, rather than a type error.
 record(function() return error_names_missing_global end)
+record(function() table.sort({false, true}) end)
+record(function() table.sort({1, "x"}) end)
+record(function() return string.gsub("a", ".", {a = {}}) end)
+record(function()
+  local replacements = setmetatable({}, {__index = function()
+    for i = 1, 2 do end
+    return value().x
+  end})
+  return string.gsub("a", ".", replacements)
+end)
+record(function()
+  local mt = {}
+  mt.__index = function()
+    for i = 1, 2 do end
+    mt.__index = 1
+  end
+  return string.gsub("aa", ".", setmetatable({}, mt))
+end)
 return out

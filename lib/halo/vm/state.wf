@@ -783,7 +783,10 @@ fn fault_cell(vm: &Vm) -> r: u64 reads(vm.callback_plan) {
 }
 
 fn locate_type_error(vm: &Vm) -> r: unit writes(vm) {
-  doc "Adds the existing Lua source location to a type error in the current activation.";
+  doc "ldebug.c addinfo locates errors only in a Lua frame. A library callback plan denotes a native operation such as gsub's lua_gettable, whose runtime error has no caller prefix. Lua callback instructions install their own plans; luaL_error locations remain the library wrapper's responsibility.";
+  if vm^.callback_plan.kind == 4_u8 {
+    return unit;
+  }
   let count = vm^.frames.inner.len;
   if count == 0_u64 {
     return unit;

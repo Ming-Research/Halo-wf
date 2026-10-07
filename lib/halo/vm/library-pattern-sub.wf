@@ -188,6 +188,7 @@ fn pattern_gsub_start<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
 }
 
 fn pattern_gsub_run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, env: &E, vm: &Vm, stack: &Box<Slots<Value>>, context: u64) -> r: HostOutcome reads(code), reads(consts), writes(env), writes(vm), writes(stack) {
+  doc "lstrlib.c add_value indexes replacement tables through lua_gettable in the native gsub frame. Preserve runtime errors from that lookup without a caller prefix; invalid replacement values still follow luaL_error.";
   loop {
     if context >= vm^.library_contexts.inner.len {
       return HostOutcome::Raised();
@@ -282,6 +283,12 @@ fn pattern_gsub_run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slo
                 let nil = Value::Nil();
                 if func < stack^.inner.len {
                   set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: op, dest: func, b: replacement, c: key, v: nil, breg: unlimited, creg: unlimited);
+                  let interrupted = bor(vm^.suspended, vm^.host_stopped);
+                  if bnot(interrupted) {
+                    if bnot(ok) {
+                      library_raw_error(vm: vm);
+                    }
+                  }
                 }
               }
               None() => {

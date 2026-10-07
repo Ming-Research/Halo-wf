@@ -36,6 +36,10 @@ const library_lib_text_12: Array<u8, 4> = "huge";
 
 const library_lib_text_13: Array<u8, 7> = "__index";
 
+const library_version_key: Array<u8, 8> = "_VERSION";
+
+const library_version_value: Array<u8, 7> = "Lua 5.1";
+
 fn library_builtin(index: u64) -> r: Option<BuiltinBinding> pure {
   if index == 0_u64 {
     let local_name_1 = array_filled::<u8, 32>(value: 0_u8);
@@ -871,6 +875,9 @@ fn install_libraries(vm: &Vm) -> r: unit writes(vm) {
   let local_table_148 = new_table(heap: &vm^.heap, asize: 0_u32, hsize: 8_u32);
   let local_math_149 = new_table(heap: &vm^.heap, asize: 0_u32, hsize: 32_u32);
   let local_globals_150 = Value::Tab(h: vm^.globals);
+  let version_key = intern(heap: &vm^.heap, bytes: &library_version_key[0_u64..8_u64]);
+  let version_value = intern(heap: &vm^.heap, bytes: &library_version_value[0_u64..7_u64]);
+  let ignored_version = table_set(heap: &vm^.heap, t: local_globals_150, key: version_key, val: version_value);
   let local_string_key_151 = intern(heap: &vm^.heap, bytes: &library_lib_text_8[0_u64..6_u64]);
   let local_ignored_string_152 = table_set(heap: &vm^.heap, t: local_globals_150, key: local_string_key_151, val: local_string_147);
   let local_table_key_153 = intern(heap: &vm^.heap, bytes: &library_lib_text_9[0_u64..5_u64]);
