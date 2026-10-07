@@ -2826,7 +2826,7 @@ three launches:
   Launch 1's annotation holds about 13,100 Halo samples against about 7,300
   of PUC's, `node_find` 2,352 of them against about 900 in `luaH_get`.
 - Integer-table, Halo: arms 13 and 11 (the table store and load) 27.7–28.0%
-  and 25.2–26.1%, two more arms 17.7–19.4% together, `rehash` 7.0–10.1%,
+  and 25.2–26.1%, two more arms 17.8–19.1% together, `rehash` 7.0–10.1%,
   `table_set` 6.0–6.7%, `gc_mark` 5.6–5.9%. PUC: `luaV_execute` 39.1–40.0%,
   `luaH_get` 33.7–34.2%, `luaV_settable` 7.7–8.2%, `newkey` 3.3–3.5%.
 
