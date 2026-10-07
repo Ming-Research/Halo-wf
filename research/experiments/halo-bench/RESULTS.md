@@ -2756,7 +2756,9 @@ String-key again takes 0.770 times as long, and every main launch
 (0.0352–0.0445 s) is slower than every branch launch (0.0268–0.0279 s), but
 main's range is 26.17%, all of it one launch of 0.0445 s against 0.0352–0.0359
 s for the other five, so the fall of 23.0% is not beyond both ranges as the
-criterion requires. The run's medians are about 5% above the earlier runs'
-for every kernel, main and twin alike; the runner had just come back online.
+criterion requires. This comparison's medians are 4–7% above the first run's
+on both sides for most kernels, while the twin comparison just before it in
+the same job is within 2% of the first run; the runner had just come back
+online.
 The spread is too large to decide, so the comparison is repeated once, six
 pairs on the same branch, and that repeat decides; both runs stay recorded.
