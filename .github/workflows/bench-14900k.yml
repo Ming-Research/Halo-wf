@@ -30,8 +30,10 @@ jobs:
 
       # Main and this branch built by the same pinned release; a copy of
       # main's binary is the twin that measures noise. One sizing pair,
-      # three warm pairs, then the six selected pairs of each comparison,
-      # and two interleaved vm module-check samples per side.
+      # three warm pairs, then the six selected pairs of each comparison
+      # over the kernels whose collection counts agree; binary-trees'
+      # collection counts at depths 12 to 16; and two interleaved vm
+      # module-check samples per side.
       - name: Build and compare
         run: |
           set -euo pipefail
@@ -55,13 +57,13 @@ jobs:
             ld.lld --version | head -n 1
             uname -a
           } | tee "$out/manifest.txt"
-          kernels=fib,loop,integer-table,string-key,concat,sort,binary-trees
+          kernels=fib,loop,integer-table,string-key,concat,sort
           compare() {
             label=$1; before=$2; after=$3
             for runs in 1 3 6; do
               python3 -B research/experiments/halo-bench/run.py --lua "$lua" \
                 --before-binary "$before" --binary "$after" --kernels "$kernels" \
-                --scale binary-trees=14 --runs "$runs" --out "$out/$label-$runs.json" --compiler "$wfc" \
+                --runs "$runs" --out "$out/$label-$runs.json" --compiler "$wfc" \
                 > "$out/$label-$runs.log" 2>&1 || { cat "$out/$label-$runs.log"; exit 1; }
               echo "== $label, $runs pair(s)"
               grep 'ratio=' "$out/$label-$runs.log"
@@ -69,6 +71,14 @@ jobs:
           }
           compare twin "$out/halo-main" "$out/halo-main-twin"
           compare names "$out/halo-main" "$out/halo-names"
+          for depth in 12 13 14 15 16; do
+            sed "s/^local N = 16$/local N = $depth/" research/experiments/halo-bench/kernels/binary-trees.lua > "$out/binary-trees-$depth.lua"
+            grep -q "^local N = $depth$" "$out/binary-trees-$depth.lua"
+            for side in main names; do
+              "$out/halo-$side" < "$out/binary-trees-$depth.lua" > "$out/bt-$side-$depth.out" 2> "$out/bt-$side-$depth.err"
+              echo "binary-trees depth $depth $side: checksum $(cat "$out/bt-$side-$depth.out"), collections $(sed -n 2p "$out/bt-$side-$depth.err")" | tee -a "$out/collections.txt"
+            done
+          done
           TIMEFORMAT=%R
           for sample in 1 2; do
             for side in main names; do

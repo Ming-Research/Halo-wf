@@ -2116,3 +2116,23 @@ the larger of the two variants' relative min–max ranges in those six pairs
 and more than the twin shows for that kernel, or if the median module-check
 time exceeds 1.25 times main's. A rejection is investigated before the
 change is kept.
+
+### First run stopped by the same-work guard
+
+[Run 37553543866](https://github.com/Ming-Research/Halo-wf/actions/runs/37553543866)
+at `c4ab50d03` completed the twin's 1, 3 and 6 pairs, then stopped in the
+first operand-description pair: `run.py` refuses a pair whose collection
+counts differ, and binary-trees collected 176 times on main and 178 on the
+branch. The other six kernels' counts agreed. The branch also adds the
+`_VERSION` global, a one-time allocation at engine creation, and the
+compiler's local-variable records live outside the Lua heap, so the
+hypothesis is that the difference is a shift in the collector's timing, not
+added allocation per operation.
+
+Second run, recorded before it ran: the timing criterion above is evaluated
+on the six kernels whose counts agree; and each binary runs binary-trees once
+at depths 12, 13, 14, 15 and 16 (`local N` replaced), recording its
+collection count. The hypothesis is rejected if the branch's extra
+collections grow with depth (roughly with the work) rather than staying
+within a few collections at every depth; a rejection is investigated before
+the change is kept.
