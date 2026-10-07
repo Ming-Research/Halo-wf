@@ -2297,3 +2297,260 @@ attributed: it exceeds both ranges and the twin by far.
 `--check-module pkg::vm`: main 7.155 and 7.121 s, head 7.476 and 7.460 s,
 1.046 times; within 1.25. **The criterion passes at the head and the change
 is kept.**
+
+## P1 on the 14900K with wf-e1708490c384
+
+### Question, recorded before measuring
+
+On the reference platform, the owner's i9-14900K running x86-64 Linux, with
+Whitefoot `wf-e1708490c384` (LLVM 22) and clang 22, how far is Halo from P1
+([VM design](../../investigations/halo/VM.md), Halo's median at most PUC
+5.1.5's) on each kernel, after Halo-wf#3's changes, the `sort_compare` split
+included? The earlier P1 tables were measured on an M1 Pro with older
+compilers. This run tests no proposal; it orders the performance candidates
+in `docs/todo.md`, nearest the largest ratio first.
+
+Comparison: `run.py` with Halo (Halo-wf `c0168e213`, full LTO) against
+Redis 7.0.15's bundled PUC Lua built from source, all seven kernels at the
+P1 counts with binary-trees at depth 14, one, three and six alternating
+pairs, unlimited budget, checksums and collection counts recorded. The run
+also records whether `perf` and `objdump` are available on the runner, for
+the attribution that follows.
+
+### Result
+
+[Run 37560444248](https://github.com/Ming-Research/Halo-wf/actions/runs/37560444248),
+six alternating pairs, Halo at `c0168e213` against the reference Lua (medians in
+seconds; checksums agreed in every launch):
+
+| Kernel | PUC | Halo | Halo / PUC | PUC range | Halo range |
+|---|---:|---:|---:|---:|---:|
+| fib | 0.0406 | 0.1050 | 2.584 | 2.75% | 0.67% |
+| loop | 0.2819 | 0.4351 | 1.544 | 1.32% | 0.31% |
+| integer-table | 0.2203 | 0.5921 | 2.688 | 4.30% | 9.12% |
+| string-key | 0.0200 | 0.0335 | 1.678 | 4.76% | 1.38% |
+| concat | 0.0414 | 0.1002 | 2.418 | 1.95% | 1.86% |
+| sort | 0.2580 | 0.5543 | 2.148 | 1.89% | 1.87% |
+| binary-trees | 0.8693 | 2.1156 | 2.434 | 0.59% | 0.53% |
+
+P1 still fails on every kernel. In order of ratio: integer-table, fib,
+binary-trees, concat, sort, string-key, loop. The runner has `perf` 6.8.12
+with `perf_event_paranoid` at -1 and `objdump`.
+
+### Profiles, recorded before they ran
+
+For each kernel: `perf stat` of PUC and of Halo (cycles, instructions,
+branches, branch misses, L1 data-cache load misses), three launches each, to
+separate executing more work from executing it slowly; and `perf record` of
+Halo (cycles, default frequency, one launch), reported by symbol, the top 30.
+The first candidate is chosen from these: the kernel with the largest ratio
+whose profile shows one attributable cost, with a criterion recorded before
+its change.
+
+### Profile result
+
+[Run 37560653349](https://github.com/Ming-Research/Halo-wf/actions/runs/37560653349).
+The runner is a Hyper-V guest without hardware performance counters: every
+`perf stat` event reported `<not supported>` for both engines, so the
+separation of work from speed planned above is not available here. `perf
+record` sampled Halo (one launch per kernel); the leading symbols, as shares
+of samples, with `vm.run` arms named by their arm number in the compiled
+dispatch function:
+
+- fib: arm 63 18.8%, `enter_lua` 16.6%, `push_frame` 14.7%, arm 54 12.6%,
+  arm 5 11.9%, `finish` 7.4%, arm 65 6.9%, `prepare` 3.8%; the call path's
+  four functions together take 42%.
+- concat: `heap.intern` 21.7%, arm 11 20.2%, `vm.slow` 16.3%,
+  `concat_strings` 7.8%, `concat_step` 4.4%, `malloc` 4.2%.
+- binary-trees: `heap.node_find` 13.8%, `collect_if_due` 5.5%, libc
+  `_int_malloc`, `malloc` and `calloc` 13.4% together.
+- string-key: arm 11 55.6%, `heap.node_find` 19.0%.
+- integer-table: arm 13 24.0%, arm 11 16.4%, `heap.rehash` 9.3%, arm 66
+  6.9%, `vm.slow` 6.8%.
+- sort: `sort_run` 55.0%, `heap.table_set` 13.8%, `raw_assign` 7.3%,
+  `sort_compare` 4.9%.
+- loop: arm 66 63.4%, arm 20 36.6%.
+
+One launch per kernel gives shares, not costs, and the arms are not yet
+mapped to instructions; the candidate is chosen after reading these paths
+against PUC's.
+
+### Candidate order
+
+A read of the hot paths against PUC's (concat, sort, integer-table stores,
+string-key lookup, the call path), ranked by expected recovery of each
+kernel's ratio and by risk to roots, handles and budget suspension, puts
+concatenation first: `concat_step` (`lib/halo/vm/continuations.wf`) folds
+the operands right to left one pair at a time, enters the slow executor for
+each pair, allocates and copies a fresh buffer per pair and interns every
+intermediate string, where PUC's `luaV_concat` joins every adjacent string
+or number operand in one buffer and creates one string. Sort's synchronous
+comparison, integer-table's store slot, string-key's lookup and the call path
+follow, each to be measured on its own.
+
+## Batched concatenation
+
+### Criterion, recorded before the change
+
+Change: `Concat` joins each maximal run of adjacent string or number
+operands, from the top as `luaV_concat` does, into one buffer and interns the
+result once; numbers convert with Lua's `%.14g`; an operand that is neither
+still goes to `__concat` with PUC's operand order, its errors and the
+continuation that budget suspension and callbacks need.
+
+Kept only if, on the 14900K, in six interleaved full-LTO pairs of the head
+before the change against the head after it, with a twin of the before
+binary: the concat kernel's median falls at least 15%, by more than both
+relative ranges and the twin's difference; no other kernel is slower beyond
+its larger range and the twin's; `--check-module pkg::vm` takes at most 1.25
+times as long; and `make check` passes, the oracle at budgets 1, 7 and 1000
+ordinary and under collector stress included. Otherwise the change is
+reverted with its measurements kept.
+
+### Result
+
+[Run 37562788975](https://github.com/Ming-Research/Halo-wf/actions/runs/37562788975):
+main `7920b3c8d` against the branch at `f85c49c5b`, whose engine differs from
+main only in `lib/halo/vm/concat.wf`, `continuations.wf` and the license note
+(the run's own `git diff --stat`); six interleaved full-LTO pairs, medians in
+seconds:
+
+| Kernel | Main | Branch | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1049 | 0.1045 | 0.997 | 0.85% | 1.88% | 0.998 |
+| loop | 0.4360 | 0.4348 | 0.997 | 1.38% | 0.88% | 0.998 |
+| integer-table | 0.5944 | 0.5885 | 0.990 | 3.67% | 4.88% | 1.000 |
+| string-key | 0.0336 | 0.0338 | 1.005 | 1.09% | 2.70% | 1.009 |
+| concat | 0.1004 | 0.0730 | 0.727 | 0.94% | 0.79% | 0.998 |
+| sort | 0.5541 | 0.5516 | 0.996 | 0.53% | 0.35% | 1.002 |
+| binary-trees | 2.1019 | 2.1088 | 1.003 | 1.12% | 0.72% | 1.004 |
+
+`--check-module pkg::vm`: main 7.408 and 7.473 s, branch 7.551 and 7.544 s
+(1.014 times). `make check` passed at `6e9a50773`, the same engine
+([run 37562088965](https://github.com/Ming-Research/Halo-wf/actions/runs/37562088965)),
+the strengthened concatenation scripts and budgets 1, 7 and 1000 under
+collector stress included; their assertions also hold on Redis
+(oracle-reference run 37561720007).
+
+**The criterion passes and the change is kept.** Concat is 27.3% faster, far
+beyond both ranges and the twin, and no other kernel is slower beyond its
+bounds. Against PUC's median in the P1 run above, concat's ratio goes from
+2.42 to about 1.76 (not measured in one session).
+
+## Whitefoot wf-0b7f5c5b9854 upgrade
+
+### Question, recorded before measuring
+
+`whitefoot.pin` moves from `wf-e1708490c384` (Whitefoot `e1708490c`,
+specification v0.93) to `wf-0b7f5c5b9854` (`0b7f5c5b9`, v0.94). The
+specification adds only scanning and clearing a `ConcurrentHashMap`, which
+Halo does not use; code generation changes through Whitefoot #258 (the
+match's code cursor), #261 (edges by their step; spill order) and #260. How do
+the kernels and the vm module-check time move? Whitefoot-kit's upgrade step 5
+asks for this comparison; it reports the difference and rejects nothing. The
+Whitefoot session measured Halo at `acb39ad7f` with #261's fix against the
+pre-cursor compiler: loop 1.000, fib 1.005.
+
+Comparison: the same source (this branch's engine) built with each release,
+six interleaved full-LTO pairs over the seven kernels, a twin of the old
+build, and two interleaved module-check samples per compiler.
+
+### Result
+
+[Run 37566520775](https://github.com/Ming-Research/Halo-wf/actions/runs/37566520775)
+at `014b4082d`, six interleaved full-LTO pairs, medians in seconds:
+
+| Kernel | Old release | New release | Ratio | Old range | New range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1055 | 0.1047 | 0.993 | 1.74% | 1.24% | 0.998 |
+| loop | 0.4348 | 0.4350 | 1.001 | 0.64% | 0.77% | 1.000 |
+| integer-table | 0.6003 | 0.5949 | 0.991 | 1.90% | 12.58% | 0.999 |
+| string-key | 0.0337 | 0.0339 | 1.007 | 2.27% | 1.03% | 0.998 |
+| concat | 0.0730 | 0.0731 | 1.001 | 1.60% | 1.10% | 1.005 |
+| sort | 0.5509 | 0.5512 | 1.001 | 0.84% | 0.34% | 0.999 |
+| binary-trees | 2.1131 | 2.1131 | 1.000 | 1.53% | 1.23% | 1.001 |
+
+`--check-module pkg::vm`: old 7.515 and 7.618 s, new 7.536 and 7.588 s.
+Every kernel stays within its ranges and the twin; the upgrade leaves these
+kernels' times and the module check unchanged, in line with the Whitefoot
+session's measurement of #261 on Halo.
+
+## Constant-step next pc in the dispatch arms
+
+### Criterion, recorded before the change
+
+Since `wf-0b7f5c5b9854`, Whitefoot lowers `run`'s self-tail calls with a code
+cursor: an edge whose new `pc` is visibly `pc` plus a constant moves the
+received address by that constant, and every other edge forms the address
+from `pc` again. Halo's straight-line arms receive `next` from their helpers
+(`Ok(next)`), so the cursor cannot see the step. Change: in the arms whose
+instruction always continues at the next cell (moves, loads, upvalue reads,
+table reads and writes, arithmetic, length, `not`, and the fast table
+paths), compute `next = pc + 1` in the arm and check it against the code
+length there, the helper reporting only success; arms whose continuation is
+a jump target, a call, a return or a callback keep their current form. The
+design node `design/halo/dispatch/continuations.md` changes with it, for the
+owner's ruling.
+
+Kept only if, on the 14900K, in six interleaved full-LTO pairs of the branch
+before the change against after it, with a twin of the before binary: the
+loop kernel's median falls at least 5%, by more than both ranges and the
+twin's difference; no kernel is slower beyond its larger range and the
+twin's; `--check-module pkg::vm` takes at most 1.25 times as long; and `make
+check` passes. Otherwise the change is reverted with its measurements kept.
+
+### Result
+
+[Run 37569342705](https://github.com/Ming-Research/Halo-wf/actions/runs/37569342705):
+the branch before the change (`bb4ff27cd`) against after it (`1abb228cc`,
+whose engine differs only in `dispatch.wf`, `handlers.wf` and
+`continuations.wf`), both built with `wf-0b7f5c5b9854`; six interleaved
+full-LTO pairs, medians in seconds. `make check` passed on the changed engine
+([run 37568872363](https://github.com/Ming-Research/Halo-wf/actions/runs/37568872363)).
+
+| Kernel | Before | After | Ratio | Before range | After range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1048 | 0.1042 | 0.994 | 1.12% | 1.37% | 1.005 |
+| loop | 0.4348 | 0.4263 | 0.981 | 0.69% | 0.40% | 1.000 |
+| integer-table | 0.5921 | 0.5868 | 0.991 | 1.84% | 2.41% | 1.004 |
+| string-key | 0.0335 | 0.0329 | 0.982 | 4.02% | 2.13% | 0.991 |
+| concat | 0.0728 | 0.0764 | 1.049 | 1.93% | 3.15% | 0.999 |
+| sort | 0.5520 | 0.5377 | 0.974 | 0.36% | 0.68% | 1.001 |
+| binary-trees | 2.1265 | 2.0928 | 0.984 | 1.80% | 1.92% | 0.995 |
+
+`--check-module pkg::vm`: before 7.548 and 7.529 s, after 8.384 and 8.417 s
+(1.114 times).
+
+**The criterion fails and the change is reverted.** Loop improves only 1.9%
+against the required 5%, and concat is 4.9% slower, beyond its 3.15% range
+and the twin. Sort improves 2.6% beyond its bounds; the other kernels move
+within theirs. The checker also needed the 31 arms that used to reach the
+shared epilogue to check the stack window themselves, because their helpers'
+postconditions could not carry it, so those arms gained a comparison as
+well as the constant step. `dispatch.wf`, `handlers.wf` and
+`continuations.wf` return to their bytes at `bb4ff27cd`.
+
+## Synchronous default sort
+
+### Criterion, recorded before the change
+
+`table.sort` runs as a resumable state machine (`lib/halo/vm/library-sort.wf`,
+`sort_run` with `SortFrame` phases), so that a Lua comparator can call back
+and be suspended by the budget; the default comparison of numbers takes the
+same path, storing frames and passing each result through a stack slot
+(`sort_run` 55% of the sort kernel's samples). Change: when no comparator is
+given and every element `1..n` lies in the table's array part and all are
+numbers, or all are strings, sort them synchronously by the same steps as
+PUC's `auxsort` (the same pivots, comparisons, swaps, recursion on the
+smaller half, and the same "invalid order function for sorting" error at
+the same point), reading and writing the array directly; every other case
+keeps the state machine.
+
+Kept only if, on the 14900K, in six interleaved full-LTO pairs of the branch
+before the change against after it, with a twin of the before binary: the
+sort kernel's median falls at least 15%, by more than both ranges and the
+twin's difference; no other kernel is slower beyond its larger range and the
+twin's; `--check-module pkg::vm` takes at most 1.25 times as long; and `make
+check` passes, the sort oracle cases at budgets 1, 7 and 1000 under collector
+stress included. Otherwise the change is reverted with its measurements
+kept.
