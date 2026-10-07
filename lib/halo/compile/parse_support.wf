@@ -637,6 +637,7 @@ fn nameexp(p: &Parser, heap: &Heap) -> result_value: Exp writes(p), writes(heap)
 }
 
 fn newlocal(p: &Parser, h: u32, n: i64) -> result_value: unit writes(p) {
+  doc "Ports lparser.c registerlocalvar/new_localvar: active slots index declaration records.";
   let active = nactvar(p: p);
   let pos = active +wrap n;
   if pos >= 200_i64 {
@@ -658,7 +659,6 @@ fn newlocal(p: &Parser, h: u32, n: i64) -> result_value: unit writes(p) {
   let i = cvt::<i64, u64>(pos);
   let id = p^.current;
   if id < p^.funcs.inner.len {
-    // lparser.c registerlocalvar/new_localvar: active slots index declaration records.
     let record = p^.funcs.inner[id].local_debug.inner.len;
     let record_index = cvt.wrap::<u64, u32>(record);
     let debug = LocalDebug(name: h, startpc: 0_i64, endpc: 0_i64);

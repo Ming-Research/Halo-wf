@@ -346,6 +346,7 @@ fn slow<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, 
   requires dest < stack^.inner.len;
   ensures stack^.inner.len == entry(stack)^.inner.len;
 } {
+  doc "Ports luaV_gettable/luaV_settable: a non-function tag-method hop clears the operand location (unlimited) because the value is outside the stack. luaG_aritherror chooses the bad operand by numeric conversion, not its original tag.";
   let length = stack^.inner.len;
   let nil = Value::Nil();
   let name = 0_u8;
@@ -385,7 +386,6 @@ fn slow<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, 
           }
           Other() => {
             set t = tm;
-            // luaV_gettable/settable now point at a tag-method value outside the stack.
             set location = unlimited;
           }
         }
@@ -441,7 +441,6 @@ fn slow<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, 
           }
           Other() => {
             set t = tm;
-            // luaV_gettable/settable now point at a tag-method value outside the stack.
             set location = unlimited;
           }
         }
@@ -738,7 +737,6 @@ fn slow<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, 
   }
   let bad = b;
   let location = breg;
-  // luaG_aritherror tests conversion, not the original value tag.
   match coerce_number(vm: vm, v: b) {
     Is(..) => {
       set bad = c;

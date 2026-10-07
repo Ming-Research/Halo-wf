@@ -809,8 +809,6 @@ const cj_nullconcat: Array<u8, 39> = "attempt to concatenate a userdata value";
 
 const cj_nulllen: Array<u8, 41> = "attempt to get length of a userdata value";
 
-// Ports ldebug.c symbexec/getobjname/kname and lfunc.c luaF_getlocalname.
-// The Lua MIT notice in LICENSE.md applies to this file.
 struct NameOrigin {
   kind: u8;
   index: u64;
@@ -843,7 +841,7 @@ const name_upvalue: Array<u8, 7> = "upvalue";
 const name_method: Array<u8, 6> = "method";
 
 fn symbolic_name(code: &Box<Slots<Cell>>, vm: &Vm, proto: Proto, lastpc: u64, reg: u64) -> r: NameOrigin reads(code), reads(vm.protos) {
-  doc "symbexec tracks the last writer before lastpc. A neutral origin is the final RETURN default; validation already checked the stream. kind 6 is MOVE recursion, not a displayed kind.";
+  doc "Ports Lua 5.1 ldebug.c symbexec/getobjname/kname and lfunc.c luaF_getlocalname under the Lua MIT notice in LICENSE.md. Tracks the last writer before lastpc using lopcodes.c's A column and opcode-specific writes; neutral origin is the final RETURN default, and kind 6 is MOVE recursion, not a displayed kind. LOADBOOL does not skip; SELF gives both destinations the method origin; CALL/TAILCALL invalidate registers >= A; VARARG writes only A. Visit absorbed JMPs after tests, including TFORLOOP; cell targets already include pc++, and backward edges are ignored. SETLIST's count word is absorbed; CLOSURE skips retained capture pseudo-cells by nup. Validation already checked the stream.";
   let last = NameOrigin(kind: 0_u8, index: 0_u64);
   let pc = cvt::<u32, u64>(proto.start);
   loop {
@@ -858,7 +856,6 @@ fn symbolic_name(code: &Box<Slots<Cell>>, vm: &Vm, proto: Proto, lastpc: u64, re
     let origin = NameOrigin(kind: 0_u8, index: 0_u64);
     let next = pc +sat 1_u64;
     let jump = unlimited;
-    // lopcodes.c's A column, followed by symbexec's opcode-specific writes.
     match cell {
       Move(a: traced_a, b: traced_b) => {
         let dest = cvt::<u8, u64>(traced_a);
@@ -879,7 +876,6 @@ fn symbolic_name(code: &Box<Slots<Cell>>, vm: &Vm, proto: Proto, lastpc: u64, re
       LoadBool(a: traced_a, ..) => {
         let dest = cvt::<u8, u64>(traced_a);
         set changed = dest == reg;
-        // LOADBOOL skip only validates in symbexec; it does not advance the walk.
       }
       LoadNil(a: traced_a, b: traced_b) => {
         let dest = cvt::<u8, u64>(traced_a);
@@ -939,7 +935,6 @@ fn symbolic_name(code: &Box<Slots<Cell>>, vm: &Vm, proto: Proto, lastpc: u64, re
       SelfR(a: traced_a, ..) => {
         let dest = cvt::<u8, u64>(traced_a);
         set changed = dest == reg;
-        // OP_SELF also changed traced_a+1; either destination retains the method origin.
         let self = dest + 1_u64;
         let receiver = self == reg;
         set changed = bor(changed, receiver);
@@ -948,7 +943,6 @@ fn symbolic_name(code: &Box<Slots<Cell>>, vm: &Vm, proto: Proto, lastpc: u64, re
       SelfK(a: traced_a, k: traced_k, ..) => {
         let dest = cvt::<u8, u64>(traced_a);
         set changed = dest == reg;
-        // OP_SELF also changed traced_a+1; either destination retains the method origin.
         let self = dest + 1_u64;
         let receiver = self == reg;
         set changed = bor(changed, receiver);
@@ -1068,79 +1062,62 @@ fn symbolic_name(code: &Box<Slots<Cell>>, vm: &Vm, proto: Proto, lastpc: u64, re
         set changed = dest == reg;
       }
       Jmp(target: traced_target) => {
-        // The absorbed JMP is visited after its test, including TFORLOOP.
         set jump = cvt::<u32, u64>(traced_target);
       }
       EqJmpRR(target: traced_target, ..) => {
-        // The absorbed JMP is visited after its test, including TFORLOOP.
         set jump = cvt::<u32, u64>(traced_target);
       }
       EqJmpRK(target: traced_target, ..) => {
-        // The absorbed JMP is visited after its test, including TFORLOOP.
         set jump = cvt::<u32, u64>(traced_target);
       }
       EqJmpKR(target: traced_target, ..) => {
-        // The absorbed JMP is visited after its test, including TFORLOOP.
         set jump = cvt::<u32, u64>(traced_target);
       }
       EqJmpKK(target: traced_target, ..) => {
-        // The absorbed JMP is visited after its test, including TFORLOOP.
         set jump = cvt::<u32, u64>(traced_target);
       }
       LtJmpRR(target: traced_target, ..) => {
-        // The absorbed JMP is visited after its test, including TFORLOOP.
         set jump = cvt::<u32, u64>(traced_target);
       }
       LtJmpRK(target: traced_target, ..) => {
-        // The absorbed JMP is visited after its test, including TFORLOOP.
         set jump = cvt::<u32, u64>(traced_target);
       }
       LtJmpKR(target: traced_target, ..) => {
-        // The absorbed JMP is visited after its test, including TFORLOOP.
         set jump = cvt::<u32, u64>(traced_target);
       }
       LtJmpKK(target: traced_target, ..) => {
-        // The absorbed JMP is visited after its test, including TFORLOOP.
         set jump = cvt::<u32, u64>(traced_target);
       }
       LeJmpRR(target: traced_target, ..) => {
-        // The absorbed JMP is visited after its test, including TFORLOOP.
         set jump = cvt::<u32, u64>(traced_target);
       }
       LeJmpRK(target: traced_target, ..) => {
-        // The absorbed JMP is visited after its test, including TFORLOOP.
         set jump = cvt::<u32, u64>(traced_target);
       }
       LeJmpKR(target: traced_target, ..) => {
-        // The absorbed JMP is visited after its test, including TFORLOOP.
         set jump = cvt::<u32, u64>(traced_target);
       }
       LeJmpKK(target: traced_target, ..) => {
-        // The absorbed JMP is visited after its test, including TFORLOOP.
         set jump = cvt::<u32, u64>(traced_target);
       }
       TestJmp(a: traced_a, target: traced_target, ..) => {
         let dest = cvt::<u8, u64>(traced_a);
         set changed = dest == reg;
-        // The absorbed JMP is visited after its test, including TFORLOOP.
         set jump = cvt::<u32, u64>(traced_target);
       }
       TestSetJmp(a: traced_a, target: traced_target, ..) => {
         let dest = cvt::<u8, u64>(traced_a);
         set changed = dest == reg;
-        // The absorbed JMP is visited after its test, including TFORLOOP.
         set jump = cvt::<u32, u64>(traced_target);
       }
       Call(a: traced_a, ..) => {
         let dest = cvt::<u8, u64>(traced_a);
         set changed = dest == reg;
-        // OP_CALL/OP_TAILCALL invalidate every register at or above A.
         set changed = reg >= dest;
       }
       TailCall(a: traced_a, ..) => {
         let dest = cvt::<u8, u64>(traced_a);
         set changed = dest == reg;
-        // OP_CALL/OP_TAILCALL invalidate every register at or above A.
         set changed = reg >= dest;
       }
       Return(..) => {
@@ -1148,31 +1125,26 @@ fn symbolic_name(code: &Box<Slots<Cell>>, vm: &Vm, proto: Proto, lastpc: u64, re
       ForLoop(a: traced_a, target: traced_target) => {
         let dest = cvt::<u8, u64>(traced_a);
         set changed = dest == reg;
-        // The absorbed JMP is visited after its test, including TFORLOOP.
         set jump = cvt::<u32, u64>(traced_target);
       }
       ForPrep(a: traced_a, target: traced_target) => {
         let dest = cvt::<u8, u64>(traced_a);
         set changed = dest == reg;
-        // The absorbed JMP is visited after its test, including TFORLOOP.
         set jump = cvt::<u32, u64>(traced_target);
       }
       TForLoop(a: traced_a, target: traced_target, ..) => {
         let base = cvt::<u8, u64>(traced_a);
         let first = base + 2_u64;
         set changed = reg >= first;
-        // The absorbed JMP is visited after its test, including TFORLOOP.
         set jump = cvt::<u32, u64>(traced_target);
       }
       SetList(..) => {
-        // Assembly already absorbed the extra SETLIST count word.
       }
       Close(..) => {
       }
       Closure(a: traced_a, proto: child_proto) => {
         let dest = cvt::<u8, u64>(traced_a);
         set changed = dest == reg;
-        // OP_CLOSURE pc += nup: assembly retains capture pseudo-cells.
         let child = cvt::<u32, u64>(child_proto);
         if child < vm^.protos.inner.len {
           let count = vm^.protos.inner[child].nups;
@@ -1183,14 +1155,11 @@ fn symbolic_name(code: &Box<Slots<Cell>>, vm: &Vm, proto: Proto, lastpc: u64, re
       VarArg(a: traced_a, ..) => {
         let dest = cvt::<u8, u64>(traced_a);
         set changed = dest == reg;
-        // OP_VARARG has only the A-column write, even for multiple results.
       }
     }
     if changed {
       set last = origin;
     }
-    // symbexec OP_JMP/OP_FORPREP/OP_FORLOOP: pc += b then loop pc++.
-    // Cell targets already denote that next instruction; backward edges are ignored.
     if pc < jump {
       if jump <= lastpc {
         set next = jump;
@@ -1320,7 +1289,6 @@ fn describe_operand(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm
     }
     let origin = symbolic_name(code: code, vm: vm, proto: proto, lastpc: pc, reg: position);
     if origin.kind == 6_u8 {
-      // getobjname(MOVE) repeats at currentpc, not at the MOVE instruction.
       set position = origin.index;
     } else {
       if origin.kind == 0_u8 {
@@ -1355,7 +1323,7 @@ fn describe_operand(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm
 }
 
 fn call_type_error(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, v: Value, func: u64, return_pc: u64) -> r: Bool reads(code), reads(consts), writes(vm) {
-  doc "ldo.c tryfuncTM describes CALL/TAILCALL's function slot. TFORLOOP uses A+3 in its Lua caller even though Halo invokes the iterator through a nested activation; builtin callbacks have no Lua operand.";
+  doc "ldo.c tryfuncTM describes CALL/TAILCALL's function slot. CALL's fast path installs no callback plan, so an actual Lua caller supplies return_pc for the error location; a pcall marker is a native frame. TFORLOOP uses A+3 in its Lua caller even though Halo invokes the iterator through a nested activation; builtin callbacks have no Lua operand.";
   let reg = unlimited;
   let activation = vm^.activation;
   let saved_plan = vm^.callback_plan;
@@ -1364,8 +1332,6 @@ fn call_type_error(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm,
     let last = count - 1_u64;
     let frame = vm^.frames.inner[last];
     if frame.activation == activation {
-      // CALL's fast path does not install a callback plan. Only an actual
-      // Lua caller can supply its return_pc; a pcall marker is a native frame.
       if frame.closure != no_handle {
         let plan = saved_plan;
         set plan.pc = return_pc;

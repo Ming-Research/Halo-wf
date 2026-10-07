@@ -401,6 +401,7 @@ fn localstat(p: &Parser, heap: &Heap) -> result_value: unit writes(p), writes(he
 }
 
 fn localfunc(p: &Parser, heap: &Heap) -> result_value: unit writes(p), writes(heap) {
+  doc "Ports lparser.c localfunc: debug visibility starts after the closure is stored.";
   let h = name(p: p, heap: heap);
   newlocal(p: p, h: h, n: 0_i64);
   let free = freereg(p: p);
@@ -411,7 +412,6 @@ fn localfunc(p: &Parser, heap: &Heap) -> result_value: unit writes(p), writes(he
   let arg_159 = p^.lex.line;
   let b = body(p: p, heap: heap, needself: arg_158, line: arg_159);
   k_store(p: p, var: &v, e: &b);
-  // lparser.c localfunc delays debug visibility until after the closure is stored.
   startlocal(p: p, slot: free);
   return unit;
 }
