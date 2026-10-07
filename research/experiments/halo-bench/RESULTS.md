@@ -2676,3 +2676,29 @@ final engine (`380b624f0`), main `bc4e2db17` against it with a twin:
 `--check-module pkg::vm`: main 7.568 and 7.610 s, branch 7.573 and 7.609 s
 (1.000 times). The criterion still passes: integer-table takes 0.881 times
 as long, and no kernel is slower beyond its bounds.
+
+## Table construction and growth
+
+### Attribution, recorded before it runs
+
+Binary-trees is about 2.2 times PUC and integer-table about 2.35 times
+([P1 on the 14900K](#p1-on-the-14900k-with-wf-e1708490c384), with the
+changes since). Their profiles there put `heap.node_find` (13.8%), the
+collector's `collect_if_due` (5.5%) and libc's allocator (13.4%) in
+binary-trees, and `heap.rehash` (9.3%) beside the table arms in
+integer-table. Where does the time of table construction, insertion and
+growth go, instruction by instruction, against PUC's `luaH_new`,
+`luaH_set`/`newkey` and `luaH_resize`? This run tests no proposal: it
+chooses the next change and its criterion. As for the call path, each cost
+is classed as work Halo's source asks for that PUC does not do, a Halo-side
+candidate, or code the compiler emits beyond what the source asks for, a
+Whitefoot question for the owner. Costs inside the dispatch arms are noted
+but not acted on, since `loop { match }` dispatch is rewriting them.
+
+Run: on a GitHub-hosted ubuntu-24.04 x86-64 runner, which reads shares of
+samples, not times; Halo at main built with full LTO as `run.py` builds it,
+and Redis 7.0.15's bundled PUC Lua built from source, each running
+binary-trees at depth 14 (`run.py`'s scale) and integer-table; `perf record`
+of each, three launches, reported by symbol; `perf annotate` of Halo's
+sampled symbols; and the disassembly of the table functions with their
+instruction counts.
