@@ -11,8 +11,13 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
     Move(a: av, b: bv) => {
       let continuation = instruction_move::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^);
       match continuation {
-        Ok(value: next) => {
-          return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+        Ok(value: completed) => {
+          let next = pc + 1_u64;
+          if next < code^.inner.len {
+            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+          }
+          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+          set step = Step::Error();
         }
         Err(error: failure) => {
           set step = failure;
@@ -22,8 +27,13 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
     LoadK(a: av, k: kv) => {
       let continuation = instruction_load_k::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, kv: kv^);
       match continuation {
-        Ok(value: next) => {
-          return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+        Ok(value: completed) => {
+          let next = pc + 1_u64;
+          if next < code^.inner.len {
+            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+          }
+          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+          set step = Step::Error();
         }
         Err(error: failure) => {
           set step = failure;
@@ -31,19 +41,50 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       }
     }
     LoadKx(a: av, k: kv) => {
-      set step = instruction_load_kx::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, kv: kv^);
+      let continuation = instruction_load_kx::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, kv: kv^);
+      match continuation {
+        Ok(value: completed) => {
+          let next = pc + 1_u64;
+          if next < code^.inner.len {
+            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+          }
+          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+          set step = Step::Error();
+        }
+        Err(error: failure) => {
+          set step = failure;
+        }
+      }
     }
     LoadBool(a: av, b: bv, skip: skipv) => {
       set step = instruction_load_bool::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, skipv: skipv^);
     }
     LoadNil(a: av, b: bv) => {
-      set step = instruction_load_nil::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^);
+      let continuation = instruction_load_nil::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^);
+      match continuation {
+        Ok(value: completed) => {
+          let next = pc + 1_u64;
+          if next < code^.inner.len {
+            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+          }
+          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+          set step = Step::Error();
+        }
+        Err(error: failure) => {
+          set step = failure;
+        }
+      }
     }
     GetUpval(a: av, u: uv) => {
       let continuation = instruction_get_upval::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, uv: uv^);
       match continuation {
-        Ok(value: next) => {
-          return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+        Ok(value: completed) => {
+          let next = pc + 1_u64;
+          if next < code^.inner.len {
+            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+          }
+          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+          set step = Step::Error();
         }
         Err(error: failure) => {
           set step = failure;
@@ -51,7 +92,20 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       }
     }
     SetUpval(a: av, u: uv) => {
-      set step = instruction_set_upval::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, uv: uv^);
+      let continuation = instruction_set_upval::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, uv: uv^);
+      match continuation {
+        Ok(value: completed) => {
+          let next = pc + 1_u64;
+          if next < code^.inner.len {
+            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+          }
+          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+          set step = Step::Error();
+        }
+        Err(error: failure) => {
+          set step = failure;
+        }
+      }
     }
     GetGlobal(a: av, k: kv) => {
       set step = instruction_get_global::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, kv: kv^);
@@ -68,12 +122,17 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
     GetTableR(a: av, t: tv, c: cv) => {
       let continuation = fast_instruction_get_table_r(code: code, consts: consts, stack: stack, vm: vm, pc: pc, base: base, kbase: kbase, av: av^, tv: tv^, cv: cv^);
       match continuation {
-        Ok(value: cursor) => {
-          if cursor.handled {
-            let next = cursor.pc;
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+        Ok(value: handled) => {
+          if handled {
+            let next = pc + 1_u64;
+            if next < code^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+            set step = Step::Error();
+          } else {
+            set step = instruction_get_table_r::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, tv: tv^, cv: cv^);
           }
-          set step = instruction_get_table_r::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, tv: tv^, cv: cv^);
         }
         Err(error: failure) => {
           set step = failure;
@@ -83,12 +142,17 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
     GetTableK(a: av, t: tv, k: kv) => {
       let continuation = fast_instruction_get_table_k(code: code, consts: consts, stack: stack, vm: vm, pc: pc, base: base, kbase: kbase, av: av^, tv: tv^, kv: kv^);
       match continuation {
-        Ok(value: cursor) => {
-          if cursor.handled {
-            let next = cursor.pc;
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+        Ok(value: handled) => {
+          if handled {
+            let next = pc + 1_u64;
+            if next < code^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+            set step = Step::Error();
+          } else {
+            set step = instruction_get_table_k::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, tv: tv^, kv: kv^);
           }
-          set step = instruction_get_table_k::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, tv: tv^, kv: kv^);
         }
         Err(error: failure) => {
           set step = failure;
@@ -98,12 +162,17 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
     SetTableRR(t: tv, key: keyv, val: valv) => {
       let continuation = fast_instruction_set_table_rr(code: code, consts: consts, stack: stack, vm: vm, pc: pc, base: base, kbase: kbase, tv: tv^, keyv: keyv^, valv: valv^);
       match continuation {
-        Ok(value: cursor) => {
-          if cursor.handled {
-            let next = cursor.pc;
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+        Ok(value: handled) => {
+          if handled {
+            let next = pc + 1_u64;
+            if next < code^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+            set step = Step::Error();
+          } else {
+            set step = instruction_set_table_rr::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, tv: tv^, keyv: keyv^, valv: valv^);
           }
-          set step = instruction_set_table_rr::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, tv: tv^, keyv: keyv^, valv: valv^);
         }
         Err(error: failure) => {
           set step = failure;
@@ -111,17 +180,35 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       }
     }
     SetTableRK(t: tv, key: keyv, val: valv) => {
-      set step = instruction_set_table_rk::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, tv: tv^, keyv: keyv^, valv: valv^);
+      let continuation = instruction_set_table_rk::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, tv: tv^, keyv: keyv^, valv: valv^);
+      match continuation {
+        Ok(value: completed) => {
+          let next = pc + 1_u64;
+          if next < code^.inner.len {
+            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+          }
+          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+          set step = Step::Error();
+        }
+        Err(error: failure) => {
+          set step = failure;
+        }
+      }
     }
     SetTableKR(t: tv, key: keyv, val: valv) => {
       let continuation = fast_instruction_set_table_kr(code: code, consts: consts, stack: stack, vm: vm, pc: pc, base: base, kbase: kbase, tv: tv^, keyv: keyv^, valv: valv^);
       match continuation {
-        Ok(value: cursor) => {
-          if cursor.handled {
-            let next = cursor.pc;
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+        Ok(value: handled) => {
+          if handled {
+            let next = pc + 1_u64;
+            if next < code^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+            set step = Step::Error();
+          } else {
+            set step = instruction_set_table_kr::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, tv: tv^, keyv: keyv^, valv: valv^);
           }
-          set step = instruction_set_table_kr::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, tv: tv^, keyv: keyv^, valv: valv^);
         }
         Err(error: failure) => {
           set step = failure;
@@ -129,26 +216,83 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       }
     }
     SetTableKK(t: tv, key: keyv, val: valv) => {
-      set step = instruction_set_table_kk::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, tv: tv^, keyv: keyv^, valv: valv^);
+      let continuation = instruction_set_table_kk::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, tv: tv^, keyv: keyv^, valv: valv^);
+      match continuation {
+        Ok(value: completed) => {
+          let next = pc + 1_u64;
+          if next < code^.inner.len {
+            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+          }
+          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+          set step = Step::Error();
+        }
+        Err(error: failure) => {
+          set step = failure;
+        }
+      }
     }
     NewTable(a: av, asize: asizev, hsize: hsizev) => {
-      set step = instruction_new_table::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, asizev: asizev^, hsizev: hsizev^);
+      let continuation = instruction_new_table::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, asizev: asizev^, hsizev: hsizev^);
+      match continuation {
+        Ok(value: completed) => {
+          let next = pc + 1_u64;
+          if next < code^.inner.len {
+            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+          }
+          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+          set step = Step::Error();
+        }
+        Err(error: failure) => {
+          set step = failure;
+        }
+      }
     }
     SelfR(a: av, b: bv, c: cv) => {
-      set step = instruction_self_r::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      let continuation = instruction_self_r::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      match continuation {
+        Ok(value: completed) => {
+          let next = pc + 1_u64;
+          if next < code^.inner.len {
+            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+          }
+          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+          set step = Step::Error();
+        }
+        Err(error: failure) => {
+          set step = failure;
+        }
+      }
     }
     SelfK(a: av, b: bv, k: kv) => {
-      set step = instruction_self_k::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, kv: kv^);
+      let continuation = instruction_self_k::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, kv: kv^);
+      match continuation {
+        Ok(value: completed) => {
+          let next = pc + 1_u64;
+          if next < code^.inner.len {
+            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+          }
+          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+          set step = Step::Error();
+        }
+        Err(error: failure) => {
+          set step = failure;
+        }
+      }
     }
     AddRR(a: av, b: bv, c: cv) => {
       let continuation = fast_instruction_add_rr(code: code, consts: consts, stack: stack, vm: vm, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
       match continuation {
-        Ok(value: cursor) => {
-          if cursor.handled {
-            let next = cursor.pc;
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+        Ok(value: handled) => {
+          if handled {
+            let next = pc + 1_u64;
+            if next < code^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+            set step = Step::Error();
+          } else {
+            set step = instruction_add_rr::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
           }
-          set step = instruction_add_rr::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
         }
         Err(error: failure) => {
           set step = failure;
@@ -158,12 +302,17 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
     AddRK(a: av, b: bv, c: cv) => {
       let continuation = fast_instruction_add_rk(code: code, consts: consts, stack: stack, vm: vm, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
       match continuation {
-        Ok(value: cursor) => {
-          if cursor.handled {
-            let next = cursor.pc;
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+        Ok(value: handled) => {
+          if handled {
+            let next = pc + 1_u64;
+            if next < code^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+            set step = Step::Error();
+          } else {
+            set step = instruction_add_rk::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
           }
-          set step = instruction_add_rk::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
         }
         Err(error: failure) => {
           set step = failure;
@@ -171,20 +320,51 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       }
     }
     AddKR(a: av, b: bv, c: cv) => {
-      set step = instruction_add_kr::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      let continuation = instruction_add_kr::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      match continuation {
+        Ok(value: completed) => {
+          let next = pc + 1_u64;
+          if next < code^.inner.len {
+            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+          }
+          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+          set step = Step::Error();
+        }
+        Err(error: failure) => {
+          set step = failure;
+        }
+      }
     }
     AddKK(a: av, b: bv, c: cv) => {
-      set step = instruction_add_kk::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      let continuation = instruction_add_kk::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      match continuation {
+        Ok(value: completed) => {
+          let next = pc + 1_u64;
+          if next < code^.inner.len {
+            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+          }
+          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+          set step = Step::Error();
+        }
+        Err(error: failure) => {
+          set step = failure;
+        }
+      }
     }
     SubRR(a: av, b: bv, c: cv) => {
       let continuation = fast_instruction_sub_rr(code: code, consts: consts, stack: stack, vm: vm, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
       match continuation {
-        Ok(value: cursor) => {
-          if cursor.handled {
-            let next = cursor.pc;
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+        Ok(value: handled) => {
+          if handled {
+            let next = pc + 1_u64;
+            if next < code^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+            set step = Step::Error();
+          } else {
+            set step = instruction_sub_rr::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
           }
-          set step = instruction_sub_rr::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
         }
         Err(error: failure) => {
           set step = failure;
@@ -194,12 +374,17 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
     SubRK(a: av, b: bv, c: cv) => {
       let continuation = fast_instruction_sub_rk(code: code, consts: consts, stack: stack, vm: vm, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
       match continuation {
-        Ok(value: cursor) => {
-          if cursor.handled {
-            let next = cursor.pc;
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+        Ok(value: handled) => {
+          if handled {
+            let next = pc + 1_u64;
+            if next < code^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+            set step = Step::Error();
+          } else {
+            set step = instruction_sub_rk::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
           }
-          set step = instruction_sub_rk::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
         }
         Err(error: failure) => {
           set step = failure;
@@ -207,26 +392,83 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       }
     }
     SubKR(a: av, b: bv, c: cv) => {
-      set step = instruction_sub_kr::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      let continuation = instruction_sub_kr::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      match continuation {
+        Ok(value: completed) => {
+          let next = pc + 1_u64;
+          if next < code^.inner.len {
+            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+          }
+          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+          set step = Step::Error();
+        }
+        Err(error: failure) => {
+          set step = failure;
+        }
+      }
     }
     SubKK(a: av, b: bv, c: cv) => {
-      set step = instruction_sub_kk::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      let continuation = instruction_sub_kk::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      match continuation {
+        Ok(value: completed) => {
+          let next = pc + 1_u64;
+          if next < code^.inner.len {
+            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+          }
+          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+          set step = Step::Error();
+        }
+        Err(error: failure) => {
+          set step = failure;
+        }
+      }
     }
     MulRR(a: av, b: bv, c: cv) => {
-      set step = instruction_mul_rr::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      let continuation = instruction_mul_rr::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      match continuation {
+        Ok(value: completed) => {
+          let next = pc + 1_u64;
+          if next < code^.inner.len {
+            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+          }
+          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+          set step = Step::Error();
+        }
+        Err(error: failure) => {
+          set step = failure;
+        }
+      }
     }
     MulRK(a: av, b: bv, c: cv) => {
-      set step = instruction_mul_rk::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      let continuation = instruction_mul_rk::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      match continuation {
+        Ok(value: completed) => {
+          let next = pc + 1_u64;
+          if next < code^.inner.len {
+            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+          }
+          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+          set step = Step::Error();
+        }
+        Err(error: failure) => {
+          set step = failure;
+        }
+      }
     }
     MulKR(a: av, b: bv, c: cv) => {
       let continuation = fast_instruction_mul_kr(code: code, consts: consts, stack: stack, vm: vm, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
       match continuation {
-        Ok(value: cursor) => {
-          if cursor.handled {
-            let next = cursor.pc;
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+        Ok(value: handled) => {
+          if handled {
+            let next = pc + 1_u64;
+            if next < code^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+            set step = Step::Error();
+          } else {
+            set step = instruction_mul_kr::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
           }
-          set step = instruction_mul_kr::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
         }
         Err(error: failure) => {
           set step = failure;
@@ -234,32 +476,115 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       }
     }
     MulKK(a: av, b: bv, c: cv) => {
-      set step = instruction_mul_kk::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      let continuation = instruction_mul_kk::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      match continuation {
+        Ok(value: completed) => {
+          let next = pc + 1_u64;
+          if next < code^.inner.len {
+            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+          }
+          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+          set step = Step::Error();
+        }
+        Err(error: failure) => {
+          set step = failure;
+        }
+      }
     }
     DivRR(a: av, b: bv, c: cv) => {
-      set step = instruction_div_rr::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      let continuation = instruction_div_rr::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      match continuation {
+        Ok(value: completed) => {
+          let next = pc + 1_u64;
+          if next < code^.inner.len {
+            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+          }
+          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+          set step = Step::Error();
+        }
+        Err(error: failure) => {
+          set step = failure;
+        }
+      }
     }
     DivRK(a: av, b: bv, c: cv) => {
-      set step = instruction_div_rk::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      let continuation = instruction_div_rk::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      match continuation {
+        Ok(value: completed) => {
+          let next = pc + 1_u64;
+          if next < code^.inner.len {
+            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+          }
+          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+          set step = Step::Error();
+        }
+        Err(error: failure) => {
+          set step = failure;
+        }
+      }
     }
     DivKR(a: av, b: bv, c: cv) => {
-      set step = instruction_div_kr::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      let continuation = instruction_div_kr::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      match continuation {
+        Ok(value: completed) => {
+          let next = pc + 1_u64;
+          if next < code^.inner.len {
+            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+          }
+          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+          set step = Step::Error();
+        }
+        Err(error: failure) => {
+          set step = failure;
+        }
+      }
     }
     DivKK(a: av, b: bv, c: cv) => {
-      set step = instruction_div_kk::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      let continuation = instruction_div_kk::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      match continuation {
+        Ok(value: completed) => {
+          let next = pc + 1_u64;
+          if next < code^.inner.len {
+            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+          }
+          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+          set step = Step::Error();
+        }
+        Err(error: failure) => {
+          set step = failure;
+        }
+      }
     }
     ModRR(a: av, b: bv, c: cv) => {
-      set step = instruction_mod_rr::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      let continuation = instruction_mod_rr::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      match continuation {
+        Ok(value: completed) => {
+          let next = pc + 1_u64;
+          if next < code^.inner.len {
+            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+          }
+          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+          set step = Step::Error();
+        }
+        Err(error: failure) => {
+          set step = failure;
+        }
+      }
     }
     ModRK(a: av, b: bv, c: cv) => {
       let continuation = fast_instruction_mod_rk(code: code, consts: consts, stack: stack, vm: vm, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
       match continuation {
-        Ok(value: cursor) => {
-          if cursor.handled {
-            let next = cursor.pc;
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+        Ok(value: handled) => {
+          if handled {
+            let next = pc + 1_u64;
+            if next < code^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+            set step = Step::Error();
+          } else {
+            set step = instruction_mod_rk::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
           }
-          set step = instruction_mod_rk::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
         }
         Err(error: failure) => {
           set step = failure;
@@ -267,34 +592,163 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       }
     }
     ModKR(a: av, b: bv, c: cv) => {
-      set step = instruction_mod_kr::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      let continuation = instruction_mod_kr::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      match continuation {
+        Ok(value: completed) => {
+          let next = pc + 1_u64;
+          if next < code^.inner.len {
+            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+          }
+          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+          set step = Step::Error();
+        }
+        Err(error: failure) => {
+          set step = failure;
+        }
+      }
     }
     ModKK(a: av, b: bv, c: cv) => {
-      set step = instruction_mod_kk::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      let continuation = instruction_mod_kk::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      match continuation {
+        Ok(value: completed) => {
+          let next = pc + 1_u64;
+          if next < code^.inner.len {
+            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+          }
+          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+          set step = Step::Error();
+        }
+        Err(error: failure) => {
+          set step = failure;
+        }
+      }
     }
     PowRR(a: av, b: bv, c: cv) => {
-      set step = instruction_pow_rr::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      let continuation = instruction_pow_rr::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      match continuation {
+        Ok(value: completed) => {
+          let next = pc + 1_u64;
+          if next < code^.inner.len {
+            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+          }
+          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+          set step = Step::Error();
+        }
+        Err(error: failure) => {
+          set step = failure;
+        }
+      }
     }
     PowRK(a: av, b: bv, c: cv) => {
-      set step = instruction_pow_rk::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      let continuation = instruction_pow_rk::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      match continuation {
+        Ok(value: completed) => {
+          let next = pc + 1_u64;
+          if next < code^.inner.len {
+            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+          }
+          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+          set step = Step::Error();
+        }
+        Err(error: failure) => {
+          set step = failure;
+        }
+      }
     }
     PowKR(a: av, b: bv, c: cv) => {
-      set step = instruction_pow_kr::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      let continuation = instruction_pow_kr::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      match continuation {
+        Ok(value: completed) => {
+          let next = pc + 1_u64;
+          if next < code^.inner.len {
+            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+          }
+          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+          set step = Step::Error();
+        }
+        Err(error: failure) => {
+          set step = failure;
+        }
+      }
     }
     PowKK(a: av, b: bv, c: cv) => {
-      set step = instruction_pow_kk::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      let continuation = instruction_pow_kk::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      match continuation {
+        Ok(value: completed) => {
+          let next = pc + 1_u64;
+          if next < code^.inner.len {
+            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+          }
+          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+          set step = Step::Error();
+        }
+        Err(error: failure) => {
+          set step = failure;
+        }
+      }
     }
     Unm(a: av, b: bv) => {
-      set step = instruction_unm::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^);
+      let continuation = instruction_unm::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^);
+      match continuation {
+        Ok(value: completed) => {
+          let next = pc + 1_u64;
+          if next < code^.inner.len {
+            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+          }
+          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+          set step = Step::Error();
+        }
+        Err(error: failure) => {
+          set step = failure;
+        }
+      }
     }
     Not(a: av, b: bv) => {
-      set step = instruction_not::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^);
+      let continuation = instruction_not::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^);
+      match continuation {
+        Ok(value: completed) => {
+          let next = pc + 1_u64;
+          if next < code^.inner.len {
+            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+          }
+          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+          set step = Step::Error();
+        }
+        Err(error: failure) => {
+          set step = failure;
+        }
+      }
     }
     Len(a: av, b: bv) => {
-      set step = instruction_len::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^);
+      let continuation = instruction_len::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^);
+      match continuation {
+        Ok(value: completed) => {
+          let next = pc + 1_u64;
+          if next < code^.inner.len {
+            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+          }
+          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+          set step = Step::Error();
+        }
+        Err(error: failure) => {
+          set step = failure;
+        }
+      }
     }
     Concat(a: av, b: bv, c: cv) => {
-      set step = instruction_concat::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      let continuation = instruction_concat::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
+      match continuation {
+        Ok(value: completed) => {
+          let next = pc + 1_u64;
+          if next < code^.inner.len {
+            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+          }
+          set step = Step::Jump(pc: next, base: base, kbase: kbase);
+        }
+        Err(error: failure) => {
+          set step = failure;
+        }
+      }
     }
     Jmp(target: targetv) => {
       set step = instruction_jmp::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, targetv: targetv^);
@@ -419,7 +873,20 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       set step = instruction_set_list::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
     }
     Close(a: av) => {
-      set step = instruction_close::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^);
+      let continuation = instruction_close::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^);
+      match continuation {
+        Ok(value: completed) => {
+          let next = pc + 1_u64;
+          if next < code^.inner.len {
+            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+          }
+          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+          set step = Step::Error();
+        }
+        Err(error: failure) => {
+          set step = failure;
+        }
+      }
     }
     Closure(a: av, proto: protov) => {
       set step = instruction_closure::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, protov: protov^);

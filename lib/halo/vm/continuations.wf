@@ -93,12 +93,30 @@ fn continue_callback<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Sl
 }
 
 fn concat_step<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, dest: u64, first: u64, last: u64) -> r: Step reads(code), reads(consts), writes(stack), writes(vm), writes(env) {
+  doc "Callback resumption retains the shared Step continuation; dispatch uses concat_continue's success only for a callback-free concatenation.";
+  let continuation = concat_continue::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, dest: dest, first: first, last: last);
+  match continuation {
+    Ok(value: completed) => {
+      let next = pc +sat 1_u64;
+      return Step::Jump(pc: next, base: base, kbase: kbase);
+    }
+    Err(error: failure) => {
+      return failure;
+    }
+  }
+}
+
+fn concat_continue<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, dest: u64, first: u64, last: u64) -> r: Result<unit, Step> reads(code), reads(consts), writes(stack), writes(vm), writes(env) contract {
+  ensures when Ok(value: completed): stack^.inner.len == entry(stack)^.inner.len;
+} {
   doc "Each callback-free batch reduces the active suffix to its lowest slot. Only a top pair needing the slow executor installs the existing kind-2 callback plan; both synchronous completion and resumption continue from that pair's left slot. The stack length is re-established after the match on every round, so the loop invariant holds where the two arms' index updates join.";
   let length = stack^.inner.len;
   let index = last;
+  let direct = True();
   if first > last {
     let ignored = raise_text(vm: vm, text: &concat_range_error[0_u64..20_u64]);
-    return unwind(vm: vm, stack: stack);
+    let failure = unwind(vm: vm, stack: stack);
+    return Err<unit, Step>(error: failure);
   }
   loop (
     invariant preserved: stack^.inner.len == length
@@ -112,20 +130,25 @@ fn concat_step<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Va
         set index = lowest;
       }
       Failed() => {
-        return unwind(vm: vm, stack: stack);
+        let failure = unwind(vm: vm, stack: stack);
+        return Err<unit, Step>(error: failure);
       }
       Slow() => {
+        set direct = False();
         let ok = concat_pair_slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, dest: dest, first: first, previous: previous, index: index);
         resize_stack(stack: stack, size: length);
         if vm^.suspended {
-          return Step::Budget();
+          let failure = Step::Budget();
+          return Err<unit, Step>(error: failure);
         }
         if bnot(ok) {
           if vm^.host_stopped {
             restore_stopped_stack(vm: vm, stack: stack);
-            return Step::Stop();
+            let failure = Step::Stop();
+            return Err<unit, Step>(error: failure);
           }
-          return unwind(vm: vm, stack: stack);
+          let failure = unwind(vm: vm, stack: stack);
+          return Err<unit, Step>(error: failure);
         }
         set index = previous;
       }
@@ -140,8 +163,12 @@ fn concat_step<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Va
       set stack^.inner[target] = value;
     }
   }
+  if direct {
+    return Ok<unit, Step>(value: unit);
+  }
   let next = pc +sat 1_u64;
-  return Step::Jump(pc: next, base: base, kbase: kbase);
+  let failure = Step::Jump(pc: next, base: base, kbase: kbase);
+  return Err<unit, Step>(error: failure);
 }
 
 fn concat_pair_slow<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, dest: u64, first: u64, previous: u64, index: u64) -> r: Bool reads(code), reads(consts), writes(stack), writes(vm), writes(env) contract {
