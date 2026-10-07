@@ -1,4 +1,4 @@
--- checks: table.foreach calls its function with each key and value in next order, returns the first non-nil result, lets the function assign existing fields and call Redis, and rejects a non-table or non-function argument.
+-- checks: table.foreach calls its function with each key and value in next order, returns the first non-nil result, lets the function assign existing fields and call Redis, rejects a non-table or non-function argument, passes a callback error on unchanged, and runs under pcall and inside sort and gsub callbacks.
 -- KEYS: ["halo-oracle:foreach:1", "halo-oracle:foreach:2"]
 -- ARGV: []
 -- expects: Array of observations; no pre-existing keys.
@@ -26,4 +26,10 @@ end
 failure(function() return table.foreach(nil, function() end) end)
 failure(function() return table.foreach({}, 1) end)
 failure(function() table.foreach({1}, function() error("stop") end) end)
+failure(function() table.foreach({1}, function() error("bare", 0) end) end)
+out[#out + 1] = tostring(select(2, pcall(table.foreach, {7, 8}, function(k, v) if v == 8 then return "p" .. k end end)))
+out[#out + 1] = (string.gsub("ab", "%w", function(c) return table.foreach({c}, function(k, v) return v .. v end) end))
+local sorted = {3, 1, 2}
+table.sort(sorted, function(a, b) return table.foreach({a}, function(k, v) return v < b end) end)
+out[#out + 1] = table.concat(sorted, ",")
 return out

@@ -248,7 +248,7 @@ not automatically used to overwrite this baseline.
 | lua-core | [string-match](scripts/lua-core/string-match.lua) | Patterns support captures, balanced matching and frontier boundaries. |
 | lua-core | [string-transforms](scripts/lua-core/string-transforms.lua) | sub negative indices, upper/lower, rep and reverse. |
 | lua-core | [table-concat](scripts/lua-core/table-concat.lua) | table.concat uses separators, slice bounds and numeric elements. |
-| lua-core | [table-foreach](scripts/lua-core/table-foreach.lua) | table.foreach visits pairs in next order, returns the first non-nil result, allows field assignment and Redis calls in its function, and checks its arguments. |
+| lua-core | [table-foreach](scripts/lua-core/table-foreach.lua) | table.foreach visits pairs in next order, returns the first non-nil result, allows field assignment and Redis calls in its function, checks its arguments, passes callback errors on unchanged, and runs under pcall and inside sort and gsub callbacks. |
 | lua-core | [table-insert-remove](scripts/lua-core/table-insert-remove.lua) | Array insertion shifts entries; removal returns and shifts values. |
 | lua-core | [table-parts](scripts/lua-core/table-parts.lua) | Array and hash entries coexist; hash entries do not add array length. |
 | lua-core | [table-sort](scripts/lua-core/table-sort.lua) | Default and custom comparator sort numbers into opposite orders. |
