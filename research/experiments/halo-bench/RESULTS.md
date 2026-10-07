@@ -2454,3 +2454,23 @@ pre-cursor compiler: loop 1.000, fib 1.005.
 Comparison: the same source (this branch's engine) built with each release,
 six interleaved full-LTO pairs over the seven kernels, a twin of the old
 build, and two interleaved module-check samples per compiler.
+
+### Result
+
+[Run 37566520775](https://github.com/Ming-Research/Halo-wf/actions/runs/37566520775)
+at `014b4082d`, six interleaved full-LTO pairs, medians in seconds:
+
+| Kernel | Old release | New release | Ratio | Old range | New range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1055 | 0.1047 | 0.993 | 1.74% | 1.24% | 0.998 |
+| loop | 0.4348 | 0.4350 | 1.001 | 0.64% | 0.77% | 1.000 |
+| integer-table | 0.6003 | 0.5949 | 0.991 | 1.90% | 12.58% | 0.999 |
+| string-key | 0.0337 | 0.0339 | 1.007 | 2.27% | 1.03% | 0.998 |
+| concat | 0.0730 | 0.0731 | 1.001 | 1.60% | 1.10% | 1.005 |
+| sort | 0.5509 | 0.5512 | 1.001 | 0.84% | 0.34% | 0.999 |
+| binary-trees | 2.1131 | 2.1131 | 1.000 | 1.53% | 1.23% | 1.001 |
+
+`--check-module pkg::vm`: old 7.515 and 7.618 s, new 7.536 and 7.588 s.
+Every kernel stays within its ranges and the twin; the upgrade leaves these
+kernels' times and the module check unchanged, in line with the Whitefoot
+session's measurement of #261 on Halo.
