@@ -1,0 +1,163 @@
+alias Value = pkg::value::Value;
+alias str_of = pkg::value::str_of;
+alias intern = pkg::heap::intern;
+
+enum ConcatBatch {
+  Joined(index: u64);
+  Slow();
+  Failed();
+}
+
+fn concat_batch_length(vm: &Vm, stack: &Box<Slots<Value>>, slot: u64) -> r: Option<u64> writes(vm), writes(stack) contract {
+  ensures stack^.inner.len == entry(stack)^.inner.len;
+} {
+  doc "Returns None when coercion is unavailable, or unlimited for an invalid string handle or slot. Number text uses the existing %.14g coercion and is rooted in its original slot before any later allocation. Interning does not collect; collection remains at VM safepoints.";
+  if slot < stack^.inner.len {
+    let value = stack^.inner[slot];
+    let tag = kind(v: value);
+    if tag == 3_u8 {
+      match pkg::heap::string_of(heap: &vm^.heap, value: value) {
+        Some(value: view) => {
+          return Some<u64>(value: view.length);
+        }
+        None() => {
+          return Some<u64>(value: unlimited);
+        }
+      }
+    } else if tag == 2_u8 {
+      let text = coerce_string(vm: vm, v: value);
+      match pkg::heap::string_of(heap: &vm^.heap, value: text) {
+        Some(value: view) => {
+          set stack^.inner[slot] = text;
+          return Some<u64>(value: view.length);
+        }
+        None() => {
+          return None<u64>();
+        }
+      }
+    }
+    return None<u64>();
+  }
+  return Some<u64>(value: unlimited);
+}
+
+fn concat_batch_copy(vm: &Vm, stack: &Box<Slots<Value>>, bytes: &Box<Slots<u8>>, base: u64, first: u64, end: u64) -> r: unit reads(vm), reads(stack), writes(bytes) {
+  doc "Copies the measured strings in register order into the single reserved buffer, with no growth, interning or collection during copying.";
+  for (index in first..end) {
+    let slot = base +sat index;
+    if slot < stack^.inner.len {
+      let value = stack^.inner[slot];
+      match str_of(v: value) {
+        Handle(h: handle) => {
+          let si = cvt::<u32, u64>(handle);
+          if si < vm^.heap.strings.inner.len {
+            if vm^.heap.strings.inner[si].live {
+              let count = vm^.heap.strings.inner[si].payload.bytes.inner.len;
+              for (offset in 0_u64..count) {
+                if offset < vm^.heap.strings.inner[si].payload.bytes.inner.len {
+                  if bytes^.inner.len < bytes^.inner.cap {
+                    let byte = vm^.heap.strings.inner[si].payload.bytes.inner[offset];
+                    place_back(window: &bytes^.inner, value: byte);
+                  }
+                }
+              }
+            }
+          }
+        }
+        NoHandle() => {
+        }
+      }
+    }
+  }
+  return unit;
+}
+
+fn concat_batch_overflow(vm: &Vm) -> r: ConcatBatch writes(vm) {
+  let ignored = raise_text(vm: vm, text: &slow_text_7[0_u64..22_u64]);
+  return ConcatBatch::Failed();
+}
+
+fn concat_batch(vm: &Vm, stack: &Box<Slots<Value>>, base: u64, first: u64, last: u64) -> r: ConcatBatch writes(vm), writes(stack) contract {
+  requires first < last;
+  ensures stack^.inner.len == entry(stack)^.inner.len;
+} {
+  doc "Ports luaV_concat's callback-free pass: test the left tag before converting the right, shortcut an empty right, otherwise measure the maximal string/number suffix, copy it once and intern its result once at the lowest joined slot. Inputs stay rooted until consumed. The u64 saturated length guard and safepoint memory limit retain Halo's existing policy.";
+  let length = stack^.inner.len;
+  let previous = last - 1_u64;
+  let left = base +sat previous;
+  let right = base +sat last;
+  if left < stack^.inner.len {
+    if right < stack^.inner.len {
+      let value = stack^.inner[left];
+      let tag = kind(v: value);
+      let string_left = tag == 3_u8;
+      let number_left = tag == 2_u8;
+      let convertible = bor(string_left, number_left);
+      if convertible {
+        match concat_batch_length(vm: vm, stack: stack, slot: right) {
+          Some(value: count) => {
+            if count == unlimited {
+              return concat_batch_overflow(vm: vm);
+            }
+            if count == 0_u64 {
+              match concat_batch_length(vm: vm, stack: stack, slot: left) {
+                Some(value: left_count) => {
+                  if left_count < unlimited {
+                    return ConcatBatch::Joined(index: previous);
+                  }
+                }
+                None() => {
+                  return ConcatBatch::Slow();
+                }
+              }
+              return concat_batch_overflow(vm: vm);
+            }
+            let total = count;
+            let lowest = last;
+            loop (
+              invariant preserved: stack^.inner.len == length
+            ) {
+              if lowest <= first {
+                break;
+              }
+              let candidate = lowest - 1_u64;
+              let slot = base +sat candidate;
+              match concat_batch_length(vm: vm, stack: stack, slot: slot) {
+                Some(value: added) => {
+                  set total = total +sat added;
+                  if total == unlimited {
+                    return concat_batch_overflow(vm: vm);
+                  }
+                  set lowest = candidate;
+                }
+                None() => {
+                  break;
+                }
+              }
+            }
+            if lowest == last {
+              return ConcatBatch::Slow();
+            }
+            let bytes = box_slots_new::<u8>(capacity: total);
+            let end = last +sat 1_u64;
+            concat_batch_copy(vm: vm, stack: stack, bytes: &bytes, base: base, first: lowest, end: end);
+            let size = bytes.inner.len;
+            let joined = intern(heap: &vm^.heap, bytes: &bytes.inner[0_u64..size]);
+            let failed = is_nil(v: joined);
+            if failed {
+              return ConcatBatch::Failed();
+            }
+            let target = base +sat lowest;
+            if target < stack^.inner.len {
+              set stack^.inner[target] = joined;
+            }
+            return ConcatBatch::Joined(index: lowest);
+          }
+          None() => {
+          }
+        }
+      }
+    }
+  }
+  return ConcatBatch::Slow();
+}

@@ -5,6 +5,7 @@ The base, string and table algorithms follow Redis 7.0.15's bundled Lua
 The runtime operand descriptions in `state.wf` port `ldebug.c` and
 `lfunc.c`, with opcode effects from `lopcodes.c`. In particular,
 `library-sort.wf` preserves `auxsort`'s observable operation order.
+The batched concatenation in `concat.wf` follows `lvm.c`'s `luaV_concat`.
 
 Copyright (C) 1994-2012 Lua.org, PUC-Rio.
 

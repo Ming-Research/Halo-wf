@@ -93,6 +93,7 @@ fn continue_callback<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Sl
 }
 
 fn concat_step<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, dest: u64, first: u64, last: u64) -> r: Step reads(code), reads(consts), writes(stack), writes(vm), writes(env) {
+  doc "Each callback-free batch reduces the active suffix to its lowest slot. Only a top pair needing the slow executor installs the existing kind-2 callback plan; both synchronous completion and resumption continue from that pair's left slot.";
   let length = stack^.inner.len;
   let index = last;
   if first > last {
@@ -106,17 +107,15 @@ fn concat_step<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Va
       break;
     }
     let previous = index - 1_u64;
-    let left = base +sat previous;
-    let right = base +sat index;
-    if left < stack^.inner.len {
-      if right < stack^.inner.len {
-        let a = stack^.inner[left];
-        let b = stack^.inner[right];
-        let operation = SlowOp::Concat();
-        let nil = Value::Nil();
-        let expect = False();
-        set vm^.callback_plan = CallbackPlan(pc: pc, base: base, kbase: kbase, kind: 2_u8, dest: dest, first: first, index: previous, target: 0_u64, expected: expect);
-        let ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: left, b: a, c: b, v: nil, breg: previous, creg: index);
+    match concat_batch(vm: vm, stack: stack, base: base, first: first, last: index) {
+      Joined(index: lowest) => {
+        set index = lowest;
+      }
+      Failed() => {
+        return unwind(vm: vm, stack: stack);
+      }
+      Slow() => {
+        let ok = concat_pair_slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, dest: dest, first: first, previous: previous, index: index);
         resize_stack(stack: stack, size: length);
         if vm^.suspended {
           return Step::Budget();
@@ -128,10 +127,9 @@ fn concat_step<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Va
           }
           return unwind(vm: vm, stack: stack);
         }
+        set index = previous;
       }
     }
-    resize_stack(stack: stack, size: length);
-    set index = previous;
   }
   let source = base +sat first;
   let target = base +sat dest;
@@ -143,4 +141,24 @@ fn concat_step<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Va
   }
   let next = pc +sat 1_u64;
   return Step::Jump(pc: next, base: base, kbase: kbase);
+}
+
+fn concat_pair_slow<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, dest: u64, first: u64, previous: u64, index: u64) -> r: Bool reads(code), reads(consts), writes(stack), writes(vm), writes(env) contract {
+  ensures stack^.inner.len == entry(stack)^.inner.len;
+} {
+  doc "Keeps callback setup and the slow executor outside the string batch. Original operands and register locations retain first-then-second metamethod lookup, error selection and operand descriptions.";
+  let left = base +sat previous;
+  let right = base +sat index;
+  if left < stack^.inner.len {
+    if right < stack^.inner.len {
+      let a = stack^.inner[left];
+      let b = stack^.inner[right];
+      let operation = SlowOp::Concat();
+      let nil = Value::Nil();
+      let expect = False();
+      set vm^.callback_plan = CallbackPlan(pc: pc, base: base, kbase: kbase, kind: 2_u8, dest: dest, first: first, index: previous, target: 0_u64, expected: expect);
+      return slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: left, b: a, c: b, v: nil, breg: previous, creg: index);
+    }
+  }
+  return True();
 }
