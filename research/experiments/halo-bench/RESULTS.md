@@ -2247,3 +2247,30 @@ function, `sort_compare_slow`, so `sort_compare` has main's shape. The
 change is kept if sort against main with `_VERSION` is then within the
 criterion's bounds; if not, the remaining difference is reported to the
 owner with these measurements rather than chased further in this change.
+
+### Sixth run and the verdict
+
+[Run 37556822953](https://github.com/Ming-Research/Halo-wf/actions/runs/37556822953)
+at `e2bf5852a`, after the `sort_compare_slow` split. Against main with
+`_VERSION`, six pairs: fib 1.020 (ranges 11.75% and 2.01%), loop 0.998,
+integer-table 0.996, string-key 1.002, concat 0.998 and sort 0.755 (ranges
+0.53% and 0.68%). Sort's prefixes, medians of main, main with `_VERSION` and
+the branch, three collections each: build 0.0381, 0.0378 and 0.0387 s; build
+and sort 0.6515, 0.6592 and 0.5057 s; the whole kernel 0.7285, 0.7356 and
+0.5542 s. Binary-trees' collection counts repeat the fifth run's. Outputs and
+checksums agreed throughout.
+
+**The criterion passes and the change is kept.** No kernel is slower than
+its baseline beyond the bounds, the module check stayed at 1.03 times, and
+the collection shift and part of the earlier sort difference belong to the
+`_VERSION` global, which PUC also allocates.
+
+The split also made sort 24.5% faster than main with `_VERSION`. The fifth
+and sixth runs compare against the same baseline binary source and differ on
+the branch only by the split, which moved `sort_compare`'s call to the slow
+executor into a function of its own (sort 1.011 then 0.755); so the speedup
+belongs to the split, although the two runs were not interleaved with each
+other. On main, `sort_compare` already held that call; why its presence
+slows the number path is not established here (inlining or register
+pressure of the compiled comparison are the candidates), and no other
+library function was examined.

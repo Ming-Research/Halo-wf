@@ -151,6 +151,17 @@ example apart from the engine code that exposed it
   Reopen at the next performance experiment; require a discriminating native
   comparison before selecting a candidate or claiming a causal speedup.
 
+- **A slow-executor call inside a hot library function may slow its fast
+  path.** Moving `sort_compare`'s call to `slow` into its own function made
+  the sort kernel 24.5% faster on the 14900K
+  ([sixth run](../research/experiments/halo-bench/RESULTS.md#sixth-run-and-the-verdict));
+  why is not established, and other library functions that call `slow` or
+  callbacks beside a fast path (string comparison and pattern matching,
+  `table.concat`, the codecs) were not examined. Change: inspect the
+  compiled code of `sort_compare` before and after to name the cause, then
+  apply the split where the same pattern holds, each with a same-source
+  pair. Reopen at the next performance experiment.
+
 - **Halo's oracle hides next/pairs hash iteration order.**
   `research/experiments/halo-oracle/scripts/lua-core/next-pairs.lua` sorts both
   observations; passing the oracle comparison proves contents, not order.
