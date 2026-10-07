@@ -148,6 +148,7 @@ fn concat_pair_slow<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slo
   ensures stack^.inner.len == entry(stack)^.inner.len;
 } {
   doc "Keeps callback setup and the slow executor outside the string batch. Original operands and register locations retain first-then-second metamethod lookup, error selection and operand descriptions.";
+  let length = stack^.inner.len;
   let left = base +sat previous;
   let right = base +sat index;
   if left < stack^.inner.len {
@@ -158,7 +159,9 @@ fn concat_pair_slow<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slo
       let nil = Value::Nil();
       let expect = False();
       set vm^.callback_plan = CallbackPlan(pc: pc, base: base, kbase: kbase, kind: 2_u8, dest: dest, first: first, index: previous, target: 0_u64, expected: expect);
-      return slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: left, b: a, c: b, v: nil, breg: previous, creg: index);
+      let ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: left, b: a, c: b, v: nil, breg: previous, creg: index);
+      resize_stack(stack: stack, size: length);
+      return ok;
     }
   }
   return True();
