@@ -2169,3 +2169,33 @@ that shift, not added work, slows sort. The third run repeats the second
 after moving the three fields to the end of `Vm`. The hypothesis is rejected
 if sort stays slower than main beyond the same bounds; the next suspect is
 then `sort_compare`'s larger slow branch.
+
+### Third run and the phase localization
+
+[Run 37555046795](https://github.com/Ming-Research/Halo-wf/actions/runs/37555046795)
+at `f2bf5b6e4`, with the three fields at the end of `Vm`, six selected pairs:
+
+| Kernel | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|
+| fib | 1.017 | 8.12% | 2.00% | 0.998 |
+| loop | 0.999 | 0.53% | 0.43% | 1.001 |
+| integer-table | 0.992 | 2.00% | 0.90% | 0.998 |
+| string-key | 0.991 | 2.04% | 5.60% | 1.000 |
+| concat | 1.002 | 0.98% | 1.26% | 0.992 |
+| sort | 1.016 | 0.82% | 0.46% | 0.999 |
+
+Sort is still 1.6% slower, beyond its 0.82% range and the twin's, so the
+field-shift hypothesis is rejected. Module check 7.329 and 7.362 s against
+7.130 and 7.134 s (1.03 times); binary-trees' collection counts repeat the
+second run's.
+
+Fourth run, recorded before it ran: sort.lua has three phases, building the
+table (`*`, `%`, table writes), `table.sort` (the library's `sort_compare`,
+whose slow branch grew) and the check loop (a native `assert` call per
+element, through the call path and the builtin dispatcher, which both
+changed). Each binary runs three cumulative prefixes of the kernel (build;
+build and sort; the whole kernel) in eight interleaved launches each, and the
+phase cost is the difference of medians. The phase whose cost rises by most
+of sort's 1.6% (about 12 ms) is the one to repair; if none does, the
+difference is not localized by phase and the next step is a code-layout
+comparison.
