@@ -97,6 +97,7 @@ fn mark_roots(vm: &Vm, stack: &Box<Slots<Value>>, consts: &Box<Slots<Value>>, li
       pkg::heap::gc_mark(heap: &vm^.heap, v: context.table);
       pkg::heap::gc_mark(heap: &vm^.heap, v: context.comparator);
       pkg::heap::gc_mark(heap: &vm^.heap, v: context.saved_error);
+      pkg::heap::gc_mark(heap: &vm^.heap, v: context.foreach_key);
     }
   }
   let sort_count = vm^.sort_frames.inner.len;
