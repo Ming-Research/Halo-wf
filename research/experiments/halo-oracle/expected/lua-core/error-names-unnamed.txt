@@ -80,6 +80,26 @@
     {
       "type": "bulk",
       "bytes": "user_script:41: Script attempted to access nonexistent global variable 'error_names_missing_global'"
+    },
+    {
+      "type": "bulk",
+      "bytes": "attempt to compare two boolean values"
+    },
+    {
+      "type": "bulk",
+      "bytes": "attempt to compare string with number"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:44: invalid replacement value (a table)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:48: attempt to index a boolean value"
+    },
+    {
+      "type": "bulk",
+      "bytes": "attempt to index a number value"
     }
   ]
 }
