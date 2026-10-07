@@ -409,13 +409,8 @@ fn table_get(heap: &Heap, t: Value, key: Value) -> r: Value reads(heap) {
   return Value::Nil();
 }
 
-fn node_get_str(nodes: &Box<Slots<Node>>, h: u32, hash: u64) -> r: Value reads(nodes) {
+fn node_get_str(nodes: &Box<Slots<Node>>, h: u32, hash: u64, mask: u64) -> r: Value reads(nodes) {
   doc "Raw string lookup in a power-of-two node vector: cached hash masking selects the same bucket as main_position, and interned handles determine equality.";
-  let n = nodes^.inner.len;
-  if n == 0_u64 {
-    return Value::Nil();
-  }
-  let mask = n - 1_u64;
   let i = iand(hash, mask);
   loop @chain {
     if i < nodes^.inner.len {
@@ -450,15 +445,23 @@ fn node_get_str(nodes: &Box<Slots<Node>>, h: u32, hash: u64) -> r: Value reads(n
 }
 
 fn table_get_str(heap: &Heap, t: Value, h: u32) -> r: Value reads(heap) {
-  doc "Raw lookup for an interned string handle; invalid table or string handles retain table_get behavior through the generic lookup.";
+  doc "Raw lookup for an interned string handle; invalid handles and non-power-of-two node vectors retain table_get behavior through the generic lookup.";
   match table_handle(heap: heap, t: t) {
     Some(value: ti) => {
       if ti < heap^.tables.inner.len {
         let si = cvt::<u32, u64>(h);
         if si < heap^.strings.inner.len {
           if heap^.strings.inner[si].live {
-            let hash = heap^.strings.inner[si].payload.hash;
-            return node_get_str(nodes: &heap^.tables.inner[ti].payload.nodes, h: h, hash: hash);
+            let n = heap^.tables.inner[ti].payload.nodes.inner.len;
+            if n == 0_u64 {
+              return Value::Nil();
+            }
+            let mask = n - 1_u64;
+            let non_power = iand(n, mask);
+            if non_power == 0_u64 {
+              let hash = heap^.strings.inner[si].payload.hash;
+              return node_get_str(nodes: &heap^.tables.inner[ti].payload.nodes, h: h, hash: hash, mask: mask);
+            }
           }
         }
       }
