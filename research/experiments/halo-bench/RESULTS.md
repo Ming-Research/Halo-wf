@@ -2676,3 +2676,29 @@ final engine (`380b624f0`), main `bc4e2db17` against it with a twin:
 `--check-module pkg::vm`: main 7.568 and 7.610 s, branch 7.573 and 7.609 s
 (1.000 times). The criterion still passes: integer-table takes 0.881 times
 as long, and no kernel is slower beyond its bounds.
+
+## Marking only collectable values
+
+### Criterion, recorded before the change
+
+The collector marks a table's contents by calling `gc_mark` for every array
+slot and for every node's key and value (`mark_table_contents`,
+`lib/halo/heap/gc.wf`), and `gc_mark` dispatches on the value's kind. In
+integer-table, whose ten-million-slot array holds only numbers, `gc_mark`
+takes 5.6–5.9% of Halo's samples and half of its own samples fall on that
+dispatch ([run 37639344751](https://github.com/Ming-Research/Halo-wf/actions/runs/37639344751),
+a hosted EPYC guest reading shares of samples, artifact `halo-tables-profile`).
+PUC's `traversetable` marks each value through `markvalue`, which tests in
+line that the value is collectable before calling `reallymarkobject`.
+Change: `mark_table_contents` calls `gc_mark` only for a string, table or
+closure value; numbers, nil, booleans and builtins, which name no object,
+are skipped in line.
+
+Kept only if, on the 14900K, in six interleaved full-LTO pairs of main before
+the change against the branch after it, with a twin of the before binary:
+the integer-table kernel's median falls at least 3%, by more than both
+ranges and the twin's difference; no kernel is slower beyond its larger
+range and the twin's; `--check-module pkg::vm` takes at most 1.25 times as
+long; and `make check` passes, the collector's root controls and the oracle
+under collector stress included. Otherwise the change is reverted with its
+measurements kept.
