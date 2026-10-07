@@ -2529,3 +2529,28 @@ shared epilogue to check the stack window themselves, because their helpers'
 postconditions could not carry it, so those arms gained a comparison as
 well as the constant step. `dispatch.wf`, `handlers.wf` and
 `continuations.wf` return to their bytes at `bb4ff27cd`.
+
+## Synchronous default sort
+
+### Criterion, recorded before the change
+
+`table.sort` runs as a resumable state machine (`lib/halo/vm/library-sort.wf`,
+`sort_run` with `SortFrame` phases), so that a Lua comparator can call back
+and be suspended by the budget; the default comparison of numbers takes the
+same path, storing frames and passing each result through a stack slot
+(`sort_run` 55% of the sort kernel's samples). Change: when no comparator is
+given and every element `1..n` lies in the table's array part and all are
+numbers, or all are strings, sort them synchronously by the same steps as
+PUC's `auxsort` (the same pivots, comparisons, swaps, recursion on the
+smaller half, and the same "invalid order function for sorting" error at
+the same point), reading and writing the array directly; every other case
+keeps the state machine.
+
+Kept only if, on the 14900K, in six interleaved full-LTO pairs of the branch
+before the change against after it, with a twin of the before binary: the
+sort kernel's median falls at least 15%, by more than both ranges and the
+twin's difference; no other kernel is slower beyond its larger range and the
+twin's; `--check-module pkg::vm` takes at most 1.25 times as long; and `make
+check` passes, the sort oracle cases at budgets 1, 7 and 1000 under collector
+stress included. Otherwise the change is reverted with its measurements
+kept.
