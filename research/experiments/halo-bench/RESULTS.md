@@ -2629,3 +2629,29 @@ both ranges and the twin's difference; no other kernel is slower beyond its
 larger range and the twin's; `--check-module pkg::vm` takes at most 1.25
 times as long; and `make check` passes. Otherwise the change is reverted
 with its measurements kept.
+
+### Result
+
+[Run 37579185722](https://github.com/Ming-Research/Halo-wf/actions/runs/37579185722):
+main `bc4e2db17` against the branch at `049e11968`, whose engine differs from
+main only in `lib/halo/vm/handlers.wf` (the run's own `git diff --stat`); six
+interleaved full-LTO pairs with `wf-8b647edbbc95`, medians in seconds:
+
+| Kernel | Main | Branch | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1042 | 0.1041 | 0.999 | 2.61% | 1.69% | 0.997 |
+| loop | 0.4353 | 0.4361 | 1.002 | 0.67% | 0.70% | 1.000 |
+| integer-table | 0.6020 | 0.5205 | 0.865 | 2.08% | 1.41% | 1.002 |
+| string-key | 0.0336 | 0.0338 | 1.007 | 0.81% | 3.64% | 1.012 |
+| concat | 0.0731 | 0.0733 | 1.002 | 1.05% | 2.97% | 1.002 |
+| sort | 0.1934 | 0.1834 | 0.949 | 2.55% | 3.71% | 0.999 |
+| binary-trees | 2.1565 | 1.9574 | 0.908 | 1.14% | 1.75% | 1.000 |
+
+`--check-module pkg::vm`: main 7.554 and 7.623 s, branch 7.563 and 7.603 s
+(1.000 times). `make check` passed at `7088d4b84`, the same engine
+([run 37578460931](https://github.com/Ming-Research/Halo-wf/actions/runs/37578460931)).
+
+**The criterion passes and the change is kept.** Integer-table takes 0.865
+times as long, beyond both ranges and the twin; binary-trees, whose
+constructors store new keys into fresh tables, takes 0.908 times as long, and
+sort's fill loop 0.949; no kernel is slower beyond its bounds.
