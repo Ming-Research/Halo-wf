@@ -1240,7 +1240,7 @@ fn append_constant_name(consts: &Box<Slots<Value>>, vm: &Vm, proto: Proto, index
 }
 
 fn describe_operand(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, reg: u64, bytes: &Box<Slots<u8>>) -> r: Bool reads(code), reads(consts), reads(vm), writes(bytes) {
-  doc "getobjname tries active locals first, then the symbolic last writer, recursing on decreasing MOVE sources at the same faulting cell. Native frames and external values have no name.";
+  doc "getobjname tries active locals first, then the symbolic last writer, recursing on decreasing MOVE sources at the same faulting cell; a MOVE source that does not decrease ends the walk without a name, which bounds it. Native frames and external values have no name.";
   if reg == unlimited {
     return False();
   }
@@ -1289,6 +1289,9 @@ fn describe_operand(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm
     }
     let origin = symbolic_name(code: code, vm: vm, proto: proto, lastpc: pc, reg: position);
     if origin.kind == 6_u8 {
+      if origin.index >= position {
+        break;
+      }
       set position = origin.index;
     } else {
       if origin.kind == 0_u8 {
@@ -1320,6 +1323,7 @@ fn describe_operand(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm
       return True();
     }
   }
+  return False();
 }
 
 fn call_type_error(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, v: Value, func: u64, return_pc: u64) -> r: Bool reads(code), reads(consts), writes(vm) {
