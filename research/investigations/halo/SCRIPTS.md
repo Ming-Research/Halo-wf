@@ -86,3 +86,17 @@ Redis through a client module and is not a script Redis runs.
 
 By the criterion, `math.mod` and `table.foreach` are implemented next, and
 the other functions stay unimplemented.
+
+To repeat the scan: the queries were `"redis.call" language:<language>`
+through `GET /search/code`, 100 results a page, pages 1 to 3; each result's
+blob was read through `GET /repos/<repository>/git/blobs/<sha>`; and each
+line was matched against these Python regular expressions, every match then
+read with four lines either side:
+`\bcoroutine\s*\.\s*(create|resume|running|status|wrap|yield)\b`,
+`\bloadstring\s*\(`, `(?<![\w.:$>])load\s*\(`, `\bgetfenv\s*\(`,
+`\bsetfenv\s*\(`, `\bcollectgarbage\s*\(`, `\bgcinfo\s*\(`,
+`\bnewproxy\s*\(`, `\b__gc\b`, `\b__mode\b`, `\bstring\s*\.\s*dump\b`,
+`\bgfind\s*\(`, `\btable\s*\.\s*foreach\s*\(`,
+`\btable\s*\.\s*foreachi\s*\(`, `\btable\s*\.\s*setn\s*\(` and
+`\bmath\s*\.\s*mod\s*\(`. Search results change as GitHub's index does,
+so a repeat finds a similar corpus, not the same one.
