@@ -2316,3 +2316,33 @@ P1 counts with binary-trees at depth 14, one, three and six alternating
 pairs, unlimited budget, checksums and collection counts recorded. The run
 also records whether `perf` and `objdump` are available on the runner, for
 the attribution that follows.
+
+### Result
+
+[Run 37560444248](https://github.com/Ming-Research/Halo-wf/actions/runs/37560444248),
+six alternating pairs, Halo at `c0168e213` against the reference Lua (medians in
+seconds; checksums agreed in every launch):
+
+| Kernel | PUC | Halo | Halo / PUC | PUC range | Halo range |
+|---|---:|---:|---:|---:|---:|
+| fib | 0.0406 | 0.1050 | 2.584 | 2.75% | 0.67% |
+| loop | 0.2819 | 0.4351 | 1.544 | 1.32% | 0.31% |
+| integer-table | 0.2203 | 0.5921 | 2.688 | 4.30% | 9.12% |
+| string-key | 0.0200 | 0.0335 | 1.678 | 4.76% | 1.38% |
+| concat | 0.0414 | 0.1002 | 2.418 | 1.95% | 1.86% |
+| sort | 0.2580 | 0.5543 | 2.148 | 1.89% | 1.87% |
+| binary-trees | 0.8693 | 2.1156 | 2.434 | 0.59% | 0.53% |
+
+P1 still fails on every kernel. In order of ratio: integer-table, fib,
+binary-trees, concat, sort, string-key, loop. The runner has `perf` 6.8.12
+with `perf_event_paranoid` at -1 and `objdump`.
+
+### Profiles, recorded before they ran
+
+For each kernel: `perf stat` of PUC and of Halo (cycles, instructions,
+branches, branch misses, L1 data-cache load misses), three launches each, to
+separate executing more work from executing it slowly; and `perf record` of
+Halo (cycles, default frequency, one launch), reported by symbol, the top 30.
+The first candidate is chosen from these: the kernel with the largest ratio
+whose profile shows one attributable cost, with a criterion recorded before
+its change.
