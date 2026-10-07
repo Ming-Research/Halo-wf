@@ -93,7 +93,7 @@ fn continue_callback<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Sl
 }
 
 fn concat_step<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, dest: u64, first: u64, last: u64) -> r: Step reads(code), reads(consts), writes(stack), writes(vm), writes(env) {
-  doc "Each callback-free batch reduces the active suffix to its lowest slot. Only a top pair needing the slow executor installs the existing kind-2 callback plan; both synchronous completion and resumption continue from that pair's left slot.";
+  doc "Each callback-free batch reduces the active suffix to its lowest slot. Only a top pair needing the slow executor installs the existing kind-2 callback plan; both synchronous completion and resumption continue from that pair's left slot. The stack length is re-established after the match on every round, so the loop invariant holds where the two arms' index updates join.";
   let length = stack^.inner.len;
   let index = last;
   if first > last {
@@ -130,6 +130,7 @@ fn concat_step<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Va
         set index = previous;
       }
     }
+    resize_stack(stack: stack, size: length);
   }
   let source = base +sat first;
   let target = base +sat dest;
