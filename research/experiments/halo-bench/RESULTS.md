@@ -2655,3 +2655,24 @@ interleaved full-LTO pairs with `wf-8b647edbbc95`, medians in seconds:
 times as long, beyond both ranges and the twin; binary-trees, whose
 constructors store new keys into fresh tables, takes 0.908 times as long, and
 sort's fill loop 0.949; no kernel is slower beyond its bounds.
+
+### Remeasured at the final engine
+
+The located-error fix (review finding F1) also made the fast store refuse nil
+and NaN keys before inserting. [Run 37582240053](https://github.com/Ming-Research/Halo-wf/actions/runs/37582240053),
+from a measurement-only branch since deleted, repeats the comparison at the
+final engine (`380b624f0`), main `bc4e2db17` against it with a twin:
+
+| Kernel | Main | Branch | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1043 | 0.1047 | 1.004 | 2.62% | 2.65% | 1.008 |
+| loop | 0.4340 | 0.4343 | 1.001 | 0.48% | 0.65% | 0.997 |
+| integer-table | 0.5988 | 0.5277 | 0.881 | 0.90% | 1.39% | 0.996 |
+| string-key | 0.0336 | 0.0336 | 0.999 | 1.31% | 1.60% | 0.994 |
+| concat | 0.0730 | 0.0730 | 1.000 | 2.50% | 1.12% | 0.999 |
+| sort | 0.1934 | 0.1845 | 0.954 | 1.62% | 1.92% | 1.002 |
+| binary-trees | 2.1354 | 1.9396 | 0.908 | 1.76% | 1.81% | 0.992 |
+
+`--check-module pkg::vm`: main 7.568 and 7.610 s, branch 7.573 and 7.609 s
+(1.000 times). The criterion still passes: integer-table takes 0.881 times
+as long, and no kernel is slower beyond its bounds.
