@@ -4211,7 +4211,7 @@ struct FastCursor {
   handled: Bool;
 }
 
-fn fast_instruction_get_table_r(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, pc: u64, base: u64, kbase: u64, av: u8, tv: u8, cv: u8) -> r: Result<FastCursor, Step> writes(stack), reads(vm) contract {
+fn fast_instruction_get_table_r(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, pc: u64, base: u64, kbase: u64, av: u8, tv: u8, cv: u8) -> r: Result<FastCursor, Step> reads(vm), writes(stack) contract {
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
@@ -4240,7 +4240,7 @@ fn fast_instruction_get_table_r(code: &Box<Slots<Cell>>, consts: &Box<Slots<Valu
   return Ok<FastCursor, Step>(value: cursor);
 }
 
-fn fast_instruction_get_table_k(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, pc: u64, base: u64, kbase: u64, av: u8, tv: u8, kv: u8) -> r: Result<FastCursor, Step> reads(consts), writes(stack), reads(vm) contract {
+fn fast_instruction_get_table_k(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, pc: u64, base: u64, kbase: u64, av: u8, tv: u8, kv: u8) -> r: Result<FastCursor, Step> reads(consts), reads(vm), writes(stack) contract {
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
@@ -4352,7 +4352,7 @@ fn fast_instruction_set_table_kr(code: &Box<Slots<Cell>>, consts: &Box<Slots<Val
   return Ok<FastCursor, Step>(value: cursor);
 }
 
-fn fast_instruction_add_rr(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, pc: u64, base: u64, kbase: u64, av: u8, bv: u8, cv: u8) -> r: Result<FastCursor, Step> writes(stack), reads(vm) contract {
+fn fast_instruction_add_rr(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, pc: u64, base: u64, kbase: u64, av: u8, bv: u8, cv: u8) -> r: Result<FastCursor, Step> reads(vm), writes(stack) contract {
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
@@ -4391,7 +4391,7 @@ fn fast_instruction_add_rr(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, 
   return Ok<FastCursor, Step>(value: cursor);
 }
 
-fn fast_instruction_add_rk(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, pc: u64, base: u64, kbase: u64, av: u8, bv: u8, cv: u8) -> r: Result<FastCursor, Step> reads(consts), writes(stack), reads(vm) contract {
+fn fast_instruction_add_rk(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, pc: u64, base: u64, kbase: u64, av: u8, bv: u8, cv: u8) -> r: Result<FastCursor, Step> reads(consts), reads(vm), writes(stack) contract {
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
@@ -4430,7 +4430,7 @@ fn fast_instruction_add_rk(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, 
   return Ok<FastCursor, Step>(value: cursor);
 }
 
-fn fast_instruction_sub_rr(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, pc: u64, base: u64, kbase: u64, av: u8, bv: u8, cv: u8) -> r: Result<FastCursor, Step> writes(stack), reads(vm) contract {
+fn fast_instruction_sub_rr(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, pc: u64, base: u64, kbase: u64, av: u8, bv: u8, cv: u8) -> r: Result<FastCursor, Step> reads(vm), writes(stack) contract {
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
@@ -4469,7 +4469,7 @@ fn fast_instruction_sub_rr(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, 
   return Ok<FastCursor, Step>(value: cursor);
 }
 
-fn fast_instruction_sub_rk(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, pc: u64, base: u64, kbase: u64, av: u8, bv: u8, cv: u8) -> r: Result<FastCursor, Step> reads(consts), writes(stack), reads(vm) contract {
+fn fast_instruction_sub_rk(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, pc: u64, base: u64, kbase: u64, av: u8, bv: u8, cv: u8) -> r: Result<FastCursor, Step> reads(consts), reads(vm), writes(stack) contract {
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
@@ -4508,7 +4508,7 @@ fn fast_instruction_sub_rk(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, 
   return Ok<FastCursor, Step>(value: cursor);
 }
 
-fn fast_instruction_mul_kr(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, pc: u64, base: u64, kbase: u64, av: u8, bv: u8, cv: u8) -> r: Result<FastCursor, Step> reads(consts), writes(stack), reads(vm) contract {
+fn fast_instruction_mul_kr(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, pc: u64, base: u64, kbase: u64, av: u8, bv: u8, cv: u8) -> r: Result<FastCursor, Step> reads(consts), reads(vm), writes(stack) contract {
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
@@ -4547,7 +4547,7 @@ fn fast_instruction_mul_kr(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, 
   return Ok<FastCursor, Step>(value: cursor);
 }
 
-fn fast_instruction_mod_rk(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, pc: u64, base: u64, kbase: u64, av: u8, bv: u8, cv: u8) -> r: Result<FastCursor, Step> reads(consts), writes(stack), reads(vm) contract {
+fn fast_instruction_mod_rk(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, pc: u64, base: u64, kbase: u64, av: u8, bv: u8, cv: u8) -> r: Result<FastCursor, Step> reads(consts), reads(vm), writes(stack) contract {
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
