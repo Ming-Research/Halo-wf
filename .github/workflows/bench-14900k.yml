@@ -1,0 +1,82 @@
+# Temporary, for Halo-wf#3: the seventh run of the operand descriptions'
+# cost criterion (research/experiments/halo-bench/RESULTS.md, "Operand
+# descriptions' cost"): the sort_compare_slow split's same-source pair and
+# the head's vm module-check time. A push of this file runs it. Removed
+# before the pull request is marked ready.
+name: bench-14900k
+
+on:
+  push:
+    branches: [claude/fixed-call-entry]
+    paths: [.github/workflows/bench-14900k.yml]
+
+env:
+  # Halo-wf main 526f67bef, and the branch just before the split.
+  BASE_SOURCE: 526f67befe929bfdb33513a0c557d832d4868c43
+  PRE_SPLIT_SOURCE: f70f0a8af0f2ebf5c4a70d2403fe0179e9dc56ce
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  bench:
+    runs-on: [self-hosted, 14900k]
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Build and compare
+        run: |
+          set -euo pipefail
+          out="$PWD/build/bench-out"
+          rm -rf "$out" build/main-src build/pre-src
+          mkdir -p "$out" build/main-src build/pre-src
+          release=$(sed -n 's/^release = //p' whitefoot.pin)
+          make compiler
+          make toolchain-check
+          wfc="$PWD/build/whitefoot/$release/whitefootc"
+          sh research/experiments/halo-oracle/fetch-redis.sh "$PWD/build/redis"
+          lua="$PWD/build/redis/redis-7.0.15/deps/lua/src/lua"
+          git archive "$BASE_SOURCE" | tar -x -C build/main-src
+          git archive "$PRE_SPLIT_SOURCE" | tar -x -C build/pre-src
+          git diff --stat "$PRE_SPLIT_SOURCE" HEAD -- lib research/experiments/halo-bench/host research/experiments/halo-bench/modules.wfg | tee "$out/pre-post-diff.txt"
+          (cd build/pre-src && "$wfc" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-pre")
+          cp "$out/halo-pre" "$out/halo-pre-twin"
+          "$wfc" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-post"
+          {
+            echo "branch $(git rev-parse HEAD), pre-split source $PRE_SPLIT_SOURCE, main source $BASE_SOURCE, release $release"
+            sha256sum "$wfc" "$out"/halo-*
+            /usr/bin/clang --version | head -n 1
+          } | tee "$out/manifest.txt"
+          compare() {
+            label=$1; before=$2; after=$3
+            for runs in 1 3 6; do
+              python3 -B research/experiments/halo-bench/run.py --lua "$lua" \
+                --before-binary "$before" --binary "$after" --kernels sort \
+                --runs "$runs" --out "$out/$label-$runs.json" --compiler "$wfc" \
+                > "$out/$label-$runs.log" 2>&1 || { cat "$out/$label-$runs.log"; exit 1; }
+              echo "== $label, $runs pair(s)"
+              grep 'ratio=' "$out/$label-$runs.log"
+            done
+          }
+          compare twin "$out/halo-pre" "$out/halo-pre-twin"
+          compare split "$out/halo-pre" "$out/halo-post"
+          TIMEFORMAT=%R
+          for sample in 1 2; do
+            for side in main head; do
+              dir=build/main-src; [ "$side" = head ] && dir=.
+              seconds=$( { time (cd "$dir" && "$wfc" --graph lib/halo/modules.wfg --check-module pkg::vm > "$out/check-$side-$sample.log" 2>&1); } 2>&1 )
+              echo "check-module pkg::vm $side sample $sample: $seconds s" | tee -a "$out/check-times.txt"
+            done
+          done
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: halo-bench-split
+          path: build/bench-out/
+          retention-days: 30

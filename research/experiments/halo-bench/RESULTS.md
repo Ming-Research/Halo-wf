@@ -2149,7 +2149,7 @@ ranges main, branch):
 | loop | 1.002 | 0.27% | 0.61% | 1.000 |
 | integer-table | 1.004 | 1.40% | 2.17% | 0.996 |
 | string-key | 0.990 | 4.15% | 0.89% | 1.000 |
-| concat | 0.999 | 1.11% | 1.37% | 1.002 |
+| concat | 0.999 | 1.11% | 1.37% | 1.001 |
 | sort | 1.022 | 1.12% | 0.34% | 1.002 |
 
 Sort is 2.2% slower, beyond both its 1.12% range and the twin's 0.2%, so the
@@ -2235,7 +2235,7 @@ prefixes, medians of main, main with `_VERSION` and the branch, all with three
 collections: build 0.0382, 0.0379 and 0.0381 s; build and sort 0.6489,
 0.6574 and 0.6866 s; the whole kernel 0.7282, 0.7346 and 0.7407 s. Against
 main with `_VERSION`, six pairs: fib 1.016 (ranges 1.64% and 1.18%), loop
-1.002, integer-table 1.001, string-key 1.000, concat 1.002 and sort 1.011
+1.002, integer-table 1.001, string-key 1.000, concat 1.001 and sort 1.011
 (ranges 0.46% and 0.53%). `_VERSION` accounts for the collection shift and
 part of sort's difference; the branch's own code still makes sort 1.1%
 slower, beyond its ranges, and the sort phase is where it differs most.
@@ -2253,24 +2253,33 @@ owner with these measurements rather than chased further in this change.
 [Run 37556822953](https://github.com/Ming-Research/Halo-wf/actions/runs/37556822953)
 at `e2bf5852a`, after the `sort_compare_slow` split. Against main with
 `_VERSION`, six pairs: fib 1.020 (ranges 11.75% and 2.01%), loop 0.998,
-integer-table 0.996, string-key 1.002, concat 0.998 and sort 0.755 (ranges
+integer-table 0.996, string-key 1.002, concat 0.997 and sort 0.755 (ranges
 0.53% and 0.68%). Sort's prefixes, medians of main, main with `_VERSION` and
 the branch, three collections each: build 0.0381, 0.0378 and 0.0387 s; build
 and sort 0.6515, 0.6592 and 0.5057 s; the whole kernel 0.7285, 0.7356 and
 0.5542 s. Binary-trees' collection counts repeat the fifth run's. Outputs and
 checksums agreed throughout.
 
-**The criterion passes and the change is kept.** No kernel is slower than
-its baseline beyond the bounds, the module check stayed at 1.03 times, and
-the collection shift and part of the earlier sort difference belong to the
-`_VERSION` global, which PUC also allocates.
+**The runtime part of the criterion passes.** No kernel is slower than its
+baseline beyond the bounds, and the collection shift and part of the earlier
+sort difference belong to the `_VERSION` global, which PUC also allocates.
+The module check was last measured at `f2bf5b6e4` (1.03 times), before the
+split; the final head's is measured in the seventh run.
 
-The split also made sort 24.5% faster than main with `_VERSION`. The fifth
-and sixth runs compare against the same baseline binary source and differ on
-the branch only by the split, which moved `sort_compare`'s call to the slow
-executor into a function of its own (sort 1.011 then 0.755); so the speedup
-belongs to the split, although the two runs were not interleaved with each
-other. On main, `sort_compare` already held that call; why its presence
-slows the number path is not established here (inlining or register
-pressure of the compiled comparison are the candidates), and no other
-library function was examined.
+Sort ran 24.5% faster than main with `_VERSION` in this run. The fifth and
+sixth runs compare against the same baseline source and differ on the branch
+only by the split, which moved `sort_compare`'s call to the slow executor
+into a function of its own (sort 1.011 then 0.755), but they were not
+interleaved with each other and had no twin, so they do not attribute the
+speedup to the split.
+
+Seventh run, recorded before it ran: the source before the split
+(`f70f0a8af`) and after it (the head; the two differ in
+`lib/halo/vm/library-sort.wf` only), built alike, run as interleaved
+`run.py` pairs on the sort kernel (one, three and six pairs), with a copy of
+the pre-split binary as the twin; then two interleaved `--check-module
+pkg::vm` samples each for main and the head. The split's speedup is
+attributed if the post-split median is faster than the pre-split one by more
+than both ranges and more than the twin's difference; the module-check part
+of the criterion passes at the head if its median is at most 1.25 times
+main's.
