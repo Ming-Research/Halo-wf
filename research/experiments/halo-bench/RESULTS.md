@@ -2199,3 +2199,28 @@ phase cost is the difference of medians. The phase whose cost rises by most
 of sort's 1.6% (about 12 ms) is the one to repair; if none does, the
 difference is not localized by phase and the next step is a code-layout
 comparison.
+
+### Phase result and the `_VERSION` hypothesis
+
+[Run 37555535049](https://github.com/Ming-Research/Halo-wf/actions/runs/37555535049),
+eight interleaved launches of each prefix, medians main then branch: build
+0.0376 and 0.0383 s; build and sort 0.6498 and 0.6886 s (+6%); the whole
+kernel 0.7298 and 0.7438 s (+1.9%). The prefixes do not add up: the check
+loop alone would be 25 ms faster on the branch, which no change to its path
+explains. A difference that depends on where the run stops points to the
+collector's timing, which binary-trees' shifted counts already showed, rather
+than to a per-operation cost.
+
+Fifth run, recorded before it ran. Hypothesis: the `_VERSION` global, a
+one-time allocation at engine creation that PUC also makes, shifts when
+collections run and how much they find live; the operand descriptions add no
+cost. Three binaries: main, main with only the `_VERSION` change (the
+branch's diff of `lib/halo/vm/library.wf` applied to main), and the branch.
+Each runs the three prefixes in eight rotating launches, recording time and
+collection count; then `run.py` compares the branch against main with
+`_VERSION` over the six kernels, one, three and six pairs, under the
+criterion above; then binary-trees' collection counts at depths 12 to 16 for
+those two. The hypothesis is rejected if main with `_VERSION` stays as fast
+as main where the branch is slower, or if the branch is slower than main
+with `_VERSION` beyond the criterion's bounds; the noise twins of the second
+and third runs (all kernels within 0.8%) stand for this run's.
