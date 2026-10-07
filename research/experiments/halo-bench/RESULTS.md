@@ -2676,3 +2676,25 @@ final engine (`380b624f0`), main `bc4e2db17` against it with a twin:
 `--check-module pkg::vm`: main 7.568 and 7.610 s, branch 7.573 and 7.609 s
 (1.000 times). The criterion still passes: integer-table takes 0.881 times
 as long, and no kernel is slower beyond its bounds.
+
+## The call path
+
+### Attribution, recorded before it runs
+
+Fib spends 42% of its samples in the call path's four functions, `prepare`,
+`enter_lua`, `push_frame` and the return's `finish`
+([profile](#profile-result)), and is 2.56 times PUC. Where does that time go,
+instruction by instruction, against PUC's `luaD_precall` and `luaD_poscall`?
+This run tests no proposal: it chooses the call-path change and the criterion
+recorded before it. Each cost it finds is one of two kinds. Work that Halo's
+source asks for and PUC does not do, such as a second closure lookup, a
+frame-limit test or a copied prototype, is a candidate change in Halo. Code
+the compiler emits beyond what the source asks for is a Whitefoot gap: it is
+stated as a minimal witness and brought to the owner, not worked around in
+Halo's source.
+
+Run: on the 14900K, Halo at main `99936d6e6` built with full LTO as `run.py`
+builds it, and Redis 7.0.15's bundled PUC Lua built from source, each running
+the fib kernel at N = 30; `perf record` of each, three launches, reported by
+symbol; `perf annotate` of Halo's sampled symbols; and the disassembly of the
+call-path functions with their instruction counts.
