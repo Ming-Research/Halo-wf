@@ -2283,3 +2283,17 @@ attributed if the post-split median is faster than the pre-split one by more
 than both ranges and more than the twin's difference; the module-check part
 of the criterion passes at the head if its median is at most 1.25 times
 main's.
+
+### Seventh run: the split's share and the head's check time
+
+[Run 37557695747](https://github.com/Ming-Research/Halo-wf/actions/runs/37557695747)
+at `22aadda57`. The pre-split (`f70f0a8af`) and post-split (head) sources
+differ in `lib/halo/vm/library-sort.wf` only, as the run's own `git diff
+--stat` showed. Sort kernel, six interleaved pairs: pre-split median
+0.7406 s (range 0.39%), post-split 0.5530 s (range 0.80%), ratio 0.747; the
+twin, the pre-split binary against its copy, 1.001 (ranges 0.60% and
+0.71%). One and three pairs gave 0.748 and 0.748. The split's 25% speedup is
+attributed: it exceeds both ranges and the twin by far.
+`--check-module pkg::vm`: main 7.155 and 7.121 s, head 7.476 and 7.460 s,
+1.046 times; within 1.25. **The criterion passes at the head and the change
+is kept.**
