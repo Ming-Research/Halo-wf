@@ -133,10 +133,15 @@ fn library_raw_error(vm: &Vm) -> r: unit writes(vm.library_contexts) {
 }
 
 fn library_call_error_location(vm: &Vm, id: u32, pc: u64) -> r: unit writes(vm) {
+  doc "Adds library argument-error locations while keeping native rawset and MessagePack table-key errors bare.";
   let lower = id >= 112_u32;
   let upper = id <= 119_u32;
-  if band(lower, upper) {
-    if cmsgpack_raw_error(vm: vm) {
+  let codec_call = band(lower, upper);
+  let rawset_call = id == builtin_rawset;
+  let raw_store = bor(codec_call, rawset_call);
+  if raw_store {
+    let key_error = raw_table_key_error(vm: vm);
+    if key_error {
       return unit;
     }
   }

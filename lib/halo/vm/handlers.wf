@@ -3960,6 +3960,40 @@ fn fast_instruction_get_table_k(code: &Box<Slots<Cell>>, consts: &Box<Slots<Valu
   return Err<FastCursor, Step>(error: failure);
 }
 
+fn fast_table_can_insert(vm: &Vm, t: Value, key: Value) -> r: Bool reads(vm) {
+  doc "Allows a valid missing-key raw store only into a live writable table without a metatable; invalid keys need the full handler's fault location.";
+  let nil_key = is_nil(v: key);
+  if nil_key {
+    return False();
+  }
+  match num_of(v: key) {
+    Is(x: number) => {
+      let nan_key = fne(number, number);
+      if nan_key {
+        return False();
+      }
+    }
+    Not() => {
+    }
+  }
+  match tab_of(v: t) {
+    Handle(h: handle) => {
+      let i = cvt::<u32, u64>(handle);
+      if i < vm^.heap.tables.inner.len {
+        if vm^.heap.tables.inner[i].live {
+          if vm^.heap.tables.inner[i].payload.meta == no_handle {
+            let store_read_only = vm^.heap.tables.inner[i].payload.read_only;
+            return bnot(store_read_only);
+          }
+        }
+      }
+    }
+    NoHandle() => {
+    }
+  }
+  return False();
+}
+
 fn fast_instruction_set_table_rr(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, pc: u64, base: u64, kbase: u64, tv: u8, keyv: u8, valv: u8) -> r: Result<FastCursor, Step> reads(code), writes(stack), writes(vm) contract {
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
@@ -3967,6 +4001,7 @@ fn fast_instruction_set_table_rr(code: &Box<Slots<Cell>>, consts: &Box<Slots<Val
   ensures when Ok(value: cursor): cursor.pc < code^.inner.len;
   ensures when Ok(value: cursor): base + 256_u64 <= stack^.inner.len;
 } {
+  doc "Stores register operands directly for present keys or plain writable tables, otherwise defers to the full handler.";
   let n = code^.inner.len;
   let next = pc + 1_u64;
   let ok = True();
@@ -3981,9 +4016,14 @@ fn fast_instruction_set_table_rr(code: &Box<Slots<Cell>>, consts: &Box<Slots<Val
   if bnot(atom37) {
     set ok = raw_assign(vm: vm, t: t, key: key, v: value);
   } else {
-    let handled = False();
-    let cursor = FastCursor(pc: pc, handled: handled);
-    return Ok<FastCursor, Step>(value: cursor);
+    let insertable = fast_table_can_insert(vm: vm, t: t, key: key);
+    if insertable {
+      set ok = raw_assign(vm: vm, t: t, key: key, v: value);
+    } else {
+      let handled = False();
+      let cursor = FastCursor(pc: pc, handled: handled);
+      return Ok<FastCursor, Step>(value: cursor);
+    }
   }
   if vm^.suspended {
     let failure = Step::Budget();
@@ -4015,6 +4055,7 @@ fn fast_instruction_set_table_kr(code: &Box<Slots<Cell>>, consts: &Box<Slots<Val
   ensures when Ok(value: cursor): cursor.pc < code^.inner.len;
   ensures when Ok(value: cursor): base + 256_u64 <= stack^.inner.len;
 } {
+  doc "Stores a constant key and register value directly for present keys or plain writable tables, otherwise defers to the full handler.";
   let n = code^.inner.len;
   let next = pc + 1_u64;
   let ok = True();
@@ -4030,9 +4071,14 @@ fn fast_instruction_set_table_kr(code: &Box<Slots<Cell>>, consts: &Box<Slots<Val
   if bnot(atom43) {
     set ok = raw_assign(vm: vm, t: t, key: key, v: value);
   } else {
-    let handled = False();
-    let cursor = FastCursor(pc: pc, handled: handled);
-    return Ok<FastCursor, Step>(value: cursor);
+    let insertable = fast_table_can_insert(vm: vm, t: t, key: key);
+    if insertable {
+      set ok = raw_assign(vm: vm, t: t, key: key, v: value);
+    } else {
+      let handled = False();
+      let cursor = FastCursor(pc: pc, handled: handled);
+      return Ok<FastCursor, Step>(value: cursor);
+    }
   }
   if vm^.suspended {
     let failure = Step::Budget();

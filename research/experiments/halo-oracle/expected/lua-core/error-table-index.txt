@@ -1,0 +1,33 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "bulk",
+      "bytes": "user_script:10: table index is nil"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:11: table index is NaN"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:12: table index is nil"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:13: table index is nil"
+    },
+    {
+      "type": "bulk",
+      "bytes": "table index is nil"
+    },
+    {
+      "type": "bulk",
+      "bytes": "table index is NaN"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:16: table index is NaN"
+    }
+  ]
+}
