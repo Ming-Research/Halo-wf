@@ -2,7 +2,8 @@
 # criterion (research/experiments/halo-bench/RESULTS.md, "Constant-step next
 # pc in the dispatch arms"): the branch before the change against after it,
 # a twin of the before binary, all seven kernels, and the vm module-check
-# time. A push of this file runs it. Removed before the pull request is
+# time. A push of this file runs it (after check run 37568872363 passed).
+# Removed before the pull request is
 # marked ready.
 name: bench-14900k
 
