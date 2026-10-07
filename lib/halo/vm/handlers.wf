@@ -86,7 +86,6 @@ fn instruction_load_kx<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
-  ensures when Ok(value: completed): base + 256_u64 <= stack^.inner.len;
 } {
   doc "The success payload is the completed cell's own pc; dispatch computes the next pc independently.";
   let ok = True();
@@ -154,7 +153,6 @@ fn instruction_load_nil<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
-  ensures when Ok(value: completed): base + 256_u64 <= stack^.inner.len;
 } {
   doc "The success payload is the completed cell's own pc; dispatch computes the next pc independently.";
   let ok = True();
@@ -222,7 +220,6 @@ fn instruction_set_upval<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
-  ensures when Ok(value: completed): base + 256_u64 <= stack^.inner.len;
 } {
   doc "The success payload is the completed cell's own pc; dispatch computes the next pc independently.";
   let ok = True();
@@ -467,7 +464,6 @@ fn instruction_set_table_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: 
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
-  ensures when Ok(value: completed): base + 256_u64 <= stack^.inner.len;
 } {
   doc "The success payload is the completed cell's own pc; dispatch computes the next pc independently.";
   let n = code^.inner.len;
@@ -576,7 +572,6 @@ fn instruction_set_table_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: 
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
-  ensures when Ok(value: completed): base + 256_u64 <= stack^.inner.len;
 } {
   doc "The success payload is the completed cell's own pc; dispatch computes the next pc independently.";
   let n = code^.inner.len;
@@ -638,7 +633,6 @@ fn instruction_new_table<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
-  ensures when Ok(value: completed): base + 256_u64 <= stack^.inner.len;
 } {
   doc "The success payload is the completed cell's own pc; dispatch computes the next pc independently.";
   let ok = True();
@@ -673,7 +667,6 @@ fn instruction_self_r<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
-  ensures when Ok(value: completed): base + 256_u64 <= stack^.inner.len;
 } {
   doc "The success payload is the completed cell's own pc; dispatch computes the next pc independently.";
   let n = code^.inner.len;
@@ -737,7 +730,6 @@ fn instruction_self_k<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
-  ensures when Ok(value: completed): base + 256_u64 <= stack^.inner.len;
 } {
   doc "The success payload is the completed cell's own pc; dispatch computes the next pc independently.";
   let n = code^.inner.len;
@@ -925,7 +917,6 @@ fn instruction_add_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
-  ensures when Ok(value: completed): base + 256_u64 <= stack^.inner.len;
 } {
   doc "The success payload is the completed cell's own pc; dispatch computes the next pc independently.";
   let n = code^.inner.len;
@@ -1001,7 +992,6 @@ fn instruction_add_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
-  ensures when Ok(value: completed): base + 256_u64 <= stack^.inner.len;
 } {
   doc "The success payload is the completed cell's own pc; dispatch computes the next pc independently.";
   let n = code^.inner.len;
@@ -1199,7 +1189,6 @@ fn instruction_sub_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
-  ensures when Ok(value: completed): base + 256_u64 <= stack^.inner.len;
 } {
   doc "The success payload is the completed cell's own pc; dispatch computes the next pc independently.";
   let n = code^.inner.len;
@@ -1275,7 +1264,6 @@ fn instruction_sub_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
-  ensures when Ok(value: completed): base + 256_u64 <= stack^.inner.len;
 } {
   doc "The success payload is the completed cell's own pc; dispatch computes the next pc independently.";
   let n = code^.inner.len;
@@ -1349,7 +1337,6 @@ fn instruction_mul_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
-  ensures when Ok(value: completed): base + 256_u64 <= stack^.inner.len;
 } {
   doc "The success payload is the completed cell's own pc; dispatch computes the next pc independently.";
   let n = code^.inner.len;
@@ -1427,7 +1414,6 @@ fn instruction_mul_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
-  ensures when Ok(value: completed): base + 256_u64 <= stack^.inner.len;
 } {
   doc "The success payload is the completed cell's own pc; dispatch computes the next pc independently.";
   let n = code^.inner.len;
@@ -1564,7 +1550,6 @@ fn instruction_mul_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
-  ensures when Ok(value: completed): base + 256_u64 <= stack^.inner.len;
 } {
   doc "The success payload is the completed cell's own pc; dispatch computes the next pc independently.";
   let n = code^.inner.len;
@@ -1638,7 +1623,6 @@ fn instruction_div_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
-  ensures when Ok(value: completed): base + 256_u64 <= stack^.inner.len;
 } {
   doc "The success payload is the completed cell's own pc; dispatch computes the next pc independently.";
   let n = code^.inner.len;
@@ -1716,7 +1700,6 @@ fn instruction_div_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
-  ensures when Ok(value: completed): base + 256_u64 <= stack^.inner.len;
 } {
   doc "The success payload is the completed cell's own pc; dispatch computes the next pc independently.";
   let n = code^.inner.len;
@@ -1792,7 +1775,6 @@ fn instruction_div_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
-  ensures when Ok(value: completed): base + 256_u64 <= stack^.inner.len;
 } {
   doc "The success payload is the completed cell's own pc; dispatch computes the next pc independently.";
   let n = code^.inner.len;
@@ -1868,7 +1850,6 @@ fn instruction_div_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
-  ensures when Ok(value: completed): base + 256_u64 <= stack^.inner.len;
 } {
   doc "The success payload is the completed cell's own pc; dispatch computes the next pc independently.";
   let n = code^.inner.len;
@@ -1942,7 +1923,6 @@ fn instruction_mod_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
-  ensures when Ok(value: completed): base + 256_u64 <= stack^.inner.len;
 } {
   doc "The success payload is the completed cell's own pc; dispatch computes the next pc independently.";
   let n = code^.inner.len;
@@ -2087,7 +2067,6 @@ fn instruction_mod_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
-  ensures when Ok(value: completed): base + 256_u64 <= stack^.inner.len;
 } {
   doc "The success payload is the completed cell's own pc; dispatch computes the next pc independently.";
   let n = code^.inner.len;
@@ -2166,7 +2145,6 @@ fn instruction_mod_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
-  ensures when Ok(value: completed): base + 256_u64 <= stack^.inner.len;
 } {
   doc "The success payload is the completed cell's own pc; dispatch computes the next pc independently.";
   let n = code^.inner.len;
@@ -2243,7 +2221,6 @@ fn instruction_pow_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
-  ensures when Ok(value: completed): base + 256_u64 <= stack^.inner.len;
 } {
   doc "The success payload is the completed cell's own pc; dispatch computes the next pc independently.";
   let n = code^.inner.len;
@@ -2320,7 +2297,6 @@ fn instruction_pow_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
-  ensures when Ok(value: completed): base + 256_u64 <= stack^.inner.len;
 } {
   doc "The success payload is the completed cell's own pc; dispatch computes the next pc independently.";
   let n = code^.inner.len;
@@ -2395,7 +2371,6 @@ fn instruction_pow_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
-  ensures when Ok(value: completed): base + 256_u64 <= stack^.inner.len;
 } {
   doc "The success payload is the completed cell's own pc; dispatch computes the next pc independently.";
   let n = code^.inner.len;
@@ -2470,7 +2445,6 @@ fn instruction_pow_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
-  ensures when Ok(value: completed): base + 256_u64 <= stack^.inner.len;
 } {
   doc "The success payload is the completed cell's own pc; dispatch computes the next pc independently.";
   let n = code^.inner.len;
@@ -2543,7 +2517,6 @@ fn instruction_unm<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slot
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
-  ensures when Ok(value: completed): base + 256_u64 <= stack^.inner.len;
 } {
   doc "The success payload is the completed cell's own pc; dispatch computes the next pc independently.";
   let n = code^.inner.len;
@@ -2602,7 +2575,6 @@ fn instruction_not<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slot
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
-  ensures when Ok(value: completed): base + 256_u64 <= stack^.inner.len;
 } {
   doc "The success payload is the completed cell's own pc; dispatch computes the next pc independently.";
   let ok = True();
@@ -2632,7 +2604,6 @@ fn instruction_len<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slot
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
-  ensures when Ok(value: completed): base + 256_u64 <= stack^.inner.len;
 } {
   doc "The success payload is the completed cell's own pc; dispatch computes the next pc independently.";
   let n = code^.inner.len;
@@ -2695,7 +2666,6 @@ fn instruction_concat<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
-  ensures when Ok(value: completed): base + 256_u64 <= stack^.inner.len;
 } {
   doc "The success payload is the completed cell's own pc; dispatch computes the next pc independently.";
   let dest = cvt::<u8, u64>(av);
@@ -4039,7 +4009,6 @@ fn instruction_close<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Sl
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
-  ensures when Ok(value: completed): base + 256_u64 <= stack^.inner.len;
 } {
   doc "The success payload is the completed cell's own pc; dispatch computes the next pc independently.";
   let ok = True();

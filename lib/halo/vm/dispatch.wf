@@ -45,10 +45,14 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       match continuation {
         Ok(value: completed) => {
           let next = pc + 1_u64;
+          let frame_limit = base + 256_u64;
           if next < code^.inner.len {
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            if frame_limit <= stack^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+          } else {
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           }
-          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           set step = Step::Error();
         }
         Err(error: failure) => {
@@ -64,10 +68,14 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       match continuation {
         Ok(value: completed) => {
           let next = pc + 1_u64;
+          let frame_limit = base + 256_u64;
           if next < code^.inner.len {
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            if frame_limit <= stack^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+          } else {
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           }
-          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           set step = Step::Error();
         }
         Err(error: failure) => {
@@ -96,10 +104,14 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       match continuation {
         Ok(value: completed) => {
           let next = pc + 1_u64;
+          let frame_limit = base + 256_u64;
           if next < code^.inner.len {
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            if frame_limit <= stack^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+          } else {
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           }
-          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           set step = Step::Error();
         }
         Err(error: failure) => {
@@ -184,10 +196,14 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       match continuation {
         Ok(value: completed) => {
           let next = pc + 1_u64;
+          let frame_limit = base + 256_u64;
           if next < code^.inner.len {
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            if frame_limit <= stack^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+          } else {
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           }
-          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           set step = Step::Error();
         }
         Err(error: failure) => {
@@ -220,10 +236,14 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       match continuation {
         Ok(value: completed) => {
           let next = pc + 1_u64;
+          let frame_limit = base + 256_u64;
           if next < code^.inner.len {
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            if frame_limit <= stack^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+          } else {
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           }
-          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           set step = Step::Error();
         }
         Err(error: failure) => {
@@ -236,10 +256,14 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       match continuation {
         Ok(value: completed) => {
           let next = pc + 1_u64;
+          let frame_limit = base + 256_u64;
           if next < code^.inner.len {
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            if frame_limit <= stack^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+          } else {
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           }
-          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           set step = Step::Error();
         }
         Err(error: failure) => {
@@ -252,10 +276,14 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       match continuation {
         Ok(value: completed) => {
           let next = pc + 1_u64;
+          let frame_limit = base + 256_u64;
           if next < code^.inner.len {
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            if frame_limit <= stack^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+          } else {
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           }
-          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           set step = Step::Error();
         }
         Err(error: failure) => {
@@ -268,10 +296,14 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       match continuation {
         Ok(value: completed) => {
           let next = pc + 1_u64;
+          let frame_limit = base + 256_u64;
           if next < code^.inner.len {
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            if frame_limit <= stack^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+          } else {
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           }
-          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           set step = Step::Error();
         }
         Err(error: failure) => {
@@ -324,10 +356,14 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       match continuation {
         Ok(value: completed) => {
           let next = pc + 1_u64;
+          let frame_limit = base + 256_u64;
           if next < code^.inner.len {
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            if frame_limit <= stack^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+          } else {
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           }
-          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           set step = Step::Error();
         }
         Err(error: failure) => {
@@ -340,10 +376,14 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       match continuation {
         Ok(value: completed) => {
           let next = pc + 1_u64;
+          let frame_limit = base + 256_u64;
           if next < code^.inner.len {
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            if frame_limit <= stack^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+          } else {
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           }
-          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           set step = Step::Error();
         }
         Err(error: failure) => {
@@ -396,10 +436,14 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       match continuation {
         Ok(value: completed) => {
           let next = pc + 1_u64;
+          let frame_limit = base + 256_u64;
           if next < code^.inner.len {
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            if frame_limit <= stack^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+          } else {
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           }
-          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           set step = Step::Error();
         }
         Err(error: failure) => {
@@ -412,10 +456,14 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       match continuation {
         Ok(value: completed) => {
           let next = pc + 1_u64;
+          let frame_limit = base + 256_u64;
           if next < code^.inner.len {
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            if frame_limit <= stack^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+          } else {
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           }
-          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           set step = Step::Error();
         }
         Err(error: failure) => {
@@ -428,10 +476,14 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       match continuation {
         Ok(value: completed) => {
           let next = pc + 1_u64;
+          let frame_limit = base + 256_u64;
           if next < code^.inner.len {
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            if frame_limit <= stack^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+          } else {
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           }
-          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           set step = Step::Error();
         }
         Err(error: failure) => {
@@ -444,10 +496,14 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       match continuation {
         Ok(value: completed) => {
           let next = pc + 1_u64;
+          let frame_limit = base + 256_u64;
           if next < code^.inner.len {
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            if frame_limit <= stack^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+          } else {
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           }
-          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           set step = Step::Error();
         }
         Err(error: failure) => {
@@ -480,10 +536,14 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       match continuation {
         Ok(value: completed) => {
           let next = pc + 1_u64;
+          let frame_limit = base + 256_u64;
           if next < code^.inner.len {
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            if frame_limit <= stack^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+          } else {
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           }
-          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           set step = Step::Error();
         }
         Err(error: failure) => {
@@ -496,10 +556,14 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       match continuation {
         Ok(value: completed) => {
           let next = pc + 1_u64;
+          let frame_limit = base + 256_u64;
           if next < code^.inner.len {
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            if frame_limit <= stack^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+          } else {
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           }
-          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           set step = Step::Error();
         }
         Err(error: failure) => {
@@ -512,10 +576,14 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       match continuation {
         Ok(value: completed) => {
           let next = pc + 1_u64;
+          let frame_limit = base + 256_u64;
           if next < code^.inner.len {
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            if frame_limit <= stack^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+          } else {
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           }
-          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           set step = Step::Error();
         }
         Err(error: failure) => {
@@ -528,10 +596,14 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       match continuation {
         Ok(value: completed) => {
           let next = pc + 1_u64;
+          let frame_limit = base + 256_u64;
           if next < code^.inner.len {
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            if frame_limit <= stack^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+          } else {
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           }
-          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           set step = Step::Error();
         }
         Err(error: failure) => {
@@ -544,10 +616,14 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       match continuation {
         Ok(value: completed) => {
           let next = pc + 1_u64;
+          let frame_limit = base + 256_u64;
           if next < code^.inner.len {
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            if frame_limit <= stack^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+          } else {
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           }
-          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           set step = Step::Error();
         }
         Err(error: failure) => {
@@ -560,10 +636,14 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       match continuation {
         Ok(value: completed) => {
           let next = pc + 1_u64;
+          let frame_limit = base + 256_u64;
           if next < code^.inner.len {
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            if frame_limit <= stack^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+          } else {
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           }
-          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           set step = Step::Error();
         }
         Err(error: failure) => {
@@ -596,10 +676,14 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       match continuation {
         Ok(value: completed) => {
           let next = pc + 1_u64;
+          let frame_limit = base + 256_u64;
           if next < code^.inner.len {
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            if frame_limit <= stack^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+          } else {
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           }
-          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           set step = Step::Error();
         }
         Err(error: failure) => {
@@ -612,10 +696,14 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       match continuation {
         Ok(value: completed) => {
           let next = pc + 1_u64;
+          let frame_limit = base + 256_u64;
           if next < code^.inner.len {
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            if frame_limit <= stack^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+          } else {
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           }
-          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           set step = Step::Error();
         }
         Err(error: failure) => {
@@ -628,10 +716,14 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       match continuation {
         Ok(value: completed) => {
           let next = pc + 1_u64;
+          let frame_limit = base + 256_u64;
           if next < code^.inner.len {
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            if frame_limit <= stack^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+          } else {
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           }
-          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           set step = Step::Error();
         }
         Err(error: failure) => {
@@ -644,10 +736,14 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       match continuation {
         Ok(value: completed) => {
           let next = pc + 1_u64;
+          let frame_limit = base + 256_u64;
           if next < code^.inner.len {
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            if frame_limit <= stack^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+          } else {
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           }
-          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           set step = Step::Error();
         }
         Err(error: failure) => {
@@ -660,10 +756,14 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       match continuation {
         Ok(value: completed) => {
           let next = pc + 1_u64;
+          let frame_limit = base + 256_u64;
           if next < code^.inner.len {
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            if frame_limit <= stack^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+          } else {
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           }
-          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           set step = Step::Error();
         }
         Err(error: failure) => {
@@ -676,10 +776,14 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       match continuation {
         Ok(value: completed) => {
           let next = pc + 1_u64;
+          let frame_limit = base + 256_u64;
           if next < code^.inner.len {
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            if frame_limit <= stack^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+          } else {
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           }
-          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           set step = Step::Error();
         }
         Err(error: failure) => {
@@ -692,10 +796,14 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       match continuation {
         Ok(value: completed) => {
           let next = pc + 1_u64;
+          let frame_limit = base + 256_u64;
           if next < code^.inner.len {
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            if frame_limit <= stack^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+          } else {
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           }
-          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           set step = Step::Error();
         }
         Err(error: failure) => {
@@ -708,10 +816,14 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       match continuation {
         Ok(value: completed) => {
           let next = pc + 1_u64;
+          let frame_limit = base + 256_u64;
           if next < code^.inner.len {
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            if frame_limit <= stack^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+          } else {
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           }
-          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           set step = Step::Error();
         }
         Err(error: failure) => {
@@ -724,10 +836,14 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       match continuation {
         Ok(value: completed) => {
           let next = pc + 1_u64;
+          let frame_limit = base + 256_u64;
           if next < code^.inner.len {
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            if frame_limit <= stack^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+          } else {
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           }
-          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           set step = Step::Error();
         }
         Err(error: failure) => {
@@ -740,8 +856,11 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       match continuation {
         Ok(value: completed) => {
           let next = pc + 1_u64;
+          let frame_limit = base + 256_u64;
           if next < code^.inner.len {
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            if frame_limit <= stack^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
           }
           set step = Step::Jump(pc: next, base: base, kbase: kbase);
         }
@@ -877,10 +996,14 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       match continuation {
         Ok(value: completed) => {
           let next = pc + 1_u64;
+          let frame_limit = base + 256_u64;
           if next < code^.inner.len {
-            return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            if frame_limit <= stack^.inner.len {
+              return musttail run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: next, base: base, kbase: kbase);
+            }
+          } else {
+            let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           }
-          let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
           set step = Step::Error();
         }
         Err(error: failure) => {
