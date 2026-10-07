@@ -2,40 +2,52 @@
 # The collector's removed-root controls ("Local root witnesses" in README.md):
 # the local root cases pass with every root, and each fails once its sole
 # root is hidden from the collector or one marking call of mark_roots
-# (lib/halo/vm/collect.wf) is removed. Expected failures require a reply/conversion
-# difference, with no native-exit failure or Traceback. A pure-shell classifier
-# self-test runs first, before compiler setup. Mutants build in copies under the
+# (lib/halo/vm/collect.wf) is removed. An expected failure must be detected:
+# a reply/conversion difference, or the engine's own setup compile (3), setup
+# runtime (4), budget (5) or host-stop (6) exit; a crash by signal, a
+# transport failure (2), any other exit or a Traceback (such as a timeout)
+# rejects the control. A pure-shell classifier self-test runs first, before
+# compiler setup. Mutants build in copies under the
 # scratch directory; the working tree is never edited. `make roots` runs it:
 #   WHITEFOOTC=<compiler> controls.sh <built e2e test program> <scratch directory>
 set -u
 
-is_reply_failure() (
+is_detected_failure() (
   difference=1
   while IFS= read -r line || [ -n "$line" ]; do
     case "$line" in
-      *Traceback*|"FAIL "*": native exit "*) return 1 ;;
+      *Traceback*) return 1 ;;
       "FAIL "*": reply/conversion difference; inspect actual JSON") difference=0 ;;
+      "FAIL "*": native exit "[3456]" ("*) difference=0 ;;
+      "FAIL "*": native exit "*) return 1 ;;
     esac
   done
   return "$difference"
 )
 
 classifier_self_test() {
-  is_reply_failure <<'EOF' || return 1
+  is_detected_failure <<'EOF' || return 1
 FAIL gc/frame-closure.lua budget=1 collections=1: reply/conversion difference; inspect actual JSON
 EOF
-  if is_reply_failure <<'EOF'
+  if is_detected_failure <<'EOF'
 FAIL gc/frame-closure.lua budget=1 collections=1: reply/conversion difference; inspect actual JSON
 FAIL gc/frame-closure.lua budget=7 collections=None: native exit -11 (2 transport/I/O, 3 setup compile, 4 setup runtime, 5 budget limit, 6 host stop)
 EOF
   then return 1; fi
-  if is_reply_failure <<'EOF'
+  if is_detected_failure <<'EOF'
 FAIL gc/frame-closure.lua budget=1 collections=1: reply/conversion difference; inspect actual JSON
 Traceback (most recent call last):
 EOF
   then return 1; fi
-  if is_reply_failure <<'EOF'
+  if is_detected_failure <<'EOF'
 1/1 passed
+EOF
+  then return 1; fi
+  is_detected_failure <<'EOF' || return 1
+FAIL apps/hash-cas budget=1 collections=None: native exit 4 (2 transport/I/O, 3 setup compile, 4 setup runtime, 5 budget limit, 6 host stop)
+EOF
+  if is_detected_failure <<'EOF'
+FAIL apps/hash-cas budget=1 collections=None: native exit 2 (2 transport/I/O, 3 setup compile, 4 setup runtime, 5 budget limit, 6 host stop)
 EOF
   then return 1; fi
   return 0
@@ -66,8 +78,8 @@ expect() {
   echo "roots $label: exit $got (want $want), $(grep -E 'passed$' "$out/$label.log" | tail -1)"
   if [ "$got" != "$want" ]; then status=1; cat "$out/$label.log"; return; fi
   if [ "$want" = 1 ]; then
-    if ! is_reply_failure < "$out/$label.log"; then
-      echo "roots $label: did not fail by a reply comparison"; status=1; cat "$out/$label.log"
+    if ! is_detected_failure < "$out/$label.log"; then
+      echo "roots $label: did not fail by a detected result (a reply difference or a setup, budget or stop exit)"; status=1; cat "$out/$label.log"
     fi
   fi
 }
