@@ -1953,8 +1953,10 @@ built both entry-comparison binaries with full LTO, Whitefoot release
 `526f67befe929bfdb33513a0c557d832d4868c43`; `halo-entry` uses branch
 `c35c53b594ec4a3fb412224bb1b6c150af087200`. Thus this repeats the criterion
 against the merged main baseline, rather than the original task base. The
-branch also contains number-library and gate changes; the number-library
-changes are not on these kernels' paths. This is the candidate comparison,
+branch also contains number-library and gate changes; of the kernels, only
+binary-trees reaches the number library, through `^` (`pkg::number::pow`,
+whose NaN handling changed), and its ratio stayed within noise; Lua's `%`
+in sort uses `ffloor` directly. This is the candidate comparison,
 not an attribution of isolated entry costs.
 
 The run's `halo-bench-compare` artifact holds `manifest-after.txt`,
