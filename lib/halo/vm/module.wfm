@@ -106,9 +106,6 @@ public struct Vm {
   public protos: Box<Slots<Proto>>;
   public lineinfo: Box<Slots<u32>>;
   public source: Box<Slots<u8>>;
-  public debug_names: Box<Slots<u8>>;
-  public local_variables: Box<Slots<LocalVariable>>;
-  public upvalue_names: Box<Slots<DebugName>>;
   public top: u64;
   public budget: u64;
   public saved_pc: u64;
@@ -127,6 +124,9 @@ public struct Vm {
   public call_pending: Bool;
   public raise_pc: u64;
   public pcall_field: Box<Slots<u8>>;
+  public debug_names: Box<Slots<u8>>;
+  public local_variables: Box<Slots<LocalVariable>>;
+  public upvalue_names: Box<Slots<DebugName>>;
 }
 
 public enum Outcome {

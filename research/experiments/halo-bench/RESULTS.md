@@ -2136,3 +2136,36 @@ collection count. The hypothesis is rejected if the branch's extra
 collections grow with depth (roughly with the work) rather than staying
 within a few collections at every depth; a rejection is investigated before
 the change is kept.
+
+### Second run and the third run's hypothesis
+
+[Run 37554171249](https://github.com/Ming-Research/Halo-wf/actions/runs/37554171249)
+at `987cb9435`, six selected pairs (branch median / main median; relative
+ranges main, branch):
+
+| Kernel | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|
+| fib | 1.018 | 2.25% | 1.91% | 0.994 |
+| loop | 1.002 | 0.27% | 0.61% | 1.000 |
+| integer-table | 1.004 | 1.40% | 2.17% | 0.996 |
+| string-key | 0.990 | 4.15% | 0.89% | 1.000 |
+| concat | 0.999 | 1.11% | 1.37% | 1.002 |
+| sort | 1.022 | 1.12% | 0.34% | 1.002 |
+
+Sort is 2.2% slower, beyond both its 1.12% range and the twin's 0.2%, so the
+criterion rejects the change as measured; fib's 1.8% is inside its range.
+`--check-module pkg::vm` took 7.407 and 7.402 s against main's 7.198 and
+7.174 s (1.03 times). Binary-trees' collection counts, main then branch:
+depth 12, 144 and 142; 13, 152 and 154; 14, 176 and 178; 15, 186 and 186;
+16, 214 and 212. The difference stays within two collections and does not
+grow with the work, so the timing-shift hypothesis stands.
+
+Third run, recorded before it ran: the change inserted its three debug-data
+fields into the `Vm` record after `source`, ahead of fields the dispatch and
+the library touch on every call (`top`, `budget`, `saved_pc`,
+`callback_plan` and the rest after `source`), moving each by three box
+widths. Hypothesis:
+that shift, not added work, slows sort. The third run repeats the second
+after moving the three fields to the end of `Vm`. The hypothesis is rejected
+if sort stays slower than main beyond the same bounds; the next suspect is
+then `sort_compare`'s larger slow branch.
