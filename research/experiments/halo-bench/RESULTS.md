@@ -2782,6 +2782,7 @@ the same three binaries by hash:
 **The criterion passes at the final engine.** String-key takes 0.771 times
 as long, beyond both ranges and the twin; no kernel is slower beyond its
 larger range and the twin's (concat's 1.016 is inside its 2.77% range).
+
 ## Table construction and growth
 
 ### Attribution, recorded before it runs
@@ -2807,3 +2808,62 @@ binary-trees at depth 14 (`run.py`'s scale) and integer-table; `perf record`
 of each, three launches, reported by symbol; `perf annotate` of Halo's
 sampled symbols; and the disassembly of the table functions with their
 instruction counts.
+
+### Attribution result
+
+[Run 37639344751](https://github.com/Ming-Research/Halo-wf/actions/runs/37639344751),
+artifact `halo-tables-profile`: an AMD EPYC 7763 guest sampling `task-clock`,
+Halo at main `99936d6e6` (before the string-key lookup), `wf-8b647edbbc95`
+with clang 22.1.8; both engines print the same sums. Shares of samples,
+three launches:
+
+- Binary-trees, Halo: `node_find` 12.2–12.5%, the `Call` arm 5.3–5.6%,
+  `enter_lua` 5.4–5.6%, `push_frame` 3.3–3.6%, `calloc` 3.6–3.7%,
+  `gc_mark` 2.8–2.9%, page faults 2.4–2.5%, `collect_if_due` 2.3–2.4%,
+  `malloc` 2.2–2.3%, the rest in dispatch arms. PUC: `luaV_execute`
+  18.9–19.3%, `luaH_get` 12.0–13.1%, `sweeplist` 8.0–8.7%, `propagatemark`
+  5.7–6.1%, `free` 5.2–6.2%, `luaD_precall` 3.5–4.0%, `malloc` 2.7–3.8%.
+  Launch 1's annotation holds about 13,100 Halo samples against about 7,300
+  of PUC's, `node_find` 2,352 of them against about 900 in `luaH_get`.
+- Integer-table, Halo: arms 13 and 11 (the table store and load) 27.7–28.0%
+  and 25.2–26.1%, two more arms 17.7–19.4% together, `rehash` 7.0–10.1%,
+  `table_set` 6.0–6.7%, `gc_mark` 5.6–5.9%. PUC: `luaV_execute` 39.1–40.0%,
+  `luaH_get` 33.7–34.2%, `luaV_settable` 7.7–8.2%, `newkey` 3.3–3.5%.
+
+In binary-trees, every table constructor stores `item`, `left` and `right`
+through `table_set`, which looks the key up with `node_find` before
+inserting. Launch 1's annotation of `node_find`:
+
+- 19.7% of its samples follow the `div` that computes `hash % n` for a
+  string key in `main_position`. PUC's `hashstr` masks the hash instead
+  (`lmod`, with node counts always powers of two), and `main_position`'s own
+  doc names that rule, but its code divides by the node count.
+- 36.9% fall on loading each visited node's key and the indirect jump on its
+  kind in `equal`, which compares every kind. PUC's `luaH_get` sends a string
+  key to `luaH_getstr`, a loop that compares string pointers only. Since the
+  string-key lookup, Halo's reads do the same, but its writes do not.
+
+Both are work Halo's source asks for; no code the compiler adds beyond the
+source shows in these functions. The dispatch arms that carry most of
+integer-table's time are left to `loop { match }` dispatch; integer-table's
+`rehash` and `gc_mark` remain for a later candidate.
+
+### String keys in table writes: criterion, recorded before the change
+
+Change: string and boolean keys take their main position by masking the
+hash with the node count less one, as PUC's `hashpow2` does, which equals
+the present modulus for every power-of-two node count, the only counts Lua
+creates, and keeps insertion and lookup consistent for any count; a table
+write finds an existing string key by its cached hash and handle comparison,
+as reads have since the string-key lookup; and `table_get_str` drops its
+power-of-two guard, since the specialised and generic lookups then mask
+alike for every node count.
+
+Kept only if, on the 14900K, in six interleaved full-LTO pairs of the
+branch before the change (the string-key lookup's final engine,
+`448c217a2`) against the branch after it, with a twin of the before binary:
+the binary-trees kernel's median falls at least 3%, by more than both ranges
+and the twin's difference; no kernel is slower beyond its larger range and
+the twin's; `--check-module pkg::vm` takes at most 1.25 times as long; and
+`make check` passes. Otherwise the change is reverted with its measurements
+kept.
