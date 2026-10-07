@@ -409,6 +409,67 @@ fn table_get(heap: &Heap, t: Value, key: Value) -> r: Value reads(heap) {
   return Value::Nil();
 }
 
+fn node_get_str(nodes: &Box<Slots<Node>>, h: u32, hash: u64) -> r: Value reads(nodes) {
+  doc "Raw string lookup in a power-of-two node vector: cached hash masking selects the same bucket as main_position, and interned handles determine equality.";
+  let n = nodes^.inner.len;
+  if n == 0_u64 {
+    return Value::Nil();
+  }
+  let mask = n - 1_u64;
+  let i = iand(hash, mask);
+  loop @chain {
+    if i < nodes^.inner.len {
+      let key = nodes^.inner[i].key;
+      match key {
+        Str(h: handle) => {
+          if handle == h {
+            return nodes^.inner[i].val;
+          }
+        }
+        Nil() => {
+        }
+        False() => {
+        }
+        True() => {
+        }
+        Num(..) => {
+        }
+        Tab(..) => {
+        }
+        Fun(..) => {
+        }
+        Builtin(..) => {
+        }
+      }
+      set i = cvt::<u32, u64>(nodes^.inner[i].next);
+    } else {
+      return Value::Nil();
+    }
+  }
+  return Value::Nil();
+}
+
+fn table_get_str(heap: &Heap, t: Value, h: u32) -> r: Value reads(heap) {
+  doc "Raw lookup for an interned string handle; invalid table or string handles retain table_get behavior through the generic lookup.";
+  match table_handle(heap: heap, t: t) {
+    Some(value: ti) => {
+      if ti < heap^.tables.inner.len {
+        let si = cvt::<u32, u64>(h);
+        if si < heap^.strings.inner.len {
+          if heap^.strings.inner[si].live {
+            let hash = heap^.strings.inner[si].payload.hash;
+            return node_get_str(nodes: &heap^.tables.inner[ti].payload.nodes, h: h, hash: hash);
+          }
+        }
+      }
+    }
+    None() => {
+    }
+  }
+  let key = Value::Str(h: h);
+  return table_get(heap: heap, t: t, key: key);
+}
+
 fn insert_parts(heap: &Heap, array: &Box<Slots<Value>>, nodes: &Box<Slots<Node>>, lastfree: &u64, node_count: &u32, key: Value, val: Value) -> r: Bool reads(heap.strings), writes(array), writes(nodes), writes(lastfree), writes(node_count) {
   doc "luaH_set/newkey: lookup reuses a retained key even with nil value. New keys may replace a nil-valued main position without clearing its chain; only getfreepos exhaustion requests rehash.";
   let k = integer_key(key: key);
