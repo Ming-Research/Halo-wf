@@ -2297,3 +2297,22 @@ attributed: it exceeds both ranges and the twin by far.
 `--check-module pkg::vm`: main 7.155 and 7.121 s, head 7.476 and 7.460 s,
 1.046 times; within 1.25. **The criterion passes at the head and the change
 is kept.**
+
+## P1 on the 14900K with wf-e1708490c384
+
+### Question, recorded before measuring
+
+On the reference platform, the owner's i9-14900K running x86-64 Linux, with
+Whitefoot `wf-e1708490c384` (LLVM 22) and clang 22, how far is Halo from P1
+([VM design](../../investigations/halo/VM.md), Halo's median at most PUC
+5.1.5's) on each kernel, after Halo-wf#3's changes, the `sort_compare` split
+included? The earlier P1 tables were measured on an M1 Pro with older
+compilers. This run tests no proposal; it orders the performance candidates
+in `docs/todo.md`, nearest the largest ratio first.
+
+Comparison: `run.py` with Halo (Halo-wf `c0168e213`, full LTO) against
+Redis 7.0.15's bundled PUC Lua built from source, all seven kernels at the
+P1 counts with binary-trees at depth 14, one, three and six alternating
+pairs, unlimited budget, checksums and collection counts recorded. The run
+also records whether `perf` and `objdump` are available on the runner, for
+the attribution that follows.

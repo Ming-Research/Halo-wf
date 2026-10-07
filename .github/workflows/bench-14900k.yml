@@ -1,0 +1,63 @@
+# Temporary, for the Halo performance line: times research/experiments/
+# halo-bench against PUC Lua on the 14900K (research/experiments/halo-bench/
+# RESULTS.md, "P1 on the 14900K with wf-e1708490c384"). A push of this file
+# runs it. Removed before the pull request is marked ready.
+name: bench-14900k
+
+on:
+  push:
+    branches: [claude/halo-perf]
+    paths: [.github/workflows/bench-14900k.yml]
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  bench:
+    runs-on: [self-hosted, 14900k]
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Build and compare with PUC
+        run: |
+          set -euo pipefail
+          out="$PWD/build/bench-out"
+          rm -rf "$out"; mkdir -p "$out"
+          release=$(sed -n 's/^release = //p' whitefoot.pin)
+          make compiler
+          make toolchain-check
+          wfc="$PWD/build/whitefoot/$release/whitefootc"
+          sh research/experiments/halo-oracle/fetch-redis.sh "$PWD/build/redis"
+          lua="$PWD/build/redis/redis-7.0.15/deps/lua/src/lua"
+          "$wfc" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo"
+          {
+            echo "branch $(git rev-parse HEAD), release $release"
+            sha256sum "$wfc" "$out/halo" "$lua"
+            /usr/bin/clang --version | head -n 1
+            uname -a
+            lscpu | grep -E 'Model name|^CPU\(s\)|MHz' || true
+            echo "perf: $(command -v perf || echo absent)"
+            perf --version 2>&1 || true
+            echo "perf_event_paranoid: $(cat /proc/sys/kernel/perf_event_paranoid 2>/dev/null || echo unknown)"
+            echo "objdump: $(command -v objdump || echo absent)"
+          } | tee "$out/manifest.txt"
+          kernels=fib,loop,integer-table,string-key,concat,sort,binary-trees
+          for runs in 1 3 6; do
+            python3 -B research/experiments/halo-bench/run.py --lua "$lua" --binary "$out/halo" \
+              --kernels "$kernels" --scale binary-trees=14 --runs "$runs" \
+              --out "$out/p1-$runs.json" --compiler "$wfc" > "$out/p1-$runs.log" 2>&1 || { cat "$out/p1-$runs.log"; exit 1; }
+            echo "== P1, $runs pair(s)"
+            grep 'ratio=' "$out/p1-$runs.log"
+          done
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: halo-bench-p1
+          path: build/bench-out/
+          retention-days: 30
