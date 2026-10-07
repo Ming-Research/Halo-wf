@@ -2648,7 +2648,7 @@ interleaved full-LTO pairs with `wf-8b647edbbc95`, medians in seconds:
 | binary-trees | 2.1565 | 1.9574 | 0.908 | 1.14% | 1.75% | 1.000 |
 
 `--check-module pkg::vm`: main 7.554 and 7.623 s, branch 7.563 and 7.603 s
-(1.000 times). `make check` passed at `7088d4b84`, the same engine
+(0.999 times). `make check` passed at `7088d4b84`, the same engine
 ([run 37578460931](https://github.com/Ming-Research/Halo-wf/actions/runs/37578460931)).
 
 **The criterion passes and the change is kept.** Integer-table takes 0.865
