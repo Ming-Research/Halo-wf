@@ -7,7 +7,7 @@ Halo's `make check-core` compares the corpus through the `oracle` target;
 recording reference replies remains the job of
 [oracle-reference.yml](../../../.github/workflows/oracle-reference.yml).
 
-There are 103 scripts: 63 `lua-core`, 23 `redis-api`, 6 `apps`, and 11 `libs`.
+There are 105 scripts: 65 `lua-core`, 23 `redis-api`, 6 `apps`, and 11 `libs`.
 The scripts, replies and runner belong here until the oracle is replaced or
 Halo/firn scripting is retired. Each case is consumed by `run.sh`; the table
 below is the index of the observations it protects.
@@ -216,6 +216,7 @@ not automatically used to overwrite this baseline.
 | lua-core | [integer-doubles](scripts/lua-core/integer-doubles.lua) | Integer-valued doubles, precision boundary and number type. |
 | lua-core | [ipairs](scripts/lua-core/ipairs.lua) | ipairs stops at the first nil even when later array entries exist. |
 | lua-core | [loop-closures](scripts/lua-core/loop-closures.lua) | Numeric and generic loops create captured iteration locals. |
+| lua-core | [math-mod](scripts/lua-core/math-mod.lua) | math.mod is math.fmod: the same function value and results, as Redis's Lua defines LUA_COMPAT_MOD. |
 | lua-core | [math-powers](scripts/lua-core/math-powers.lua) | sqrt, math.pow, exponentiation and math.huge. |
 | lua-core | [math-random](scripts/lua-core/math-random.lua) | Redis deterministic default seed and explicit reseeding. |
 | lua-core | [math-round-extrema](scripts/lua-core/math-round-extrema.lua) | floor, ceil, abs, max, min and fmod for signed numbers. |
@@ -247,6 +248,7 @@ not automatically used to overwrite this baseline.
 | lua-core | [string-match](scripts/lua-core/string-match.lua) | Patterns support captures, balanced matching and frontier boundaries. |
 | lua-core | [string-transforms](scripts/lua-core/string-transforms.lua) | sub negative indices, upper/lower, rep and reverse. |
 | lua-core | [table-concat](scripts/lua-core/table-concat.lua) | table.concat uses separators, slice bounds and numeric elements. |
+| lua-core | [table-foreach](scripts/lua-core/table-foreach.lua) | table.foreach visits pairs in next order, returns the first non-nil result, allows field assignment and Redis calls in its function, and checks its arguments. |
 | lua-core | [table-insert-remove](scripts/lua-core/table-insert-remove.lua) | Array insertion shifts entries; removal returns and shifts values. |
 | lua-core | [table-parts](scripts/lua-core/table-parts.lua) | Array and hash entries coexist; hash entries do not add array length. |
 | lua-core | [table-sort](scripts/lua-core/table-sort.lua) | Default and custom comparator sort numbers into opposite orders. |
