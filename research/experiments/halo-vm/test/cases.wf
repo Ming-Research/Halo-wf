@@ -15,6 +15,7 @@ alias exit_status = std::process::exit_status;
 alias unlimited = halo::vm::unlimited;
 alias Node = halo::heap::Node;
 alias Table = halo::heap::Table;
+alias no_handle = halo::heap::no_handle;
 
 const text_0: Array<u8, 3> = "fib";
 
@@ -1037,7 +1038,7 @@ fn fixture_string_table_three_nodes() -> r: Bool pure {
   doc "An alloc_table payload with three nodes must preserve string lookup equivalence: key a hashes to 128, so table_set would select bucket 2, while masking selects empty bucket 0.";
   let heap = halo::heap::heap_new(limit: 67108864_u64);
   let key = halo::heap::intern(heap: &heap, bytes: &string_table_key[0_u64..1_u64]);
-  let string_handle = halo::heap::no_handle;
+  let string_handle = no_handle;
   match halo::heap::string_of(heap: &heap, value: key) {
     Some(value: view) => {
       set string_handle = view.handle;
@@ -1055,7 +1056,7 @@ fn fixture_string_table_three_nodes() -> r: Bool pure {
       set node_key = key;
       set node_value = Value::Num(n: 42.0_f64);
     }
-    let node = Node(next: halo::heap::no_handle, key: node_key, val: node_value);
+    let node = Node(next: no_handle, key: node_key, val: node_value);
     if nodes.inner.len < nodes.inner.cap {
       place_back(window: &nodes.inner, value: node);
     } else {
@@ -1063,7 +1064,7 @@ fn fixture_string_table_three_nodes() -> r: Bool pure {
     }
   }
   let read_only = False();
-  let payload = Table(array: move array, nodes: move nodes, node_count: 1_u32, lastfree: 3_u64, meta: halo::heap::no_handle, read_only: read_only, flags: 255_u8);
+  let payload = Table(array: move array, nodes: move nodes, node_count: 1_u32, lastfree: 3_u64, meta: no_handle, read_only: read_only, flags: 255_u8);
   match halo::heap::alloc_table(heap: &heap, payload: move payload) {
     Some(value: table_handle) => {
       let table_value = Value::Tab(h: table_handle);
