@@ -3963,8 +3963,8 @@ fn fast_instruction_get_table_k(code: &Box<Slots<Cell>>, consts: &Box<Slots<Valu
 fn fast_table_can_insert(vm: &Vm, t: Value) -> r: Bool reads(vm) {
   doc "Allows a missing-key raw store only into a live writable table without a metatable.";
   match tab_of(v: t) {
-    Handle(h: h) => {
-      let i = cvt::<u32, u64>(h);
+    Handle(h: handle) => {
+      let i = cvt::<u32, u64>(handle);
       if i < vm^.heap.tables.inner.len {
         if vm^.heap.tables.inner[i].live {
           if vm^.heap.tables.inner[i].payload.meta == no_handle {
