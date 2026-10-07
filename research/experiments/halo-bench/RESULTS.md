@@ -2699,3 +2699,72 @@ main `99936d6e6` built with full LTO as `run.py` builds it, and Redis 7.0.15's b
 the fib kernel at N = 30; `perf record` of each, three launches, reported by
 symbol; `perf annotate` of Halo's sampled symbols; and the disassembly of the
 call-path functions with their instruction counts.
+
+### Attribution result
+
+[Run 37601651300](https://github.com/Ming-Research/Halo-wf/actions/runs/37601651300),
+artifact `halo-call-profile`: an AMD EPYC 7763 guest with 4 vCPUs, Linux
+6.17, perf 6.17.13 sampling `task-clock` (the guest has no hardware
+counters), `wf-8b647edbbc95` with clang 22.1.8; both engines print
+832040 in every launch. Shares of samples, three launches:
+
+| Halo symbol | Share | PUC symbol | Share |
+|---|---:|---|---:|
+| `enter_lua` | 14.5–25.4% | `luaV_execute` | 58.0–62.0% |
+| arm 63 (`Call`, calls `prepare`) | 13.1–20.3% | `luaD_precall` | 19.4–23.7% |
+| `push_frame` | 12.1–19.9% | `luaV_lessthan` | 7.1–9.4% |
+| arm 65 (`Return`, calls `finish`) | 9.5–13.5% | `luaD_poscall` | 5.1–7.1% |
+| arm 5 | 10.5–13.2% | `luaF_close` | 3.1–3.8% |
+| `prepare` | 6.7–8.0% | | |
+| arm 54 | 5.6–8.0% | | |
+| `finish` | 4.5–5.8% | | |
+
+Sizes: `enter_lua` 452 instructions, `prepare` 1382, `finish` 149,
+`push_frame` 91; `luaD_precall` 437, `luaD_poscall` 95.
+
+The hottest instructions, from launch 1's annotation (a `task-clock` sample
+lands on or just after the instruction that waited), are each a 16-byte
+load of memory that narrower stores wrote just before, which x86 cannot
+forward from store to load:
+
+- `push_frame`: 47.9% of its samples follow the first 16-byte load of its
+  by-value `Frame` (80 bytes, passed as a pointer to the caller's copy),
+  which `enter_lua` built field by field. That load starts the entry copy
+  every definition makes of a by-value aggregate parameter; the frame is
+  then copied a second time into the frames vector.
+- Arm 63: 23.5% of its samples follow the second of two 16-byte loads that
+  copy the 32-byte `Step` result from the call's destination into a slot of
+  the dispatch loop's frame, where `enter_lua` had stored it as four 8-byte
+  words (tag, `pc`, `base`, `kbase`); the slot is then reloaded field by
+  field and its tag dispatched a second time.
+- `prepare`: 29.6% of its samples follow the 4-byte reload of the called
+  value's handle, which the code had read from the Lua stack as one 16-byte
+  load and stored to its own frame, and 26.1% fall on the closure-slab test
+  that depends on it.
+- `enter_lua`'s samples spread more evenly; its largest points copy the
+  40-byte prototype into its frame (8.3%, 4.7% and 3.6%) and reload a byte
+  of it (11.2%).
+
+The costs fall into three kinds:
+
+- Code the compiler emits beyond the source: the entry copy of a by-value
+  aggregate parameter, a result returned through memory and copied whole
+  into another slot before its fields are read, and a matched value copied
+  into a slot before its fields are read. The source asks for none of these
+  copies, and each turns field-sized stores followed by a field read into a
+  16-byte reload. These are a Whitefoot question for the owner. Whitefoot's
+  `compiler/storage-placement` keeps the entry copy and reopens it "when a
+  measured program shows the entry copy surviving inlining at a cost".
+- Halo-side work PUC does not do: the closure slab is looked up twice per
+  call (`prepare`'s `native_binding` and `enter_lua`), the prototype is
+  copied whole, `push_frame` tests the frame limit and the capacity
+  separately, and the nil fill tests each slot's bound.
+- The dispatch form: the `Step` result crosses from each arm into the
+  shared epilogue through the loop's frame, part of the self-tail-call form
+  that `loop { match }` dispatch replaces.
+
+Not established: what each kind costs in time (the guest has no counters
+and the 14900K was offline), and that the loads stall (inferred from the
+store and load widths in the disassembly, not counted). The call-path change
+waits for `loop { match }` dispatch, since the arms and the epilogue it would
+change are being rewritten, and the compiler-side copies go to the owner.
