@@ -1,7 +1,7 @@
 # Temporary, for Halo-wf#3: times research/experiments/halo-bench on the
 # 14900K for the operand descriptions' runtime and check-time criterion
 # (research/experiments/halo-bench/RESULTS.md, "Operand descriptions' cost").
-# A push of this file runs it; this run tests the _VERSION hypothesis.
+# A push of this file runs it; this run follows the sort_compare_slow split.
 # Removed before the pull request is marked ready.
 name: bench-14900k
 

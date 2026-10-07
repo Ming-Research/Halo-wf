@@ -2224,3 +2224,26 @@ those two. The hypothesis is rejected if main with `_VERSION` stays as fast
 as main where the branch is slower, or if the branch is slower than main
 with `_VERSION` beyond the criterion's bounds; the noise twins of the second
 and third runs (all kernels within 0.8%) stand for this run's.
+
+### Fifth run: `_VERSION` explains the collection counts, not all of sort
+
+[Run 37556088935](https://github.com/Ming-Research/Halo-wf/actions/runs/37556088935).
+Binary-trees' collection counts of main with only the `_VERSION` change equal
+the branch's at every depth (142, 154, 178, 186 and 212 against main's 144,
+152, 176, 186 and 214), so the one-time allocation alone shifts them. Sort's
+prefixes, medians of main, main with `_VERSION` and the branch, all with three
+collections: build 0.0382, 0.0379 and 0.0381 s; build and sort 0.6489,
+0.6574 and 0.6866 s; the whole kernel 0.7282, 0.7346 and 0.7407 s. Against
+main with `_VERSION`, six pairs: fib 1.016 (ranges 1.64% and 1.18%), loop
+1.002, integer-table 1.001, string-key 1.000, concat 1.002 and sort 1.011
+(ranges 0.46% and 0.53%). `_VERSION` accounts for the collection shift and
+part of sort's difference; the branch's own code still makes sort 1.1%
+slower, beyond its ranges, and the sort phase is where it differs most.
+
+Sixth run, recorded before it ran: the branch grew `sort_compare`'s slow
+branch, the code that remains of the change on the sort phase's path. The
+sixth run repeats the fifth after moving that branch's body into its own
+function, `sort_compare_slow`, so `sort_compare` has main's shape. The
+change is kept if sort against main with `_VERSION` is then within the
+criterion's bounds; if not, the remaining difference is reported to the
+owner with these measurements rather than chased further in this change.
