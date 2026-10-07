@@ -40,6 +40,22 @@
     {
       "type": "bulk",
       "bytes": "user_script:28: stop"
+    },
+    {
+      "type": "bulk",
+      "bytes": "bare"
+    },
+    {
+      "type": "bulk",
+      "bytes": "p2"
+    },
+    {
+      "type": "bulk",
+      "bytes": "aabb"
+    },
+    {
+      "type": "bulk",
+      "bytes": "1,2,3"
     }
   ]
 }
