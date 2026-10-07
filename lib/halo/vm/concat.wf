@@ -135,6 +135,7 @@ fn concat_batch(vm: &Vm, stack: &Box<Slots<Value>>, base: u64, first: u64, last:
                 }
               }
             }
+            resize_stack(stack: stack, size: length);
             if lowest == last {
               return ConcatBatch::Slow();
             }
