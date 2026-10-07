@@ -2474,3 +2474,27 @@ at `014b4082d`, six interleaved full-LTO pairs, medians in seconds:
 Every kernel stays within its ranges and the twin; the upgrade leaves these
 kernels' times and the module check unchanged, in line with the Whitefoot
 session's measurement of #261 on Halo.
+
+## Constant-step next pc in the dispatch arms
+
+### Criterion, recorded before the change
+
+Since `wf-0b7f5c5b9854`, Whitefoot lowers `run`'s self-tail calls with a code
+cursor: an edge whose new `pc` is visibly `pc` plus a constant moves the
+received address by that constant, and every other edge forms the address
+from `pc` again. Halo's straight-line arms receive `next` from their helpers
+(`Ok(next)`), so the cursor cannot see the step. Change: in the arms whose
+instruction always continues at the next cell (moves, loads, upvalue reads,
+table reads and writes, arithmetic, length, `not`, and the fast table
+paths), compute `next = pc + 1` in the arm and check it against the code
+length there, the helper reporting only success; arms whose continuation is
+a jump target, a call, a return or a callback keep their current form. The
+design node `design/halo/dispatch/continuations.md` changes with it, for the
+owner's ruling.
+
+Kept only if, on the 14900K, in six interleaved full-LTO pairs of the branch
+before the change against after it, with a twin of the before binary: the
+loop kernel's median falls at least 5%, by more than both ranges and the
+twin's difference; no kernel is slower beyond its larger range and the
+twin's; `--check-module pkg::vm` takes at most 1.25 times as long; and `make
+check` passes. Otherwise the change is reverted with its measurements kept.
