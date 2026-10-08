@@ -474,7 +474,7 @@ fn table_get_str(heap: &Heap, t: Value, h: u32) -> r: Value reads(heap) {
 }
 
 fn insert_parts(heap: &Heap, array: &Box<Slots<Value>>, nodes: &Box<Slots<Node>>, lastfree: &u64, node_count: &u32, key: Value, val: Value) -> r: Bool reads(heap.strings), writes(array), writes(nodes), writes(lastfree), writes(node_count) {
-  doc "luaH_set/newkey: lookup reuses a retained key even with nil value. New keys may replace a nil-valued main position without clearing its chain; only getfreepos exhaustion requests rehash.";
+  doc "Integer keys inside the array update their slot; other keys use the chained scatter nodes.";
   let k = integer_key(key: key);
   if k > 0_u64 {
     let i = k - 1_u64;
@@ -483,6 +483,11 @@ fn insert_parts(heap: &Heap, array: &Box<Slots<Value>>, nodes: &Box<Slots<Node>>
       return True();
     }
   }
+  return insert_nodes(heap: heap, nodes: nodes, lastfree: lastfree, node_count: node_count, key: key, val: val);
+}
+
+fn insert_nodes(heap: &Heap, nodes: &Box<Slots<Node>>, lastfree: &u64, node_count: &u32, key: Value, val: Value) -> r: Bool reads(heap.strings), writes(nodes), writes(lastfree), writes(node_count) {
+  doc "luaH_set/newkey: lookup reuses a retained key even with nil value. New keys may replace a nil-valued main position without clearing its chain; only getfreepos exhaustion requests rehash.";
   match node_find(heap: heap, nodes: nodes, key: key) {
     Some(value: i) => {
       if i < nodes^.inner.len {
@@ -496,7 +501,8 @@ fn insert_parts(heap: &Heap, array: &Box<Slots<Value>>, nodes: &Box<Slots<Node>>
   let mp = main_position(heap: heap, key: key, n: nodes^.inner.len);
   if mp < nodes^.inner.len {
     let fresh = is_nil(v: nodes^.inner[mp].key);
-    if is_nil(v: nodes^.inner[mp].val) {
+    let empty = is_nil(v: nodes^.inner[mp].val);
+    if empty {
     } else {
       set fresh = True();
       let free = cvt::<u32, u64>(no_handle);
@@ -506,7 +512,8 @@ fn insert_parts(heap: &Heap, array: &Box<Slots<Value>>, nodes: &Box<Slots<Node>>
           let candidate = upper - 1_u64;
           set lastfree^ = candidate;
           if candidate < nodes^.inner.len {
-            if is_nil(v: nodes^.inner[candidate].key) {
+            let unused = is_nil(v: nodes^.inner[candidate].key);
+            if unused {
               set free = candidate;
               break @free;
             }
@@ -590,7 +597,7 @@ fn histogram(nums: &Array<u64, 27>, key: Value) -> r: unit writes(nums) {
 }
 
 fn rehash(heap: &Heap, ti: u64, extra: Value) -> r: Bool writes(heap) {
-  doc "ltable.c numusearray, numusehash, computesizes and resize select sizes, with its 32-bit-int MAXBITS of 26. Count the extra key even when its new value is nil. Retained nil nodes disappear at rehash.";
+  doc "ltable.c numusearray, numusehash, computesizes and resize select sizes, with its 32-bit-int MAXBITS of 26. Count the extra key even when its new value is nil. Retained nil nodes disappear at rehash. Nonshrinking arrays grow after node insertion and charging succeed; a second old-node pass applies deferred array placements.";
   if ti < heap^.tables.inner.len {
     let nums = array_filled::<u64, 27>(value: 0_u64);
     let total = 1_u64;
@@ -659,6 +666,79 @@ fn rehash(heap: &Heap, ti: u64, extra: Value) -> r: Bool writes(heap) {
         if cap == 0_u64 {
           return False();
         }
+      }
+      if size >= array_length {
+        let nodes = nodes_new(n: cap);
+        let lastfree = cap;
+        let node_count = 0_u32;
+        for (j in 0_u64..heap^.tables.inner[ti].payload.nodes.inner.len) {
+          let n = heap^.tables.inner[ti].payload.nodes.inner.len;
+          let last = n - 1_u64;
+          let i = last - j;
+          let node = heap^.tables.inner[ti].payload.nodes.inner[i];
+          let empty = is_nil(v: node.val);
+          if empty {
+          } else {
+            let k = integer_key(key: node.key);
+            let in_array = False();
+            if k > 0_u64 {
+              if k <= size {
+                set in_array = True();
+              }
+            }
+            if in_array {
+            } else {
+              let inserted = insert_nodes(heap: heap, nodes: &nodes, lastfree: &lastfree, node_count: &node_count, key: node.key, val: node.val);
+              if inserted {
+              } else {
+                return False();
+              }
+            }
+          }
+        }
+        let old = table_bytes(array: heap^.tables.inner[ti].payload.array.inner.len, nodes: heap^.tables.inner[ti].payload.nodes.inner.len);
+        let fresh = table_bytes(array: size, nodes: cap);
+        if fresh > old {
+          let delta = fresh - old;
+          let charged = charge(heap: heap, amount: delta);
+          if charged {
+          } else {
+            return False();
+          }
+        } else {
+          let delta = old - fresh;
+          uncharge(heap: heap, amount: delta);
+        }
+        if size > heap^.tables.inner[ti].payload.array.inner.cap {
+          grow(cell: &heap^.tables.inner[ti].payload.array, capacity: size);
+        }
+        for (i in array_length..size) {
+          if heap^.tables.inner[ti].payload.array.inner.len < heap^.tables.inner[ti].payload.array.inner.cap {
+            let nil = Value::Nil();
+            place_back(window: &heap^.tables.inner[ti].payload.array.inner, value: nil);
+          }
+        }
+        for (j in 0_u64..heap^.tables.inner[ti].payload.nodes.inner.len) {
+          let n = heap^.tables.inner[ti].payload.nodes.inner.len;
+          let last = n - 1_u64;
+          let i = last - j;
+          let node = heap^.tables.inner[ti].payload.nodes.inner[i];
+          let empty = is_nil(v: node.val);
+          if empty {
+          } else {
+            let k = integer_key(key: node.key);
+            if k > 0_u64 {
+              let index = k - 1_u64;
+              if index < heap^.tables.inner[ti].payload.array.inner.len {
+                set heap^.tables.inner[ti].payload.array.inner[index] = node.val;
+              }
+            }
+          }
+        }
+        set heap^.tables.inner[ti].payload.nodes = move nodes;
+        set heap^.tables.inner[ti].payload.node_count = node_count;
+        set heap^.tables.inner[ti].payload.lastfree = lastfree;
+        return True();
       }
       let array = box_slots_new::<Value>(capacity: size);
       for (i in 0_u64..size) {
