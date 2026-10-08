@@ -746,7 +746,7 @@ const calls_text_pending: Array<u8, 22> = "a host call is pending";
 const calls_text_no_call: Array<u8, 23> = "no host call is pending";
 
 fn dispatch_step<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, step: Step) -> r: Outcome reads(code), reads(consts), writes(stack), writes(vm), writes(env) {
-  doc "Consumes post-catch requests before interpreting a run exit. Clearing the request before lookup lets nested callback activations record and consume their own; the budget remains unchanged until an ordinary checkpoint suspends.";
+  doc "Consumes post-catch requests before interpreting a run exit. Clearing the request before lookup lets nested callback activations record and consume their own; the budget remains unchanged until an ordinary checkpoint suspends. unwind signals a request as Budget, so every caller of unwind outside run must pass its step here before reading Budget as a suspension.";
   let current = step;
   loop {
     let index = vm^.post_catch;
