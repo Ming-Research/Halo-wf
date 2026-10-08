@@ -4,6 +4,14 @@ Newest first. One entry per approved change of the tree: a dated title,
 `Nodes:` naming every node changed, `Owner-approved:` and `Summary:`; the
 owner-wide instructions' *Log format* owns the form.
 
+## 2026-10-08 Halo reclaims cjson instance configurations after collection
+
+Nodes: halo/heap/closures
+
+Owner-approved: 2026-10-08 on the WF status board, item "cjson.new() configurations released after collection": approved the decision added to the design tree's heap/closures.md (reclaim configurations by scanning live cjson closures after collection, reuse freed indexes, keep index zero, keep index-addressed access).
+
+Summary: A long-lived VM that keeps running scripts calling `cjson.new()` retained every instance's settings and encode buffer. After each completed sweep, and only when instances beyond the module's own exist, the VM marks the configurations live cjson closures capture, releases the others' buffers, resets their settings, flags them free and trims free trailing slots; `cjson.new()` reuses the lowest free slot. Making each configuration a collector-managed heap object would have changed the host's direct, index-addressed snapshot and restore of the settings; the embedding probe's new observations failed before the change and pass after it.
+
 ## 2026-10-08 Halo keeps replacing table arrays: in-place growth through grow rejected
 
 Nodes: halo/heap/tables/growth
