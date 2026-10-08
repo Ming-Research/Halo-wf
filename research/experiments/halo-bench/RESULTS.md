@@ -3483,3 +3483,55 @@ main's, the same criterion; medians in seconds:
 
 **The criterion is met**: no kernel is slower beyond its larger range and the
 twin's difference, and the module check stays within 1.25 times.
+
+## The handler word in Halo's dispatch
+
+### Criterion, recorded before measuring
+
+The loopmatch session's second phase lowers a `loop { match }` dispatch
+through a handler word stored in each matched value (Whitefoot, the two
+handler-word commits on `691ea8106`, release `wf-exp-78ff1a001486`): each
+`Cell` carries the address of its arm, 4-byte aligned, so Halo's `Cell`
+grows from 12 to 20 bytes. The control is `wf-691ea8106920`, the same
+commit without them. The loopmatch session asks whether Halo's `run`, now
+`loop { match }`, gets slower. A prototype on the former self-tail form
+measured fib 2.3% and loop 1.8% faster.
+
+Comparison: main `c78426ef8` (`run` as `loop { match }`) built with each release,
+six interleaved full-LTO pairs over the seven kernels with a twin of the
+control build, on the 14900K; each build's `--dispatch-ledger` output is
+kept, and the experiment's must contain "dispatches through the handler word
+in each" for `run`, or the comparison does not test the handler word.
+
+The loopmatch session's criterion: fib's and loop's medians with the
+experiment are each no more than 2% above the control's. The other kernels
+are reported, slower beyond their larger range and the twin's difference
+or not.
+
+### Result
+
+[Run 37837639995](https://github.com/Ming-Research/Halo-wf/actions/runs/37837639995),
+artifact `halo-bench-handler-word`: Halo main `c78426ef8` built by
+`wf-691ea8106920` (control) and `wf-exp-78ff1a001486` (handler word), clang
+22.1.8, full LTO, on the 14900K. The experiment's dispatch ledger contains
+"dispatches through the handler word in each Cell" for `run` (and for
+`cjson_decode`'s and `library_table`'s loops); the control's does not. The
+binaries differ. Medians in seconds, six interleaved pairs:
+
+| Kernel | Control | Handler word | Ratio | Control range | Handler-word range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1030 | 0.1045 | 1.015 | 0.45% | 0.94% | 0.999 |
+| loop | 0.4346 | 0.4249 | 0.978 | 1.50% | 0.95% | 1.001 |
+| integer-table | 0.4994 | 0.4952 | 0.992 | 2.79% | 3.98% | 1.003 |
+| string-key | 0.0258 | 0.0259 | 1.001 | 2.99% | 1.19% | 1.001 |
+| concat | 0.0743 | 0.0743 | 1.000 | 1.53% | 2.36% | 1.001 |
+| sort | 0.1753 | 0.1751 | 0.999 | 0.86% | 1.66% | 0.992 |
+| binary-trees | 1.8996 | 1.9017 | 1.001 | 2.19% | 2.66% | 0.998 |
+
+**The criterion is met**: neither fib (1.015) nor loop (0.978) is more than 2%
+slower than the control. Both moves exceed this run's bounds: fib is
+slower beyond both ranges and the twin's difference, loop faster beyond them;
+the other kernels do not move beyond their bounds. The fib slowdown runs
+against the loopmatch session's prototype on the former self-tail form (fib
+2.3% faster); a likely cause, not measured here, is the 20-byte `Cell` the
+handler word needs on fib's call path, against 12 bytes before.
