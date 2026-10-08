@@ -1,5 +1,5 @@
 -- checks: Argument errors derive names from CALL, TAILCALL and TFORLOOP and adjust method self; argument and plain library errors locate only immediate Lua callers.
--- KEYS: []
+-- KEYS: ["argument-error-key"]
 -- ARGV: []
 -- expects: Array of pcall messages; no pre-existing keys.
 local out = {}
@@ -40,4 +40,7 @@ record(function() local f = string.format; f("%d", {}) end)
 record(function() string.format("%111d", 1) end)
 record(function() table.sort({"%111d", "%111d"}, string.format) end)
 record(function() table.sort({1, 2}, function(a, b) return string.format("%111d", a) end) end)
+record(function() string.gsub("x", ".", error) end)
+record(function() table.foreach({message = 1}, error) end)
+record(function() local f = bit.tobit; redis.call("GET", KEYS[1]); f(false) end)
 return out

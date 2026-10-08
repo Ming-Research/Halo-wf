@@ -262,13 +262,19 @@ fn builtin<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
       }
     }
     let message = a;
+    let located = True();
+    if level == 1_u64 {
+      set located = lib_call_has_lua_caller(vm: vm);
+    }
     if level > 0_u64 {
       set message = coerce_string(vm: vm, v: a);
-      match str_of(v: message) {
-        Handle(..) => {
-          set message = error_location(vm: vm, pc: pc, level: level, message: message);
-        }
-        NoHandle() => {
+      if located {
+        match str_of(v: message) {
+          Handle(..) => {
+            set message = error_location(vm: vm, pc: pc, level: level, message: message);
+          }
+          NoHandle() => {
+          }
         }
       }
     }
