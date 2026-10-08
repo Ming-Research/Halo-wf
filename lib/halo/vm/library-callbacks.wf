@@ -69,7 +69,7 @@ fn pcall_field_key(vm: &Vm) -> r: Value writes(vm) {
   return pkg::heap::intern(heap: &vm^.heap, bytes: &name.inner[0_u64..count]);
 }
 
-fn pcall_lookup_start<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, index: u64) -> r: UnwindStep reads(code), reads(consts), writes(stack), writes(vm), writes(env) {
+fn pcall_lookup_start<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, index: u64) -> r: Step reads(code), reads(consts), writes(stack), writes(vm), writes(env) {
   doc "Runs the post-catch get through the ordinary slow executor; its function metamethod uses the library callback plan and may suspend. The context roots the original table after nested catches replace vm.error.";
   if index < vm^.library_contexts.inner.len {
     let context = vm^.library_contexts.inner[index];
@@ -86,22 +86,19 @@ fn pcall_lookup_start<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
     if dest < stack^.inner.len {
       let ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: op, dest: dest, b: context.saved_error, c: key, v: nil, breg: unlimited, creg: unlimited);
       if vm^.suspended {
-        let budget_step = Step::Budget();
-        return UnwindStep::Ready(step: budget_step);
+        return Step::Budget();
       }
       if vm^.host_stopped {
-        let stop_step = Step::Stop();
-        return UnwindStep::Ready(step: stop_step);
+        return Step::Stop();
       }
       let failed = bnot(ok);
       return pcall_lookup_finish(vm: vm, stack: stack, index: index, failed: failed);
     }
   }
-  let error_step = Step::Error();
-  return UnwindStep::Ready(step: error_step);
+  return Step::Error();
 }
 
-fn pcall_lookup_finish(vm: &Vm, stack: &Box<Slots<Value>>, index: u64, failed: Bool) -> r: UnwindStep writes(vm), writes(stack) {
+fn pcall_lookup_finish(vm: &Vm, stack: &Box<Slots<Value>>, index: u64, failed: Bool) -> r: Step writes(vm), writes(stack) {
   doc "Completes either a synchronous or resumed field lookup: strings and numbers replace the table; all other values follow it as a third result, including nil. Removes the non-catching native frame before returning or propagating a lookup error.";
   if index < vm^.library_contexts.inner.len {
     let context = vm^.library_contexts.inner[index];
@@ -148,11 +145,9 @@ fn pcall_lookup_finish(vm: &Vm, stack: &Box<Slots<Value>>, index: u64, failed: B
     let no = Value::False();
     lib_put(stack: stack, at: func, value: no);
     lib_put(stack: stack, at: err, value: error);
-    let finished = finish(vm: vm, stack: stack, frame: context.frame, src: func, count: count);
-    return UnwindStep::Ready(step: finished);
+    return finish(vm: vm, stack: stack, frame: context.frame, src: func, count: count);
   }
-  let error_step = Step::Error();
-  return UnwindStep::Ready(step: error_step);
+  return Step::Error();
 }
 
 fn xpcall_start<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, func: u64, argc: u64) -> r: HostOutcome reads(code), reads(consts), writes(stack), writes(vm), writes(env) {
@@ -222,8 +217,7 @@ fn resume_library<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots
   if local_index_26 < vm^.library_contexts.inner.len {
     let local_context_27 = vm^.library_contexts.inner[local_index_26];
     if local_context_27.id == builtin_pcall {
-      let caught = pcall_lookup_finish(vm: vm, stack: stack, index: local_index_26, failed: failed);
-      return pcall_lookup_drain::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, step: caught);
+      return pcall_lookup_finish(vm: vm, stack: stack, index: local_index_26, failed: failed);
     }
     let local_outcome_28 = HostOutcome::Raised();
     if local_context_27.id == builtin_xpcall {
@@ -279,7 +273,7 @@ fn resume_library<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots
         return finish(vm: vm, stack: stack, frame: local_context_27.frame, src: local_context_27.frame.func, count: bound_count_1);
       }
       Raised() => {
-        return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
+        return unwind(vm: vm, stack: stack);
       }
       Stop() => {
         return Step::Stop();

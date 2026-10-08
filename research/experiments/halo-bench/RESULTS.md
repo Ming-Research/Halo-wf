@@ -3351,3 +3351,8 @@ preparation handles its own failures inside `prepare`; the non-generic fast
 stores and collector failures share ordinary catch completion for their
 string-only errors.
 Inlining, oracle behavior and performance remain to be checked in CI.
+
+The subsequent rework records the post-catch lookup index in the VM and uses
+the existing `Budget` exit to reach the generic driver, which clears and
+consumes the request before interpreting the exit, leaving the instruction
+budget, dispatch, handlers and `Step` unchanged.
