@@ -3050,3 +3050,32 @@ falls 1.6%, short of the 3% required; no kernel is slower beyond its bounds.
 Integer-table's median was 1.6% lower in this run, within main's 3.01%
 range, so these runs do not establish a saving from skipping `gc_mark` for
 values that name no object.
+
+## The share of table growth on the 14900K
+
+### Criterion, recorded before it runs
+
+On a GitHub-hosted EPYC guest, `rehash` took 7.0–10.1% of integer-table's
+samples ([attribution result](#attribution-result)). Two candidates chosen
+from those hosted shares, string-key writes and marking only collectable
+values, were each expected near 5% and measured under 2% on the 14900K, so
+hosted shares overstate what a change can gain there. `rehash` builds a new
+array and copies the old one into it element by element, so that a failed
+insertion leaves the table unchanged; replacing that with Whitefoot's
+in-place `grow` gives up the guarantee, a design decision for the owner.
+
+Question: how much of integer-table's and binary-trees' time on the 14900K
+is table growth? Run: on the 14900K, Halo at this branch's base built with
+full LTO as `run.py` builds it, integer-table and binary-trees at depth 14
+(`run.py`'s scale), three launches each; `perf record` of `cycles`, reported
+by symbol without children for each symbol's own share, and once more with
+call graphs (LBR, or DWARF unwinding where LBR is unavailable) reported with
+children for `rehash`'s inclusive share, its allocation and copying included.
+
+Reading: a change to `rehash` is prepared, with its own criterion and the
+design card for the guarantee, only if `rehash`'s inclusive share is at least
+5% of Halo's samples in every launch of integer-table or of binary-trees;
+otherwise table growth is not selected and this section records why. The
+kernels exercise no string comparison, pattern matching, `table.concat` or
+codec, so this run says nothing about the slow-executor split in library
+functions (`docs/todo.md`).
