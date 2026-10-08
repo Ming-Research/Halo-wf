@@ -3172,15 +3172,17 @@ would save time is untested; both are a Whitefoot question (`docs/todo.md`,
 ### Criterion, recorded before measuring
 
 The change that makes `pcall` look up its error field through `__index` as a
-resumable continuation (owner's choice A) also touches the dispatch epilogue
-every instruction passes through: `checked_step` now receives the VM and the
-host environment so it can start a scheduled post-catch lookup, and `Step`
-gains a `PostCatch` variant. None of the seven kernels raises an error, so
-any change in their time is the cost of that epilogue on the normal path.
+resumable continuation (owner's choice A) also changes the dispatch epilogue
+that instructions without a direct tail call return through: `checked_step`
+now receives the VM and the host environment so it can start a scheduled
+post-catch lookup, and `Step` gains a `PostCatch` variant. None of the seven
+kernels raises an error, so a change in their time is this change's overall
+effect on the normal path, through the epilogue or through code layout and
+inlining; the comparison does not separate those.
 
-Comparison: the branch's base `96d601c0c` against the branch with the change,
-same compiler (`wf-8b647edbbc95`), six interleaved full-LTO pairs on the
-14900K with a twin of the base. Kept only if no kernel is slower beyond its
-larger range and the twin's difference, and `--check-module pkg::vm` takes at
-most 1.25 times as long; otherwise the epilogue change is reworked before
-merging.
+Comparison: main `0def88248`, which this branch has merged, against the
+branch with the change, same compiler (`wf-8b647edbbc95`), six interleaved
+full-LTO pairs on the 14900K with a twin of main. Kept only if no kernel is
+slower beyond its larger range and the twin's difference, and
+`--check-module pkg::vm` takes at most 1.25 times as long; otherwise the
+epilogue change is reworked before merging.
