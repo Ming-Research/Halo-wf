@@ -3097,11 +3097,14 @@ launch printed the kernel's checksum. Shares of `cycles` samples:
 
 In binary-trees only `insert_parts` appears (1.43–1.67%). Integer-table's
 remaining time is the table store and load arms (20.5–25.8% each), arm 66
-(8.2–8.6%), `table_set`, `collect_if_due` and `gc_mark`. Beneath `rehash`,
-the profile shows the kernel's page-fault and unmapping paths (the guest
-hides kernel symbols) and libc's `free` reaching `munmap` (3.07% in launch
-1): each growth allocates a new array, copies the retained prefix into it
-and frees the old one.
+(8.2–8.6%), `table_set`, `collect_if_due` and `gc_mark`. The reports name no callees
+under `rehash`: the guest hides kernel symbols and the call-graph reports were
+summarized without their chains. That most of its inclusive share beyond its
+own 9–12.6% is allocation, page faults on the new array and freeing the old
+one, which each growth performs, is an inference from what `rehash` does,
+consistent with launch 1's call-graph report, where an unresolved kernel
+entry address carries 18.47% with its children and libc's `free` reaching
+`munmap` 3.07%.
 
 **The criterion is met for integer-table**: `rehash` takes about 30% of its
 samples in every launch, so a change is prepared. The bounded growth
@@ -3152,12 +3155,14 @@ artifact `halo-bench-grow`: main `5e98dabf5` against the branch at `31b92e5`
 `lua-core/table-growth-order` ([run 37754466451](https://github.com/Ming-Research/Halo-wf/actions/runs/37754466451)).
 
 **The criterion is not met, and the change is reverted.** Integer-table's
-median is unchanged. The cause is in the compiler, not the engine: Whitefoot
-lowers `grow` as a fresh `malloc`, a `memmove` of the filled slots and a
-`free` of the old block (`compiler/src/backend/emitter/runs.rs`,
+median is unchanged. The change did not remove the work it targeted:
+Whitefoot lowers `grow` as a fresh `malloc`, a `memmove` of the filled slots
+and a `free` of the old block (`compiler/src/backend/emitter/runs.rs`,
 `emit_window_grow`, at `8b647edbb`), never `realloc`, as its design records
 as a provisional choice awaiting performance grounds
-(`design/compiler/storage-representation.md`). The change therefore replaced
-Halo's copy of the retained prefix with the compiler's copy of the same
-bytes. Whether in-place reallocation would save the time is untested; it is
-a Whitefoot question (`docs/todo.md`, *Whitefoot requirements*).
+(`design/compiler/storage-representation.md`), so the branch still allocates
+a new array, copies the retained prefix and frees the old one at each growth.
+That this retained work is why the time did not move is the leading
+hypothesis, not a measured attribution, and whether in-place reallocation
+would save time is untested; both are a Whitefoot question (`docs/todo.md`,
+*Whitefoot requirements*).

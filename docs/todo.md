@@ -29,8 +29,9 @@ example apart from the engine code that exposed it
   (Whitefoot's `design/compiler/storage-representation.md` keeps that
   provisionally until performance grounds appear). Halo's table growth takes
   about 30% of integer-table's samples on the 14900K, and rewriting `rehash`
-  to grow the array in place (`6f49ca6`) left the kernel's time unchanged,
-  because the compiler's copy replaced Halo's
+  to grow the array in place (`6f49ca6`) left the kernel's time unchanged;
+  the branch still allocated, copied and freed at each growth through `grow`,
+  the leading but unmeasured explanation
   ([result](../research/experiments/halo-bench/RESULTS.md#growing-the-array-in-place-result)).
   Minimal semantic example: a `Box<Slots<u64>>` filled to capacity and grown
   by doubling copies every filled slot at each step. Reopen when Whitefoot
