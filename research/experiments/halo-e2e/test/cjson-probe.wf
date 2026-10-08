@@ -26,12 +26,13 @@ fn cjson_probe_source(engine: &Engine, env: &Probe, source: &[u8]) -> r: Bool re
   }
 }
 
-fn cjson_probe_collect(engine: &Engine, env: &Probe) -> r: Bool writes(engine), writes(env) {
-  doc "Makes the ordinary start safepoint collect, then verifies completion rather than assuming the allocation trigger fired.";
+fn cjson_probe_collect(engine: &Engine, env: &Probe, keep: Bool) -> r: Bool writes(engine), writes(env) {
+  doc "Forces a collection through the embedding API's stress control for one idle run, restores the caller's stress setting, and verifies completion through the collection count.";
   let before = halo::embed::collection_count(engine: engine);
-  set engine^.vm.heap.threshold = 0_u64;
-  set engine^.vm.heap.bytes_since_gc = 1_u64;
+  let forced = True();
+  halo::embed::set_gc_stress(engine: engine, enabled: forced);
   let ran = cjson_probe_source(engine: engine, env: env, source: &cjson_probe_idle[0_u64..8_u64]);
+  halo::embed::set_gc_stress(engine: engine, enabled: keep);
   if ran {
     let after = halo::embed::collection_count(engine: engine);
     return after > before;
@@ -63,7 +64,8 @@ fn cjson_configs_probe(stress: Bool) -> r: u8 pure {
       return 123_u8;
     }
   }
-  let collected = cjson_probe_collect(engine: &engine, env: &env);
+  let unstressed = False();
+  let collected = cjson_probe_collect(engine: &engine, env: &env, keep: unstressed);
   let collected_failed = bnot(collected);
   if collected_failed {
     return 124_u8;
@@ -122,7 +124,7 @@ fn cjson_configs_probe(stress: Bool) -> r: u8 pure {
     Ok(value: cycle_script) => {
       halo::embed::set_gc_stress(engine: &engine, enabled: stress);
       for (round in 0_u64..32_u64) {
-        let swept = cjson_probe_collect(engine: &engine, env: &env);
+        let swept = cjson_probe_collect(engine: &engine, env: &env, keep: stress);
         let swept_failed = bnot(swept);
         if swept_failed {
           return 133_u8;
@@ -138,7 +140,7 @@ fn cjson_configs_probe(stress: Bool) -> r: u8 pure {
       }
     }
   }
-  let trimmed = cjson_probe_collect(engine: &engine, env: &env);
+  let trimmed = cjson_probe_collect(engine: &engine, env: &env, keep: stress);
   let trimmed_failed = bnot(trimmed);
   if trimmed_failed {
     return 136_u8;
@@ -151,7 +153,7 @@ fn cjson_configs_probe(stress: Bool) -> r: u8 pure {
   if released_failed {
     return 138_u8;
   }
-  let emptied = cjson_probe_collect(engine: &engine, env: &env);
+  let emptied = cjson_probe_collect(engine: &engine, env: &env, keep: stress);
   let emptied_failed = bnot(emptied);
   if emptied_failed {
     return 139_u8;
@@ -166,7 +168,7 @@ fn cjson_configs_probe(stress: Bool) -> r: u8 pure {
   if restored_setup_failed {
     return 141_u8;
   }
-  let restored_sweep = cjson_probe_collect(engine: &engine, env: &env);
+  let restored_sweep = cjson_probe_collect(engine: &engine, env: &env, keep: disabled);
   let restored_sweep_failed = bnot(restored_sweep);
   if restored_sweep_failed {
     return 142_u8;

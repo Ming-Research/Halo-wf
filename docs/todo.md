@@ -91,6 +91,20 @@ example apart from the engine code that exposed it
   script's closure. Reopen when a host needs to keep or call a closure
   across scripts.
 
+- **The embedding probe arms the allocation trigger through heap fields.**
+  `research/experiments/halo-e2e/test/probe.wf` sets
+  `engine.vm.heap.threshold` and `bytes_since_gc` directly before two runs to
+  make the allocation trigger due, although
+  [collector validation](../design/halo/heap/collector-validation.md) has
+  embedding clients force and observe collection through the embedding API.
+  The API offers stress, which bypasses the due check those runs exercise, so
+  they cannot simply switch. Impact: the probe depends on collector trigger
+  storage; a change to it breaks the probe rather than an API. Change: add an
+  embedding control that makes the next safepoint's allocation trigger due, or
+  record in the decision that the probe may arm it. Reopen at the next
+  collector trigger change or the owner's ruling on F4's instrumentation
+  boundary.
+
 - **Halo F4 has no every-allocation reachability verifier.**
   The safepoint stress and four missing-root mutations in
   `research/experiments/halo-gc/RESULTS.md` distinguish selected root
