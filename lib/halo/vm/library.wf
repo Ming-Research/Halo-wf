@@ -801,14 +801,18 @@ fn lib_index(vm: &Vm, value: Value, default_value: i64) -> r: i64 reads(vm) {
   }
 }
 
-fn lib_call_name(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, pc: u64, bytes: &Box<Slots<u8>>) -> r: u8 reads(code), reads(consts), reads(vm), writes(bytes) {
-  doc "Lua 5.1 getfuncname for a running native: CALL and TAILCALL retain their Lua caller, while TFORLOOP crosses Halo's iterator activation. Other native callbacks and protected-call markers have no Lua caller. Returns getobjname's kind and appends its name or question mark.";
+fn lib_call_has_lua_caller(vm: &Vm) -> r: Bool reads(vm) {
+  doc "Shared immediate-caller rule for native names and luaL_error locations. A same-activation Lua frame calls directly; one nested activation retains that caller for VM metamethod and iterator plans (kinds 0 through 3), but not library callbacks (kind 4). Protected-call markers are native callers.";
   let count = vm^.frames.inner.len;
   if count > 0_u64 {
     let last = count - 1_u64;
     let frame = vm^.frames.inner[last];
-    let direct = frame.activation == vm^.activation;
-    let iterator = False();
+    if frame.flags == protected_flag {
+      return False();
+    }
+    if frame.activation == vm^.activation {
+      return True();
+    }
     if frame.activation < vm^.activation {
       let nested = frame.activation +sat 1_u32;
       if nested == vm^.activation {
@@ -817,31 +821,35 @@ fn lib_call_name(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, p
           let callback_index = callbacks - 1_u64;
           let callback_frame = vm^.callbacks.inner[callback_index];
           if callback_frame.activation == frame.activation {
-            set iterator = callback_frame.plan.kind == 3_u8;
+            return callback_frame.plan.kind < 4_u8;
           }
         }
       }
     }
-    let caller = bor(direct, iterator);
+  }
+  return False();
+}
+
+fn lib_call_name(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, pc: u64, bytes: &Box<Slots<u8>>) -> r: u8 reads(code), reads(consts), reads(vm), writes(bytes) {
+  doc "Lua 5.1 getfuncname uses the shared immediate Lua caller at CALL, TAILCALL or TFORLOOP; VM metamethod instructions have a location but no function name. Returns getobjname's kind and appends its name or question mark.";
+  let count = vm^.frames.inner.len;
+  if count > 0_u64 {
+    let last = count - 1_u64;
+    let frame = vm^.frames.inner[last];
+    let caller = lib_call_has_lua_caller(vm: vm);
     if caller {
       if pc < code^.inner.len {
         let cell = code^.inner[pc];
         let reg = unlimited;
         match cell {
           Call(a: call_register, ..) => {
-            if direct {
-              set reg = cvt::<u8, u64>(call_register);
-            }
+            set reg = cvt::<u8, u64>(call_register);
           }
           TailCall(a: tail_register, ..) => {
-            if direct {
-              set reg = cvt::<u8, u64>(tail_register);
-            }
+            set reg = cvt::<u8, u64>(tail_register);
           }
           TForLoop(a: iterator_register, ..) => {
-            if iterator {
-              set reg = cvt::<u8, u64>(iterator_register);
-            }
+            set reg = cvt::<u8, u64>(iterator_register);
           }
           Move(..) => {
           }

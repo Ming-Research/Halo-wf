@@ -49,21 +49,6 @@ example apart from the engine code that exposed it
   tooling. Change: move the gate's fixtures and runners to `tests/` and
   update their callers and references. Reopen at the next gate change.
 
-- **Native callback argument errors can acquire an outer Lua source location.**
-  `library_call_error_location` reaches `error_location` without checking the
-  caller's activation, so a native `table.sort` comparator, `string.gsub`
-  replacement or metamethod can receive the enclosing Lua frame's prefix
-  although its immediate caller is native. The argument-error naming change
-  supplies `?` correctly but leaves this pre-existing location policy alone:
-  its shared wrapper also handles plain `luaL_error`, whose errors that task
-  must not change. Change: distinguish the immediate caller when locating
-  native errors, preserving the Lua caller for generic-for iterators even
-  across Halo's activation boundary. Evidence is source inspection; confirm
-  the exact affected paths with the native callback and iterator cases in
-  `lua-core/argument-error-names.lua` against the Redis reference recording.
-  Reopen when that case's CI comparison reports source-prefix differences,
-  before claiming the new oracle case passes.
-
 - **pcall's error field is read raw.** With an error field named
   (`set_pcall_error_field`), `pcall` reads it with a raw lookup; Redis's
   replacement `pcall` uses `lua_getfield`, which also consults the table's

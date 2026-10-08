@@ -1,4 +1,4 @@
--- checks: Argument errors derive names from CALL, TAILCALL and TFORLOOP, adjust method self, and leave native callbacks unnamed.
+-- checks: Argument errors derive names from CALL, TAILCALL and TFORLOOP and adjust method self; argument and plain library errors locate only immediate Lua callers.
 -- KEYS: []
 -- ARGV: []
 -- expects: Array of pcall messages; no pre-existing keys.
@@ -37,4 +37,7 @@ record(function() local t = setmetatable({}, {__call = bit.tobit}); return t() e
 record(function() for k in string.gsub, false do end end)
 record(function() local f = struct.pack; f("?") end)
 record(function() local f = string.format; f("%d", {}) end)
+record(function() string.format("%111d", 1) end)
+record(function() table.sort({"%111d", "%111d"}, string.format) end)
+record(function() table.sort({1, 2}, function(a, b) return string.format("%111d", a) end) end)
 return out

@@ -140,7 +140,12 @@ fn library_raw_error(vm: &Vm) -> r: unit writes(vm.library_contexts) {
 }
 
 fn library_call_error_location(vm: &Vm, id: u32, pc: u64) -> r: unit writes(vm) {
-  doc "Adds library argument-error locations while keeping native rawset and MessagePack table-key errors bare.";
+  doc "Locates luaL_error at the immediate Lua caller's call or metamethod instruction, sharing the caller rule with argument-error names. Native callers and rawset or MessagePack table-key errors keep bare messages.";
+  let caller = lib_call_has_lua_caller(vm: vm);
+  let native_caller = bnot(caller);
+  if native_caller {
+    return unit;
+  }
   let lower = id >= 112_u32;
   let upper = id <= 119_u32;
   let codec_call = band(lower, upper);
