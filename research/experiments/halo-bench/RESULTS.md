@@ -3050,3 +3050,119 @@ falls 1.6%, short of the 3% required; no kernel is slower beyond its bounds.
 Integer-table's median was 1.6% lower in this run, within main's 3.01%
 range, so these runs do not establish a saving from skipping `gc_mark` for
 values that name no object.
+
+## The share of table growth on the 14900K
+
+### Criterion, recorded before it runs
+
+On a GitHub-hosted EPYC guest, `rehash` took 7.0–10.1% of integer-table's
+samples ([attribution result](#attribution-result)). Two candidates chosen
+from those hosted shares, string-key writes and marking only collectable
+values, were each expected near 5% and measured under 2% on the 14900K, so
+hosted shares overstate what a change can gain there. `rehash` builds a new
+array and copies the old one into it element by element, so that a failed
+insertion leaves the table unchanged; replacing that with Whitefoot's
+in-place `grow` gives up the guarantee, a design decision for the owner.
+
+Question: how much of integer-table's and binary-trees' time on the 14900K
+is table growth? Run: on the 14900K, Halo at this branch's base built with
+full LTO as `run.py` builds it, integer-table and binary-trees at depth 14
+(`run.py`'s scale), three launches each; `perf record` of `cycles`, reported
+by symbol without children for each symbol's own share, and once more with
+call graphs (LBR, or DWARF unwinding where LBR is unavailable) reported with
+children for `rehash`'s inclusive share, its allocation and copying included.
+
+Reading: a change to `rehash` is prepared, with its own criterion and the
+design card for the guarantee, only if `rehash`'s inclusive share is at least
+5% of Halo's samples in every launch of integer-table or of binary-trees;
+otherwise table growth is not selected and this section records why. The
+kernels exercise no string comparison, pattern matching, `table.concat` or
+codec, so this run says nothing about the slow-executor split in library
+functions (`docs/todo.md`).
+
+### Result
+
+[Run 37752821669](https://github.com/Ming-Research/Halo-wf/actions/runs/37752821669),
+artifact `halo-growth-profile`: the 14900K (a Hyper-V guest, 32 CPUs),
+Halo at main `5e98dabf5` with `wf-8b647edbbc95` and clang 22.1.8, full LTO;
+LBR was unavailable in the guest, so call graphs used DWARF unwinding. Every
+launch printed the kernel's checksum. Shares of `cycles` samples:
+
+| Kernel, launch | `rehash` own | `rehash` with children |
+|---|---:|---:|
+| integer-table 1 | 9.39% | 29.87% |
+| integer-table 2 | 12.65% | 29.91% |
+| integer-table 3 | 9.02% | 30.16% |
+| binary-trees 1–3 | below 0.3% | below 0.3% |
+
+In binary-trees only `insert_parts` appears (1.43–1.67%). Integer-table's
+remaining time is the table store and load arms (20.5–25.8% each), arm 66
+(8.2–8.6%), `table_set`, `collect_if_due` and `gc_mark`. The reports name no callees
+under `rehash`: the guest hides kernel symbols and the call-graph reports were
+summarized without their chains. That most of its inclusive share beyond its
+own 9–12.6% is allocation, page faults on the new array and freeing the old
+one, which each growth performs, is an inference from what `rehash` does,
+consistent with launch 1's call-graph report, where an unresolved kernel
+entry address carries 18.47% with its children and libc's `free` reaching
+`munmap` 3.07%.
+
+**The criterion is met for integer-table**: `rehash` takes about 30% of its
+samples in every launch, so a change is prepared. The bounded growth
+decision ([growth](../../../design/halo/heap/tables/growth.md)) is reopened
+by its own condition, retained-prefix allocation and copying measured as a
+bottleneck. The guarantee needs no trade: every way `rehash` can fail, a
+size that overflows, an insertion that finds no free node, and a charge
+beyond the memory limit, can be decided before the table's array is
+touched, so the array can grow in place and still change only on success.
+
+### Growing the array in place: criterion, recorded before the change
+
+Change: `rehash` builds the new node vector from the old array's tail and
+the old nodes and charges the size difference first, as now, and only then
+resizes the table's array: Whitefoot's `grow` in place when it gets larger,
+filling the added slots with nil, instead of allocating a new array and
+copying the retained prefix. A shrinking array keeps the current
+replacement. Lua's size selection and reinsertion order are unchanged.
+
+Kept only if, in six interleaved full-LTO pairs on the 14900K against main
+with a twin, integer-table's median falls at least 5%, by more than both
+ranges and the twin's difference; no kernel is slower beyond its larger
+range and the twin's; `--check-module pkg::vm` takes at most 1.25 times as
+long; and `make check` passes, the oracle under collector stress and the
+collector's root controls included. Otherwise the change is reverted and
+this section records the result.
+
+### Growing the array in place: result
+
+[Run 37756391939](https://github.com/Ming-Research/Halo-wf/actions/runs/37756391939),
+artifact `halo-bench-grow`: main `5e98dabf5` against the branch at `31b92e5`
+(the change is `6f49ca6`), whose engine differs only in
+`lib/halo/heap/tables.wf`, six interleaved full-LTO pairs on the 14900K with
+`wf-8b647edbbc95`; medians in seconds:
+
+| Kernel | Main | Branch | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1056 | 0.1054 | 0.998 | 1.08% | 2.17% | 1.000 |
+| loop | 0.4334 | 0.4333 | 1.000 | 0.55% | 1.23% | 0.997 |
+| integer-table | 0.4934 | 0.4933 | 1.000 | 1.63% | 0.52% | 0.997 |
+| string-key | 0.0262 | 0.0258 | 0.985 | 4.95% | 2.96% | 0.997 |
+| concat | 0.0736 | 0.0734 | 0.998 | 0.32% | 1.74% | 1.003 |
+| sort | 0.1762 | 0.1752 | 0.994 | 3.68% | 1.74% | 1.000 |
+| binary-trees | 1.9150 | 1.9282 | 1.007 | 4.07% | 2.73% | 0.992 |
+
+`--check-module pkg::vm`: main 7.660 and 7.551 s, branch 7.595 and 7.558 s.
+`make check` passed at `5bbaabb3c`, including the unsorted iteration case
+`lua-core/table-growth-order` ([run 37754466451](https://github.com/Ming-Research/Halo-wf/actions/runs/37754466451)).
+
+**The criterion is not met, and the change is reverted.** Integer-table's
+median is unchanged. The change did not remove the work it targeted:
+Whitefoot lowers `grow` as a fresh `malloc`, a `memmove` of the filled slots
+and a `free` of the old block (`compiler/src/backend/emitter/runs.rs`,
+`emit_window_grow`, at `8b647edbb`), never `realloc`, as its design records
+as a provisional choice awaiting performance grounds
+(`design/compiler/storage-representation.md`), so the branch still allocates
+a new array, copies the retained prefix and frees the old one at each growth.
+That this retained work is why the time did not move is the leading
+hypothesis, not a measured attribution, and whether in-place reallocation
+would save time is untested; both are a Whitefoot question (`docs/todo.md`,
+*Whitefoot requirements*).

@@ -23,6 +23,21 @@ example apart from the engine code that exposed it
   `docs/todo.md` (Ming-Research/Whitefoot#246). Reopen when Whitefoot
   changes INV-1's join, and then rewrite `run` as `loop { match }`.
 
+- **`grow` never reallocates in place.** Whitefoot lowers
+  `grow(cell: &b, capacity: n)` on a `Box<Slots<T>>` as a fresh allocation,
+  a copy of the filled slots and a free of the old block, never `realloc`
+  (Whitefoot's `design/compiler/storage-representation.md` keeps that
+  provisionally until performance grounds appear). Halo's table growth takes
+  about 30% of integer-table's samples on the 14900K, and rewriting `rehash`
+  to grow the array in place (`6f49ca6`) left the kernel's time unchanged;
+  the branch still allocated, copied and freed at each growth through `grow`,
+  the leading but unmeasured explanation
+  ([result](../research/experiments/halo-bench/RESULTS.md#growing-the-array-in-place-result)).
+  Minimal semantic example: a `Box<Slots<u64>>` filled to capacity and grown
+  by doubling copies every filled slot at each step. Reopen when Whitefoot
+  lowers `grow` through in-place reallocation, then reapply `6f49ca6` and
+  repeat the recorded comparison.
+
 - **Checking Halo's vm package is on the build's critical path.** Whitefoot's
   [compile-speed investigation](https://github.com/Ming-Research/Whitefoot/blob/main/research/investigations/compile-speed/DESIGN.md#remaining-costs)
   brought `pkg::vm`'s module check to 16.6–17.2 s and records the remaining
@@ -179,17 +194,6 @@ example apart from the engine code that exposed it
   name (`ForLoop`'s body arms, `AddRR`) and leave concat's path alone.
   Reopen when a later Whitefoot release changes how `run`'s edges are
   lowered.
-
-- **Halo's oracle hides next/pairs hash iteration order.**
-  `research/experiments/halo-oracle/scripts/lua-core/next-pairs.lua` sorts both
-  observations; passing the oracle comparison proves contents, not order.
-  Impact: a table-layout change can pass while diverging from the selected
-  Redis Lua order. Change: add an independent unsorted table-growth and
-  iteration observation in the oracle's existing home, with recorded Redis
-  expected bytes and unchanged existing cases. Reopen at the next oracle
-  coverage update; validate that an order-only permutation fails comparison.
-  The [bounded growth experiment](../research/experiments/halo-bench/RESULTS.md#iteration-order-evidence-correction)
-  uses scratch unsorted PUC comparisons to qualify its own change.
 
 - **Halo reused-binary reports identify current inputs, not build inputs.**
   `research/experiments/halo-e2e/run.py --binary` hashes the current library
