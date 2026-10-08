@@ -3291,6 +3291,7 @@ fn instruction_call<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slo
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
+  doc "Prepares a call and unwinds immediate failures, passing post-catch work to the dispatch epilogue.";
   let n = code^.inner.len;
   let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
@@ -3331,6 +3332,8 @@ fn instruction_call<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slo
   let step = prepare::<Host<E>>(code: code, consts: consts, vm: vm, stack: stack, env: env, func: ra, argc: argc, wanted: wanted, return_pc: next, base: base, kbase: kbase, tail: tailing);
   let final_step = step;
   match step {
+    PostCatch(..) => {
+    }
     Error() => {
       set final_step = unwind(vm: vm, stack: stack);
     }
@@ -3351,6 +3354,7 @@ fn instruction_tail_call<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
+  doc "Prepares a tail call and unwinds immediate failures, passing post-catch work to the dispatch epilogue.";
   let n = code^.inner.len;
   let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
@@ -3391,6 +3395,8 @@ fn instruction_tail_call<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
   let step = prepare::<Host<E>>(code: code, consts: consts, vm: vm, stack: stack, env: env, func: ra, argc: argc, wanted: wanted, return_pc: next, base: base, kbase: kbase, tail: tailing);
   let final_step = step;
   match step {
+    PostCatch(..) => {
+    }
     Error() => {
       set final_step = unwind(vm: vm, stack: stack);
     }

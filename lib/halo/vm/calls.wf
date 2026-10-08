@@ -100,76 +100,10 @@ fn finish(vm: &Vm, stack: &Box<Slots<Value>>, frame: Frame, src: u64, count: u64
   return Step::Jump(pc: pc, base: b, kbase: kb);
 }
 
-fn protected_error(vm: &Vm) -> r: Value writes(vm) {
-  doc "The error value pcall returns. When the embedding names a field, an error table whose raw value at that field is a string or a number gives that value; every other error is returned as raised.";
-  let error = vm^.error;
-  let n = vm^.pcall_field.inner.len;
-  if n == 0_u64 {
-    return error;
-  }
-  match error {
-    Tab(..) => {
-    }
-    Nil() => {
-      return error;
-    }
-    False() => {
-      return error;
-    }
-    True() => {
-      return error;
-    }
-    Num(..) => {
-      return error;
-    }
-    Str(..) => {
-      return error;
-    }
-    Fun(..) => {
-      return error;
-    }
-    Builtin(..) => {
-      return error;
-    }
-  }
-  let name = box_slots_new::<u8>(capacity: n);
-  for (i in 0_u64..n) {
-    if i < vm^.pcall_field.inner.len {
-      if name.inner.len < name.inner.cap {
-        let b = vm^.pcall_field.inner[i];
-        place_back(window: &name.inner, value: b);
-      }
-    }
-  }
-  let count = name.inner.len;
-  let key = pkg::heap::intern(heap: &vm^.heap, bytes: &name.inner[0_u64..count]);
-  let field = pkg::heap::table_get(heap: &vm^.heap, t: error, key: key);
-  match field {
-    Str(..) => {
-      return field;
-    }
-    Num(..) => {
-      return field;
-    }
-    Nil() => {
-    }
-    False() => {
-    }
-    True() => {
-    }
-    Tab(..) => {
-    }
-    Fun(..) => {
-    }
-    Builtin(..) => {
-    }
-  }
-  return error;
-}
-
 fn unwind(vm: &Vm, stack: &Box<Slots<Value>>) -> r: Step writes(vm), writes(stack) contract {
   ensures stack^.inner.len == entry(stack)^.inner.len;
 } {
+  doc "Catches in the current activation, removing the protected frame before scheduling an embedding field lookup so lookup errors escape this catch.";
   let length = stack^.inner.len;
   loop (
     invariant preserved: stack^.inner.len == length
@@ -184,13 +118,28 @@ fn unwind(vm: &Vm, stack: &Box<Slots<Value>>) -> r: Step writes(vm), writes(stac
     let f = take_back(window: &vm^.frames.inner);
     if f.flags == protected_flag {
       set vm^.raise_pc = 0_u64;
+      if vm^.pcall_field.inner.len > 0_u64 {
+        let error = vm^.error;
+        match tab_of(v: error) {
+          Handle(..) => {
+            let index = vm^.library_contexts.inner.len;
+            let nil = Value::Nil();
+            let tail = False();
+            let context = LibraryContext(frame: f, tail: tail, id: builtin_pcall, phase: 0_u8, count: 0_u64, table: nil, comparator: nil, saved_error: error, foreach_key: nil);
+            push_library_context(vm: vm, context: context);
+            return Step::PostCatch(index: index);
+          }
+          NoHandle() => {
+          }
+        }
+      }
       let dest = f.func;
       if dest < stack^.inner.len {
         set stack^.inner[dest] = Value::False();
       }
       let err = dest +sat 1_u64;
       if err < stack^.inner.len {
-        let caught = protected_error(vm: vm);
+        let caught = vm^.error;
         set stack^.inner[err] = caught;
       }
       let outcome = finish(vm: vm, stack: stack, frame: f, src: dest, count: 2_u64);
@@ -657,6 +606,8 @@ fn note_plan_raise(vm: &Vm, step: Step, plan: CallbackPlan) -> r: unit writes(vm
       }
       note_raise(vm: vm, pc: pc);
     }
+    PostCatch(..) => {
+    }
     Jump(..) => {
     }
     Done(..) => {
@@ -743,6 +694,7 @@ fn fail_call<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: 
     let ignored = raise_text(vm: vm, text: &calls_text_no_call[0_u64..23_u64]);
     return Outcome::Error();
   }
+  doc "Raises a pending host error and preserves any post-catch lookup for the driver.";
   let call = resume_pending(stack: stack, vm: vm, budget: budget);
   set vm^.error = error;
   let step = unwind(vm: vm, stack: stack);
@@ -750,6 +702,8 @@ fn fail_call<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: 
     Error() => {
       let raised_at = call.return_pc -sat 1_u64;
       note_raise(vm: vm, pc: raised_at);
+    }
+    PostCatch(..) => {
     }
     Jump(..) => {
     }
@@ -768,37 +722,45 @@ const calls_text_pending: Array<u8, 22> = "a host call is pending";
 const calls_text_no_call: Array<u8, 23> = "no host call is pending";
 
 fn dispatch_step<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, step: Step) -> r: Outcome reads(code), reads(consts), writes(stack), writes(vm), writes(env) {
-  match step {
-    Jump(pc: bound_pc_0, base: b, kbase: kb) => {
-      if b <= 18446744073709551359_u64 {
-        let bound1 = b + 256_u64;
-        if bound1 <= stack^.inner.len {
-          if kb <= 18446744073709551359_u64 {
-            let bound2 = kb + 256_u64;
-            if bound2 <= consts^.inner.len {
-              if bound_pc_0 < code^.inner.len {
-                return run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: bound_pc_0, base: b, kbase: kb);
+  doc "Dispatches an entry or resumed step, draining post-catch lookups without nesting an activation for the protected call itself.";
+  let current = step;
+  loop {
+    match current {
+      PostCatch(index: lookup_index) => {
+        set current = pcall_lookup_start::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, index: lookup_index);
+      }
+      Jump(pc: bound_pc_0, base: b, kbase: kb) => {
+        if b <= 18446744073709551359_u64 {
+          let bound1 = b + 256_u64;
+          if bound1 <= stack^.inner.len {
+            if kb <= 18446744073709551359_u64 {
+              let bound2 = kb + 256_u64;
+              if bound2 <= consts^.inner.len {
+                if bound_pc_0 < code^.inner.len {
+                  return run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: bound_pc_0, base: b, kbase: kb);
+                }
               }
             }
           }
         }
+        let ignored = raise_text(vm: vm, text: &calls_text_5[0_u64..16_u64]);
+        return Outcome::Error();
       }
-      let ignored = raise_text(vm: vm, text: &calls_text_5[0_u64..16_u64]);
-      return Outcome::Error();
-    }
-    Done(count: n) => {
-      return Outcome::Done(count: n);
-    }
-    Error() => {
-      return Outcome::Error();
-    }
-    Stop() => {
-      return Outcome::HostStopped();
-    }
-    Budget() => {
-      return Outcome::Budget();
+      Done(count: n) => {
+        return Outcome::Done(count: n);
+      }
+      Error() => {
+        return Outcome::Error();
+      }
+      Stop() => {
+        return Outcome::HostStopped();
+      }
+      Budget() => {
+        return Outcome::Budget();
+      }
     }
   }
+  return Outcome::Error();
 }
 
 struct Cursor {
@@ -807,45 +769,54 @@ struct Cursor {
   kbase: u64;
 }
 
-fn checked_step(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, step: Step) -> r: Result<Cursor, Outcome> reads(code), reads(consts), reads(stack) contract {
+fn checked_step<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, step: Step) -> r: Result<Cursor, Outcome> reads(code), reads(consts), writes(stack), writes(vm), writes(env) contract {
   ensures when Ok(value: cursor): cursor.pc < code^.inner.len;
   ensures when Ok(value: cursor): cursor.base + 256_u64 <= stack^.inner.len;
   ensures when Ok(value: cursor): cursor.kbase + 256_u64 <= consts^.inner.len;
 } {
-  match step {
-    Jump(pc: np, base: nb, kbase: nk) => {
-      if nb <= 18446744073709551359_u64 {
-        let blim = nb + 256_u64;
-        if blim <= stack^.inner.len {
-          if nk <= 18446744073709551359_u64 {
-            let klim = nk + 256_u64;
-            if klim <= consts^.inner.len {
-              if np < code^.inner.len {
-                let cursor = Cursor(pc: np, base: nb, kbase: nk);
-                return Ok<Cursor, Outcome>(value: cursor);
+  doc "Checks the dispatch windows after draining post-catch lookups, including another catch reached by a failed lookup.";
+  let current = step;
+  loop {
+    match current {
+      PostCatch(index: lookup_index) => {
+        set current = pcall_lookup_start::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, index: lookup_index);
+      }
+      Jump(pc: np, base: nb, kbase: nk) => {
+        if nb <= 18446744073709551359_u64 {
+          let blim = nb + 256_u64;
+          if blim <= stack^.inner.len {
+            if nk <= 18446744073709551359_u64 {
+              let klim = nk + 256_u64;
+              if klim <= consts^.inner.len {
+                if np < code^.inner.len {
+                  let cursor = Cursor(pc: np, base: nb, kbase: nk);
+                  return Ok<Cursor, Outcome>(value: cursor);
+                }
               }
             }
           }
         }
+        let error = Outcome::Error();
+        return Err<Cursor, Outcome>(error: error);
       }
-      let error = Outcome::Error();
-      return Err<Cursor, Outcome>(error: error);
-    }
-    Done(count: countv) => {
-      let done = Outcome::Done(count: countv);
-      return Err<Cursor, Outcome>(error: done);
-    }
-    Error() => {
-      let error = Outcome::Error();
-      return Err<Cursor, Outcome>(error: error);
-    }
-    Stop() => {
-      let stop = Outcome::HostStopped();
-      return Err<Cursor, Outcome>(error: stop);
-    }
-    Budget() => {
-      let budget = Outcome::Budget();
-      return Err<Cursor, Outcome>(error: budget);
+      Done(count: countv) => {
+        let done = Outcome::Done(count: countv);
+        return Err<Cursor, Outcome>(error: done);
+      }
+      Error() => {
+        let error = Outcome::Error();
+        return Err<Cursor, Outcome>(error: error);
+      }
+      Stop() => {
+        let stop = Outcome::HostStopped();
+        return Err<Cursor, Outcome>(error: stop);
+      }
+      Budget() => {
+        let budget = Outcome::Budget();
+        return Err<Cursor, Outcome>(error: budget);
+      }
     }
   }
+  let error = Outcome::Error();
+  return Err<Cursor, Outcome>(error: error);
 }

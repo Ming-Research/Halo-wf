@@ -6,6 +6,7 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
+  doc "Dispatches instructions with checked windows; the shared epilogue also executes scheduled post-catch lookups.";
   let step = Step::Error();
   match code^.inner[pc] {
     Move(a: av, b: bv) => {
@@ -428,7 +429,7 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       set step = instruction_var_arg::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^);
     }
   }
-  let cursor_result = checked_step(code: code, consts: consts, stack: stack, step: step);
+  let cursor_result = checked_step::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, step: step);
   match cursor_result {
     Ok(value: cursor) => {
       let np = cursor.pc;

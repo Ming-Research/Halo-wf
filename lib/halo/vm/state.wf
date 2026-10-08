@@ -70,6 +70,7 @@ enum Step {
   Error();
   Stop();
   Budget();
+  PostCatch(index: u64);
 }
 
 enum FuncView {

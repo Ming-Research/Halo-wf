@@ -53,6 +53,100 @@ fn library_callback_count(vm: &Vm, plan: CallbackPlan, count: u64) -> r: unit wr
   return unit;
 }
 
+fn pcall_field_key(vm: &Vm) -> r: Value writes(vm) {
+  doc "Interns the embedding's configured field name without borrowing the VM across the heap mutation.";
+  let n = vm^.pcall_field.inner.len;
+  let name = box_slots_new::<u8>(capacity: n);
+  for (i in 0_u64..n) {
+    if i < vm^.pcall_field.inner.len {
+      if name.inner.len < name.inner.cap {
+        let byte = vm^.pcall_field.inner[i];
+        place_back(window: &name.inner, value: byte);
+      }
+    }
+  }
+  let count = name.inner.len;
+  return pkg::heap::intern(heap: &vm^.heap, bytes: &name.inner[0_u64..count]);
+}
+
+fn pcall_lookup_start<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, index: u64) -> r: Step reads(code), reads(consts), writes(stack), writes(vm), writes(env) {
+  doc "Runs the post-catch get through the ordinary slow executor; its function metamethod uses the library callback plan and may suspend. The context roots the original table after nested catches replace vm.error.";
+  if index < vm^.library_contexts.inner.len {
+    let context = vm^.library_contexts.inner[index];
+    let dest = context.frame.func +sat 2_u64;
+    let room = dest +sat 1_u64;
+    ensure_stack(stack: stack, size: room);
+    if vm^.top < room {
+      set vm^.top = room;
+    }
+    library_plan(vm: vm, index: index);
+    let key = pcall_field_key(vm: vm);
+    let op = SlowOp::Get();
+    let nil = Value::Nil();
+    if dest < stack^.inner.len {
+      let ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: op, dest: dest, b: context.saved_error, c: key, v: nil, breg: unlimited, creg: unlimited);
+      if vm^.suspended {
+        return Step::Budget();
+      }
+      if vm^.host_stopped {
+        return Step::Stop();
+      }
+      let failed = bnot(ok);
+      return pcall_lookup_finish(vm: vm, stack: stack, index: index, failed: failed);
+    }
+  }
+  return Step::Error();
+}
+
+fn pcall_lookup_finish(vm: &Vm, stack: &Box<Slots<Value>>, index: u64, failed: Bool) -> r: Step writes(vm), writes(stack) {
+  doc "Completes either a synchronous or resumed field lookup: strings and numbers replace the table; all other values follow it as a third result, including nil. Lookup errors propagate beyond the removed protected frame.";
+  if index < vm^.library_contexts.inner.len {
+    let context = vm^.library_contexts.inner[index];
+    discard_library_context(vm: vm, index: index);
+    if failed {
+      let pc = context.frame.return_pc -sat 1_u64;
+      note_raise(vm: vm, pc: pc);
+      return unwind(vm: vm, stack: stack);
+    }
+    let func = context.frame.func;
+    let err = func +sat 1_u64;
+    let dest = func +sat 2_u64;
+    let field = Value::Nil();
+    if dest < stack^.inner.len {
+      set field = stack^.inner[dest];
+    }
+    let count = 3_u64;
+    let error = context.saved_error;
+    match field {
+      Str(..) => {
+        set error = field;
+        set count = 2_u64;
+      }
+      Num(..) => {
+        set error = field;
+        set count = 2_u64;
+      }
+      Nil() => {
+      }
+      False() => {
+      }
+      True() => {
+      }
+      Tab(..) => {
+      }
+      Fun(..) => {
+      }
+      Builtin(..) => {
+      }
+    }
+    let no = Value::False();
+    lib_put(stack: stack, at: func, value: no);
+    lib_put(stack: stack, at: err, value: error);
+    return finish(vm: vm, stack: stack, frame: context.frame, src: func, count: count);
+  }
+  return Step::Error();
+}
+
 fn xpcall_start<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, func: u64, argc: u64) -> r: HostOutcome reads(code), reads(consts), writes(stack), writes(vm), writes(env) {
   let local_index_7 = vm^.library_contexts.inner.len -sat 1_u64;
   let local_nil_8 = Value::Nil();
@@ -119,6 +213,9 @@ fn resume_library<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots
   let local_index_26 = plan.first;
   if local_index_26 < vm^.library_contexts.inner.len {
     let local_context_27 = vm^.library_contexts.inner[local_index_26];
+    if local_context_27.id == builtin_pcall {
+      return pcall_lookup_finish(vm: vm, stack: stack, index: local_index_26, failed: failed);
+    }
     let local_outcome_28 = HostOutcome::Raised();
     if local_context_27.id == builtin_xpcall {
       set vm^.callback_plan = plan;
