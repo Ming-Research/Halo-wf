@@ -3314,3 +3314,30 @@ full-LTO pairs on the 14900K with a twin of main. Kept only if no kernel is
 slower beyond its larger range and the twin's difference, and
 `--check-module pkg::vm` takes at most 1.25 times as long; otherwise the
 epilogue change is reworked before merging.
+
+### Result
+
+[Run 37776993971](https://github.com/Ming-Research/Halo-wf/actions/runs/37776993971),
+artifact `halo-bench-postcatch`: main `5885f9ab4` against the branch at
+`cdc423c` (ten engine files differ, per the run's `git diff --stat`), six
+interleaved full-LTO pairs on the 14900K; medians in seconds:
+
+| Kernel | Main | Branch | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1052 | 0.1261 | 1.198 | 0.80% | 1.17% | 1.003 |
+| loop | 0.4324 | 0.4514 | 1.044 | 0.88% | 0.38% | 0.999 |
+| integer-table | 0.4949 | 0.4923 | 0.995 | 1.24% | 2.10% | 0.994 |
+| string-key | 0.0260 | 0.0259 | 0.994 | 2.34% | 1.78% | 1.000 |
+| concat | 0.0735 | 0.0892 | 1.214 | 3.82% | 4.36% | 1.004 |
+| sort | 0.1766 | 0.1988 | 1.126 | 2.56% | 3.82% | 0.999 |
+| binary-trees | 1.9052 | 2.1124 | 1.109 | 1.72% | 2.90% | 1.000 |
+
+`--check-module pkg::vm`: main 7.522 and 7.555 s, branch 7.784 and 7.761 s.
+
+**The criterion is not met**: five kernels are slower far beyond their
+bounds. The binaries in the artifact show why: every dispatch arm of `run`
+grew by 700–950 bytes and its stack frame from 0x30 to 0xa0 bytes, and each
+arm now contains an indirect non-tail call; `pcall_lookup_drain`, which runs
+Lua through a nested `run`, was inlined into the shared epilogue of every
+arm. The epilogue change is reworked so that a `PostCatch` step never reaches
+`run`: the cold paths that produce it drain it before returning.
