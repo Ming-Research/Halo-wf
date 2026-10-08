@@ -2985,3 +2985,15 @@ fanless machine under sustained load and other processes on it can
 produce) is larger than the effect sought, so these
 runs cannot show a gain of a few percent either; the candidate can be tried
 again on the 14900K.
+
+### Retried on the 14900K
+
+The M5 runs' spread exceeded the effect sought, so, as the owner chose
+(Q93), the comparison is repeated on the 14900K now that it is back, against
+the criterion as first recorded: main `2945f3b99` against this branch with
+the change applied again on it, six interleaved full-LTO pairs with a twin.
+Kept only if integer-table falls at least 3%, by more than both ranges and
+the twin's difference, no kernel is slower beyond its larger range and the
+twin's, `--check-module pkg::vm` takes at most 1.25 times as long, and
+`make check` passes, the collector's root controls and the oracle under
+collector stress included; otherwise the change is reverted again.
