@@ -3334,3 +3334,33 @@ larger range and the twin's difference is a cost of the compiler's lowering
 of the loop form, reported to the loopmatch session as input to its second
 phase (lowering the natural form), not a reason to restore the self-tail
 call; a kernel faster beyond those bounds is reported the same way.
+
+### Result
+
+[Run 37793482368](https://github.com/Ming-Research/Halo-wf/actions/runs/37793482368),
+artifact `halo-bench-loopmatch`: `wf-691ea8106920`, clang 22.1.8, full LTO,
+the self-tail base `baa2225` against this branch at `060ea20` (only
+`dispatch.wf` and `module.wfm` differ in source, per the run's `git diff
+--stat`), on the 14900K; medians in seconds, six interleaved pairs:
+
+| Kernel | Self-tail | Loop | Ratio | Self-tail range | Loop range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1104 | 0.1120 | 1.014 | 4.53% | 5.94% | 1.002 |
+| loop | 0.4515 | 0.4535 | 1.005 | 3.31% | 2.05% | 0.999 |
+| integer-table | 0.5017 | 0.5076 | 1.012 | 4.86% | 7.07% | 0.993 |
+| string-key | 0.0263 | 0.0266 | 1.014 | 5.22% | 5.02% | 1.005 |
+| concat | 0.0751 | 0.0755 | 1.006 | 2.13% | 1.43% | 0.995 |
+| sort | 0.1883 | 0.1858 | 0.987 | 20.01% | 12.57% | 1.002 |
+| binary-trees | 1.9175 | 1.9336 | 1.008 | 5.40% | 7.61% | 0.994 |
+
+`--check-module pkg::vm`: self-tail 7.774 and 7.638 s, loop 8.997 and
+8.970 s, 1.17 times as long.
+
+No kernel moves beyond its larger range and the twin's difference. This run
+was noisier than the others on the 14900K that day (ranges of 2–20% against
+0.4–3% in the upgrade's run, and the base's fib at 0.110 s against 0.105 s),
+so it resolves no difference smaller than about 5%: the loop form is not
+measurably slower or faster, and differences of a few percent remain open
+for the loopmatch session's second-phase measurement. The vm module check
+takes 1.17 times as long, the checker's cost of proving the loop's header
+invariants on every backedge.
