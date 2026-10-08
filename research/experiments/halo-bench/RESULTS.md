@@ -3191,3 +3191,51 @@ least 5% below the base's, by more than both ranges and the twin's
 difference, with no kernel slower beyond its larger range and the twin's
 difference. The third comparison attributes the gain; it does not change the
 verdict.
+
+### Result
+
+[Run 37773076340](https://github.com/Ming-Research/Halo-wf/actions/runs/37773076340),
+artifact `halo-bench-realloc`: base main `0def88248` with `wf-8b647edbbc95`;
+the branch (`lib/halo/heap/tables.wf` only differs, per the run's
+`git diff --stat`) with the same release and with `wf-exp-4f6a0c240d2c`;
+clang 22.1.8, full LTO, the 14900K. The experiment build calls `realloc`
+from 430 sites, the pinned build from none. Medians in seconds, six
+interleaved pairs; twin ratios are the base against its twin.
+
+The change as it would ship, base against the branch with the experiment:
+
+| Kernel | Base | Branch, experiment | Ratio | Base range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1051 | 0.1064 | 1.012 | 1.04% | 2.07% | 0.998 |
+| loop | 0.4325 | 0.4308 | 0.996 | 0.80% | 0.66% | 1.002 |
+| integer-table | 0.4963 | 0.4268 | 0.860 | 2.53% | 1.14% | 1.004 |
+| string-key | 0.0260 | 0.0258 | 0.993 | 1.19% | 0.49% | 0.997 |
+| concat | 0.0740 | 0.0735 | 0.993 | 1.43% | 2.68% | 0.999 |
+| sort | 0.1763 | 0.1718 | 0.975 | 2.13% | 0.95% | 1.003 |
+| binary-trees | 1.9046 | 1.8931 | 0.994 | 1.78% | 2.06% | 1.005 |
+
+The compiler's share, the branch with the pin against the branch with the
+experiment:
+
+| Kernel | Branch, pin | Branch, experiment | Ratio | Pin range | Experiment range |
+|---|---:|---:|---:|---:|---:|
+| fib | 0.1056 | 0.1065 | 1.008 | 1.61% | 1.26% |
+| loop | 0.4319 | 0.4320 | 1.000 | 0.58% | 0.39% |
+| integer-table | 0.4916 | 0.4246 | 0.864 | 2.35% | 1.74% |
+| string-key | 0.0260 | 0.0259 | 0.998 | 1.16% | 3.53% |
+| concat | 0.0735 | 0.0735 | 1.000 | 1.80% | 1.68% |
+| sort | 0.1767 | 0.1718 | 0.972 | 1.70% | 1.66% |
+| binary-trees | 1.8988 | 1.8761 | 0.988 | 0.74% | 1.45% |
+
+**The criterion is met.** Integer-table's median is 14.0% below the base's,
+beyond both ranges (2.53% and 1.14%) and the twin's 0.4% difference; fib's
+1.2% is within its larger range plus the twin's difference, and no other
+kernel is slower. Nearly all of the gain is the compiler's: the same source
+is 13.6% faster on integer-table with the reallocating `grow`, as
+[the earlier result](#growing-the-array-in-place-result) found the source
+change alone neutral with the copying `grow`. Sort's 2.5–2.8% gain also comes
+from the compiler and was not predicted. The in-place source change stays out
+of main until Whitefoot's main line lowers `grow` through `realloc`; it is
+reverted on this branch, which keeps only this record, and is reapplied with
+the Whitefoot release that adopts the lowering (`docs/todo.md`, *Whitefoot
+requirements*).
