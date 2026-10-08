@@ -3913,3 +3913,20 @@ build, `push_frame`'s disassembly from both, and two `--check-module pkg::vm`
 samples each. Expected: `push_frame` loses its entry copy, fib is faster by
 more than both ranges and the twin's difference, and no kernel is slower
 beyond its bounds; a kernel that is slower is reported with the upgrade.
+
+## Growing the array in place on the main release
+
+### Criterion, recorded before measuring
+
+Whitefoot main now lowers `grow` through a counted reallocation
+(Whitefoot#280, release `wf-b2209fd31035`), the reopening condition of the
+rejected in-place growth. This branch reapplies `6f49ca6` on the pinned main
+release. On the experiment release the change made integer-table 14.0%
+faster ([reallocating grow](#growing-the-array-in-place-with-a-reallocating-grow)).
+Comparison: the upgrade branch (pin `wf-b2209fd31035`) against this branch,
+same compiler, six interleaved full-LTO pairs over the seven kernels with a
+twin of the base, on the 14900K. Kept if integer-table's median falls at
+least 5%, by more than both ranges and the twin's difference, no other
+kernel is slower beyond its larger range and the twin's difference, and
+`make check` passes, including the table-growth oracle cases; otherwise
+reverted with its measurements kept.
