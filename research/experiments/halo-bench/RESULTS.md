@@ -3817,3 +3817,34 @@ compiler, on the 14900K; medians in seconds, six interleaved pairs:
 twin's difference. The two kernels that collect most lean the same way,
 binary-trees 1.7% and integer-table 1.3% slower, each within its bounds; a
 cost of that size from the counters is possible and unresolved by six pairs.
+
+## The call path on the 14900K
+
+### Question, recorded before it runs
+
+[The call path](#the-call-path)'s attribution ran on a hosted EPYC guest
+sampling `task-clock`, before `run` became `loop { match }` and with
+`wf-8b647edbbc95`. Since then the dispatch is a plain loop compiling to the
+same machine code as the self-tail call ([the dispatch as loop { match }](#the-dispatch-as-loop--match-)),
+the pin is `wf-691ea8106920`, and Whitefoot's broadened in-place rule, not
+yet in a release Halo pins, removed `push_frame`'s entry copy and made fib
+3.8% faster ([reading by-value parameters in place, measured](#reading-by-value-parameters-in-place-measured)).
+
+Question: on the 14900K, sampling hardware cycles, what share of fib's
+cycles falls in each call-path function (`prepare`, `enter_lua`,
+`push_frame`, `finish` and the `Call` and `Return` arms), against PUC's
+`luaD_precall` and `luaD_poscall`, and which instructions hold those
+cycles? This run tests no proposal; it chooses the next call-path change,
+whose criterion is recorded before that change is timed. Each cost found is
+classed as before: work Halo's source asks for and PUC does not do is a
+candidate change in Halo; code the compiler emits beyond the source is a
+Whitefoot gap, stated as a minimal witness and handed to the Whitefoot
+session that owns it.
+
+Run: Halo main at this branch's merge of `10a9b02e4`, built with full LTO by
+`wf-691ea8106920` as `run.py` builds it, and Redis 7.0.15's bundled PUC Lua
+built from source, each running the fib kernel at N = 34 (N = 30 runs about
+0.1 s on this host, too few samples per instruction); three launches each
+under `perf record -e cycles` (`cpu-clock` if the runner refuses hardware
+events), reported by symbol; `perf annotate` of the
+first launch; and the instruction counts of the call-path functions.
