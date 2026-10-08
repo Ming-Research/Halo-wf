@@ -36,8 +36,8 @@ example apart from the engine code that exposed it
   Minimal semantic example: a `Box<Slots<u64>>` filled to capacity and grown
   by doubling copies every filled slot at each step. With the paged
   session's experiment release `wf-exp-4f6a0c240d2c`, which lowers `grow`
-  as `realloc`, the change made integer-table 14.0% faster on the 14900K and
-  nothing slower ([result](../research/experiments/halo-bench/RESULTS.md#growing-the-array-in-place-with-a-reallocating-grow)).
+  as `realloc`, the change made integer-table 14.0% faster on the 14900K with
+  no kernel slower beyond its noise bounds ([result](../research/experiments/halo-bench/RESULTS.md#growing-the-array-in-place-with-a-reallocating-grow)).
   Reopen when a Whitefoot main release lowers `grow` through `realloc`:
   move the pin, reapply `6f49ca6` and repeat the recorded comparison.
 
