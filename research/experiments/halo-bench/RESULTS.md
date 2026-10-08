@@ -3602,8 +3602,9 @@ library functions; each such split is then timed separately.
 
 [Run 37856473502](https://github.com/Ming-Research/Halo-wf/actions/runs/37856473502),
 artifact `halo-slowsplit-disasm`, on a hosted ubuntu-24.04 x86-64 runner
-with `wf-e1708490c384` and clang 22: the two sources differ in
-`lib/halo/vm/library-sort.wf` only (the run's `git diff --stat`), and
+with `wf-e1708490c384` and clang 22: the two revisions' library sources
+(`lib/`, the benchmark's build input) differ in `lib/halo/vm/library-sort.wf`
+only (the run's `git diff --stat -- lib`), and
 `slow` is a separate function of the same size (0x1fbd bytes) in both
 binaries, so neither inlines it. `sort_compare_slow` does not survive as a
 symbol after the split: LLVM inlined it back into `sort_compare`.
@@ -3633,15 +3634,18 @@ the whole-value copy; with that call moved to another function (even one
 LLVM later inlines back), it read the two fields in place. None of the three
 hypotheses recorded above names this: the larger frame (a) follows from the
 copy, `sort_compare` is a call in both (b does not apply), and the change is
-not layout alone (c). The cause is a by-value binding of a place
-materialized as a whole copy on the fast path, which is code the compiler
-emits beyond what the fields read require: the same kind as `prepare`'s
-whole-`Value` read and the `Call` arm's whole-`Step` copy in
-[the call path on the 14900K](#the-call-path-on-the-14900k) (pull request 12).
+not layout alone (c). The mechanism the disassembly shows is a by-value
+binding of a place materialized as a whole copy on the fast path, which is
+code the compiler emits beyond what the fields read require. It is the
+supported explanation of the seventh run's 25%, not a separately measured
+one: the split also changed the frame size, the saved registers and the
+spills, and this run times nothing. It is the same kind as `prepare`'s
+whole-`Value` read and the `Call` arm's whole-`Step` copy in pull request
+12's [call-path profile on the 14900K](https://github.com/Ming-Research/Halo-wf/blob/claude/halo-call/research/experiments/halo-bench/RESULTS.md#the-call-path-on-the-14900k).
 
 Not established: which property of the inline form made the compiler keep
-the copy (the binding is not read after the slow call in either form), and
-whether the current compiler still does.
+the copy (the binding is not read after the slow call in either form),
+which compiler stage keeps it, and whether the current compiler still does.
 
 ### Question, recorded before the second run
 
@@ -3671,8 +3675,9 @@ first run byte for byte (same digests).
 | main, inline | `wf-691ea8106920` | 0x44e | 0x1f8 | 1 |
 
 **The effect stands on the current compiler.** Writing the slow call inline
-makes `sort_compare` copy the whole 152-byte library context, and the
-operands, on every call; moving that call into another function removes
+makes `sort_compare` copy the whole library context (168 bytes in the
+current layout: the `imul` stride and the `memcpy` length are both 0xa8),
+and the operands, on every call; moving that call into another function removes
 the copy. This is a Whitefoot lowering gap and goes to the Whitefoot session
 that owns copy elimination with these builds as its witness. No other
 library function is split in Halo, since that would route around the gap.
