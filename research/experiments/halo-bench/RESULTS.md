@@ -3166,3 +3166,28 @@ That this retained work is why the time did not move is the leading
 hypothesis, not a measured attribution, and whether in-place reallocation
 would save time is untested; both are a Whitefoot question (`docs/todo.md`,
 *Whitefoot requirements*).
+
+## Growing the array in place with a reallocating grow
+
+### Criterion, recorded before measuring
+
+[Growing the array in place](#growing-the-array-in-place-result) left
+integer-table unchanged with `wf-8b647edbbc95`, whose `grow` allocates,
+copies and frees. The paged session built `wf-exp-4f6a0c240d2c`: the same
+compiler with `grow` lowered as `realloc` and nothing else changed. This
+branch is main `0def88248` with the reverted in-place change `6f49ca6`
+applied again (`lib/halo/heap/tables.wf` only).
+
+Builds, full LTO, on the 14900K: main with the pin (base), this branch with
+the pin, and this branch with the experiment release. Six interleaved pairs
+over the seven kernels for each of: base against its twin (noise), base
+against the branch with the experiment (the change as it would ship), and the
+branch with the pin against the branch with the experiment (the compiler's
+share).
+
+The change counts as a win, and goes to the paged session for a main-line
+`grow` lowering, only if integer-table's median with the experiment falls at
+least 5% below the base's, by more than both ranges and the twin's
+difference, with no kernel slower beyond its larger range and the twin's
+difference. The third comparison attributes the gain; it does not change the
+verdict.
