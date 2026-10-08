@@ -3684,3 +3684,55 @@ library function is split in Halo, since that would route around the gap.
 The sort kernel no longer reaches `sort_compare` (homogeneous arrays take
 `sort_array_run`), so this costs Halo's kernels nothing today; a sort with
 a comparator or mixed operands still runs it.
+
+## The collection floor on Firn's long-lived VM
+
+### What Firn measured with the statistics
+
+Firn-wf [run 37859639750](https://github.com/Ming-Research/Firn-wf/actions/runs/37859639750)
+(the firn session's experiment branch at `413b34a`, Halo `10a9b02e4`,
+14900K, one core, the rate-limiter script through EVALSHA at 50
+connections, two interleaved five-second passes per side), as the firn
+session reported it; the numbers below are its, not recomputed here:
+
+- The live heap is small and constant from the first collection on: 134
+  strings (4.1 KB), 13 tables (6.1 KB), one closure (24 B), no upvalues;
+  marking pops 14 gray values every time.
+- Each collection frees about 16,600 objects and 1.05 MB (about 10,190
+  tables, 3,220 closures and 3,180 strings) and visits about 17,200 slots;
+  pauses average 3.9–4.0 ms, about 240 ns per freed object.
+- `set_gc_pause(400)` changed nothing: `next_threshold` stayed 1,048,576
+  bytes on both sides, since `live * (pause - 100) / 100` with 10 KB live is
+  far below the 1 MiB floor. Collections, pause lengths, p99 (3.4–3.5 ms)
+  and p99.9 (6.6–7.0 ms) were unchanged.
+
+So the pause is set by the 1 MiB floor and the per-object cost of sweeping
+and freeing, not by the pause multiplier. PUC Lua 5.1 has no such floor; its
+threshold is the estimate times the pause.
+
+### Question and criterion, recorded before measuring
+
+This branch makes the floor an embedding setting, `set_gc_floor(engine,
+bytes)` (default 1 MiB, applied by the next completed collection, like the
+pause), so that one Firn build can run several floors side by side.
+
+Question: does a lower floor shorten pauses in proportion and bring the
+rate-limiter script's p99 at 50 connections down, without costing
+throughput? Each collection's work should scale with the garbage allocated
+since the last one, and the slabs' length with the garbage alive at once, so
+a floor of F should give pauses of about 4 ms × F / 1 MiB and about
+1 MiB / F times as many collections; a fixed cost per collection would show
+as pauses that do not fall in proportion.
+
+Comparison, measured by the firn session on the 14900K with its harness:
+floors of 1 MiB (control), 256 KiB and 64 KiB in one interleaved run, the
+rate-limiter script at 50 connections, reporting per side collections,
+mean and maximum pause, freed objects and slots visited per collection,
+p99, p99.9 and throughput, with its pass-to-pass spread.
+
+A floor is a candidate for the default if its p99 is at least 30% below the
+1 MiB control and its throughput is not lower than the control's by more
+than the run's own pass-to-pass spread. If no floor meets this, a lower
+floor is rejected as the remedy and the per-object sweep and free cost is
+the next target. The default stays 1 MiB on this branch; changing it, or
+keeping `set_gc_floor`, is the owner's decision after the result.
