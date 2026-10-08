@@ -3294,3 +3294,22 @@ of main until Whitefoot's main line lowers `grow` through `realloc`; it is
 reverted on this branch, which keeps only this record, and is reapplied with
 the Whitefoot release that adopts the lowering (`docs/todo.md`, *Whitefoot
 requirements*).
+
+## Whitefoot wf-691ea8106920 upgrade
+
+### Question, recorded before measuring
+
+`whitefoot.pin` moves from `wf-8b647edbbc95` (Whitefoot `8b647edbb`,
+specification v0.94) to `wf-691ea8106920` (`691ea8106`, v0.102), the first
+main release with `loop { match }` and `continue` (v0.101), which Halo's
+dispatch rewrite needs. Between them the specification also adds directory
+operations (v0.95, v0.98), closed-term recursion cycles (v0.96), PAR-2
+extensions (v0.97, v0.102), reinitializing a dead linear binding (v0.99) and
+reference-path identity (v0.100); Halo's source needed no change, and `make
+check` passes with the new release. How do the kernels and the vm
+module-check time move? Whitefoot-kit's upgrade step 5 asks for this
+comparison; it reports the difference and rejects nothing.
+
+Comparison: Halo main built with each release, six interleaved full-LTO
+pairs over the seven kernels, a twin of the old build, and two interleaved
+module-check samples per compiler, on the 14900K.
