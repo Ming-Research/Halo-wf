@@ -3295,6 +3295,53 @@ reverted on this branch, which keeps only this record, and is reapplied with
 the Whitefoot release that adopts the lowering (`docs/todo.md`, *Whitefoot
 requirements*).
 
+## Whitefoot wf-691ea8106920 upgrade
+
+### Question, recorded before measuring
+
+`whitefoot.pin` moves from `wf-8b647edbbc95` (Whitefoot `8b647edbb`,
+specification v0.94) to `wf-691ea8106920` (`691ea8106`, v0.102), the first
+main release with `loop { match }` and `continue` (v0.101), which Halo's
+dispatch rewrite needs. Between them the specification also adds directory
+operations (v0.95, v0.98), closed-term recursion cycles (v0.96), PAR-2
+extensions (v0.97, v0.102), reinitializing a dead linear binding (v0.99) and
+reference-path identity (v0.100); Halo's source needed no change, and `make
+check` passes with the new release. How do the kernels and the vm
+module-check time move? Whitefoot-kit's upgrade step 5 asks for this
+comparison; it reports the difference and rejects nothing.
+
+Comparison: Halo main built with each release, six interleaved full-LTO
+pairs over the seven kernels, a twin of the old build, and two interleaved
+module-check samples per compiler, on the 14900K.
+
+### Result
+
+[Run 37791242990](https://github.com/Ming-Research/Halo-wf/actions/runs/37791242990),
+artifact `halo-bench-upgrade`: Halo at `f5203e4` (main's engine) built by
+`wf-8b647edbbc95` and by `wf-691ea8106920` with clang 22.1.8, on the 14900K;
+medians in seconds, six interleaved pairs:
+
+| Kernel | Old | New | Ratio | Old range | New range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1052 | 0.1051 | 1.000 | 0.72% | 1.15% | 1.004 |
+| loop | 0.4317 | 0.4325 | 1.002 | 0.59% | 0.50% | 1.000 |
+| integer-table | 0.4931 | 0.4937 | 1.001 | 3.11% | 7.88% | 1.008 |
+| string-key | 0.0258 | 0.0258 | 1.000 | 2.42% | 1.14% | 0.988 |
+| concat | 0.0735 | 0.0747 | 1.015 | 24.18% | 2.37% | 1.001 |
+| sort | 0.1760 | 0.1750 | 0.994 | 1.73% | 1.67% | 1.003 |
+| binary-trees | 1.9220 | 1.9256 | 1.002 | 1.87% | 0.70% | 0.998 |
+
+`--check-module pkg::vm`: old 7.631 and 7.525 s, new 7.613 and 7.780 s.
+
+No kernel moves beyond its larger range and the twin's difference, a test
+chosen after measuring since the question set no criterion. Six kernels show
+no difference. Concat passes that test only because one old-side run (pair
+2, 0.0911 s) widened the old range to 24%: without it, all six new runs
+(0.0741–0.0759 s) are slower than the five other old runs (0.0733–0.0737 s),
+by 1.3–3.5% per pair, while the twin's per-pair ratios span 0.972–1.010. A
+concat slowdown of about 1.5% with the new release is therefore possible and
+unresolved; these seven kernels on the 14900K show nothing else.
+
 ## pcall's post-catch field lookup
 
 ### Criterion, recorded before measuring
