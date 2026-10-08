@@ -4,6 +4,8 @@ alias Cell = pkg::value::Cell;
 alias num_of = pkg::value::num_of;
 alias truthy = pkg::value::truthy;
 alias table_get = pkg::heap::table_get;
+alias table_get_str = pkg::heap::table_get_str;
+alias str_of = pkg::value::str_of;
 alias tab_of = pkg::value::tab_of;
 
 const dispatch_text_0: Array<u8, 16> = "invalid bytecode";
@@ -731,6 +733,7 @@ fn instruction_self_k<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
+  doc "Copies the receiver and reads its constant method key, specializing strings and retaining the slow lookup on a miss.";
   let n = code^.inner.len;
   let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
@@ -745,7 +748,15 @@ fn instruction_self_k<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   } else {
     set ok = raise_text(vm: vm, text: &dispatch_text_36[0_u64..22_u64]);
   }
-  let value = table_get(heap: &vm^.heap, t: t, key: key);
+  let value = Value::Nil();
+  match str_of(v: key) {
+    Handle(h: handle) => {
+      set value = table_get_str(heap: &vm^.heap, t: t, h: handle);
+    }
+    NoHandle() => {
+      set value = table_get(heap: &vm^.heap, t: t, key: key);
+    }
+  }
   let atom54 = is_nil(v: value);
   if bnot(atom54) {
     set stack^.inner[ra] = value;
@@ -3895,13 +3906,22 @@ fn fast_instruction_get_table_r(code: &Box<Slots<Cell>>, consts: &Box<Slots<Valu
   ensures when Ok(value: cursor): cursor.pc < code^.inner.len;
   ensures when Ok(value: cursor): base + 256_u64 <= stack^.inner.len;
 } {
+  doc "Reads a present register key through string-specialized or generic lookup; misses retain the slow instruction path.";
   let n = code^.inner.len;
   let next = pc + 1_u64;
   let ra = register_slot(stack: stack, base: base, operand: av);
   let rt = register_slot(stack: stack, base: base, operand: tv);
   let t = stack^.inner[rt];
   let key = register_value(stack: stack, base: base, operand: cv);
-  let value = table_get(heap: &vm^.heap, t: t, key: key);
+  let value = Value::Nil();
+  match str_of(v: key) {
+    Handle(h: handle) => {
+      set value = table_get_str(heap: &vm^.heap, t: t, h: handle);
+    }
+    NoHandle() => {
+      set value = table_get(heap: &vm^.heap, t: t, key: key);
+    }
+  }
   let atom31 = is_nil(v: value);
   if bnot(atom31) {
     set stack^.inner[ra] = value;
@@ -3931,13 +3951,22 @@ fn fast_instruction_get_table_k(code: &Box<Slots<Cell>>, consts: &Box<Slots<Valu
   ensures when Ok(value: cursor): cursor.pc < code^.inner.len;
   ensures when Ok(value: cursor): base + 256_u64 <= stack^.inner.len;
 } {
+  doc "Reads a present constant key through string-specialized or generic lookup; misses retain the slow instruction path.";
   let n = code^.inner.len;
   let next = pc + 1_u64;
   let ra = register_slot(stack: stack, base: base, operand: av);
   let rt = register_slot(stack: stack, base: base, operand: tv);
   let t = stack^.inner[rt];
   let key = constant_value(consts: consts, kbase: kbase, operand: kv);
-  let value = table_get(heap: &vm^.heap, t: t, key: key);
+  let value = Value::Nil();
+  match str_of(v: key) {
+    Handle(h: handle) => {
+      set value = table_get_str(heap: &vm^.heap, t: t, h: handle);
+    }
+    NoHandle() => {
+      set value = table_get(heap: &vm^.heap, t: t, key: key);
+    }
+  }
   let atom34 = is_nil(v: value);
   if bnot(atom34) {
     set stack^.inner[ra] = value;
