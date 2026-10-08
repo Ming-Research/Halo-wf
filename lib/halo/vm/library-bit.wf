@@ -1,3 +1,4 @@
+alias Cell = pkg::value::Cell;
 alias Value = pkg::value::Value;
 alias num_of = pkg::value::num_of;
 alias str_of = pkg::value::str_of;
@@ -29,7 +30,8 @@ fn bit_argument(vm: &Vm, value: Value) -> r: Option<u32> reads(vm) {
   }
 }
 
-fn library_bit(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: u32) -> r: HostOutcome writes(vm), writes(stack) {
+fn library_bit(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, pc: u64, vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: u32) -> r: HostOutcome reads(code), reads(consts), writes(vm), writes(stack) {
+  doc "Dispatches bit operations with the Lua call cell for argument errors.";
   let a_v5 = argument(stack: stack, func: func, argc: argc, index: 0_u64);
   let b_v6 = 0_u32;
   match bit_argument(vm: vm, value: a_v5) {
@@ -37,7 +39,7 @@ fn library_bit(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: u32
       set b_v6 = n_v7;
     }
     None() => {
-      return lib_argerror(vm: vm, id: id, index: 1_u64, argc: argc, value: a_v5, expected: &bit_number[0_u64..6_u64]);
+      return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, argc: argc, value: a_v5, expected: &bit_number[0_u64..6_u64]);
     }
   }
   if id == 121_u32 {
@@ -66,7 +68,7 @@ fn library_bit(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: u32
           }
           None() => {
             let arg_v11 = i_v8 +sat 1_u64;
-            return lib_argerror(vm: vm, id: id, index: arg_v11, argc: argc, value: v_v9, expected: &bit_number[0_u64..6_u64]);
+            return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: arg_v11, argc: argc, value: v_v9, expected: &bit_number[0_u64..6_u64]);
           }
         }
       }
@@ -81,7 +83,7 @@ fn library_bit(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: u32
           set n_v13 = iand(wide_v14, 31_u32);
         }
         None() => {
-          return lib_argerror(vm: vm, id: id, index: 2_u64, argc: argc, value: v_v12, expected: &bit_number[0_u64..6_u64]);
+          return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 2_u64, argc: argc, value: v_v12, expected: &bit_number[0_u64..6_u64]);
         }
       }
       if id == 125_u32 {
@@ -130,7 +132,7 @@ fn library_bit(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: u32
           set width_v31 = cvt::<i32, i64>(signed_v34);
         }
         None() => {
-          return lib_argerror(vm: vm, id: id, index: 2_u64, argc: argc, value: v_v32, expected: &bit_number[0_u64..6_u64]);
+          return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 2_u64, argc: argc, value: v_v32, expected: &bit_number[0_u64..6_u64]);
         }
       }
     }

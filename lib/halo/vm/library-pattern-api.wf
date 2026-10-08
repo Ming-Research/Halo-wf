@@ -301,7 +301,8 @@ fn pattern_gmatch_next(vm: &Vm, stack: &Box<Slots<Value>>, func: u64) -> r: Host
   return HostOutcome::Returned(count: 0_u64);
 }
 
-fn library_pattern<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, env: &E, vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: u32) -> r: HostOutcome reads(code), reads(consts), writes(env), writes(vm), writes(stack) {
+fn library_pattern<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, pc: u64, env: &E, vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: u32) -> r: HostOutcome reads(code), reads(consts), writes(env), writes(vm), writes(stack) {
+  doc "Dispatches pattern builtins with the Lua call cell for argument errors.";
   if id == builtin_string_gmatchaux {
     return pattern_gmatch_next(vm: vm, stack: stack, func: func);
   }
@@ -312,7 +313,7 @@ fn library_pattern<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slot
     Handle(..) => {
     }
     NoHandle() => {
-      return lib_argerror(vm: vm, id: id, index: 1_u64, argc: argc, value: a, expected: &pattern_expected_string[0_u64..6_u64]);
+      return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, argc: argc, value: a, expected: &pattern_expected_string[0_u64..6_u64]);
     }
   }
   let pattern = coerce_string(vm: vm, v: b);
@@ -320,7 +321,7 @@ fn library_pattern<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slot
     Handle(..) => {
     }
     NoHandle() => {
-      return lib_argerror(vm: vm, id: id, index: 2_u64, argc: argc, value: b, expected: &pattern_expected_string[0_u64..6_u64]);
+      return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 2_u64, argc: argc, value: b, expected: &pattern_expected_string[0_u64..6_u64]);
     }
   }
   if id == builtin_string_gmatch {
@@ -328,7 +329,7 @@ fn library_pattern<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slot
     return lib_result(stack: stack, func: func, value: iterator);
   }
   if id == builtin_string_gsub {
-    return pattern_gsub_start::<Host<E>>(code: code, consts: consts, env: env, vm: vm, stack: stack, func: func, argc: argc, source: source, pattern: pattern);
+    return pattern_gsub_start::<Host<E>>(code: code, consts: consts, pc: pc, env: env, vm: vm, stack: stack, func: func, argc: argc, source: source, pattern: pattern);
   }
   let length = pattern_length(vm: vm, text: source);
   let c = argument(stack: stack, func: func, argc: argc, index: 2_u64);
@@ -340,7 +341,7 @@ fn library_pattern<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slot
         set initial = n;
       }
       None() => {
-        return lib_argerror(vm: vm, id: id, index: 3_u64, argc: argc, value: c, expected: &pattern_expected_number[0_u64..6_u64]);
+        return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 3_u64, argc: argc, value: c, expected: &pattern_expected_number[0_u64..6_u64]);
       }
     }
   }

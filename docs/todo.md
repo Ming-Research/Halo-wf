@@ -49,21 +49,20 @@ example apart from the engine code that exposed it
   tooling. Change: move the gate's fixtures and runners to `tests/` and
   update their callers and references. Reopen at the next gate change.
 
-- **Argument errors hardcode the called function's name.** Lua 5.1's
-  `luaL_argerror` uses `getfuncname` (`getobjname` at the caller's CALL
-  register), so `bad argument #N to 'NAME'` names a local alias or a field,
-  and for a method it subtracts the implicit self argument and reports a bad
-  self as `calling 'NAME' on bad self`. Halo's builtins hardcode their names,
-  for example `bad argument #1 to 'select'` in `lib/halo/vm/builtins.wf`.
-  Witness: `local f=bit.tobit; return f(false)` gives Redis 7.0.15's
-  `bad argument #1 to 'f' (number expected, got boolean)` and Halo's
-  `... to 'tobit' ...` (`research/experiments/halo-luacodecs/RESULTS.md`,
-  case cjson/222). Impact: aliases, field calls and methods can disagree in
-  both name and argument number. Change: route argument errors through the
-  operand description at the caller's call cell and apply `luaL_argerror`'s
-  method adjustment. Validate with recorded oracle replies for local aliases,
-  fields, methods and bad self. Reopen before clients compare argument-error
-  text.
+- **Native callback argument errors can acquire an outer Lua source location.**
+  `library_call_error_location` reaches `error_location` without checking the
+  caller's activation, so a native `table.sort` comparator, `string.gsub`
+  replacement or metamethod can receive the enclosing Lua frame's prefix
+  although its immediate caller is native. The argument-error naming change
+  supplies `?` correctly but leaves this pre-existing location policy alone:
+  its shared wrapper also handles plain `luaL_error`, whose errors that task
+  must not change. Change: distinguish the immediate caller when locating
+  native errors, preserving the Lua caller for generic-for iterators even
+  across Halo's activation boundary. Evidence is source inspection; confirm
+  the exact affected paths with the native callback and iterator cases in
+  `lua-core/argument-error-names.lua` against the Redis reference recording.
+  Reopen when that case's CI comparison reports source-prefix differences,
+  before claiming the new oracle case passes.
 
 - **pcall's error field is read raw.** With an error field named
   (`set_pcall_error_field`), `pcall` reads it with a raw lookup; Redis's

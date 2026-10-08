@@ -1,3 +1,4 @@
+alias Cell = pkg::value::Cell;
 alias Value = pkg::value::Value;
 alias num_of = pkg::value::num_of;
 alias str_of = pkg::value::str_of;
@@ -344,13 +345,14 @@ fn mp_read(vm: &Vm, source: &[u8], cursor: &MpCursor, top: u64) -> r: Value read
   return nil_v43;
 }
 
-fn library_cmsgpack(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: u32) -> r: HostOutcome writes(vm), writes(stack) {
+fn library_cmsgpack(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, pc: u64, vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: u32) -> r: HostOutcome reads(code), reads(consts), writes(vm), writes(stack) {
+  doc "Dispatches MessagePack operations with the Lua call cell for argument errors.";
   if id == 112_u32 {
     if argc == 0_u64 {
-      return lib_argtext(vm: vm, id: id, index: 0_u64, text: &mp_empty[0_u64..29_u64]);
+      return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 0_u64, text: &mp_empty[0_u64..29_u64]);
     }
     if argc > 4000_u64 {
-      return lib_argtext(vm: vm, id: id, index: 0_u64, text: &mp_many_args[0_u64..40_u64]);
+      return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 0_u64, text: &mp_many_args[0_u64..40_u64]);
     }
     let out_v77 = box_slots_new::<u8>(capacity: 0_u64);
     for (i_v78 in 0_u64..argc) {
@@ -372,7 +374,7 @@ fn library_cmsgpack(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id
         set limit_v84 = n_v87;
       }
       None() => {
-        return lib_argerror(vm: vm, id: id, index: 2_u64, argc: argc, value: v_v86, expected: &mp_number[0_u64..6_u64]);
+        return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 2_u64, argc: argc, value: v_v86, expected: &mp_number[0_u64..6_u64]);
       }
     }
   }
@@ -390,7 +392,7 @@ fn library_cmsgpack(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id
         }
         None() => {
           let arg_v92 = index_v88 +sat 1_u64;
-          return lib_argerror(vm: vm, id: id, index: arg_v92, argc: argc, value: v_v89, expected: &mp_number[0_u64..6_u64]);
+          return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: arg_v92, argc: argc, value: v_v89, expected: &mp_number[0_u64..6_u64]);
         }
       }
     }
@@ -399,7 +401,7 @@ fn library_cmsgpack(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id
   let sv_v82 = coerce_string(vm: vm, v: av_v81);
   match str_of(v: sv_v82) {
     NoHandle() => {
-      return lib_argerror(vm: vm, id: id, index: 1_u64, argc: argc, value: av_v81, expected: &mp_string[0_u64..6_u64]);
+      return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, argc: argc, value: av_v81, expected: &mp_string[0_u64..6_u64]);
     }
     Handle(..) => {
     }

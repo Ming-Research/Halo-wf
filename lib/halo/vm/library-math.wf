@@ -1,3 +1,4 @@
+alias Cell = pkg::value::Cell;
 alias Value = pkg::value::Value;
 
 const library_math_lib_text_0: Array<u8, 6> = "number";
@@ -8,7 +9,8 @@ const library_math_lib_text_2: Array<u8, 17> = "interval is empty";
 
 const library_math_lib_text_3: Array<u8, 17> = "interval is empty";
 
-fn library_math(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: u32) -> r: HostOutcome writes(vm), writes(stack) {
+fn library_math(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, pc: u64, vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: u32) -> r: HostOutcome reads(code), reads(consts), writes(vm), writes(stack) {
+  doc "Dispatches math builtins with the Lua call cell for argument errors.";
   let local_a_1 = argument(stack: stack, func: func, argc: argc, index: 0_u64);
   let local_b_2 = argument(stack: stack, func: func, argc: argc, index: 1_u64);
   if id == builtin_math_random {
@@ -34,7 +36,7 @@ fn library_math(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: u3
         set local_upper_11 = cvt::<i32, i64>(local_signed_12);
       }
       None() => {
-        return lib_argerror(vm: vm, id: id, index: 1_u64, argc: argc, value: local_a_1, expected: &library_math_lib_text_0[0_u64..6_u64]);
+        return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, argc: argc, value: local_a_1, expected: &library_math_lib_text_0[0_u64..6_u64]);
       }
     }
     if argc == 2_u64 {
@@ -45,14 +47,14 @@ fn library_math(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: u3
           set local_upper_11 = cvt::<i32, i64>(local_signed_13);
         }
         None() => {
-          return lib_argerror(vm: vm, id: id, index: 2_u64, argc: argc, value: local_b_2, expected: &library_math_lib_text_0[0_u64..6_u64]);
+          return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 2_u64, argc: argc, value: local_b_2, expected: &library_math_lib_text_0[0_u64..6_u64]);
         }
       }
       if local_lower_10 > local_upper_11 {
-        return lib_argtext(vm: vm, id: id, index: 2_u64, text: &library_math_lib_text_2[0_u64..17_u64]);
+        return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 2_u64, text: &library_math_lib_text_2[0_u64..17_u64]);
       }
     } else if local_upper_11 < 1_i64 {
-      return lib_argtext(vm: vm, id: id, index: 1_u64, text: &library_math_lib_text_3[0_u64..17_u64]);
+      return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, text: &library_math_lib_text_3[0_u64..17_u64]);
     }
     let local_span_14 = local_upper_11 -wrap local_lower_10;
     let span = cvt.wrap::<i64, i32>(local_span_14);
@@ -72,7 +74,7 @@ fn library_math(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: u3
       set local_x_22 = n;
     }
     Not() => {
-      return lib_argerror(vm: vm, id: id, index: 1_u64, argc: argc, value: local_a_1, expected: &library_math_lib_text_0[0_u64..6_u64]);
+      return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, argc: argc, value: local_a_1, expected: &library_math_lib_text_0[0_u64..6_u64]);
     }
   }
   if id == builtin_math_randomseed {
@@ -98,7 +100,7 @@ fn library_math(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: u3
         }
         Not() => {
           let local_which_29 = i +sat 1_u64;
-          return lib_argerror(vm: vm, id: id, index: local_which_29, argc: argc, value: local_value_28, expected: &library_math_lib_text_0[0_u64..6_u64]);
+          return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: local_which_29, argc: argc, value: local_value_28, expected: &library_math_lib_text_0[0_u64..6_u64]);
         }
       }
     }
@@ -113,7 +115,7 @@ fn library_math(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: u3
         }
         Not() => {
           let local_which_31 = i +sat 1_u64;
-          return lib_argerror(vm: vm, id: id, index: local_which_31, argc: argc, value: local_value_30, expected: &library_math_lib_text_0[0_u64..6_u64]);
+          return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: local_which_31, argc: argc, value: local_value_30, expected: &library_math_lib_text_0[0_u64..6_u64]);
         }
       }
     }
@@ -183,7 +185,7 @@ fn library_math(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: u3
           set local_y_65 = n;
         }
         Not() => {
-          return lib_argerror(vm: vm, id: id, index: 2_u64, argc: argc, value: local_b_2, expected: &library_math_lib_text_0[0_u64..6_u64]);
+          return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 2_u64, argc: argc, value: local_b_2, expected: &library_math_lib_text_0[0_u64..6_u64]);
         }
       }
     }
