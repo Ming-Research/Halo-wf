@@ -18,11 +18,9 @@ const library_lib_text_3: Array<u8, 15> = " expected, got ";
 
 const library_lib_text_4: Array<u8, 8> = "no value";
 
-const library_lib_text_5: Array<u8, 14> = "bad argument #";
+const library_calling: Array<u8, 9> = "calling '";
 
-const library_lib_text_6: Array<u8, 5> = " to '";
-
-const library_lib_text_7: Array<u8, 3> = "' (";
+const library_bad_self: Array<u8, 15> = "' on bad self (";
 
 const library_lib_text_8: Array<u8, 6> = "string";
 
@@ -43,7 +41,7 @@ const library_version_value: Array<u8, 7> = "Lua 5.1";
 const library_math_mod_key: Array<u8, 3> = "mod";
 
 fn library_builtin(index: u64) -> r: Option<BuiltinBinding> pure {
-  doc "Maps installation indices to stable builtin IDs; aliases installed separately retain the original builtin's error name.";
+  doc "Maps installation indices to stable builtin IDs; aliases installed separately share their builtin implementation.";
   if index == 0_u64 {
     let local_name_1 = array_filled::<u8, 32>(value: 0_u8);
     set local_name_1[0_u64] = 112_u8;
@@ -749,31 +747,6 @@ fn bytes_string(vm: &Vm, bytes: &Box<Slots<u8>>, value: Value) -> r: unit reads(
   return unit;
 }
 
-fn library_name(id: u32) -> r: BuiltinBinding pure {
-  let base_id = iand(id, 255_u32);
-  let codec_index = cvt::<u32, u64>(base_id);
-  match codec_builtin(index: codec_index) {
-    Some(value: row) => {
-      return row;
-    }
-    None() => {
-    }
-  }
-  for (i in 0_u64..library_builtin_count) {
-    match library_builtin(index: i) {
-      Some(value: row) => {
-        if row.id == id {
-          return row;
-        }
-      }
-      None() => {
-      }
-    }
-  }
-  let local_name_129 = array_filled::<u8, 32>(value: 0_u8);
-  return BuiltinBinding(library: 0_u8, name: local_name_129, length: 0_u64, id: id);
-}
-
 fn lib_failure(vm: &Vm, text: &[u8]) -> r: HostOutcome reads(text), writes(vm) {
   let local_ignored_130 = raise_text(vm: vm, text: text);
   return HostOutcome::Raised();
@@ -828,59 +801,266 @@ fn lib_index(vm: &Vm, value: Value, default_value: i64) -> r: i64 reads(vm) {
   }
 }
 
-fn lib_call_name(vm: &Vm, bytes: &Box<Slots<u8>>, id: u32) -> r: unit reads(vm), writes(bytes) {
-  let n = vm^.frames.inner.len;
-  if n > 0_u64 {
-    let last = n - 1_u64;
-    if vm^.frames.inner[last].flags == protected_flag {
-      bytes_push(bytes: bytes, byte: 63_u8);
-      return unit;
+fn lib_call_has_lua_caller(vm: &Vm) -> r: Bool reads(vm) {
+  doc "Shared immediate-caller rule for native names and luaL_error locations. A same-activation Lua frame calls directly; one nested activation retains that caller for VM metamethod and iterator plans (kinds 0 through 3), but not library callbacks (kind 4). Protected-call markers are native callers.";
+  let count = vm^.frames.inner.len;
+  if count > 0_u64 {
+    let last = count - 1_u64;
+    let frame = vm^.frames.inner[last];
+    if frame.flags == protected_flag {
+      return False();
+    }
+    if frame.activation == vm^.activation {
+      return True();
+    }
+    if frame.activation < vm^.activation {
+      let nested = frame.activation +sat 1_u32;
+      if nested == vm^.activation {
+        let callbacks = vm^.callbacks.inner.len;
+        if callbacks > 0_u64 {
+          let callback_index = callbacks - 1_u64;
+          let callback_frame = vm^.callbacks.inner[callback_index];
+          if callback_frame.activation == frame.activation {
+            return callback_frame.plan.kind < 4_u8;
+          }
+        }
+      }
     }
   }
-  let row = library_name(id: id);
-  let length = row.length;
-  if length <= 32_u64 {
-    bytes_append(bytes: bytes, text: &row.name[0_u64..length]);
+  return False();
+}
+
+fn lib_call_name(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, pc: u64, bytes: &Box<Slots<u8>>) -> r: u8 reads(code), reads(consts), reads(vm), writes(bytes) {
+  doc "Lua 5.1 getfuncname uses the shared immediate Lua caller at CALL, TAILCALL or TFORLOOP; VM metamethod instructions have a location but no function name. Returns getobjname's kind and appends its name or question mark.";
+  let count = vm^.frames.inner.len;
+  if count > 0_u64 {
+    let last = count - 1_u64;
+    let frame = vm^.frames.inner[last];
+    let caller = lib_call_has_lua_caller(vm: vm);
+    if caller {
+      if pc < code^.inner.len {
+        let cell = code^.inner[pc];
+        let reg = unlimited;
+        match cell {
+          Call(a: call_register, ..) => {
+            set reg = cvt::<u8, u64>(call_register);
+          }
+          TailCall(a: tail_register, ..) => {
+            set reg = cvt::<u8, u64>(tail_register);
+          }
+          TForLoop(a: iterator_register, ..) => {
+            set reg = cvt::<u8, u64>(iterator_register);
+          }
+          Move(..) => {
+          }
+          LoadK(..) => {
+          }
+          LoadKx(..) => {
+          }
+          LoadBool(..) => {
+          }
+          LoadNil(..) => {
+          }
+          GetUpval(..) => {
+          }
+          SetUpval(..) => {
+          }
+          GetGlobal(..) => {
+          }
+          SetGlobal(..) => {
+          }
+          GetGlobalX(..) => {
+          }
+          SetGlobalX(..) => {
+          }
+          GetTableR(..) => {
+          }
+          GetTableK(..) => {
+          }
+          SetTableRR(..) => {
+          }
+          SetTableRK(..) => {
+          }
+          SetTableKR(..) => {
+          }
+          SetTableKK(..) => {
+          }
+          NewTable(..) => {
+          }
+          SelfR(..) => {
+          }
+          SelfK(..) => {
+          }
+          AddRR(..) => {
+          }
+          AddRK(..) => {
+          }
+          AddKR(..) => {
+          }
+          AddKK(..) => {
+          }
+          SubRR(..) => {
+          }
+          SubRK(..) => {
+          }
+          SubKR(..) => {
+          }
+          SubKK(..) => {
+          }
+          MulRR(..) => {
+          }
+          MulRK(..) => {
+          }
+          MulKR(..) => {
+          }
+          MulKK(..) => {
+          }
+          DivRR(..) => {
+          }
+          DivRK(..) => {
+          }
+          DivKR(..) => {
+          }
+          DivKK(..) => {
+          }
+          ModRR(..) => {
+          }
+          ModRK(..) => {
+          }
+          ModKR(..) => {
+          }
+          ModKK(..) => {
+          }
+          PowRR(..) => {
+          }
+          PowRK(..) => {
+          }
+          PowKR(..) => {
+          }
+          PowKK(..) => {
+          }
+          Unm(..) => {
+          }
+          Not(..) => {
+          }
+          Len(..) => {
+          }
+          Concat(..) => {
+          }
+          Jmp(..) => {
+          }
+          EqJmpRR(..) => {
+          }
+          EqJmpRK(..) => {
+          }
+          EqJmpKR(..) => {
+          }
+          EqJmpKK(..) => {
+          }
+          LtJmpRR(..) => {
+          }
+          LtJmpRK(..) => {
+          }
+          LtJmpKR(..) => {
+          }
+          LtJmpKK(..) => {
+          }
+          LeJmpRR(..) => {
+          }
+          LeJmpRK(..) => {
+          }
+          LeJmpKR(..) => {
+          }
+          LeJmpKK(..) => {
+          }
+          TestJmp(..) => {
+          }
+          TestSetJmp(..) => {
+          }
+          Return(..) => {
+          }
+          ForLoop(..) => {
+          }
+          ForPrep(..) => {
+          }
+          SetList(..) => {
+          }
+          Close(..) => {
+          }
+          Closure(..) => {
+          }
+          VarArg(..) => {
+          }
+        }
+        let kind = operand_name(code: code, consts: consts, vm: vm, frame: frame, pc: pc, reg: reg, bytes: bytes);
+        if kind != 0_u8 {
+          return kind;
+        }
+      }
+    }
+  }
+  bytes_push(bytes: bytes, byte: 63_u8);
+  return 0_u8;
+}
+
+fn lib_argprefix(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, pc: u64, index: u64, bytes: &Box<Slots<u8>>) -> r: unit reads(code), reads(consts), writes(vm), writes(bytes) {
+  doc "luaL_argerror's shared prefix: methods omit self from the argument count and diagnose a rejected self separately; index zero becomes minus one for a method.";
+  let name = box_slots_new::<u8>(capacity: 0_u64);
+  let kind = lib_call_name(code: code, consts: consts, vm: vm, pc: pc, bytes: &name);
+  let method = kind == 5_u8;
+  let self_argument = index == 1_u64;
+  let bad_self = band(method, self_argument);
+  if bad_self {
+    bytes_append(bytes: bytes, text: &library_calling[0_u64..9_u64]);
+  } else {
+    bytes_append(bytes: bytes, text: &library_lib_text_0[0_u64..14_u64]);
+    let number = cvt.nearest::<u64, f64>(index);
+    if method {
+      let adjusted = index -sat 1_u64;
+      set number = cvt.nearest::<u64, f64>(adjusted);
+      if index == 0_u64 {
+        set number = -1.0_f64;
+      }
+    }
+    let value = Value::Num(n: number);
+    let text = coerce_string(vm: vm, v: value);
+    bytes_string(vm: vm, bytes: bytes, value: text);
+    bytes_append(bytes: bytes, text: &library_lib_text_1[0_u64..5_u64]);
+  }
+  let length = name.inner.len;
+  bytes_append(bytes: bytes, text: &name.inner[0_u64..length]);
+  if bad_self {
+    bytes_append(bytes: bytes, text: &library_bad_self[0_u64..15_u64]);
+  } else {
+    bytes_append(bytes: bytes, text: &library_lib_text_2[0_u64..3_u64]);
   }
   return unit;
 }
 
-fn lib_argerror(vm: &Vm, id: u32, index: u64, argc: u64, value: Value, expected: &[u8]) -> r: HostOutcome reads(expected), writes(vm) {
-  let local_bytes_134 = box_slots_new::<u8>(capacity: 128_u64);
-  bytes_append(bytes: &local_bytes_134, text: &library_lib_text_0[0_u64..14_u64]);
-  let local_num_135 = cvt.nearest::<u64, f64>(index);
-  let local_n_136 = Value::Num(n: local_num_135);
-  let local_text_137 = coerce_string(vm: vm, v: local_n_136);
-  bytes_string(vm: vm, bytes: &local_bytes_134, value: local_text_137);
-  bytes_append(bytes: &local_bytes_134, text: &library_lib_text_1[0_u64..5_u64]);
-  lib_call_name(vm: vm, bytes: &local_bytes_134, id: id);
-  bytes_append(bytes: &local_bytes_134, text: &library_lib_text_2[0_u64..3_u64]);
-  bytes_append(bytes: &local_bytes_134, text: expected);
-  bytes_append(bytes: &local_bytes_134, text: &library_lib_text_3[0_u64..15_u64]);
+fn lib_argerror(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, pc: u64, index: u64, argc: u64, value: Value, expected: &[u8]) -> r: HostOutcome reads(code), reads(consts), reads(expected), writes(vm) {
+  doc "Adds a type mismatch to luaL_argerror's call-derived prefix, checking absence against the unadjusted argument index.";
+  let bytes = box_slots_new::<u8>(capacity: 128_u64);
+  lib_argprefix(code: code, consts: consts, vm: vm, pc: pc, index: index, bytes: &bytes);
+  bytes_append(bytes: &bytes, text: expected);
+  bytes_append(bytes: &bytes, text: &library_lib_text_3[0_u64..15_u64]);
   if index > argc {
-    bytes_append(bytes: &local_bytes_134, text: &library_lib_text_4[0_u64..8_u64]);
+    bytes_append(bytes: &bytes, text: &library_lib_text_4[0_u64..8_u64]);
   } else {
-    let local_k_140 = kind_name(vm: vm, v: value);
-    bytes_string(vm: vm, bytes: &local_bytes_134, value: local_k_140);
+    let typename = kind_name(vm: vm, v: value);
+    bytes_string(vm: vm, bytes: &bytes, value: typename);
   }
-  bytes_push(bytes: &local_bytes_134, byte: 41_u8);
-  set vm^.error = bytes_value(vm: vm, bytes: &local_bytes_134);
+  bytes_push(bytes: &bytes, byte: 41_u8);
+  set vm^.error = bytes_value(vm: vm, bytes: &bytes);
   return HostOutcome::Raised();
 }
 
-fn lib_argtext(vm: &Vm, id: u32, index: u64, text: &[u8]) -> r: HostOutcome reads(text), writes(vm) {
-  let local_bytes_141 = box_slots_new::<u8>(capacity: 128_u64);
-  bytes_append(bytes: &local_bytes_141, text: &library_lib_text_5[0_u64..14_u64]);
-  let local_x_142 = cvt.nearest::<u64, f64>(index);
-  let local_num_143 = Value::Num(n: local_x_142);
-  let local_n_144 = coerce_string(vm: vm, v: local_num_143);
-  bytes_string(vm: vm, bytes: &local_bytes_141, value: local_n_144);
-  bytes_append(bytes: &local_bytes_141, text: &library_lib_text_6[0_u64..5_u64]);
-  lib_call_name(vm: vm, bytes: &local_bytes_141, id: id);
-  bytes_append(bytes: &local_bytes_141, text: &library_lib_text_7[0_u64..3_u64]);
-  bytes_append(bytes: &local_bytes_141, text: text);
-  bytes_push(bytes: &local_bytes_141, byte: 41_u8);
-  set vm^.error = bytes_value(vm: vm, bytes: &local_bytes_141);
+fn lib_argtext(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, pc: u64, index: u64, text: &[u8]) -> r: HostOutcome reads(code), reads(consts), reads(text), writes(vm) {
+  doc "Adds a library's own explanation to luaL_argerror's call-derived prefix.";
+  let bytes = box_slots_new::<u8>(capacity: 128_u64);
+  lib_argprefix(code: code, consts: consts, vm: vm, pc: pc, index: index, bytes: &bytes);
+  bytes_append(bytes: &bytes, text: text);
+  bytes_push(bytes: &bytes, byte: 41_u8);
+  set vm^.error = bytes_value(vm: vm, bytes: &bytes);
   return HostOutcome::Raised();
 }
 
