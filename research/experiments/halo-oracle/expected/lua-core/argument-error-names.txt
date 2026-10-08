@@ -124,6 +124,18 @@
     {
       "type": "bulk",
       "bytes": "user_script:42: invalid format (width or precision too long)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "x"
+    },
+    {
+      "type": "bulk",
+      "bytes": "message"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:45: bad argument #1 to 'f' (number expected, got boolean)"
     }
   ]
 }
