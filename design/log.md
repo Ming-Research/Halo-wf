@@ -8,7 +8,7 @@ owner-wide instructions' *Log format* owns the form.
 
 Nodes: halo/heap/tables/growth
 
-Owner-approved: 2026-10-08 on the Halo-wf status board, item "表扩容": "同意：批准设计树 `heap/tables/growth.md` 新增的 Rejected 一条（用 Whitefoot 的 grow 原地扩容被否决及理由）".
+Owner-approved: 2026-10-08 on the Halo-wf status board, item "table growth": approved, in the owner's words, "the Rejected item added to the design tree's heap/tables/growth.md (growing in place with Whitefoot's grow rejected, with its reasons)".
 
 Summary: Table growth takes about 30% of the integer-table kernel's samples on the 14900K, but growing a nonshrinking array in place with Whitefoot's `grow`, after every failure point so the table still changes only on success, left the kernel's median unchanged (1.000 times main in six interleaved pairs). Whitefoot lowers `grow` as allocation, copy and free, so the change kept the work it targeted; the alternative is reconsidered when `grow` reallocates in place (`research/experiments/halo-bench/RESULTS.md`, "Growing the array in place: result").
 
