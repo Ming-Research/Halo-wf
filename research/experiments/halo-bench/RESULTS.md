@@ -3166,3 +3166,25 @@ That this retained work is why the time did not move is the leading
 hypothesis, not a measured attribution, and whether in-place reallocation
 would save time is untested; both are a Whitefoot question (`docs/todo.md`,
 *Whitefoot requirements*).
+
+## Reading by-value parameters in place, measured
+
+### Criterion, recorded before measuring
+
+[The entry copy of a by-value parameter](#the-entry-copy-of-a-by-value-parameter-measured)
+could not be timed because Whitefoot's in-place rule then applied only to
+functions without a branch. The loopmatch session widened the rule to
+functions with branches (Whitefoot branch `claude/in-place-branches`, release
+`wf-exp-8eaba144a41f` on main `c18e6708b`); its gate asserts that every
+function of the six-function witness lost its entry copy. Its control is the
+release of the same main commit, `wf-c18e6708b6cc`.
+
+Comparison: Halo main built with full LTO by each release, six interleaved
+pairs over the seven kernels on the 14900K with a twin of the control build,
+and both builds' disassembly of `push_frame`. The comparison tests the
+hypothesis only if the experiment build's `push_frame` loses its entry copy.
+A fib median below the control build's by more than both ranges and the
+twin's difference is a measured cost of the entry copy; anything else is no
+evidence of one. No kernel may be slower beyond its larger range and the
+twin's difference for the result to count in the rule's favour. The result
+goes to the loopmatch session either way; no Halo source changes.
