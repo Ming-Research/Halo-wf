@@ -3570,3 +3570,30 @@ compiler, on the 14900K; medians in seconds, six interleaved pairs:
 twin's difference. The two kernels that collect most lean the same way,
 binary-trees 1.7% and integer-table 1.3% slower, each within its bounds; a
 cost of that size from the counters is possible and unresolved by six pairs.
+
+## Why moving the slow call out made sort faster
+
+### Question, recorded before it runs
+
+The [seventh run](#seventh-run-the-splits-share-and-the-heads-check-time)
+attributed a 25% sort speedup to one source change: `sort_compare`'s call to
+the slow executor moved into its own function, `sort_compare_slow`. The two
+sources (`f70f0a8af` before, `22aadda57` after) differ in
+`lib/halo/vm/library-sort.wf` only, and the slow path never ran in that
+kernel, which compares numbers. Why did the change speed up the fast path?
+Other library functions keep a slow-executor or callback call beside a fast
+path (string comparison and pattern matching, `table.concat`, the codecs),
+and whether to split them depends on the cause.
+
+Comparison: both sources built alike with full LTO by their pin
+(`wf-e1708490c384`) on a hosted x86-64 runner, then the disassembly of every
+sort function in each binary, with instruction counts, stack-frame sizes,
+callee-saved register saves and what is inlined into what. The run times
+nothing. Hypotheses it can separate: (a) inlining `slow` into `sort_compare`
+made the fast path's frame larger, with more spills and saves on every call;
+(b) the larger function stopped `sort_compare` itself from being inlined into
+its caller, adding a call per comparison; (c) block layout or register
+allocation of the fast path changed with no size effect. A result naming
+none of these is reported as found, not fitted to one. Only a cause found
+in the machine code decides whether, and where, splitting is tried in other
+library functions; each such split is then timed separately.

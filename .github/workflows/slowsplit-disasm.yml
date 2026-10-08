@@ -1,0 +1,61 @@
+# Temporary, for the Halo performance line: disassembles the sort library
+# before and after the sort_compare split (research/experiments/halo-bench/
+# RESULTS.md, "Why moving the slow call out made sort faster"). A push of
+# this file runs it on a hosted runner; it times nothing. Removed before the
+# pull request is marked ready.
+name: slowsplit-disasm
+
+on:
+  push:
+    branches: [claude/halo-slowsplit]
+    paths: [.github/workflows/slowsplit-disasm.yml]
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  disasm:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Install the host toolchain
+        run: |
+          make toolchain
+          ld.lld --version
+
+      - name: Build and disassemble both sources
+        run: |
+          set -euo pipefail
+          out="$PWD/build/slowsplit-out"
+          rm -rf "$out"; mkdir -p "$out"
+          for pair in before:f70f0a8af after:22aadda57; do
+            side=${pair%%:*}; rev=${pair#*:}
+            tree="$PWD/build/tree-$side"
+            git worktree add --detach "$tree" "$rev"
+            git -C "$tree" submodule update --init --recursive
+            release=$(sed -n 's/^release = //p' "$tree/whitefoot.pin")
+            make -C "$tree" compiler
+            wfc="$tree/build/whitefoot/$release/whitefootc"
+            "$wfc" --graph "$tree/research/experiments/halo-bench/modules.wfg" --entry bench --full-lto -o "$out/halo-$side"
+            echo "$side $rev release $release $(sha256sum "$out/halo-$side" | cut -d' ' -f1)" | tee -a "$out/manifest.txt"
+            nm -C --size-sort "$out/halo-$side" | grep -iE 'sort|slow\$|\.slow' > "$out/sizes-$side.txt" || true
+            grep -E ' [tT] .*sort' "$out/sizes-$side.txt" | awk '{print $3}' | while read -r sym; do
+              objdump -d --no-show-raw-insn -M intel --disassemble="$sym" "$out/halo-$side" > "$out/disasm-$side-$sym.txt" 2> /dev/null || true
+              echo "$side $sym $(grep -c -E '^ +[0-9a-f]+:' "$out/disasm-$side-$sym.txt") instructions"
+            done | tee -a "$out/counts.txt"
+          done
+          git diff --stat f70f0a8af 22aadda57 -- lib | tee "$out/source-diff-stat.txt"
+          /usr/bin/clang --version | head -n 1 | tee -a "$out/manifest.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: halo-slowsplit-disasm
+          path: build/slowsplit-out/
+          retention-days: 30
