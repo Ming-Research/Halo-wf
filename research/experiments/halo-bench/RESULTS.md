@@ -3188,3 +3188,31 @@ twin's difference is a measured cost of the entry copy; anything else is no
 evidence of one. No kernel may be slower beyond its larger range and the
 twin's difference for the result to count in the rule's favour. The result
 goes to the loopmatch session either way; no Halo source changes.
+
+### Result
+
+[Run 37771086458](https://github.com/Ming-Research/Halo-wf/actions/runs/37771086458),
+artifact `halo-bench-inplace`: Halo main `0def88248`, built by `wf-c18e6708b6cc`
+(control) and `wf-exp-8eaba144a41f` (experiment) with clang 22.1.8, on the
+14900K. The experiment's `push_frame` no longer copies the incoming 80-byte
+`Frame` at entry: the control's begins with five 128-bit loads from the
+incoming pointer and five stores to its own stack slot, the experiment's
+reads through the pointer, 91 against 85 instructions. Medians in seconds,
+six interleaved pairs:
+
+| Kernel | Control | Experiment | Ratio | Control range | Experiment range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1055 | 0.1014 | 0.962 | 2.57% | 0.77% | 1.009 |
+| loop | 0.4333 | 0.4321 | 0.997 | 0.74% | 0.33% | 0.996 |
+| integer-table | 0.4952 | 0.4970 | 1.004 | 1.95% | 3.24% | 0.998 |
+| string-key | 0.0257 | 0.0256 | 0.997 | 1.29% | 2.15% | 0.996 |
+| concat | 0.0735 | 0.0728 | 0.990 | 0.52% | 1.04% | 0.999 |
+| sort | 0.1750 | 0.1762 | 1.007 | 1.68% | 4.04% | 1.007 |
+| binary-trees | 1.8924 | 1.8717 | 0.989 | 2.56% | 4.32% | 1.002 |
+
+**The criterion is met.** Fib's median is 3.8% below the control's, beyond
+both ranges (2.57% and 0.77%) and the twin's 0.9% difference, and no kernel
+is slower beyond its bounds. This measures the entry copy's cost in Halo's
+call path at about 4% of fib on the 14900K; it is the evidence the loopmatch
+session takes to the owner for widening Whitefoot's in-place parameter rule.
+Halo's source is unchanged.
