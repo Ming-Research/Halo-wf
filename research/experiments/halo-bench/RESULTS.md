@@ -2702,3 +2702,9 @@ range and the twin's; `--check-module pkg::vm` takes at most 1.25 times as
 long; and `make check` passes, the collector's root controls and the oracle
 under collector stress included. Otherwise the change is reverted with its
 measurements kept.
+
+The 14900K went out of service before this ran. By the owner's direction
+(Q93), the comparison runs instead on the M5 Air (Apple M5, 10 cores, 24 GB,
+macOS, arm64), under Whitefoot's `run-check.pl` lock, with the same pairs,
+twin and thresholds, recorded here before it runs; its result is an M5
+result.
