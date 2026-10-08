@@ -123,7 +123,6 @@ jobs:
             return exit_status(code: 1_u8);
           }
           WF
-          sed -i 's/^          //' "$out/witness.wf"
           for side in pin exp; do
             release=$pinned; [ "$side" = exp ] && release=$EXPERIMENT
             wfc="$PWD/build/whitefoot/$release/whitefootc"
