@@ -74,8 +74,68 @@ changes between suspended budget checkpoints, the chunk name runtime errors
 are located in, and host calls left pending: completed, failed into a `pcall`
 inside a library callback, and refused by `resume`. A nonzero exit is the
 probe's numbered failed observation; `make check` runs it before the oracle
-comparison. [GAPS.md](GAPS.md) names limits and concrete reopening
+comparison. Its cjson lifecycle observations (exits 120–145) keep an extracted
+encoder in a global table while discarded instances lose their buffers, slots
+are reused in index order, and 32 runs of eight new/encode operations stay
+bounded on one VM in both ordinary and stress collection. They also check
+module settings at permanent index zero, default settings after a host rewrites
+a free slot, and allocation after the host truncates trailing slots without an
+intervening collection. Before reclamation, exit 126 detects a discarded
+instance's retained buffer. These are resource-lifetime assertions of the
+embedding contract; the unchanged cjson oracle scripts still compare replies
+with Redis. [GAPS.md](GAPS.md) names limits and concrete reopening
 conditions.
+
+Collector statistics and pause observations (exits 146–176) control and observe
+collections through the embedding API. Statistics checks run in ordinary and
+stress modes, check the zero snapshot before collection, reclaim three empty
+tables and a captured upvalue, and pin a returned closure with two distinct
+captures to check live upvalues. All statistics chunks compile before the
+baseline collection, so compiler and library interning are already included in
+its live totals. Each following collection checks per-kind conservation using
+the allocation formulas in
+[`heap/slabs.wf`](../../../lib/halo/heap/slabs.wf), plus exact expected live
+deltas and freed totals. The workload entry replaces one 24-byte entry closure
+with another; its snapshot precedes the Lua allocations. The next idle sweep
+reclaims three empty tables (144 bytes), one 10-byte concatenated string
+(34 bytes), the workload entry and its one-capture closure (52 bytes), and one
+upvalue (32 bytes). The pinned two-capture closure adds exactly one live closure
+(32 bytes) and two live upvalues (64 bytes) to the baseline.
+Observation 150 checks live totals relative to that baseline without reading
+heap storage. After the allocation-free sweeps, the public `intern` and `pin`
+calls create and retain the fresh 14-byte `gc-live-string` (38 logical bytes).
+A forced cached idle sweep must gain exactly one live string and 38 bytes with
+zero string reclamation; after public `unpin`, the next sweep must free exactly
+one string and 38 bytes and return live strings to their previous totals.
+A constant live-string count fails observation 150. Observation 151 checks exact
+reclamation and conservation; counting a freed closure twice fails it.
+Observation 155 checks that visited slots cover live plus freed objects, a
+lower bound that does not establish visits to already free slots. It then uses
+budget/resume on a cached allocation-free loop to require equal visits, equal
+live totals and zero reclamation in two consecutive forced collections.
+Compared with the reclamation sweep, string visits must not decrease and
+upvalue and table visits must remain equal: no strings, upvalues or tables are
+allocated between these snapshots, and the slots freed by that sweep must still
+be visited. Counting only occupied string or upvalue slots fails observation
+155. Table visits must also exceed live tables; the public API does not
+independently expose absolute slab lengths. The checks also account for
+gray-stack pops and preserve every snapshot field across reset.
+Pause checks cover clamping below
+100, the 1 MiB floor, fractional percentages, saturation without premature
+product overflow, reset persistence, stress overriding the
+threshold, and exact restoration of the 200 percent threshold. Fresh engines
+with an equally sized pinned table run the same allocation loop with stress
+disabled to distinguish collection frequency at 200 and 400 percent; stress
+would otherwise override that comparison. Byte expectations use the heap's
+specified logical accounting, not process memory or slab reserve.
+Ordinary-mode observations 171–176 cache an idle chunk and pin a 2 MiB table,
+collect with the default pause, then set 400 percent without forcing collection.
+A discarded 4 MiB table must still trigger one collection at the old threshold.
+The completed snapshot must then report the 400 percent threshold: one more
+4 MiB allocation stays below it, while two cross it. Each cached idle start
+adds one 24-byte entry closure. This catches a setter that immediately rewrites
+the current threshold, and a collector that reports the new threshold but keeps
+using the old one or never schedules another collection.
 
 The Redis error/SHA-1 comparison uses Redis 7.0.15's local `script_lua.c`
 and `eval.c` as the formatting reference: command errors are tables, Lua

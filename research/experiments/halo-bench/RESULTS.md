@@ -2923,3 +2923,897 @@ fn main() -> status: ExitStatus pure {
   return exit_status(code: 1_u8);
 }
 ```
+
+## String-key lookup
+
+### Criterion, recorded before the change
+
+A table read with a string key goes through `table_get`
+(`lib/halo/heap/tables.wf`): `integer_key` classification, `node_find`,
+`main_position` with the generic `key_hash` and a modulus, and the generic
+`equal`, which matches every value kind (`node_find` 19% of the string-key
+kernel's samples, 14% of binary-trees'). PUC's `luaH_getstr` takes the
+string's cached hash, masks it to the node vector, and compares string
+pointers along the chain. Change: a string-key read takes a lookup
+specialised for strings, the cached hash masked by the power-of-two node
+count and handle comparison along the chain, with the same result as
+`table_get` for every table (integer-keyed parts are never reached by a
+string key); every other key keeps `table_get`.
+
+Kept only if, on the 14900K, in six interleaved full-LTO pairs of main
+before the change against the branch after it, with a twin of the before
+binary: the string-key kernel's median falls at least 5%, by more than
+both ranges and the twin's difference; no kernel is slower beyond its
+larger range and the twin's; `--check-module pkg::vm` takes at most 1.25
+times as long; and `make check` passes. Otherwise the change is reverted
+with its measurements kept.
+
+### Result
+
+[Run 37595142933](https://github.com/Ming-Research/Halo-wf/actions/runs/37595142933):
+main `99936d6e6` against the branch at `b37e0dbba`, whose engine differs from
+main only in `lib/halo/heap/tables.wf`, its module interface and
+`lib/halo/vm/handlers.wf` (the run's own `git diff --stat`); six interleaved
+full-LTO pairs with `wf-8b647edbbc95`, medians in seconds:
+
+| Kernel | Main | Branch | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1043 | 0.1042 | 0.999 | 1.74% | 0.38% | 0.996 |
+| loop | 0.4338 | 0.4347 | 1.002 | 1.37% | 1.23% | 1.002 |
+| integer-table | 0.5344 | 0.5134 | 0.961 | 2.93% | 1.77% | 0.996 |
+| string-key | 0.0337 | 0.0259 | 0.769 | 2.69% | 0.49% | 1.013 |
+| concat | 0.0731 | 0.0742 | 1.015 | 1.93% | 2.98% | 1.005 |
+| sort | 0.1852 | 0.1766 | 0.954 | 0.92% | 0.77% | 0.996 |
+| binary-trees | 1.9550 | 1.9413 | 0.993 | 1.85% | 1.33% | 1.000 |
+
+`--check-module pkg::vm`: main 7.564 and 7.599 s, branch 7.544 and 7.639 s
+(1.001 times). `make check` passed at `c87aec0be`, the same engine
+([run 37594106496](https://github.com/Ming-Research/Halo-wf/actions/runs/37594106496)).
+
+**The criterion passes and the change is kept.** String-key takes 0.769
+times as long, beyond both ranges and the twin; integer-table (0.961) and
+sort (0.954) also move beyond their bounds, and no kernel is slower beyond
+its bounds. Against PUC's median in the paired P1 run above (0.0198 s),
+string-key's 0.0259 s is about 1.31 times PUC's (not measured in one
+session).
+
+### Remeasured at the final engine
+
+The power-of-two guard (review finding F1) adds a length test to every
+string lookup after the measurement above. [Run 37601538830](https://github.com/Ming-Research/Halo-wf/actions/runs/37601538830),
+from a measurement-only branch, repeats the comparison at the final engine
+(`448c217a2`, the run's own `git diff --stat` naming only
+`lib/halo/heap/tables.wf`, its module interface and
+`lib/halo/vm/handlers.wf`): main `99936d6e6` against it, six interleaved
+full-LTO pairs with a twin.
+
+| Kernel | Main | Branch | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1117 | 0.1103 | 0.987 | 4.57% | 1.78% | 1.004 |
+| loop | 0.4539 | 0.4557 | 1.004 | 1.45% | 2.90% | 1.007 |
+| integer-table | 0.5539 | 0.5333 | 0.963 | 2.72% | 4.24% | 0.999 |
+| string-key | 0.0355 | 0.0273 | 0.770 | 26.17% | 4.31% | 1.008 |
+| concat | 0.0759 | 0.0760 | 1.001 | 9.25% | 5.15% | 0.999 |
+| sort | 0.1848 | 0.1782 | 0.964 | 1.95% | 1.84% | 1.001 |
+| binary-trees | 2.0444 | 2.0338 | 0.995 | 5.26% | 5.81% | 1.000 |
+
+`--check-module pkg::vm`: main 8.098 and 8.170 s, branch 8.236 and 8.096 s.
+
+String-key again takes 0.770 times as long, and every main launch
+(0.0352–0.0445 s) is slower than every branch launch (0.0268–0.0279 s), but
+main's range is 26.17%, all of it one launch of 0.0445 s against 0.0352–0.0359
+s for the other five, so the fall of 23.0% is not beyond both ranges as the
+criterion requires. This comparison's main medians are 3.6–7.1% above the
+first run's for six kernels (sort's is unchanged), while the twin comparison just before it in
+the same job is within 2% of the first run; the runner had just come back
+online.
+The spread is too large to decide, so the comparison is repeated once, six
+pairs on the same branch, and that repeat decides; both runs stay recorded.
+
+The repeat ([run 37601538830, attempt 2](https://github.com/Ming-Research/Halo-wf/actions/runs/37601538830/attempts/2)),
+the same three binaries by hash:
+
+| Kernel | Main | Branch | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1043 | 0.1050 | 1.006 | 0.54% | 1.07% | 1.000 |
+| loop | 0.4332 | 0.4330 | 0.999 | 0.85% | 1.02% | 0.995 |
+| integer-table | 0.5277 | 0.5098 | 0.966 | 2.36% | 2.88% | 0.995 |
+| string-key | 0.0336 | 0.0259 | 0.771 | 1.50% | 1.21% | 0.997 |
+| concat | 0.0729 | 0.0740 | 1.016 | 2.77% | 1.02% | 1.006 |
+| sort | 0.1845 | 0.1754 | 0.951 | 0.78% | 2.96% | 1.008 |
+| binary-trees | 1.9616 | 1.9592 | 0.999 | 1.98% | 1.22% | 1.000 |
+
+`--check-module pkg::vm`: main 7.610 and 7.619 s, branch 7.603 and 7.586 s
+(0.997 times).
+
+**The criterion passes at the final engine.** String-key takes 0.771 times
+as long, beyond both ranges and the twin; no kernel is slower beyond its
+larger range and the twin's (concat's 1.016 is inside its 2.77% range).
+
+## Table construction and growth
+
+### Attribution, recorded before it runs
+
+Binary-trees is about 2.2 times PUC and integer-table about 2.35 times
+([P1 on the 14900K](#p1-on-the-14900k-with-wf-e1708490c384), with the
+changes since). Their profiles there put `heap.node_find` (13.8%), the
+collector's `collect_if_due` (5.5%) and libc's allocator (13.4%) in
+binary-trees, and `heap.rehash` (9.3%) beside the table arms in
+integer-table. Where does the time of table construction, insertion and
+growth go, instruction by instruction, against PUC's `luaH_new`,
+`luaH_set`/`newkey` and `luaH_resize`? This run tests no proposal: it
+chooses the next change and its criterion. As for the call path, each cost
+is classed as work Halo's source asks for that PUC does not do, a Halo-side
+candidate, or code the compiler emits beyond what the source asks for, a
+Whitefoot question for the owner. Costs inside the dispatch arms are noted
+but not acted on, since `loop { match }` dispatch is rewriting them.
+
+Run: on a GitHub-hosted ubuntu-24.04 x86-64 runner, which reads shares of
+samples, not times; Halo at main built with full LTO as `run.py` builds it,
+and Redis 7.0.15's bundled PUC Lua built from source, each running
+binary-trees at depth 14 (`run.py`'s scale) and integer-table; `perf record`
+of each, three launches, reported by symbol; `perf annotate` of Halo's
+sampled symbols; and the disassembly of the table functions with their
+instruction counts.
+
+### Attribution result
+
+[Run 37639344751](https://github.com/Ming-Research/Halo-wf/actions/runs/37639344751),
+artifact `halo-tables-profile`: an AMD EPYC 7763 guest sampling `task-clock`,
+Halo at main `99936d6e6` (before the string-key lookup), `wf-8b647edbbc95`
+with clang 22.1.8; both engines print the same sums. Shares of samples,
+three launches:
+
+- Binary-trees, Halo: `node_find` 12.2–12.5%, the `Call` arm 5.3–5.6%,
+  `enter_lua` 5.4–5.6%, `push_frame` 3.3–3.6%, `calloc` 3.6–3.7%,
+  `gc_mark` 2.8–2.9%, page faults 2.4–2.5%, `collect_if_due` 2.3–2.4%,
+  `malloc` 2.2–2.3%, the rest in dispatch arms. PUC: `luaV_execute`
+  18.9–19.3%, `luaH_get` 12.0–13.1%, `sweeplist` 8.0–8.7%, `propagatemark`
+  5.7–6.1%, `free` 5.2–6.2%, `luaD_precall` 3.5–4.0%, `malloc` 2.7–3.8%.
+  Launch 1's annotation holds about 13,100 Halo samples against about 7,300
+  of PUC's, `node_find` 2,352 of them against 1,131 in `luaH_get`.
+- Integer-table, Halo: arms 13 and 11 (the table store and load) 27.7–28.0%
+  and 25.2–26.1%, two more arms 17.8–19.1% together, `rehash` 7.0–10.1%,
+  `table_set` 6.0–6.7%, `gc_mark` 5.6–5.9%. PUC: `luaV_execute` 38.7–40.0%,
+  `luaH_get` 33.7–34.2%, `luaV_settable` 7.2–8.2%, `newkey` 3.3–3.5%.
+
+In binary-trees, every table constructor stores `item`, `left` and `right`
+through `table_set`, which looks the key up with `node_find` before
+inserting. Launch 1's annotation of `node_find`:
+
+- 19.7% of its samples follow the `div` that computes `hash % n` for a
+  string key in `main_position`. PUC's `hashstr` masks the hash instead
+  (`lmod`, with node counts always powers of two), and `main_position`'s own
+  doc names that rule, but its code divides by the node count.
+- 36.9% fall on loading each visited node's key and the indirect jump on its
+  kind in `equal`, which compares every kind. PUC's `luaH_get` sends a string
+  key to `luaH_getstr`, a loop that compares string pointers only. Since the
+  string-key lookup, Halo's reads do the same, but its writes do not.
+
+Both are work Halo's source asks for; no code the compiler adds beyond the
+source shows in these functions. The dispatch arms that carry most of
+integer-table's time are left to `loop { match }` dispatch; integer-table's
+`rehash` and `gc_mark` remain for a later candidate.
+
+### String keys in table writes: criterion, recorded before the change
+
+Change: string and boolean keys take their main position by masking the
+hash with the node count less one, as PUC's `hashpow2` does, which equals
+the present modulus for every power-of-two node count, the only counts Lua
+creates, and keeps insertion and lookup consistent for any count; a table
+write finds an existing string key by its cached hash and handle comparison,
+as reads have since the string-key lookup; and `table_get_str` drops its
+power-of-two guard, since the specialised and generic lookups then mask
+alike for every node count.
+
+Kept only if, on the 14900K, in six interleaved full-LTO pairs of the
+branch before the change (the string-key lookup's final engine,
+`448c217a2`) against the branch after it, with a twin of the before binary:
+the binary-trees kernel's median falls at least 3%, by more than both ranges
+and the twin's difference; no kernel is slower beyond its larger range and
+the twin's; `--check-module pkg::vm` takes at most 1.25 times as long; and
+`make check` passes. Otherwise the change is reverted with its measurements
+kept.
+
+The 14900K went out of service before this ran. By the owner's direction
+(Q93), the comparison runs instead on the M5 Air (Apple M5, 10 cores, 24 GB,
+macOS, arm64), under Whitefoot's `run-check.pl` lock, with the same pairs,
+twin and thresholds, recorded here before it runs; its result is an M5
+result.
+
+### String keys in table writes: result on the M5 Air
+
+On the M5 Air (Apple M5, macOS 27.0.1, arm64), under `run-check.pl`'s lock:
+the string-key lookup's final engine (`448c217a2`) against this branch's
+engine (`a5962bf8b`), both built with full LTO by `wf-8b647edbbc95`'s
+macOS compiler (base and twin identical by hash, `a89a07cd432d`, branch
+`715d76e285c3`), six interleaved pairs, binary-trees at depth 14, with
+Redis 7.0.15's Lua built from source as the independent reference. One
+sample pair per kernel took 7.2 s. Medians in seconds:
+
+| Kernel | Before | After | Ratio | Before range | After range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1053 | 0.1097 | 1.041 | 3.66% | 2.51% | 1.012 |
+| loop | 0.3564 | 0.3576 | 1.003 | 0.80% | 4.87% | 0.997 |
+| integer-table | 0.2568 | 0.2531 | 0.986 | 3.11% | 2.62% | 1.002 |
+| string-key | 0.0188 | 0.0188 | 1.002 | 2.18% | 2.72% | 0.994 |
+| concat | 0.0699 | 0.0747 | 1.068 | 10.18% | 7.41% | 1.014 |
+| sort | 0.1574 | 0.1574 | 1.000 | 5.37% | 2.20% | 0.996 |
+| binary-trees | 1.3417 | 1.2864 | 0.959 | 3.00% | 0.64% | 0.999 |
+
+`--check-module pkg::vm`: before 5.95 and 5.91 s, after 5.93 and 5.83 s.
+
+**The criterion is not met, and the change is reverted with its
+measurements kept.** Binary-trees falls 4.1%, beyond both ranges and the
+twin, but fib is 4.1% slower, beyond its larger range (3.66%) and the
+twin's difference (1.2%); fib's hot path reads no table, so a layout change
+in the rebuilt binary is the likely cause, which the criterion does not
+excuse. Both results lie within about a point of their bounds, so the
+comparison is repeated on the 14900K when it returns before the change is
+given up (Q93).
+
+### String keys in table writes: retried on the 14900K
+
+The M5 result lay within about a point of the criterion's bounds, so, as the
+owner chose (Q93), the comparison was repeated on the 14900K once it was
+back, against the criterion as first recorded and recorded before it ran (on
+the measurement-only branch `claude/halo-strwrite-retry`, `f24cf32b5`):
+main `2945f3b99`, which holds the string-key lookup, against the same change
+applied on it (the write change `a5962bf8b`, cherry-picked), six interleaved
+full-LTO pairs with a twin.
+[Run 37726526163](https://github.com/Ming-Research/Halo-wf/actions/runs/37726526163),
+medians in seconds:
+
+| Kernel | Main | Branch | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1055 | 0.1062 | 1.007 | 0.55% | 1.80% | 0.996 |
+| loop | 0.4326 | 0.4318 | 0.998 | 0.69% | 0.88% | 1.001 |
+| integer-table | 0.4995 | 0.4975 | 0.996 | 3.27% | 9.08% | 1.003 |
+| string-key | 0.0259 | 0.0258 | 0.997 | 39.82% | 0.95% | 1.002 |
+| concat | 0.0734 | 0.0734 | 1.001 | 0.51% | 0.85% | 1.003 |
+| sort | 0.1760 | 0.1729 | 0.982 | 1.60% | 2.10% | 1.002 |
+| binary-trees | 1.9083 | 1.8711 | 0.981 | 1.99% | 1.62% | 1.009 |
+
+`--check-module pkg::vm`: main 7.798 and 7.577 s, branch 7.539 and 7.614 s.
+
+**The criterion is not met; the change stays reverted.** Binary-trees falls
+1.9%, short of the 3% required; no kernel is slower beyond its bounds, so the
+M5 run's slower fib does not recur here.
+
+## Marking only collectable values
+
+### Criterion, recorded before the change
+
+The collector marks a table's contents by calling `gc_mark` for every array
+slot and for every node's key and value (`mark_table_contents`,
+`lib/halo/heap/gc.wf`), and `gc_mark` dispatches on the value's kind. In
+integer-table, whose ten-million-slot array holds only numbers, `gc_mark`
+takes 5.6–5.9% of Halo's samples and half of its own samples fall on that
+dispatch ([run 37639344751](https://github.com/Ming-Research/Halo-wf/actions/runs/37639344751),
+a hosted EPYC guest reading shares of samples, artifact `halo-tables-profile`).
+PUC's `traversetable` marks each value through `markvalue`, which tests in
+line that the value is collectable before calling `reallymarkobject`.
+Change: `mark_table_contents` calls `gc_mark` only for a string, table or
+closure value; numbers, nil, booleans and builtins, which name no object,
+are skipped in line.
+
+Kept only if, on the 14900K, in six interleaved full-LTO pairs of main before
+the change against the branch after it, with a twin of the before binary:
+the integer-table kernel's median falls at least 3%, by more than both
+ranges and the twin's difference; no kernel is slower beyond its larger
+range and the twin's; `--check-module pkg::vm` takes at most 1.25 times as
+long; and `make check` passes, the collector's root controls and the oracle
+under collector stress included. Otherwise the change is reverted with its
+measurements kept.
+
+The 14900K went out of service before this ran. By the owner's direction
+(Q93), the comparison runs instead on the M5 Air (Apple M5, 10 cores, 24 GB,
+macOS, arm64), under Whitefoot's `run-check.pl` lock, with the same pairs,
+twin and thresholds, recorded here before it runs; its result is an M5
+result.
+
+### Result on the M5 Air
+
+On the M5 Air (macOS 27.0.1, arm64), under `run-check.pl`'s lock: main
+`89a9ce23a` against this branch's engine (`82d43d67e`), both built with
+full LTO by `wf-8b647edbbc95`'s macOS compiler (base and twin identical by
+hash, `492f8b78456f`, branch `cea6b1399c62`), six interleaved pairs,
+binary-trees at depth 14. Medians in seconds:
+
+| Kernel | Main | Branch | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1137 | 0.1110 | 0.976 | 4.23% | 527.47% | 0.989 |
+| loop | 0.3734 | 0.3702 | 0.991 | 2.49% | 4.87% | 1.003 |
+| integer-table | 0.2540 | 0.2507 | 0.987 | 3.80% | 18.98% | 1.022 |
+| string-key | 0.0207 | 0.0199 | 0.961 | 6.01% | 8.70% | 1.010 |
+| concat | 0.0848 | 0.0739 | 0.872 | 30.72% | 10.96% | 1.018 |
+| sort | 0.1601 | 0.1580 | 0.987 | 2.33% | 7.84% | 0.994 |
+| binary-trees | 1.3712 | 1.3759 | 1.003 | 7.08% | 6.15% | 1.006 |
+
+`--check-module pkg::vm`: main 6.03 and 6.14 s, branch 6.03 and 6.16 s.
+
+Single launches far from the rest (fib 0.6941 s against 0.108–0.114 s,
+concat 0.0993 s, integer-table 0.2907 s) put the ranges well beyond any
+effect the criterion asks for; a code review ran on the machine at the same
+time. The spread is too large to decide, so the comparison is repeated once
+with nothing else running, and that repeat decides; both runs stay recorded.
+
+The repeat, the same three binaries, run after the review had finished
+(another session's process still ran; load average 2.8 rising to 3.9):
+
+| Kernel | Main | Branch | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1178 | 0.1164 | 0.988 | 10.48% | 9.21% | 1.002 |
+| loop | 0.3900 | 0.3908 | 1.002 | 35.88% | 70.90% | 1.012 |
+| integer-table | 0.2681 | 0.2692 | 1.004 | 9.59% | 15.78% | 1.014 |
+| string-key | 0.0223 | 0.0216 | 0.969 | 4.04% | 3.20% | 0.998 |
+| concat | 0.0748 | 0.0733 | 0.980 | 8.48% | 7.60% | 0.990 |
+| sort | 0.1608 | 0.1601 | 0.996 | 4.87% | 11.31% | 0.995 |
+| binary-trees | 1.5027 | 1.4685 | 0.977 | 56.66% | 27.50% | 1.013 |
+
+**The criterion is not met, and the change is reverted with its
+measurements kept.** Integer-table's median is 1.004 times main's in the
+repeat and 0.987 in the first run, neither the 3% fall the criterion asks
+for. The M5's spread in both runs (single launches up to 6.3 times their
+kernel's median in the first run and 1.7 times in the repeat, which a
+fanless machine under sustained load and other processes on it can
+produce) is larger than the effect sought, so these
+runs cannot show a gain of a few percent either; the candidate can be tried
+again on the 14900K.
+
+### Retried on the 14900K
+
+The M5 runs' spread exceeded the effect sought, so, as the owner chose
+(Q93), the comparison is repeated on the 14900K now that it is back, against
+the criterion as first recorded: main `2945f3b99` against this branch with
+the change applied again on it, six interleaved full-LTO pairs with a twin.
+Kept only if integer-table falls at least 3%, by more than both ranges and
+the twin's difference, no kernel is slower beyond its larger range and the
+twin's, `--check-module pkg::vm` takes at most 1.25 times as long, and
+`make check` passes, the collector's root controls and the oracle under
+collector stress included; otherwise the change is reverted again.
+
+Result: [run 37726529192](https://github.com/Ming-Research/Halo-wf/actions/runs/37726529192),
+main `2945f3b99` against the branch at `f2d9ac43d`, whose engine differs only
+in `lib/halo/heap/gc.wf` (the run's own `git diff --stat`); medians in
+seconds:
+
+| Kernel | Main | Branch | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1060 | 0.1056 | 0.996 | 2.33% | 1.77% | 0.996 |
+| loop | 0.4327 | 0.4334 | 1.002 | 1.04% | 1.22% | 0.999 |
+| integer-table | 0.4924 | 0.4847 | 0.984 | 3.01% | 1.41% | 1.006 |
+| string-key | 0.0259 | 0.0257 | 0.994 | 1.87% | 1.81% | 1.000 |
+| concat | 0.0737 | 0.0737 | 1.000 | 34.65% | 0.87% | 0.999 |
+| sort | 0.1740 | 0.1732 | 0.995 | 2.16% | 0.37% | 1.003 |
+| binary-trees | 1.9198 | 1.9189 | 1.000 | 2.77% | 4.21% | 1.003 |
+
+`--check-module pkg::vm`: main 7.604 and 7.628 s, branch 7.658 and 7.540 s.
+`make check` passed at the branch
+([run 37726529195](https://github.com/Ming-Research/Halo-wf/actions/runs/37726529195)).
+
+**The criterion is not met, and the change is reverted again.** Integer-table
+falls 1.6%, short of the 3% required; no kernel is slower beyond its bounds.
+Integer-table's median was 1.6% lower in this run, within main's 3.01%
+range, so these runs do not establish a saving from skipping `gc_mark` for
+values that name no object.
+
+## The share of table growth on the 14900K
+
+### Criterion, recorded before it runs
+
+On a GitHub-hosted EPYC guest, `rehash` took 7.0–10.1% of integer-table's
+samples ([attribution result](#attribution-result)). Two candidates chosen
+from those hosted shares, string-key writes and marking only collectable
+values, were each expected near 5% and measured under 2% on the 14900K, so
+hosted shares overstate what a change can gain there. `rehash` builds a new
+array and copies the old one into it element by element, so that a failed
+insertion leaves the table unchanged; replacing that with Whitefoot's
+in-place `grow` gives up the guarantee, a design decision for the owner.
+
+Question: how much of integer-table's and binary-trees' time on the 14900K
+is table growth? Run: on the 14900K, Halo at this branch's base built with
+full LTO as `run.py` builds it, integer-table and binary-trees at depth 14
+(`run.py`'s scale), three launches each; `perf record` of `cycles`, reported
+by symbol without children for each symbol's own share, and once more with
+call graphs (LBR, or DWARF unwinding where LBR is unavailable) reported with
+children for `rehash`'s inclusive share, its allocation and copying included.
+
+Reading: a change to `rehash` is prepared, with its own criterion and the
+design card for the guarantee, only if `rehash`'s inclusive share is at least
+5% of Halo's samples in every launch of integer-table or of binary-trees;
+otherwise table growth is not selected and this section records why. The
+kernels exercise no string comparison, pattern matching, `table.concat` or
+codec, so this run says nothing about the slow-executor split in library
+functions (`docs/todo.md`).
+
+### Result
+
+[Run 37752821669](https://github.com/Ming-Research/Halo-wf/actions/runs/37752821669),
+artifact `halo-growth-profile`: the 14900K (a Hyper-V guest, 32 CPUs),
+Halo at main `5e98dabf5` with `wf-8b647edbbc95` and clang 22.1.8, full LTO;
+LBR was unavailable in the guest, so call graphs used DWARF unwinding. Every
+launch printed the kernel's checksum. Shares of `cycles` samples:
+
+| Kernel, launch | `rehash` own | `rehash` with children |
+|---|---:|---:|
+| integer-table 1 | 9.39% | 29.87% |
+| integer-table 2 | 12.65% | 29.91% |
+| integer-table 3 | 9.02% | 30.16% |
+| binary-trees 1–3 | below 0.3% | below 0.3% |
+
+In binary-trees only `insert_parts` appears (1.43–1.67%). Integer-table's
+remaining time is the table store and load arms (20.5–25.8% each), arm 66
+(8.2–8.6%), `table_set`, `collect_if_due` and `gc_mark`. The reports name no callees
+under `rehash`: the guest hides kernel symbols and the call-graph reports were
+summarized without their chains. That most of its inclusive share beyond its
+own 9–12.6% is allocation, page faults on the new array and freeing the old
+one, which each growth performs, is an inference from what `rehash` does,
+consistent with launch 1's call-graph report, where an unresolved kernel
+entry address carries 18.47% with its children and libc's `free` reaching
+`munmap` 3.07%.
+
+**The criterion is met for integer-table**: `rehash` takes about 30% of its
+samples in every launch, so a change is prepared. The bounded growth
+decision ([growth](../../../design/halo/heap/tables/growth.md)) is reopened
+by its own condition, retained-prefix allocation and copying measured as a
+bottleneck. The guarantee needs no trade: every way `rehash` can fail, a
+size that overflows, an insertion that finds no free node, and a charge
+beyond the memory limit, can be decided before the table's array is
+touched, so the array can grow in place and still change only on success.
+
+### Growing the array in place: criterion, recorded before the change
+
+Change: `rehash` builds the new node vector from the old array's tail and
+the old nodes and charges the size difference first, as now, and only then
+resizes the table's array: Whitefoot's `grow` in place when it gets larger,
+filling the added slots with nil, instead of allocating a new array and
+copying the retained prefix. A shrinking array keeps the current
+replacement. Lua's size selection and reinsertion order are unchanged.
+
+Kept only if, in six interleaved full-LTO pairs on the 14900K against main
+with a twin, integer-table's median falls at least 5%, by more than both
+ranges and the twin's difference; no kernel is slower beyond its larger
+range and the twin's; `--check-module pkg::vm` takes at most 1.25 times as
+long; and `make check` passes, the oracle under collector stress and the
+collector's root controls included. Otherwise the change is reverted and
+this section records the result.
+
+### Growing the array in place: result
+
+[Run 37756391939](https://github.com/Ming-Research/Halo-wf/actions/runs/37756391939),
+artifact `halo-bench-grow`: main `5e98dabf5` against the branch at `31b92e5`
+(the change is `6f49ca6`), whose engine differs only in
+`lib/halo/heap/tables.wf`, six interleaved full-LTO pairs on the 14900K with
+`wf-8b647edbbc95`; medians in seconds:
+
+| Kernel | Main | Branch | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1056 | 0.1054 | 0.998 | 1.08% | 2.17% | 1.000 |
+| loop | 0.4334 | 0.4333 | 1.000 | 0.55% | 1.23% | 0.997 |
+| integer-table | 0.4934 | 0.4933 | 1.000 | 1.63% | 0.52% | 0.997 |
+| string-key | 0.0262 | 0.0258 | 0.985 | 4.95% | 2.96% | 0.997 |
+| concat | 0.0736 | 0.0734 | 0.998 | 0.32% | 1.74% | 1.003 |
+| sort | 0.1762 | 0.1752 | 0.994 | 3.68% | 1.74% | 1.000 |
+| binary-trees | 1.9150 | 1.9282 | 1.007 | 4.07% | 2.73% | 0.992 |
+
+`--check-module pkg::vm`: main 7.660 and 7.551 s, branch 7.595 and 7.558 s.
+`make check` passed at `5bbaabb3c`, including the unsorted iteration case
+`lua-core/table-growth-order` ([run 37754466451](https://github.com/Ming-Research/Halo-wf/actions/runs/37754466451)).
+
+**The criterion is not met, and the change is reverted.** Integer-table's
+median is unchanged. The change did not remove the work it targeted:
+Whitefoot lowers `grow` as a fresh `malloc`, a `memmove` of the filled slots
+and a `free` of the old block (`compiler/src/backend/emitter/runs.rs`,
+`emit_window_grow`, at `8b647edbb`), never `realloc`, as its design records
+as a provisional choice awaiting performance grounds
+(`design/compiler/storage-representation.md`), so the branch still allocates
+a new array, copies the retained prefix and frees the old one at each growth.
+That this retained work is why the time did not move is the leading
+hypothesis, not a measured attribution, and whether in-place reallocation
+would save time is untested; both are a Whitefoot question (`docs/todo.md`,
+*Whitefoot requirements*).
+
+## Reading by-value parameters in place, measured
+
+### Criterion, recorded before measuring
+
+[The entry copy of a by-value parameter](https://github.com/Ming-Research/Halo-wf/blob/claude/halo-call/research/experiments/halo-bench/RESULTS.md#the-entry-copy-of-a-by-value-parameter-measured)
+(on the call-path branch, pull request 12)
+could not be timed because Whitefoot's in-place rule then applied only to
+functions without a branch. The loopmatch session widened the rule to
+functions with branches (Whitefoot branch `claude/in-place-branches`, release
+`wf-exp-8eaba144a41f` on main `c18e6708b`); its gate asserts that every
+function of the six-function witness lost its entry copy. Its control is the
+release of the same main commit, `wf-c18e6708b6cc`.
+
+Comparison: Halo main built with full LTO by each release, six interleaved
+pairs over the seven kernels on the 14900K with a twin of the control build,
+and both builds' disassembly of `push_frame`. The comparison tests the
+hypothesis only if the experiment build's `push_frame` loses its entry copy.
+A fib median below the control build's by more than both ranges and the
+twin's difference is a measured cost of the entry copy; anything else is no
+evidence of one. No kernel may be slower beyond its larger range and the
+twin's difference for the result to count in the rule's favour. The result
+goes to the loopmatch session either way; no Halo source changes.
+
+### Result
+
+[Run 37771086458](https://github.com/Ming-Research/Halo-wf/actions/runs/37771086458),
+artifact `halo-bench-inplace`: Halo at this branch's base, main `76c3c03f1`
+(the run checked out `3def116`, which changes no source), built by `wf-c18e6708b6cc`
+(control) and `wf-exp-8eaba144a41f` (experiment) with clang 22.1.8, on the
+14900K. The experiment's `push_frame` no longer copies the incoming 80-byte
+`Frame` at entry: the control's begins with five 128-bit loads from the
+incoming pointer and five stores to its own stack slot, the experiment's
+reads through the pointer, 91 against 85 instructions. Medians in seconds,
+six interleaved pairs:
+
+| Kernel | Control | Experiment | Ratio | Control range | Experiment range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1055 | 0.1014 | 0.962 | 2.57% | 0.77% | 1.009 |
+| loop | 0.4333 | 0.4321 | 0.997 | 0.74% | 0.33% | 0.996 |
+| integer-table | 0.4952 | 0.4970 | 1.004 | 1.95% | 3.24% | 0.998 |
+| string-key | 0.0257 | 0.0256 | 0.997 | 1.29% | 2.15% | 0.996 |
+| concat | 0.0735 | 0.0728 | 0.990 | 0.52% | 1.04% | 0.999 |
+| sort | 0.1750 | 0.1762 | 1.007 | 1.68% | 4.04% | 1.007 |
+| binary-trees | 1.8924 | 1.8717 | 0.989 | 2.56% | 4.32% | 1.002 |
+
+**The criterion is met.** Fib's median is 3.8% below the control's, beyond
+both ranges (2.57% and 0.77%) and the twin's 0.9% difference, and no kernel
+is slower beyond its bounds. The widened rule as a whole makes fib about 4%
+faster on the 14900K. It applies to every function that takes an aggregate by
+value, so the comparison does not isolate `push_frame`'s copy, the one fib's
+earlier profile pointed at, from the others it removes. This is the evidence
+the loopmatch session takes to the owner for widening Whitefoot's in-place
+parameter rule.
+Halo's source is unchanged.
+
+## Growing the array in place with a reallocating grow
+
+### Criterion, recorded before measuring
+
+[Growing the array in place](#growing-the-array-in-place-result) left
+integer-table unchanged with `wf-8b647edbbc95`, whose `grow` allocates,
+copies and frees. The paged session built `wf-exp-4f6a0c240d2c`: the same
+compiler with `grow` lowered as `realloc` and nothing else changed. This
+branch is main `0def88248` with the reverted in-place change `6f49ca6`
+applied again (`lib/halo/heap/tables.wf` only).
+
+Builds, full LTO, on the 14900K: main with the pin (base), this branch with
+the pin, and this branch with the experiment release. Six interleaved pairs
+over the seven kernels for each of: base against its twin (noise), base
+against the branch with the experiment (the change as it would ship), and the
+branch with the pin against the branch with the experiment (the compiler's
+share).
+
+The change counts as a win, and goes to the paged session for a main-line
+`grow` lowering, only if integer-table's median with the experiment falls at
+least 5% below the base's, by more than both ranges and the twin's
+difference, with no kernel slower beyond its larger range and the twin's
+difference. The third comparison attributes the gain; it does not change the
+verdict.
+
+### Result
+
+[Run 37773076340](https://github.com/Ming-Research/Halo-wf/actions/runs/37773076340),
+artifact `halo-bench-realloc`: base main `0def88248` with `wf-8b647edbbc95`;
+the branch (`lib/halo/heap/tables.wf` only differs, per the run's
+`git diff --stat`) with the same release and with `wf-exp-4f6a0c240d2c`;
+clang 22.1.8, full LTO, the 14900K. The experiment build calls `realloc`
+from 430 sites, the pinned build from none. Medians in seconds, six
+interleaved pairs; twin ratios are the base against its twin.
+
+The change as it would ship, base against the branch with the experiment:
+
+| Kernel | Base | Branch, experiment | Ratio | Base range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1051 | 0.1064 | 1.012 | 1.04% | 2.07% | 0.998 |
+| loop | 0.4325 | 0.4308 | 0.996 | 0.80% | 0.66% | 1.002 |
+| integer-table | 0.4963 | 0.4268 | 0.860 | 2.53% | 1.14% | 1.004 |
+| string-key | 0.0260 | 0.0258 | 0.993 | 1.19% | 0.49% | 0.997 |
+| concat | 0.0740 | 0.0735 | 0.993 | 1.43% | 2.68% | 0.999 |
+| sort | 0.1763 | 0.1718 | 0.975 | 2.13% | 0.95% | 1.003 |
+| binary-trees | 1.9046 | 1.8931 | 0.994 | 1.78% | 2.06% | 1.005 |
+
+The compiler's share, the branch with the pin against the branch with the
+experiment:
+
+| Kernel | Branch, pin | Branch, experiment | Ratio | Pin range | Experiment range |
+|---|---:|---:|---:|---:|---:|
+| fib | 0.1056 | 0.1065 | 1.008 | 1.61% | 1.26% |
+| loop | 0.4319 | 0.4320 | 1.000 | 0.58% | 0.39% |
+| integer-table | 0.4916 | 0.4246 | 0.864 | 2.35% | 1.74% |
+| string-key | 0.0260 | 0.0259 | 0.998 | 1.16% | 3.53% |
+| concat | 0.0735 | 0.0735 | 1.000 | 1.80% | 1.68% |
+| sort | 0.1767 | 0.1718 | 0.972 | 1.70% | 1.66% |
+| binary-trees | 1.8988 | 1.8761 | 0.988 | 0.74% | 1.45% |
+
+**The criterion is met.** Integer-table's median is 14.0% below the base's,
+beyond both ranges (2.53% and 1.14%) and the twin's 0.4% difference; fib's
+1.2% is within its larger range plus the twin's difference, and no other
+kernel is slower. Nearly all of the gain is the compiler's: the same source
+is 13.6% faster on integer-table with the reallocating `grow`, as
+[the earlier result](#growing-the-array-in-place-result) found the source
+change alone neutral with the copying `grow`. Sort's 2.5–2.8% gain also comes
+from the compiler and was not predicted. The in-place source change stays out
+of main until Whitefoot's main line lowers `grow` through `realloc`; it is
+reverted on this branch, which keeps only this record, and is reapplied with
+the Whitefoot release that adopts the lowering (`docs/todo.md`, *Whitefoot
+requirements*).
+
+## Whitefoot wf-691ea8106920 upgrade
+
+### Question, recorded before measuring
+
+`whitefoot.pin` moves from `wf-8b647edbbc95` (Whitefoot `8b647edbb`,
+specification v0.94) to `wf-691ea8106920` (`691ea8106`, v0.102), the first
+main release with `loop { match }` and `continue` (v0.101), which Halo's
+dispatch rewrite needs. Between them the specification also adds directory
+operations (v0.95, v0.98), closed-term recursion cycles (v0.96), PAR-2
+extensions (v0.97, v0.102), reinitializing a dead linear binding (v0.99) and
+reference-path identity (v0.100); Halo's source needed no change, and `make
+check` passes with the new release. How do the kernels and the vm
+module-check time move? Whitefoot-kit's upgrade step 5 asks for this
+comparison; it reports the difference and rejects nothing.
+
+Comparison: Halo main built with each release, six interleaved full-LTO
+pairs over the seven kernels, a twin of the old build, and two interleaved
+module-check samples per compiler, on the 14900K.
+
+### Result
+
+[Run 37791242990](https://github.com/Ming-Research/Halo-wf/actions/runs/37791242990),
+artifact `halo-bench-upgrade`: Halo at `f5203e4` (main's engine) built by
+`wf-8b647edbbc95` and by `wf-691ea8106920` with clang 22.1.8, on the 14900K;
+medians in seconds, six interleaved pairs:
+
+| Kernel | Old | New | Ratio | Old range | New range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1052 | 0.1051 | 1.000 | 0.72% | 1.15% | 1.004 |
+| loop | 0.4317 | 0.4325 | 1.002 | 0.59% | 0.50% | 1.000 |
+| integer-table | 0.4931 | 0.4937 | 1.001 | 3.11% | 7.88% | 1.008 |
+| string-key | 0.0258 | 0.0258 | 1.000 | 2.42% | 1.14% | 0.988 |
+| concat | 0.0735 | 0.0747 | 1.015 | 24.18% | 2.37% | 1.001 |
+| sort | 0.1760 | 0.1750 | 0.994 | 1.73% | 1.67% | 1.003 |
+| binary-trees | 1.9220 | 1.9256 | 1.002 | 1.87% | 0.70% | 0.998 |
+
+`--check-module pkg::vm`: old 7.631 and 7.525 s, new 7.613 and 7.780 s.
+
+No kernel moves beyond its larger range and the twin's difference, a test
+chosen after measuring since the question set no criterion. Six kernels show
+no difference. Concat passes that test only because one old-side run (pair
+2, 0.0911 s) widened the old range to 24%: without it, all six new runs
+(0.0741–0.0759 s) are slower than the five other old runs (0.0733–0.0737 s),
+by 1.3–3.5% per pair, while the twin's per-pair ratios span 0.972–1.010. A
+concat slowdown of about 1.5% with the new release is therefore possible and
+unresolved; these seven kernels on the 14900K show nothing else.
+
+## The dispatch as loop { match }
+
+### Question and reading, recorded before measuring
+
+`run` was a guaranteed self-tail call only because Whitefoot's checker
+refused the natural `loop { match }` (INV-1); Whitefoot v0.101 (#270) closed
+that, and this branch writes `run` as `loop { match }` with the three window
+facts as header invariants, the 18 hot arms continuing the loop and the
+others reaching the backedge through the shared epilogue. The owner's
+direction is the natural form, so the rewrite is kept whatever the timing.
+How do the kernels move?
+
+Comparison: the same compiler (`wf-691ea8106920`) building this branch's
+base `baa2225` (the self-tail `run`) and this branch, six interleaved
+full-LTO pairs over the seven kernels with a twin of the base, and two
+module-check samples each, on the 14900K. Reading: a kernel slower beyond its
+larger range and the twin's difference is a cost of the compiler's lowering
+of the loop form, reported to the loopmatch session as input to its second
+phase (lowering the natural form), not a reason to restore the self-tail
+call; a kernel faster beyond those bounds is reported the same way.
+
+### Result
+
+[Run 37793482368](https://github.com/Ming-Research/Halo-wf/actions/runs/37793482368),
+artifact `halo-bench-loopmatch`: `wf-691ea8106920`, clang 22.1.8, full LTO,
+the self-tail base `baa2225` against this branch at `060ea20` (only
+`dispatch.wf` and `module.wfm` differ in source, per the run's `git diff
+--stat`), on the 14900K; medians in seconds, six interleaved pairs:
+
+| Kernel | Self-tail | Loop | Ratio | Self-tail range | Loop range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1104 | 0.1120 | 1.014 | 4.53% | 5.94% | 1.002 |
+| loop | 0.4515 | 0.4535 | 1.005 | 3.31% | 2.05% | 0.999 |
+| integer-table | 0.5017 | 0.5076 | 1.012 | 4.86% | 7.07% | 0.993 |
+| string-key | 0.0263 | 0.0266 | 1.014 | 5.22% | 5.02% | 1.005 |
+| concat | 0.0751 | 0.0755 | 1.006 | 2.13% | 1.43% | 0.995 |
+| sort | 0.1883 | 0.1858 | 0.987 | 20.01% | 12.57% | 1.002 |
+| binary-trees | 1.9175 | 1.9336 | 1.008 | 5.40% | 7.61% | 0.994 |
+
+**The two builds are byte-identical.** The run's manifest gives the same
+SHA-256 (`6761c46c…`) for the self-tail build, its twin and the loop build,
+and every launch record names the same binary for both sides. The workflow
+built each side from its own source (`git diff --stat` shows `dispatch.wf`
+and `module.wfm` differ, and the two module checks took different times),
+and the same workflow gave different binaries for different sources in the
+table-growth and post-catch runs, so this is not a stale build: Whitefoot
+lowers the `loop { match }` dispatch to exactly the machine code of the
+guaranteed self-tail call. The loop form costs nothing at run time, and the
+table above is a second twin comparison: its differences, such as fib's
+0.1104 s here against 0.1050 s for the same binary in this run's twin
+comparison, are this run's noise. Every performance measurement made on the
+self-tail form therefore holds for the loop form with this compiler.
+
+The vm module check takes 1.17 times as long (7.774 and 7.638 s against
+8.997 and 8.970 s), a cost of checking the loop form; proving the header
+invariants on every backedge is the likely cause, not measured here.
+
+## pcall's post-catch field lookup
+
+### Criterion, recorded before measuring
+
+The change that makes `pcall` look up its error field through `__index` as a
+resumable continuation (owner's choice A) also changes the dispatch epilogue
+that instructions without a direct tail call return through: `checked_step`
+now receives the VM and the host environment so it can start a scheduled
+post-catch lookup, and `Step` gains a `PostCatch` variant. None of the seven
+kernels raises an error, so a change in their time is this change's overall
+effect on the normal path, through the epilogue or through code layout and
+inlining; the comparison does not separate those.
+
+Comparison: main `5885f9ab4`, which this branch has merged, against the
+branch with the change, same compiler (`wf-8b647edbbc95`), six interleaved
+full-LTO pairs on the 14900K with a twin of main. Kept only if no kernel is
+slower beyond its larger range and the twin's difference, and
+`--check-module pkg::vm` takes at most 1.25 times as long; otherwise the
+epilogue change is reworked before merging.
+
+### Result
+
+[Run 37776993971](https://github.com/Ming-Research/Halo-wf/actions/runs/37776993971),
+artifact `halo-bench-postcatch`: main `5885f9ab4` against the branch at
+`cdc423c` (ten engine files differ, per the run's `git diff --stat`), six
+interleaved full-LTO pairs on the 14900K; medians in seconds:
+
+| Kernel | Main | Branch | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1052 | 0.1261 | 1.198 | 0.80% | 1.17% | 1.003 |
+| loop | 0.4324 | 0.4514 | 1.044 | 0.88% | 0.38% | 0.999 |
+| integer-table | 0.4949 | 0.4923 | 0.995 | 1.24% | 2.10% | 0.994 |
+| string-key | 0.0260 | 0.0259 | 0.994 | 2.34% | 1.78% | 1.000 |
+| concat | 0.0735 | 0.0892 | 1.214 | 3.82% | 4.36% | 1.004 |
+| sort | 0.1766 | 0.1988 | 1.126 | 2.56% | 3.82% | 0.999 |
+| binary-trees | 1.9052 | 2.1124 | 1.109 | 1.72% | 2.90% | 1.000 |
+
+`--check-module pkg::vm`: main 7.522 and 7.555 s, branch 7.784 and 7.761 s.
+
+**The criterion is not met**: five kernels are slower far beyond their
+bounds. The binaries in the artifact show why: every dispatch arm of `run`
+grew by 700–950 bytes and its stack frame from 0x30 to 0xa0 bytes, and each
+arm now contains an indirect non-tail call; `pcall_lookup_drain`, which runs
+Lua through a nested `run`, was inlined into the shared epilogue of every
+arm. The epilogue change is reworked so that a `PostCatch` step never reaches
+`run`: the cold paths that produce it drain it before returning.
+
+### Rework
+
+The dispatch function and `checked_step` are restored to main. Post-catch
+requests now belong to the cold unwind result, which generic failure paths
+and resumed library callbacks drain before returning a dispatch step. Call
+preparation handles its own failures inside `prepare`; the non-generic fast
+stores and collector failures share ordinary catch completion for their
+string-only errors.
+Inlining, oracle behavior and performance remain to be checked in CI.
+
+The subsequent rework records the post-catch lookup index in the VM and uses
+the existing `Budget` exit to reach the generic driver, which clears and
+consumes the request before interpreting the exit, leaving the instruction
+budget, dispatch, handlers and `Step` unchanged.
+
+### Retried after the rework
+
+[Run 37787718241](https://github.com/Ming-Research/Halo-wf/actions/runs/37787718241),
+artifact `halo-bench-postcatch-retry`: main `5885f9ab4` against the branch at
+`0f09d8b`, whose `dispatch.wf`, `handlers.wf` and `continuations.wf` equal
+main's, the same criterion; medians in seconds:
+
+| Kernel | Main | Branch | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1050 | 0.1036 | 0.987 | 0.67% | 1.21% | 1.000 |
+| loop | 0.4315 | 0.4315 | 1.000 | 0.38% | 0.38% | 1.002 |
+| integer-table | 0.4959 | 0.4949 | 0.998 | 1.95% | 2.32% | 0.991 |
+| string-key | 0.0260 | 0.0259 | 0.993 | 3.56% | 2.68% | 1.001 |
+| concat | 0.0735 | 0.0739 | 1.005 | 2.25% | 6.05% | 0.999 |
+| sort | 0.1771 | 0.1768 | 0.998 | 5.04% | 2.12% | 1.003 |
+| binary-trees | 1.9072 | 1.9125 | 1.003 | 2.27% | 0.60% | 1.003 |
+
+`--check-module pkg::vm`: main 7.619 and 7.531 s, branch 7.746 and 7.820 s
+(at most 1.04 times).
+
+**The criterion is met**: no kernel is slower beyond its larger range and the
+twin's difference, and the module check stays within 1.25 times.
+
+## The handler word in Halo's dispatch
+
+### Criterion, recorded before measuring
+
+The loopmatch session's second phase lowers a `loop { match }` dispatch
+through a handler word stored in each matched value (Whitefoot, the two
+handler-word commits on `691ea8106`, release `wf-exp-78ff1a001486`): each
+`Cell` carries the address of its arm, 4-byte aligned, so Halo's `Cell`
+grows from 12 to 20 bytes. The control is `wf-691ea8106920`, the same
+commit without them. The loopmatch session asks whether Halo's `run`, now
+`loop { match }`, gets slower. A prototype on the former self-tail form
+measured fib 2.3% and loop 1.8% faster.
+
+Comparison: main `c78426ef8` (`run` as `loop { match }`) built with each release,
+six interleaved full-LTO pairs over the seven kernels with a twin of the
+control build, on the 14900K; each build's `--dispatch-ledger` output is
+kept, and the experiment's must contain "dispatches through the handler word
+in each" for `run`, or the comparison does not test the handler word.
+
+The loopmatch session's criterion: fib's and loop's medians with the
+experiment are each no more than 2% above the control's. The other kernels
+are reported, slower beyond their larger range and the twin's difference
+or not.
+
+### Result
+
+[Run 37837639995](https://github.com/Ming-Research/Halo-wf/actions/runs/37837639995),
+artifact `halo-bench-handler-word`: Halo main `c78426ef8` built by
+`wf-691ea8106920` (control) and `wf-exp-78ff1a001486` (handler word), clang
+22.1.8, full LTO, on the 14900K. The experiment's dispatch ledger contains
+"dispatches through the handler word in each Cell" for `run` (and for
+`cjson_decode`'s and `library_table`'s loops); the control's does not. The
+binaries differ. Medians in seconds, six interleaved pairs:
+
+| Kernel | Control | Handler word | Ratio | Control range | Handler-word range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1030 | 0.1045 | 1.015 | 0.45% | 0.94% | 0.999 |
+| loop | 0.4346 | 0.4249 | 0.978 | 1.50% | 0.95% | 1.001 |
+| integer-table | 0.4994 | 0.4952 | 0.992 | 2.79% | 3.98% | 1.003 |
+| string-key | 0.0258 | 0.0259 | 1.001 | 2.99% | 1.19% | 1.001 |
+| concat | 0.0743 | 0.0743 | 1.000 | 1.53% | 2.36% | 1.001 |
+| sort | 0.1753 | 0.1751 | 0.999 | 0.86% | 1.66% | 0.992 |
+| binary-trees | 1.8996 | 1.9017 | 1.001 | 2.19% | 2.66% | 0.998 |
+
+**The criterion is met**: neither fib (1.015) nor loop (0.978) is more than 2%
+slower than the control. Both moves exceed this run's bounds: fib is
+slower beyond both ranges and the twin's difference, loop faster beyond them;
+the other kernels do not move beyond their bounds. The fib slowdown runs
+against the loopmatch session's prototype on the former self-tail form (fib
+2.3% faster); a likely cause, not measured here, is the 20-byte `Cell` the
+handler word needs on fib's call path, against 12 bytes before.
+
+## Collection statistics
+
+### Criterion, recorded before measuring
+
+The collection statistics (pull request 24) add counter increments to the
+collector's mark and sweep loops and to the trigger arithmetic. The kernels
+that collect most (binary-trees, integer-table) pay for them. Comparison:
+this branch's base `fbd3bb2f1` against this branch, same compiler
+(`wf-691ea8106920`), six interleaved full-LTO pairs over the seven kernels
+with a twin of the base, on the 14900K. Kept only if no kernel is slower
+beyond its larger range and the twin's difference.
+
+### Result
+
+[Run 37835986400](https://github.com/Ming-Research/Halo-wf/actions/runs/37835986400),
+artifact `halo-bench-gcstats`: base `fbd3bb2f1` against the branch, the same
+compiler, on the 14900K; medians in seconds, six interleaved pairs:
+
+| Kernel | Base | Branch | Ratio | Base range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1051 | 0.1044 | 0.993 | 1.04% | 3.25% | 1.000 |
+| loop | 0.4323 | 0.4327 | 1.001 | 0.66% | 1.00% | 1.001 |
+| integer-table | 0.4921 | 0.4986 | 1.013 | 2.62% | 1.51% | 0.995 |
+| string-key | 0.0257 | 0.0255 | 0.989 | 2.42% | 2.90% | 1.001 |
+| concat | 0.0743 | 0.0733 | 0.986 | 4.30% | 0.78% | 0.997 |
+| sort | 0.1745 | 0.1758 | 1.008 | 1.21% | 1.17% | 1.008 |
+| binary-trees | 1.9103 | 1.9433 | 1.017 | 2.80% | 4.13% | 0.995 |
+
+`--check-module pkg::vm`: base 7.706 and 7.731 s, branch 7.697 and 7.809 s.
+
+**The criterion is met**: no kernel is slower beyond its larger range and the
+twin's difference. The two kernels that collect most lean the same way,
+binary-trees 1.7% and integer-table 1.3% slower, each within its bounds; a
+cost of that size from the counters is possible and unresolved by six pairs.

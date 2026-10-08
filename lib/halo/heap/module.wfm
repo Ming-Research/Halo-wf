@@ -86,6 +86,25 @@ public struct UpvalCell {
   public payload: Upval;
 }
 
+public struct CollectionKindStats {
+  doc "Logical payload accounting for one object kind, using Heap's byte estimates; slots_visited includes already free slab slots.";
+  public readonly live_objects: u64;
+  public readonly live_bytes: u64;
+  public readonly freed_objects: u64;
+  public readonly freed_bytes: u64;
+  public readonly slots_visited: u64;
+}
+
+public struct CollectionStats {
+  doc "Snapshot of the most recent completed sweep; all fields are zero before the first collection. Byte counts exclude slab and intern reserve. Counters saturate at u64 maximum.";
+  public readonly strings: CollectionKindStats;
+  public readonly tables: CollectionKindStats;
+  public readonly closures: CollectionKindStats;
+  public readonly upvalues: CollectionKindStats;
+  public readonly gray_pops: u64;
+  public readonly next_threshold: u64;
+}
+
 public struct Heap {
   doc "Slab indices are collector handles; no_handle terminates every free list. Logical accounting estimates: strings 24 plus byte capacity, tables 48 plus 16 per array slot and 32 per node, closures 24 plus 4 per upvalue, upvalues 32. Slab and intern reserve are excluded. limit bounds live logical bytes after a full VM safepoint collection; zero is unlimited.";
   public strings: Box<Slots<StringCell>>;
@@ -106,9 +125,12 @@ public struct Heap {
   public threshold: u64;
   public gc_stress: Bool;
   public collections: u64;
+  public gc_pause: u64;
+  public gray_pops: u64;
+  public readonly last_collection: CollectionStats;
 }
 
-public fn gc_begin(heap: &Heap) -> r: unit writes(heap.epoch) doc "Starts a collection: a new epoch, so every cell's mark is stale until marked again.";
+public fn gc_begin(heap: &Heap) -> r: unit writes(heap.epoch), writes(heap.gray_pops) doc "Starts a collection with zero gray pops and a new epoch, so every cell's mark is stale until marked again; the last completed snapshot is preserved until sweep finishes.";
 
 public fn gc_mark(heap: &Heap, v: Value) -> r: unit writes(heap) doc "Marks the object a value names in the current epoch; a table or closure joins the gray stack to have its references marked.";
 
@@ -116,7 +138,7 @@ public fn gc_mark_upvalue(heap: &Heap, h: u32) -> r: unit writes(heap) doc "Mark
 
 public fn gc_propagate(heap: &Heap) -> r: unit writes(heap) doc "Marks everything reachable from the gray stack until it is empty: a table's array values, node keys and values and metatable; a closure's upvalues.";
 
-public fn gc_sweep(heap: &Heap) -> r: u64 writes(heap) doc "Frees every live cell not marked in the current epoch, dead strings leaving the intern table, and returns how many cells were freed; resets bytes_since_gc and sets threshold to the larger of 1 MiB and the bytes still live, Lua 5.1's pause of 200%.";
+public fn gc_sweep(heap: &Heap) -> r: u64 writes(heap) doc "Frees every live cell not marked in the current epoch, dead strings leaving the intern table, and returns how many cells were freed; resets bytes_since_gc and publishes collection statistics and sets threshold to max(1 MiB, live * (gc_pause - 100) / 100), saturating at u64 maximum. The default pause of 200 preserves the live-byte threshold exactly.";
 
 public fn gc_due(heap: &Heap) -> r: Bool reads(heap) doc "Whether stress is enabled, a nonzero logical byte limit is exceeded, or allocation since collection exceeds the threshold.";
 
@@ -151,6 +173,8 @@ public fn string_of(heap: &Heap, value: Value) -> r: Option<StringView> reads(he
 public fn new_table(heap: &Heap, asize: u32, hsize: u32) -> r: Value writes(heap) doc "Allocates a PUC Lua 5.1 array/scatter table, or Nil at representational exhaustion.";
 
 public fn table_get(heap: &Heap, t: Value, key: Value) -> r: Value reads(heap) doc "Raw lookup; absent keys give Nil.";
+
+public fn table_get_str(heap: &Heap, t: Value, h: u32) -> r: Value reads(heap) doc "Raw lookup for an interned string handle, equivalent to table_get with Str(h); invalid handles use the generic lookup.";
 
 public fn table_set(heap: &Heap, t: Value, key: Value, val: Value) -> r: Result<unit, TableError> writes(heap) doc "Raw PUC Lua 5.1 assignment, including lookup of retained keys with nil values, Brent relocation and rehash; callers enforce read_only. NilKey, NanKey and InvalidNext mean table index is nil, table index is NaN and invalid key to 'next'.";
 

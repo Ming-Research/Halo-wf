@@ -52,6 +52,7 @@ public struct LibraryContext {
   public table: Value;
   public comparator: Value;
   public saved_error: Value;
+  public foreach_key: Value;
 }
 
 public struct SortFrame {
@@ -124,6 +125,7 @@ public struct Vm {
   public call_pending: Bool;
   public raise_pc: u64;
   public pcall_field: Box<Slots<u8>>;
+  public post_catch: u64;
   public debug_names: Box<Slots<u8>>;
   public local_variables: Box<Slots<LocalVariable>>;
   public upvalue_names: Box<Slots<DebugName>>;
@@ -153,6 +155,8 @@ public interface Host<E> {
 public const protected_flag: u8 = 1_u8;
 
 public const tail_flag: u8 = 2_u8;
+
+public const native_flag: u8 = 4_u8;
 
 public const builtin_pcall: u32 = 0_u32;
 
@@ -194,7 +198,7 @@ public fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Val
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
-} doc "Eight-parameter guaranteed self-tail dispatch.";
+} doc "Dispatches instructions from pc, in the frame at base with the prototype's constants at kbase, until the run ends, raises or suspends.";
 
 public struct BuiltinBinding {
   public library: u8;
@@ -263,6 +267,8 @@ public const builtin_table_maxn: u32 = 52_u32;
 
 public const builtin_table_sort: u32 = 53_u32;
 
+public const builtin_table_foreach: u32 = 54_u32;
+
 public const builtin_math_abs: u32 = 64_u32;
 
 public const builtin_math_ceil: u32 = 65_u32;
@@ -319,13 +325,14 @@ public const builtin_math_random: u32 = 90_u32;
 
 public const builtin_math_randomseed: u32 = 91_u32;
 
-public const library_builtin_count: u64 = 65_u64;
+public const library_builtin_count: u64 = 66_u64;
 
-public fn library_builtin(index: u64) -> r: Option<BuiltinBinding> pure doc "Stable slice 1 builtin-id table plus codec bindings at reserved indices 96..143. library 0 installs into globals; 1 string; 2 table; 3 math; 4 cjson; 5 cmsgpack; 6 bit; 7 struct. Name bytes are [0..length); IDs 0..7 are retained, 8..17 base, 32..44 string; 45 is the private gmatch closure dispatcher, 48..53 table, 64..91 math. ipairsaux (17) is private to the iterator. math.huge and math.pi are numeric constants, installed separately.";
+public fn library_builtin(index: u64) -> r: Option<BuiltinBinding> pure doc "Stable slice 1 builtin-id table plus codec bindings at reserved indices 96..143. library 0 installs into globals; 1 string; 2 table; 3 math; 4 cjson; 5 cmsgpack; 6 bit; 7 struct. Name bytes are [0..length); IDs 0..7 are retained, 8..17 base, 32..44 string; 45 is the private gmatch closure dispatcher, 48..54 table, 64..91 math. ipairsaux (17) is private to the iterator. math.huge and math.pi are numeric constants, installed separately with math.mod as an alias of math.fmod.";
 
-public fn install_libraries(vm: &Vm) -> r: unit writes(vm) doc "Installs the builtin-id table and _VERSION (Lua 5.1) into globals and creates string, table, math, cjson, cmsgpack, bit and struct tables. Installs string.__index through the string type metatable; adds math.pi and math.huge. Host functions use IDs >=4096.";
+public fn install_libraries(vm: &Vm) -> r: unit writes(vm) doc "Installs the builtin-id table and _VERSION (Lua 5.1) into globals and creates string, table, math, cjson, cmsgpack, bit and struct tables. Installs string.__index through the string type metatable; adds math.pi, math.huge and math.mod with the same builtin value as math.fmod. Host functions use IDs >=4096.";
 
 public struct CjsonConfig {
   public settings: Array<u64, 9>;
   public buffer: Box<Slots<u8>>;
+  free: Bool;
 }

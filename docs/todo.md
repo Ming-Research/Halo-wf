@@ -10,16 +10,33 @@ Gaps Halo needs Whitefoot to close, each stated as its minimal semantic
 example apart from the engine code that exposed it
 ([Whitefoot-kit](../whitefoot-kit/downstream.md#trying-an-unmerged-whitefoot-change)).
 
-- **A loop invariant is lost where a guarded update joins an untouched
-  path.** A loop whose body sets a variable from a guarded value on one path
-  and leaves it on another, then joins the two before the back edge, loses
-  the header invariant both paths re-prove, because the join keeps only
-  facts identical on both inputs (`INV-1 UndischargedLoopInvariant`,
-  obligation `Backedge`). Impact: Halo's dispatch loop is written as a
-  self-tail call rather than `loop { match }`, whose arms update different
-  loop variables. The minimal witness and the candidate repairs are in
-  Whitefoot's `docs/todo.md` (Ming-Research/Whitefoot#246). Reopen when
-  Whitefoot changes INV-1's join.
+- **`grow` never reallocates in place.** Whitefoot lowers
+  `grow(cell: &b, capacity: n)` on a `Box<Slots<T>>` as a fresh allocation,
+  a copy of the filled slots and a free of the old block, never `realloc`
+  (Whitefoot's `design/compiler/storage-representation.md` keeps that
+  provisionally until performance grounds appear). Halo's table growth takes
+  about 30% of integer-table's samples on the 14900K, and rewriting `rehash`
+  to grow the array in place (`6f49ca6`) left the kernel's time unchanged;
+  the branch still allocated, copied and freed at each growth through `grow`,
+  the leading but unmeasured explanation
+  ([result](../research/experiments/halo-bench/RESULTS.md#growing-the-array-in-place-result)).
+  Minimal semantic example: a `Box<Slots<u64>>` filled to capacity and grown
+  by doubling copies every filled slot at each step. With the paged
+  session's experiment release `wf-exp-4f6a0c240d2c`, which lowers `grow`
+  as `realloc`, the change made integer-table 14.0% faster on the 14900K with
+  no kernel slower beyond its noise bounds ([result](../research/experiments/halo-bench/RESULTS.md#growing-the-array-in-place-with-a-reallocating-grow)).
+  Reopen when a Whitefoot main release lowers `grow` through `realloc`:
+  move the pin, reapply `6f49ca6` and repeat the recorded comparison.
+
+- **A loop without `break` still needs an unreachable return after it.**
+  FN-1 treats every `loop` as able to exit, so `run`'s `loop { match }`,
+  whose arms only `continue` or `return`, must end with a `return
+  Outcome::Error();` that never runs, a value the writer has to invent.
+  Minimal example: `fn f() -> r: u64 pure { loop { } return 0_u64; }` is
+  refused without the final `return`. The loopmatch session opened the
+  board card `lm-loop-diverge` (a `loop` with no `break` has no normal exit).
+  Reopen when Whitefoot decides it; if adopted, delete the dead returns
+  after `run`'s loop and `drive`'s.
 
 - **Checking Halo's vm package is on the build's critical path.** Whitefoot's
   [compile-speed investigation](https://github.com/Ming-Research/Whitefoot/blob/main/research/investigations/compile-speed/DESIGN.md#remaining-costs)
@@ -41,37 +58,23 @@ example apart from the engine code that exposed it
 
 ## Engine
 
+- **Explicit error levels across library callbacks need an oracle check.**
+  Source inspection found that `table.sort` retains its native caller in a
+  library context, while `error_location` walks only VM frames; unlike a
+  post-catch `pcall`, sort has no native marker there. Impact: a comparator's
+  `error("boom", 2)` appears to select the Lua caller rather than the native
+  sort level. The existing `lua-core/error-in-comparator-line` case uses the
+  default level and does not settle this. Deferred beyond the post-catch
+  pcall repair: record levels 0 through 3 against Redis in CI, then represent
+  native library callers in the walk if the comparison confirms the gap.
+  Reopen at the next library-callback error-location change, covering nested
+  callbacks and suspension as well as sort.
+
 - **The gate's fixtures and runners still live under `research/`.**
   Impact: maintained regression checks share a home with experiments, so
   their location does not distinguish gate dependencies from research
   tooling. Change: move the gate's fixtures and runners to `tests/` and
   update their callers and references. Reopen at the next gate change.
-
-- **Argument errors hardcode the called function's name.** Lua 5.1's
-  `luaL_argerror` uses `getfuncname` (`getobjname` at the caller's CALL
-  register), so `bad argument #N to 'NAME'` names a local alias or a field,
-  and for a method it subtracts the implicit self argument and reports a bad
-  self as `calling 'NAME' on bad self`. Halo's builtins hardcode their names,
-  for example `bad argument #1 to 'select'` in `lib/halo/vm/builtins.wf`.
-  Witness: `local f=bit.tobit; return f(false)` gives Redis 7.0.15's
-  `bad argument #1 to 'f' (number expected, got boolean)` and Halo's
-  `... to 'tobit' ...` (`research/experiments/halo-luacodecs/RESULTS.md`,
-  case cjson/222). Impact: aliases, field calls and methods can disagree in
-  both name and argument number. Change: route argument errors through the
-  operand description at the caller's call cell and apply `luaL_argerror`'s
-  method adjustment. Validate with recorded oracle replies for local aliases,
-  fields, methods and bad self. Reopen before clients compare argument-error
-  text.
-
-- **pcall's error field is read raw.** With an error field named
-  (`set_pcall_error_field`), `pcall` reads it with a raw lookup; Redis's
-  replacement `pcall` uses `lua_getfield`, which also consults the table's
-  `__index`. Witness: `pcall(error, setmetatable({}, {__index={err="E"}}))`
-  returns the string `E` in Redis and the table in Halo (by reading
-  `script_lua.c`, not recorded). Impact: only an error table whose field
-  comes from a metatable differs. Change: run the lookup through the VM's
-  metamethod-aware get, which may call Lua during unwinding. Reopen when a
-  script raises such a table, with a recorded oracle case.
 
 - **A closure kept from one script cannot be called while another runs.**
   `start` in `lib/halo/vm/calls.wf` replaces the VM's prototypes and line
@@ -89,6 +92,26 @@ example apart from the engine code that exposed it
   script's closure. Reopen when a host needs to keep or call a closure
   across scripts.
 
+- **The embedding probe arms the allocation trigger through heap fields.**
+  `research/experiments/halo-e2e/test/probe.wf` sets
+  `engine.vm.heap.threshold` and `bytes_since_gc` directly before two runs to
+  make the allocation trigger due, although
+  [collector validation](../design/halo/heap/collector-validation.md) has
+  embedding clients force and observe collection through the embedding API.
+  The API offers stress and a collection pause setting: stress bypasses the
+  due check those runs exercise, while pause applies after a collection and
+  retains the 1 MiB floor, so neither simply replaces immediate trigger
+  arming. The statistics and pause observations control and observe collection
+  through the embedding API; their statistics oracle uses controlled allocations
+  and conservation between completed collections without reading heap fields.
+  These older trigger cases remain deferred to the instrumentation-boundary
+  ruling below. Impact: the probe depends on collector trigger
+  storage; a change to it breaks the probe rather than an API. Change: add an
+  embedding control that makes the next safepoint's allocation trigger due, or
+  record in the decision that the probe may arm it. Reopen at the next
+  collector trigger change or the owner's ruling on F4's instrumentation
+  boundary.
+
 - **Halo F4 has no every-allocation reachability verifier.**
   The safepoint stress and four missing-root mutations in
   `research/experiments/halo-gc/RESULTS.md` distinguish selected root
@@ -101,19 +124,10 @@ example apart from the engine code that exposed it
   or before claiming every-allocation validation; verify omitted-reference
   controls and allocating helpers with live temporary values.
 
-- **Halo retains cjson instance configurations after collection.**
-  `Vm.cjson_configs` owns settings and reusable encoding buffers; native
-  closures select an instance, but collecting its last closure does not
-  release that configuration. Impact: repeated `cjson.new()` retains
-  configuration slots and buffers for the VM's lifetime. Change: connect
-  instance lifetime to reachable native closures and reclaim unreachable
-  buffers and slots. Validate retained extracted methods, discarded tables
-  and repeated new/encode/collect cycles. Reopen before long-lived Halo VMs
-  use independent cjson instances.
-
 - **Halo's measured hot paths exceed the P1 median target.** The source
   `lib/halo/vm/dispatch.wf` retains joined `Step` continuations on cold and
-  frame-changing paths; C1's 18 selected hot arms now tail-call directly.
+  frame-changing paths; C1's 18 selected hot arms now continue the loop
+  directly.
   The full-LTO native baseline already had per-arm functions and indirect
   tail jumps; a single native dispatch point was not the measured cause ([P1 results](../research/experiments/halo-bench/RESULTS.md#value-width-handles-and-native-dispatch-inspected-first)).
   Impact: the initial six unscaled workloads measured 1.964–4.081 times PUC;
@@ -168,7 +182,8 @@ example apart from the engine code that exposed it
   Whitefoot's code cursor (from release `wf-0b7f5c5b9854`) cannot see that
   `next` is `pc + 1` and forms the code address from the index as before. The
   stage-3 wasm interpreter computes `let next = pc + 1_u64` in the arm and
-  tail-calls with it, which the cursor turns into one addition per dispatch;
+  dispatches the next instruction with it, which the cursor turns into one
+  addition per dispatch;
   the wf session reported about 13% on CoreMark on x86-64 there. On Halo
   with `wf-0b7f5c5b9854`, computing `next` in 44 straight-line arms gained
   only 1.9% on loop and cost concat 4.9%, failing its criterion, and was
@@ -176,18 +191,8 @@ example apart from the engine code that exposed it
   Change, if reopened: limit the step to the arms the loop and fib profiles
   name (`ForLoop`'s body arms, `AddRR`) and leave concat's path alone.
   Reopen when a later Whitefoot release changes how `run`'s edges are
-  lowered.
-
-- **Halo's oracle hides next/pairs hash iteration order.**
-  `research/experiments/halo-oracle/scripts/lua-core/next-pairs.lua` sorts both
-  observations; passing the oracle comparison proves contents, not order.
-  Impact: a table-layout change can pass while diverging from the selected
-  Redis Lua order. Change: add an independent unsorted table-growth and
-  iteration observation in the oracle's existing home, with recorded Redis
-  expected bytes and unchanged existing cases. Reopen at the next oracle
-  coverage update; validate that an order-only permutation fails comparison.
-  The [bounded growth experiment](../research/experiments/halo-bench/RESULTS.md#iteration-order-evidence-correction)
-  uses scratch unsorted PUC comparisons to qualify its own change.
+  lowered (with `wf-691ea8106920`, `run` as `loop { match }` compiles to the
+  same code as the self-tail form, so the measurement stands).
 
 - **Halo reused-binary reports identify current inputs, not build inputs.**
   `research/experiments/halo-e2e/run.py --binary` hashes the current library

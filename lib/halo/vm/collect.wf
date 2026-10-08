@@ -97,6 +97,7 @@ fn mark_roots(vm: &Vm, stack: &Box<Slots<Value>>, consts: &Box<Slots<Value>>, li
       pkg::heap::gc_mark(heap: &vm^.heap, v: context.table);
       pkg::heap::gc_mark(heap: &vm^.heap, v: context.comparator);
       pkg::heap::gc_mark(heap: &vm^.heap, v: context.saved_error);
+      pkg::heap::gc_mark(heap: &vm^.heap, v: context.foreach_key);
     }
   }
   let sort_count = vm^.sort_frames.inner.len;
@@ -156,6 +157,7 @@ fn collect_if_due(vm: &Vm, stack: &Box<Slots<Value>>, consts: &Box<Slots<Value>>
     }
   }
   let freed = pkg::heap::gc_sweep(heap: &vm^.heap);
+  cjson_reclaim(vm: vm);
   if vm^.heap.limit > 0_u64 {
     if vm^.heap.bytes > vm^.heap.limit {
       return raise_text(vm: vm, text: &collection_memory_error[0_u64..17_u64]);

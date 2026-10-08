@@ -1,7 +1,8 @@
 alias Value = pkg::value::Value;
 
-fn gc_begin(heap: &Heap) -> r: unit writes(heap.epoch) {
+fn gc_begin(heap: &Heap) -> r: unit writes(heap.epoch), writes(heap.gray_pops) {
   doc "A mark equal to the epoch means reached in this collection; new cells carry mark zero, which no epoch takes.";
+  set heap^.gray_pops = 0_u64;
   if heap^.epoch == 4294967295_u32 {
     set heap^.epoch = 1_u32;
   } else {
@@ -168,6 +169,7 @@ fn gc_propagate(heap: &Heap) -> r: unit writes(heap) {
   loop {
     if heap^.gray.inner.len > 0_u64 {
       let v = take_back(window: &heap^.gray.inner);
+      set heap^.gray_pops = heap^.gray_pops +sat 1_u64;
       match v {
         Tab(h: hv) => {
           let ti = cvt::<u32, u64>(hv);
@@ -197,20 +199,61 @@ fn gc_propagate(heap: &Heap) -> r: unit writes(heap) {
   return unit;
 }
 
+fn collection_kind_empty() -> r: CollectionKindStats pure {
+  doc "Zero counters for one kind before scanning its slab.";
+  return CollectionKindStats(live_objects: 0_u64, live_bytes: 0_u64, freed_objects: 0_u64, freed_bytes: 0_u64, slots_visited: 0_u64);
+}
+
+fn collection_stats_empty() -> r: CollectionStats pure {
+  doc "No completed collection yet, including no next-collection threshold observation.";
+  let empty = collection_kind_empty();
+  return CollectionStats(strings: empty, tables: empty, closures: empty, upvalues: empty, gray_pops: 0_u64, next_threshold: 0_u64);
+}
+
+fn collection_threshold(live: u64, pause: u64) -> r: u64 pure {
+  doc "Computes floor(live * max(pause - 100, 0) / 100) with saturation only on the final mathematical result, then applies the 1 MiB floor. Splitting both operands avoids premature product saturation and preserves pause 200 exactly.";
+  let growth = pause -sat 100_u64;
+  let whole = growth / 100_u64;
+  let fraction = growth % 100_u64;
+  let hundreds = live / 100_u64;
+  let remainder = live % 100_u64;
+  let integral = live *sat whole;
+  let fractional_hundreds = hundreds *sat fraction;
+  let fractional_tail = remainder *sat fraction;
+  let tail = fractional_tail / 100_u64;
+  let subtotal = integral +sat fractional_hundreds;
+  let total = subtotal +sat tail;
+  return imax(total, 1048576_u64);
+}
+
 fn gc_sweep(heap: &Heap) -> r: u64 writes(heap) {
-  doc "Frees unmarked live cells of every kind; free_string also removes the string from the weak intern table.";
+  doc "Counts each visited slot and each live or freed payload during the existing sweep, then publishes a completed snapshot; free_string also removes the weak intern entry.";
   let epoch = heap^.epoch;
   let freed = 0_u64;
+  let tables = collection_kind_empty();
+  let closures = collection_kind_empty();
+  let upvalues = collection_kind_empty();
+  let strings = collection_kind_empty();
   let i = 0_u64;
   loop {
     if i < heap^.tables.inner.len {
+      set tables.slots_visited = tables.slots_visited +sat 1_u64;
       if heap^.tables.inner[i].live {
+        let amount = table_bytes(array: heap^.tables.inner[i].payload.array.inner.cap, nodes: heap^.tables.inner[i].payload.nodes.inner.cap);
+        let retained = True();
         if heap^.tables.inner[i].mark != epoch {
           if i < 4294967296_u64 {
             let h = cvt::<u64, u32>(i);
             free_table(heap: heap, h: h);
             set freed = freed +wrap 1_u64;
+            set tables.freed_objects = tables.freed_objects +sat 1_u64;
+            set tables.freed_bytes = tables.freed_bytes +sat amount;
+            set retained = False();
           }
+        }
+        if retained {
+          set tables.live_objects = tables.live_objects +sat 1_u64;
+          set tables.live_bytes = tables.live_bytes +sat amount;
         }
       }
       set i = i +wrap 1_u64;
@@ -221,13 +264,24 @@ fn gc_sweep(heap: &Heap) -> r: u64 writes(heap) {
   set i = 0_u64;
   loop {
     if i < heap^.closures.inner.len {
+      set closures.slots_visited = closures.slots_visited +sat 1_u64;
       if heap^.closures.inner[i].live {
+        let tail = 4_u64 *sat heap^.closures.inner[i].payload.upvals.inner.cap;
+        let amount = 24_u64 +sat tail;
+        let retained = True();
         if heap^.closures.inner[i].mark != epoch {
           if i < 4294967296_u64 {
             let h = cvt::<u64, u32>(i);
             free_closure(heap: heap, h: h);
             set freed = freed +wrap 1_u64;
+            set closures.freed_objects = closures.freed_objects +sat 1_u64;
+            set closures.freed_bytes = closures.freed_bytes +sat amount;
+            set retained = False();
           }
+        }
+        if retained {
+          set closures.live_objects = closures.live_objects +sat 1_u64;
+          set closures.live_bytes = closures.live_bytes +sat amount;
         }
       }
       set i = i +wrap 1_u64;
@@ -238,13 +292,23 @@ fn gc_sweep(heap: &Heap) -> r: u64 writes(heap) {
   set i = 0_u64;
   loop {
     if i < heap^.upvalues.inner.len {
+      set upvalues.slots_visited = upvalues.slots_visited +sat 1_u64;
       if heap^.upvalues.inner[i].live {
+        let amount = 32_u64;
+        let retained = True();
         if heap^.upvalues.inner[i].mark != epoch {
           if i < 4294967296_u64 {
             let h = cvt::<u64, u32>(i);
             free_upvalue(heap: heap, h: h);
             set freed = freed +wrap 1_u64;
+            set upvalues.freed_objects = upvalues.freed_objects +sat 1_u64;
+            set upvalues.freed_bytes = upvalues.freed_bytes +sat amount;
+            set retained = False();
           }
+        }
+        if retained {
+          set upvalues.live_objects = upvalues.live_objects +sat 1_u64;
+          set upvalues.live_bytes = upvalues.live_bytes +sat amount;
         }
       }
       set i = i +wrap 1_u64;
@@ -255,13 +319,23 @@ fn gc_sweep(heap: &Heap) -> r: u64 writes(heap) {
   set i = 0_u64;
   loop {
     if i < heap^.strings.inner.len {
+      set strings.slots_visited = strings.slots_visited +sat 1_u64;
       if heap^.strings.inner[i].live {
+        let amount = 24_u64 +sat heap^.strings.inner[i].payload.bytes.inner.cap;
+        let retained = True();
         if heap^.strings.inner[i].mark != epoch {
           if i < 4294967296_u64 {
             let h = cvt::<u64, u32>(i);
             free_string(heap: heap, h: h);
             set freed = freed +wrap 1_u64;
+            set strings.freed_objects = strings.freed_objects +sat 1_u64;
+            set strings.freed_bytes = strings.freed_bytes +sat amount;
+            set retained = False();
           }
+        }
+        if retained {
+          set strings.live_objects = strings.live_objects +sat 1_u64;
+          set strings.live_bytes = strings.live_bytes +sat amount;
         }
       }
       set i = i +wrap 1_u64;
@@ -272,16 +346,14 @@ fn gc_sweep(heap: &Heap) -> r: u64 writes(heap) {
   set heap^.collections = heap^.collections +sat 1_u64;
   set heap^.bytes_since_gc = 0_u64;
   let live = heap^.bytes;
-  if live > 1048576_u64 {
-    set heap^.threshold = live;
-  } else {
-    set heap^.threshold = 1048576_u64;
-  }
+  let threshold = collection_threshold(live: live, pause: heap^.gc_pause);
+  set heap^.threshold = threshold;
+  set heap^.last_collection = CollectionStats(strings: strings, tables: tables, closures: closures, upvalues: upvalues, gray_pops: heap^.gray_pops, next_threshold: threshold);
   return freed;
 }
 
 fn gc_due(heap: &Heap) -> r: Bool reads(heap) {
-  doc "Lua 5.1's default pause: collect when allocation since the last collection exceeds what survived it, and at least 1 MiB.";
+  doc "Collect when stress is enabled, the byte limit is exceeded, or allocation since the last collection exceeds its pause-derived threshold.";
   if heap^.gc_stress {
     return True();
   }

@@ -323,7 +323,7 @@ fn vm_new(limit: u64) -> r: Vm pure {
   let cjson_configs = box_slots_new::<CjsonConfig>(capacity: 16_u64);
   let pcall_field = box_slots_new::<u8>(capacity: 0_u64);
   let no_call = PendingCall(id: 0_u32, argc: 0_u64, func: 0_u64, wanted: 0_i64, return_pc: 0_u64, base: 0_u64, kbase: 0_u64, tail: atom3, activation: 0_u32, top: 0_u64);
-  return Vm(pattern_subs: move pattern_subs, cjson_configs: move cjson_configs, cjson_active_config: 0_u64, library_contexts: move library_contexts, sort_frames: move sort_frames, random_state: 20017429951246_u64, heap: move heap, frames: move frames, open_upvalues: move opens, protos: move protos, lineinfo: move lineinfo, source: move source, top: 0_u64, budget: unlimited, saved_pc: 0_u64, saved_base: 0_u64, saved_kbase: 0_u64, error: nil, activation: 0_u32, globals: gh, type_metatables: type_metatables, host_stopped: atom3, stopped_stack: move stopped_stack, callback_plan: callback_plan, callbacks: move callbacks, suspended: atom3, pending: no_call, call_pending: atom3, raise_pc: 0_u64, pcall_field: move pcall_field, debug_names: move debug_names, local_variables: move local_variables, upvalue_names: move upvalue_names);
+  return Vm(pattern_subs: move pattern_subs, cjson_configs: move cjson_configs, cjson_active_config: 0_u64, library_contexts: move library_contexts, sort_frames: move sort_frames, random_state: 20017429951246_u64, heap: move heap, frames: move frames, open_upvalues: move opens, protos: move protos, lineinfo: move lineinfo, source: move source, top: 0_u64, budget: unlimited, saved_pc: 0_u64, saved_base: 0_u64, saved_kbase: 0_u64, error: nil, activation: 0_u32, globals: gh, type_metatables: type_metatables, host_stopped: atom3, stopped_stack: move stopped_stack, callback_plan: callback_plan, callbacks: move callbacks, suspended: atom3, pending: no_call, call_pending: atom3, raise_pc: 0_u64, pcall_field: move pcall_field, post_catch: unlimited, debug_names: move debug_names, local_variables: move local_variables, upvalue_names: move upvalue_names);
 }
 
 fn raise_text(vm: &Vm, text: &[u8]) -> r: Bool reads(text), writes(vm) {
@@ -596,6 +596,7 @@ fn close_upvalues(vm: &Vm, stack: &Box<Slots<Value>>, level: u64) -> r: unit rea
 }
 
 fn reset(vm: &Vm, stack: &Box<Slots<Value>>) -> r: unit writes(stack), writes(vm) {
+  set vm^.post_catch = unlimited;
   loop {
     if vm^.pattern_subs.inner.len == 0_u64 {
       break;
@@ -704,6 +705,7 @@ fn register_slot(stack: &Box<Slots<Value>>, base: u64, operand: u8) -> r: u64 re
 }
 
 fn park_stopped_stack(vm: &Vm, stack: &Box<Slots<Value>>) -> r: unit reads(stack), writes(vm) {
+  set vm^.post_catch = unlimited;
   if vm^.host_stopped {
     return unit;
   }
@@ -1242,50 +1244,36 @@ fn append_constant_name(consts: &Box<Slots<Value>>, vm: &Vm, proto: Proto, index
   return unit;
 }
 
-fn describe_operand(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, reg: u64, bytes: &Box<Slots<u8>>) -> r: Bool reads(code), reads(consts), reads(vm), writes(bytes) {
-  doc "getobjname tries active locals first, then the symbolic last writer, recursing on decreasing MOVE sources at the same faulting cell; a MOVE source that does not decrease ends the walk without a name, which bounds it. Native frames and external values have no name.";
+fn operand_name(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, frame: Frame, pc: u64, reg: u64, bytes: &Box<Slots<u8>>) -> r: u8 reads(code), reads(consts), reads(vm), writes(bytes) {
+  doc "getobjname returns kind 1 local, 2 global, 3 field, 4 upvalue, 5 method, or 0 unnamed, appending only the name. Active locals precede symbolic writers; decreasing MOVE sources share the same call or fault cell and bound the walk.";
   if reg == unlimited {
-    return False();
-  }
-  let count = vm^.frames.inner.len;
-  if count == 0_u64 {
-    return False();
-  }
-  let last = count - 1_u64;
-  let frame = vm^.frames.inner[last];
-  if frame.activation != vm^.activation {
-    return False();
+    return 0_u8;
   }
   let closure = cvt::<u32, u64>(frame.closure);
   if closure >= vm^.heap.closures.inner.len {
-    return False();
+    return 0_u8;
   }
   let callee = vm^.heap.closures.inner[closure].payload.callee;
   let id = unlimited;
   match callee {
-    Lua(proto: index) => {
-      set id = cvt::<u32, u64>(index);
+    Lua(proto: proto_index) => {
+      set id = cvt::<u32, u64>(proto_index);
     }
     Native(..) => {
-      return False();
+      return 0_u8;
     }
   }
   if id >= vm^.protos.inner.len {
-    return False();
+    return 0_u8;
   }
   let proto = vm^.protos.inner[id];
-  let pc = fault_cell(vm: vm);
   let position = reg;
   loop {
     let local = local_name(vm: vm, proto: proto, pc: pc, reg: position);
     match local {
-      Some(value: name) => {
-        bytes_append(bytes: bytes, text: &operand_text_local[0_u64..5_u64]);
-        bytes_push(bytes: bytes, byte: 32_u8);
-        bytes_push(bytes: bytes, byte: 39_u8);
-        append_debug_name(vm: vm, bytes: bytes, name: name);
-        bytes_push(bytes: bytes, byte: 39_u8);
-        return True();
+      Some(value: local_debug_name) => {
+        append_debug_name(vm: vm, bytes: bytes, name: local_debug_name);
+        return 1_u8;
       }
       None() => {
       }
@@ -1298,35 +1286,59 @@ fn describe_operand(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm
       set position = origin.index;
     } else {
       if origin.kind == 0_u8 {
-        return False();
+        return 0_u8;
       }
-      if origin.kind == 2_u8 {
-        bytes_append(bytes: bytes, text: &operand_text_global[0_u64..6_u64]);
-      } else if origin.kind == 3_u8 {
-        bytes_append(bytes: bytes, text: &operand_text_field[0_u64..5_u64]);
-      } else if origin.kind == 4_u8 {
-        bytes_append(bytes: bytes, text: &operand_text_upvalue[0_u64..7_u64]);
-      } else {
-        bytes_append(bytes: bytes, text: &operand_text_method[0_u64..6_u64]);
-      }
-      bytes_push(bytes: bytes, byte: 32_u8);
-      bytes_push(bytes: bytes, byte: 39_u8);
       if origin.kind == 4_u8 {
         let at = proto.upvalue_name_base +sat origin.index;
         if at < vm^.upvalue_names.inner.len {
-          let name = vm^.upvalue_names.inner[at];
-          append_debug_name(vm: vm, bytes: bytes, name: name);
+          let upvalue_debug_name = vm^.upvalue_names.inner[at];
+          append_debug_name(vm: vm, bytes: bytes, name: upvalue_debug_name);
         } else {
           bytes_push(bytes: bytes, byte: 63_u8);
         }
       } else {
         append_constant_name(consts: consts, vm: vm, proto: proto, index: origin.index, bytes: bytes);
       }
-      bytes_push(bytes: bytes, byte: 39_u8);
-      return True();
+      return origin.kind;
     }
   }
-  return False();
+  return 0_u8;
+}
+
+fn describe_operand(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, reg: u64, bytes: &Box<Slots<u8>>) -> r: Bool reads(code), reads(consts), reads(vm), writes(bytes) {
+  doc "Formats the shared getobjname result for a runtime type error in the current Lua frame; native frames and external values have no description.";
+  let count = vm^.frames.inner.len;
+  if count == 0_u64 {
+    return False();
+  }
+  let last = count - 1_u64;
+  let frame = vm^.frames.inner[last];
+  if frame.activation != vm^.activation {
+    return False();
+  }
+  let pc = fault_cell(vm: vm);
+  let name = box_slots_new::<u8>(capacity: 0_u64);
+  let kind = operand_name(code: code, consts: consts, vm: vm, frame: frame, pc: pc, reg: reg, bytes: &name);
+  if kind == 0_u8 {
+    return False();
+  }
+  if kind == 1_u8 {
+    bytes_append(bytes: bytes, text: &operand_text_local[0_u64..5_u64]);
+  } else if kind == 2_u8 {
+    bytes_append(bytes: bytes, text: &operand_text_global[0_u64..6_u64]);
+  } else if kind == 3_u8 {
+    bytes_append(bytes: bytes, text: &operand_text_field[0_u64..5_u64]);
+  } else if kind == 4_u8 {
+    bytes_append(bytes: bytes, text: &operand_text_upvalue[0_u64..7_u64]);
+  } else {
+    bytes_append(bytes: bytes, text: &operand_text_method[0_u64..6_u64]);
+  }
+  bytes_push(bytes: bytes, byte: 32_u8);
+  bytes_push(bytes: bytes, byte: 39_u8);
+  let length = name.inner.len;
+  bytes_append(bytes: bytes, text: &name.inner[0_u64..length]);
+  bytes_push(bytes: bytes, byte: 39_u8);
+  return True();
 }
 
 fn call_type_error(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, v: Value, func: u64, return_pc: u64) -> r: Bool reads(code), reads(consts), writes(vm) {

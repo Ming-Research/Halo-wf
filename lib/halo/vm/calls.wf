@@ -16,7 +16,7 @@ const calls_text_1: Array<u8, 19> = "invalid Lua closure";
 
 const calls_text_2: Array<u8, 14> = "stack overflow";
 
-const calls_text_3: Array<u8, 43> = "bad argument #1 to 'pcall' (value expected)";
+const calls_text_3: Array<u8, 14> = "value expected";
 
 const calls_text_4: Array<u8, 6> = "__call";
 
@@ -100,107 +100,81 @@ fn finish(vm: &Vm, stack: &Box<Slots<Value>>, frame: Frame, src: u64, count: u64
   return Step::Jump(pc: pc, base: b, kbase: kb);
 }
 
-fn protected_error(vm: &Vm) -> r: Value writes(vm) {
-  doc "The error value pcall returns. When the embedding names a field, an error table whose raw value at that field is a string or a number gives that value; every other error is returned as raised.";
-  let error = vm^.error;
-  let n = vm^.pcall_field.inner.len;
-  if n == 0_u64 {
-    return error;
+fn unwind_frame(vm: &Vm, stack: &Box<Slots<Value>>) -> r: Option<Frame> reads(stack), writes(vm) {
+  doc "Closes frames in this activation up to the nearest protected frame, leaving that frame for its catch or post-catch lookup.";
+  loop {
+    if vm^.frames.inner.len == 0_u64 {
+      return None<Frame>();
+    }
+    let i = vm^.frames.inner.len - 1_u64;
+    if vm^.frames.inner[i].activation != vm^.activation {
+      return None<Frame>();
+    }
+    let frame = vm^.frames.inner[i];
+    if frame.flags == protected_flag {
+      set vm^.raise_pc = 0_u64;
+      return Some<Frame>(value: frame);
+    }
+    let discarded = take_back(window: &vm^.frames.inner);
+    close_upvalues(vm: vm, stack: stack, level: frame.base);
   }
-  match error {
-    Tab(..) => {
-    }
-    Nil() => {
-      return error;
-    }
-    False() => {
-      return error;
-    }
-    True() => {
-      return error;
-    }
-    Num(..) => {
-      return error;
-    }
-    Str(..) => {
-      return error;
-    }
-    Fun(..) => {
-      return error;
-    }
-    Builtin(..) => {
-      return error;
-    }
+  return None<Frame>();
+}
+
+fn unwind_finish(vm: &Vm, stack: &Box<Slots<Value>>, frame: Frame) -> r: Step writes(vm), writes(stack) contract {
+  ensures stack^.inner.len == entry(stack)^.inner.len;
+} {
+  doc "Returns false and the original error from a catch that needs no field lookup.";
+  let length = stack^.inner.len;
+  if vm^.frames.inner.len > 0_u64 {
+    let discarded = take_back(window: &vm^.frames.inner);
   }
-  let name = box_slots_new::<u8>(capacity: n);
-  for (i in 0_u64..n) {
-    if i < vm^.pcall_field.inner.len {
-      if name.inner.len < name.inner.cap {
-        let b = vm^.pcall_field.inner[i];
-        place_back(window: &name.inner, value: b);
-      }
-    }
+  let dest = frame.func;
+  if dest < stack^.inner.len {
+    set stack^.inner[dest] = Value::False();
   }
-  let count = name.inner.len;
-  let key = pkg::heap::intern(heap: &vm^.heap, bytes: &name.inner[0_u64..count]);
-  let field = pkg::heap::table_get(heap: &vm^.heap, t: error, key: key);
-  match field {
-    Str(..) => {
-      return field;
-    }
-    Num(..) => {
-      return field;
-    }
-    Nil() => {
-    }
-    False() => {
-    }
-    True() => {
-    }
-    Tab(..) => {
-    }
-    Fun(..) => {
-    }
-    Builtin(..) => {
-    }
+  let err = dest +sat 1_u64;
+  if err < stack^.inner.len {
+    let caught = vm^.error;
+    set stack^.inner[err] = caught;
   }
-  return error;
+  let outcome = finish(vm: vm, stack: stack, frame: frame, src: dest, count: 2_u64);
+  resize_stack(stack: stack, size: length);
+  return outcome;
 }
 
 fn unwind(vm: &Vm, stack: &Box<Slots<Value>>) -> r: Step writes(vm), writes(stack) contract {
   ensures stack^.inner.len == entry(stack)^.inner.len;
 } {
-  let length = stack^.inner.len;
-  loop (
-    invariant preserved: stack^.inner.len == length
-  ) {
-    if vm^.frames.inner.len == 0_u64 {
+  doc "Catches in the current activation, retaining a non-catching native frame for a table field lookup. Records the lookup in VM state and returns Budget so run exits to the generic driver without spending or resetting the instruction budget.";
+  match unwind_frame(vm: vm, stack: stack) {
+    Some(value: frame) => {
+      if vm^.pcall_field.inner.len > 0_u64 {
+        let error = vm^.error;
+        match tab_of(v: error) {
+          Handle(..) => {
+            if vm^.frames.inner.len > 0_u64 {
+              let last = vm^.frames.inner.len - 1_u64;
+              set vm^.frames.inner[last].flags = native_flag;
+            }
+            let index = vm^.library_contexts.inner.len;
+            let nil = Value::Nil();
+            let tail = False();
+            let context = LibraryContext(frame: frame, tail: tail, id: builtin_pcall, phase: 0_u8, count: 0_u64, table: nil, comparator: nil, saved_error: error, foreach_key: nil);
+            push_library_context(vm: vm, context: context);
+            set vm^.post_catch = index;
+            return Step::Budget();
+          }
+          NoHandle() => {
+          }
+        }
+      }
+      return unwind_finish(vm: vm, stack: stack, frame: frame);
+    }
+    None() => {
       return Step::Error();
     }
-    let i = vm^.frames.inner.len - 1_u64;
-    if vm^.frames.inner[i].activation != vm^.activation {
-      return Step::Error();
-    }
-    let f = take_back(window: &vm^.frames.inner);
-    if f.flags == protected_flag {
-      set vm^.raise_pc = 0_u64;
-      let dest = f.func;
-      if dest < stack^.inner.len {
-        set stack^.inner[dest] = Value::False();
-      }
-      let err = dest +sat 1_u64;
-      if err < stack^.inner.len {
-        let caught = protected_error(vm: vm);
-        set stack^.inner[err] = caught;
-      }
-      let outcome = finish(vm: vm, stack: stack, frame: f, src: dest, count: 2_u64);
-      resize_stack(stack: stack, size: length);
-      return outcome;
-    }
-    let b = f.base;
-    close_upvalues(vm: vm, stack: stack, level: b);
   }
-  return Step::Error();
 }
 
 fn enter_lua(vm: &Vm, stack: &Box<Slots<Value>>, h: u32, func: u64, argc: u64, wanted: i64, return_pc: u64, tail: Bool) -> r: Step writes(vm), writes(stack) {
@@ -310,6 +284,7 @@ fn enter_lua(vm: &Vm, stack: &Box<Slots<Value>>, h: u32, func: u64, argc: u64, w
 }
 
 fn prepare<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, stack: &Box<Slots<Value>>, env: &E, func: u64, argc: u64, wanted: i64, return_pc: u64, base: u64, kbase: u64, tail: Bool) -> r: Step reads(code), reads(consts), writes(vm), writes(stack), writes(env) {
+  doc "Prepares Lua, native and protected calls while retaining the invoking Lua frame through native tail calls.";
   let fslot = func;
   let nargs = argc;
   let nr = wanted;
@@ -350,7 +325,9 @@ fn prepare<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
         }
         if bound_id_1 == builtin_pcall {
           if nargs == 0_u64 {
-            let ignored = raise_text(vm: vm, text: &calls_text_3[0_u64..43_u64]);
+            let call_pc = return_pc -sat 1_u64;
+            let ignored = lib_argtext(code: code, consts: consts, vm: vm, pc: call_pc, index: 1_u64, text: &calls_text_3[0_u64..14_u64]);
+            library_call_error_location(vm: vm, id: bound_id_1, pc: call_pc);
             return Step::Error();
           }
           let marker = Frame(func: fslot, base: base, return_pc: return_pc, kbase: kbase, closure: no_handle, nresults: nr, activation: vm^.activation, flags: protected_flag, varbase: 0_u64, varcount: 0_u64, frame_top: vm^.top);
@@ -393,9 +370,11 @@ fn prepare<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
             let context_index = vm^.library_contexts.inner.len;
             let string_call = bound_id_1 == builtin_tostring;
             let sort_call = bound_id_1 == builtin_table_sort;
+            let table_foreach_call = bound_id_1 == builtin_table_foreach;
             let protected_call = bound_id_1 == builtin_xpcall;
             let substitution_call = bound_id_1 == builtin_string_gsub;
-            let ordinary_callback = bor(string_call, sort_call);
+            let table_foreach_or_sort = bor(sort_call, table_foreach_call);
+            let ordinary_callback = bor(string_call, table_foreach_or_sort);
             let protected_callback = bor(ordinary_callback, protected_call);
             let library_callback = bor(protected_callback, substitution_call);
             if library_callback {
@@ -403,7 +382,7 @@ fn prepare<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
               let b = argument(stack: stack, func: fslot, argc: nargs, index: 1_u64);
               let nil = Value::Nil();
               let frame = Frame(func: fslot, base: base, return_pc: return_pc, kbase: kbase, closure: no_handle, nresults: nr, activation: vm^.activation, flags: 0_u8, varbase: 0_u64, varcount: 0_u64, frame_top: vm^.top);
-              let context = LibraryContext(frame: frame, tail: tailing, id: bound_id_1, phase: 0_u8, count: 0_u64, table: a, comparator: b, saved_error: nil);
+              let context = LibraryContext(frame: frame, tail: tailing, id: bound_id_1, phase: 0_u8, count: 0_u64, table: a, comparator: b, saved_error: nil, foreach_key: nil);
               push_library_context(vm: vm, context: context);
               let expected = False();
               set vm^.callback_plan = CallbackPlan(pc: return_pc, base: base, kbase: kbase, kind: 4_u8, dest: fslot, first: context_index, index: 0_u64, target: 0_u64, expected: expected);
@@ -737,6 +716,7 @@ fn complete_call<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, 
 }
 
 fn fail_call<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, error: Value, budget: u64) -> r: Outcome reads(script), writes(stack), writes(vm), writes(env) {
+  doc "Raises a pending host error and sends its catch step to the driver, including any recorded post-catch lookup.";
   if bnot(vm^.call_pending) {
     let ignored = raise_text(vm: vm, text: &calls_text_no_call[0_u64..23_u64]);
     return Outcome::Error();
@@ -766,6 +746,39 @@ const calls_text_pending: Array<u8, 22> = "a host call is pending";
 const calls_text_no_call: Array<u8, 23> = "no host call is pending";
 
 fn dispatch_step<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, step: Step) -> r: Outcome reads(code), reads(consts), writes(stack), writes(vm), writes(env) {
+  doc "Consumes post-catch requests before interpreting a run exit. Clearing the request before lookup lets nested callback activations record and consume their own; the budget remains unchanged until an ordinary checkpoint suspends. unwind signals a request as Budget, so every caller of unwind outside run must pass its step here before reading Budget as a suspension.";
+  let current = step;
+  loop {
+    let index = vm^.post_catch;
+    if index != unlimited {
+      set vm^.post_catch = unlimited;
+      set current = pcall_lookup_start::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, index: index);
+    } else {
+      let outcome = dispatch_run::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, step: current);
+      match outcome {
+        HostStopped() => {
+          set vm^.post_catch = unlimited;
+          return outcome;
+        }
+        Done(..) => {
+        }
+        Error() => {
+        }
+        Budget() => {
+        }
+        HostCall() => {
+        }
+      }
+      if vm^.post_catch == unlimited {
+        return outcome;
+      }
+    }
+  }
+  return Outcome::Error();
+}
+
+fn dispatch_run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, step: Step) -> r: Outcome reads(code), reads(consts), writes(stack), writes(vm), writes(env) {
+  doc "Runs one entry or resumed step; the caller interprets a recorded post-catch request before exposing the exit to the host.";
   match step {
     Jump(pc: bound_pc_0, base: b, kbase: kb) => {
       if b <= 18446744073709551359_u64 {

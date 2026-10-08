@@ -45,6 +45,7 @@ const library_base_lib_text_16: Array<u8, 21> = "invalid key to 'next'";
 const library_base_lib_text_17: Array<u8, 26> = "too many results to unpack";
 
 fn library_base<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, stack: &Box<Slots<Value>>, env: &E, func: u64, argc: u64, id: u32, pc: u64) -> r: HostOutcome reads(code), reads(consts), writes(vm), writes(stack), writes(env) {
+  doc "Dispatches base-library operations with the Lua call cell for argument errors and callbacks.";
   let local_length_1 = stack^.inner.len;
   let local_a_2 = argument(stack: stack, func: func, argc: argc, index: 0_u64);
   let local_b_3 = argument(stack: stack, func: func, argc: argc, index: 1_u64);
@@ -52,13 +53,13 @@ fn library_base<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<V
   let local_nil_5 = Value::Nil();
   if id == builtin_xpcall {
     if argc < 2_u64 {
-      return lib_argtext(vm: vm, id: id, index: 2_u64, text: &library_base_lib_text_4[0_u64..14_u64]);
+      return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 2_u64, text: &library_base_lib_text_4[0_u64..14_u64]);
     }
     return xpcall_start::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, func: func, argc: argc);
   }
   if id == builtin_assert {
     if argc == 0_u64 {
-      return lib_argtext(vm: vm, id: id, index: 1_u64, text: &library_base_lib_text_4[0_u64..14_u64]);
+      return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, text: &library_base_lib_text_4[0_u64..14_u64]);
     }
     if truthy(v: local_a_2) {
       let local_source_6 = func +sat 1_u64;
@@ -73,7 +74,7 @@ fn library_base<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<V
       Handle(..) => {
       }
       NoHandle() => {
-        return lib_argerror(vm: vm, id: id, index: 2_u64, argc: argc, value: local_b_3, expected: &library_base_lib_text_1[0_u64..6_u64]);
+        return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 2_u64, argc: argc, value: local_b_3, expected: &library_base_lib_text_1[0_u64..6_u64]);
       }
     }
     set vm^.error = local_message_8;
@@ -81,10 +82,10 @@ fn library_base<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<V
   }
   if id == builtin_rawequal {
     if argc < 1_u64 {
-      return lib_argtext(vm: vm, id: id, index: 1_u64, text: &library_base_lib_text_6[0_u64..14_u64]);
+      return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, text: &library_base_lib_text_6[0_u64..14_u64]);
     }
     if argc < 2_u64 {
-      return lib_argtext(vm: vm, id: id, index: 2_u64, text: &library_base_lib_text_7[0_u64..14_u64]);
+      return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 2_u64, text: &library_base_lib_text_7[0_u64..14_u64]);
     }
     let local_eq_9 = raw_equal(a: local_a_2, b: local_b_3);
     let local_value_10 = boolean(v: local_eq_9);
@@ -96,7 +97,7 @@ fn library_base<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<V
       return lib_result(stack: stack, func: func, value: value);
     }
     if argc < 1_u64 {
-      return lib_argtext(vm: vm, id: id, index: 1_u64, text: &library_base_lib_text_8[0_u64..14_u64]);
+      return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, text: &library_base_lib_text_8[0_u64..14_u64]);
     }
     let local_tm_11 = metamethod(vm: vm, v: local_a_2, name: &library_base_lib_text_9[0_u64..10_u64]);
     let local_absent_12 = is_nil(v: local_tm_11);
@@ -192,14 +193,14 @@ fn library_base<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<V
             set local_base_29 = i;
           }
           None() => {
-            return lib_argerror(vm: vm, id: id, index: 2_u64, argc: argc, value: local_b_3, expected: &library_base_lib_text_0[0_u64..6_u64]);
+            return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 2_u64, argc: argc, value: local_b_3, expected: &library_base_lib_text_0[0_u64..6_u64]);
           }
         }
       }
     }
     if local_base_29 == 10_i64 {
       if argc == 0_u64 {
-        return lib_argtext(vm: vm, id: id, index: 1_u64, text: &library_base_lib_text_13[0_u64..14_u64]);
+        return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, text: &library_base_lib_text_13[0_u64..14_u64]);
       }
       match coerce_number(vm: vm, v: local_a_2) {
         Is(x: bound_x_1) => {
@@ -214,14 +215,14 @@ fn library_base<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<V
     let local_text_32 = coerce_string(vm: vm, v: local_a_2);
     match str_of(v: local_text_32) {
       NoHandle() => {
-        return lib_argerror(vm: vm, id: id, index: 1_u64, argc: argc, value: local_a_2, expected: &library_base_lib_text_1[0_u64..6_u64]);
+        return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, argc: argc, value: local_a_2, expected: &library_base_lib_text_1[0_u64..6_u64]);
       }
       Handle(h: bound_h_2) => {
         if local_base_29 < 2_i64 {
-          return lib_argtext(vm: vm, id: id, index: 2_u64, text: &library_base_lib_text_14[0_u64..17_u64]);
+          return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 2_u64, text: &library_base_lib_text_14[0_u64..17_u64]);
         }
         if local_base_29 > 36_i64 {
-          return lib_argtext(vm: vm, id: id, index: 2_u64, text: &library_base_lib_text_15[0_u64..17_u64]);
+          return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 2_u64, text: &library_base_lib_text_15[0_u64..17_u64]);
         }
         let local_i_33 = cvt::<u32, u64>(bound_h_2);
         if local_i_33 < vm^.heap.strings.inner.len {
@@ -248,14 +249,14 @@ fn library_base<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<V
         set local_index_38 = index;
       }
       None() => {
-        return lib_argerror(vm: vm, id: id, index: 2_u64, argc: argc, value: local_b_3, expected: &library_base_lib_text_0[0_u64..6_u64]);
+        return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 2_u64, argc: argc, value: local_b_3, expected: &library_base_lib_text_0[0_u64..6_u64]);
       }
     }
     match tab_of(v: local_a_2) {
       Handle(..) => {
       }
       NoHandle() => {
-        return lib_argerror(vm: vm, id: id, index: 1_u64, argc: argc, value: local_a_2, expected: &library_base_lib_text_2[0_u64..5_u64]);
+        return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, argc: argc, value: local_a_2, expected: &library_base_lib_text_2[0_u64..5_u64]);
       }
     }
     let narrowed = cvt.wrap::<i64, i32>(local_index_38);
@@ -276,7 +277,7 @@ fn library_base<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<V
       Handle(..) => {
       }
       NoHandle() => {
-        return lib_argerror(vm: vm, id: id, index: 1_u64, argc: argc, value: local_a_2, expected: &library_base_lib_text_2[0_u64..5_u64]);
+        return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, argc: argc, value: local_a_2, expected: &library_base_lib_text_2[0_u64..5_u64]);
       }
     }
     let local_f_43 = Value::Builtin(id: builtin_next);
@@ -292,7 +293,7 @@ fn library_base<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<V
       Handle(..) => {
       }
       NoHandle() => {
-        return lib_argerror(vm: vm, id: id, index: 1_u64, argc: argc, value: local_a_2, expected: &library_base_lib_text_2[0_u64..5_u64]);
+        return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, argc: argc, value: local_a_2, expected: &library_base_lib_text_2[0_u64..5_u64]);
       }
     }
     let local_f_46 = Value::Builtin(id: builtin_ipairsaux);
@@ -309,7 +310,7 @@ fn library_base<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<V
       Handle(..) => {
       }
       NoHandle() => {
-        return lib_argerror(vm: vm, id: id, index: 1_u64, argc: argc, value: local_a_2, expected: &library_base_lib_text_2[0_u64..5_u64]);
+        return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, argc: argc, value: local_a_2, expected: &library_base_lib_text_2[0_u64..5_u64]);
       }
     }
     match pkg::heap::table_next(heap: &vm^.heap, t: local_a_2, key: local_b_3) {
@@ -336,7 +337,7 @@ fn library_base<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<V
       Handle(..) => {
       }
       NoHandle() => {
-        return lib_argerror(vm: vm, id: id, index: 1_u64, argc: argc, value: local_a_2, expected: &library_base_lib_text_2[0_u64..5_u64]);
+        return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, argc: argc, value: local_a_2, expected: &library_base_lib_text_2[0_u64..5_u64]);
       }
     }
     let b_absent = is_nil(v: local_b_3);
@@ -345,7 +346,7 @@ fn library_base<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<V
         Some(..) => {
         }
         None() => {
-          return lib_argerror(vm: vm, id: id, index: 2_u64, argc: argc, value: local_b_3, expected: &library_base_lib_text_0[0_u64..6_u64]);
+          return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 2_u64, argc: argc, value: local_b_3, expected: &library_base_lib_text_0[0_u64..6_u64]);
         }
       }
     }
@@ -355,7 +356,7 @@ fn library_base<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<V
         Some(..) => {
         }
         None() => {
-          return lib_argerror(vm: vm, id: id, index: 3_u64, argc: argc, value: local_c_4, expected: &library_base_lib_text_0[0_u64..6_u64]);
+          return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 3_u64, argc: argc, value: local_c_4, expected: &library_base_lib_text_0[0_u64..6_u64]);
         }
       }
     }

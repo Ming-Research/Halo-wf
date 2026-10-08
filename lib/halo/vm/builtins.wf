@@ -8,8 +8,6 @@ alias truthy = pkg::value::truthy;
 alias intern = pkg::heap::intern;
 alias table_get = pkg::heap::table_get;
 
-const builtins_msg_1000: Array<u8, 44> = "bad argument #2 to 'error' (number expected)";
-
 const text_0: Array<u8, 34> = "Attempt to modify a readonly table";
 
 const builtins_text_0: Array<u8, 3> = "nil";
@@ -32,33 +30,13 @@ const builtins_text_8: Array<u8, 19> = "attempt to compare ";
 
 const builtins_text_9: Array<u8, 6> = " with ";
 
-const builtins_text_10: Array<u8, 48> = "bad argument #1 to 'select' (index out of range)";
+const builtins_text_10: Array<u8, 18> = "index out of range";
 
-const builtins_text_11: Array<u8, 45> = "bad argument #1 to 'select' (number expected)";
-
-const builtins_text_12: Array<u8, 42> = "bad argument #1 to 'type' (value expected)";
-
-const builtins_text_13: Array<u8, 44> = "bad argument #1 to 'rawget' (table expected)";
-
-const builtins_text_14: Array<u8, 44> = "bad argument #2 to 'rawget' (value expected)";
-
-const builtins_text_15: Array<u8, 44> = "bad argument #1 to 'rawset' (table expected)";
-
-const builtins_text_16: Array<u8, 44> = "bad argument #2 to 'rawset' (value expected)";
-
-const builtins_text_17: Array<u8, 44> = "bad argument #3 to 'rawset' (value expected)";
-
-const builtins_text_18: Array<u8, 50> = "bad argument #1 to 'setmetatable' (table expected)";
-
-const builtins_text_19: Array<u8, 57> = "bad argument #2 to 'setmetatable' (nil or table expected)";
-
-const builtins_text_20: Array<u8, 57> = "bad argument #2 to 'setmetatable' (nil or table expected)";
+const builtins_text_19: Array<u8, 21> = "nil or table expected";
 
 const builtins_text_21: Array<u8, 11> = "__metatable";
 
 const builtins_text_22: Array<u8, 35> = "cannot change a protected metatable";
-
-const builtins_text_23: Array<u8, 50> = "bad argument #1 to 'getmetatable' (value expected)";
 
 const builtins_text_24: Array<u8, 11> = "__metatable";
 
@@ -159,7 +137,10 @@ fn error_location(vm: &Vm, pc: u64, level: u64, message: Value) -> r: Value writ
     set index = index - 1_u64;
     if index < vm^.frames.inner.len {
       let frame = vm^.frames.inner[index];
-      if frame.flags == protected_flag {
+      let protected = frame.flags == protected_flag;
+      let native = frame.flags == native_flag;
+      let no_location = bor(protected, native);
+      if no_location {
         if remaining == 1_u64 {
           return message;
         }
@@ -236,6 +217,7 @@ fn error_location(vm: &Vm, pc: u64, level: u64, message: Value) -> r: Value writ
 fn builtin<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, env: &E, vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: u32, pc: u64) -> r: HostOutcome reads(code), reads(consts), writes(env), writes(vm), writes(stack) contract {
   ensures stack^.inner.len == entry(stack)^.inner.len;
 } {
+  doc "Dispatches native builtins, preserving the Lua call cell for argument errors and explicit error levels.";
   let length = stack^.inner.len;
   if id >= 8_u32 {
     let outcome = library_dispatch::<Host<E>>(code: code, consts: consts, env: env, vm: vm, stack: stack, func: func, argc: argc, id: id, pc: pc);
@@ -275,19 +257,27 @@ fn builtin<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
             }
           }
           Not() => {
-            return lib_argerror(vm: vm, id: id, index: 2_u64, argc: argc, value: b, expected: &builtin_expected_2_number[0_u64..6_u64]);
+            let rejected = lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 2_u64, argc: argc, value: b, expected: &builtin_expected_2_number[0_u64..6_u64]);
+            library_call_error_location(vm: vm, id: id, pc: pc);
+            return rejected;
           }
         }
       }
     }
     let message = a;
+    let located = True();
+    if level == 1_u64 {
+      set located = lib_call_has_lua_caller(vm: vm);
+    }
     if level > 0_u64 {
       set message = coerce_string(vm: vm, v: a);
-      match str_of(v: message) {
-        Handle(..) => {
-          set message = error_location(vm: vm, pc: pc, level: level, message: message);
-        }
-        NoHandle() => {
+      if located {
+        match str_of(v: message) {
+          Handle(..) => {
+            set message = error_location(vm: vm, pc: pc, level: level, message: message);
+          }
+          NoHandle() => {
+          }
         }
       }
     }
@@ -346,17 +336,16 @@ fn builtin<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
             }
           }
         }
-        let ignored = raise_text(vm: vm, text: &builtins_text_10[0_u64..48_u64]);
-        return HostOutcome::Raised();
+        return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, text: &builtins_text_10[0_u64..18_u64]);
       }
       Not() => {
-        return lib_argerror(vm: vm, id: id, index: 1_u64, argc: argc, value: a, expected: &builtin_expected_1_number[0_u64..6_u64]);
+        return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, argc: argc, value: a, expected: &builtin_expected_1_number[0_u64..6_u64]);
       }
     }
   }
   if id == builtin_type {
     if argc == 0_u64 {
-      return lib_argtext(vm: vm, id: id, index: 1_u64, text: &builtin_expected_1_value_expected[0_u64..14_u64]);
+      return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, text: &builtin_expected_1_value_expected[0_u64..14_u64]);
     }
     set out = kind_name(vm: vm, v: a);
   } else if id == builtin_rawget {
@@ -364,11 +353,11 @@ fn builtin<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
       Handle(..) => {
       }
       NoHandle() => {
-        return lib_argerror(vm: vm, id: id, index: 1_u64, argc: argc, value: a, expected: &builtin_expected_1_table[0_u64..5_u64]);
+        return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, argc: argc, value: a, expected: &builtin_expected_1_table[0_u64..5_u64]);
       }
     }
     if argc < 2_u64 {
-      return lib_argtext(vm: vm, id: id, index: 2_u64, text: &builtin_expected_2_value_expected[0_u64..14_u64]);
+      return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 2_u64, text: &builtin_expected_2_value_expected[0_u64..14_u64]);
     }
     set out = table_get(heap: &vm^.heap, t: a, key: b);
   } else if id == builtin_rawset {
@@ -376,14 +365,14 @@ fn builtin<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
       Handle(..) => {
       }
       NoHandle() => {
-        return lib_argerror(vm: vm, id: id, index: 1_u64, argc: argc, value: a, expected: &builtin_expected_1_table[0_u64..5_u64]);
+        return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, argc: argc, value: a, expected: &builtin_expected_1_table[0_u64..5_u64]);
       }
     }
     if argc < 2_u64 {
-      return lib_argtext(vm: vm, id: id, index: 2_u64, text: &builtin_expected_2_value_expected[0_u64..14_u64]);
+      return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 2_u64, text: &builtin_expected_2_value_expected[0_u64..14_u64]);
     }
     if argc < 3_u64 {
-      return lib_argtext(vm: vm, id: id, index: 3_u64, text: &builtin_expected_3_value_expected[0_u64..14_u64]);
+      return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 3_u64, text: &builtin_expected_3_value_expected[0_u64..14_u64]);
     }
     if raw_assign(vm: vm, t: a, key: b, v: c) {
       set out = a;
@@ -397,7 +386,7 @@ fn builtin<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
         set h = th;
       }
       NoHandle() => {
-        return lib_argerror(vm: vm, id: id, index: 1_u64, argc: argc, value: a, expected: &builtin_expected_1_table[0_u64..5_u64]);
+        return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, argc: argc, value: a, expected: &builtin_expected_1_table[0_u64..5_u64]);
       }
     }
     let mh = no_handle;
@@ -408,14 +397,12 @@ fn builtin<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
       NoHandle() => {
         let atom11 = is_nil(v: b);
         if bnot(atom11) {
-          let ignored = raise_text(vm: vm, text: &builtins_text_19[0_u64..57_u64]);
-          return HostOutcome::Raised();
+          return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 2_u64, text: &builtins_text_19[0_u64..21_u64]);
         }
       }
     }
     if argc < 2_u64 {
-      let ignored = raise_text(vm: vm, text: &builtins_text_20[0_u64..57_u64]);
-      return HostOutcome::Raised();
+      return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 2_u64, text: &builtins_text_19[0_u64..21_u64]);
     }
     if is_readonly(vm: vm, v: a) {
       let ignored = raise_text(vm: vm, text: &text_0[0_u64..34_u64]);
@@ -434,7 +421,7 @@ fn builtin<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
     set out = a;
   } else if id == builtin_getmetatable {
     if argc == 0_u64 {
-      return lib_argtext(vm: vm, id: id, index: 1_u64, text: &builtin_expected_1_value_expected[0_u64..14_u64]);
+      return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, text: &builtin_expected_1_value_expected[0_u64..14_u64]);
     }
     set out = metamethod(vm: vm, v: a, name: &builtins_text_24[0_u64..11_u64]);
     if is_nil(v: out) {

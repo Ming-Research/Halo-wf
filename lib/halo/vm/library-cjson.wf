@@ -1,3 +1,4 @@
+alias Cell = pkg::value::Cell;
 alias no_handle = pkg::heap::no_handle;
 alias Value = pkg::value::Value;
 alias num_of = pkg::value::num_of;
@@ -18,6 +19,7 @@ const cj_expected: Array<u8, 19> = "expected 1 argument";
 const cj_many: Array<u8, 24> = "found too many arguments";
 
 fn cjson_default() -> r: CjsonConfig pure {
+  doc "An occupied configuration with the module defaults and no retained encoding buffer.";
   let settings_v1 = array_filled::<u64, 9>(value: 0_u64);
   set settings_v1[0_u64] = 1000_u64;
   set settings_v1[1_u64] = 1000_u64;
@@ -27,10 +29,21 @@ fn cjson_default() -> r: CjsonConfig pure {
   set settings_v1[7_u64] = 2_u64;
   set settings_v1[8_u64] = 10_u64;
   let buffer_v2 = box_slots_new::<u8>(capacity: 0_u64);
-  return CjsonConfig(settings: settings_v1, buffer: move buffer_v2);
+  let free = False();
+  return CjsonConfig(settings: settings_v1, buffer: move buffer_v2, free: free);
 }
 
 fn cjson_config(vm: &Vm) -> r: u64 writes(vm) {
+  doc "Reuses the lowest free slot before appending; rebuilds defaults because a host may have restored settings into a free slot.";
+  for (i in 1_u64..vm^.cjson_configs.inner.len) {
+    if i < vm^.cjson_configs.inner.len {
+      if vm^.cjson_configs.inner[i].free {
+        let replacement = cjson_default();
+        set vm^.cjson_configs.inner[i] = move replacement;
+        return i;
+      }
+    }
+  }
   let cap_v3 = vm^.cjson_configs.inner.cap;
   let index_v4 = vm^.cjson_configs.inner.len;
   if index_v4 == cap_v3 {
@@ -42,6 +55,57 @@ fn cjson_config(vm: &Vm) -> r: u64 writes(vm) {
     place_back(window: &vm^.cjson_configs.inner, value: move config_v6);
   }
   return index_v4;
+}
+
+fn cjson_reclaim(vm: &Vm) -> r: unit writes(vm) {
+  doc "After sweep, marks occupied slots from surviving cjson native closures, releases unreachable buffers and trims free trailing slots. Slot zero belongs to the module permanently; slot-local free flags survive host settings restores and disappear with host truncation.";
+  if vm^.cjson_configs.inner.len <= 1_u64 {
+    return unit;
+  }
+  for (i in 1_u64..vm^.cjson_configs.inner.len) {
+    set vm^.cjson_configs.inner[i].free = True();
+  }
+  for (i in 0_u64..vm^.heap.closures.inner.len) {
+    if i < 4294967296_u64 {
+      let handle = cvt::<u64, u32>(i);
+      match native_binding(vm: vm, handle: handle) {
+        Some(value: native_record) => {
+          let lower = native_record.id >= 96_u32;
+          let upper = native_record.id <= 105_u32;
+          let captured = band(lower, upper);
+          if captured {
+            let index = native_record.config;
+            if index < vm^.cjson_configs.inner.len {
+              set vm^.cjson_configs.inner[index].free = False();
+            }
+          }
+        }
+        None() => {
+        }
+      }
+    }
+  }
+  for (i in 1_u64..vm^.cjson_configs.inner.len) {
+    if vm^.cjson_configs.inner[i].free {
+      let replacement = cjson_default();
+      set replacement.free = True();
+      set vm^.cjson_configs.inner[i] = move replacement;
+    }
+  }
+  loop {
+    let length = vm^.cjson_configs.inner.len;
+    if length > 1_u64 {
+      let last = length - 1_u64;
+      if vm^.cjson_configs.inner[last].free {
+        let dropped = take_back(window: &vm^.cjson_configs.inner);
+      } else {
+        break;
+      }
+    } else {
+      break;
+    }
+  }
+  return unit;
 }
 
 struct NativeBinding {
@@ -503,7 +567,8 @@ fn cjson_write(vm: &Vm, writer: &json::encode::Writer, out: &Box<Slots<u8>>, val
   return True();
 }
 
-fn library_cjson(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, bound: u32) -> r: HostOutcome writes(vm), writes(stack) {
+fn library_cjson(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, pc: u64, vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, bound: u32) -> r: HostOutcome reads(code), reads(consts), writes(vm), writes(stack) {
+  doc "Dispatches cjson operations with the Lua call cell for argument errors.";
   let id_v105 = bound;
   let config_v108 = vm^.cjson_active_config;
   if id_v105 == 105_u32 {
@@ -517,11 +582,11 @@ fn library_cjson(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, bound
   let settings_v111 = vm^.cjson_configs.inner[config_v108].settings;
   if id_v105 <= 97_u32 {
     if argc != 1_u64 {
-      return lib_argtext(vm: vm, id: id_v105, index: 1_u64, text: &cj_expected[0_u64..19_u64]);
+      return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, text: &cj_expected[0_u64..19_u64]);
     }
     let value_v112 = argument(stack: stack, func: func, argc: argc, index: 0_u64);
     if id_v105 == 97_u32 {
-      return cjson_decode(vm: vm, stack: stack, func: func, argc: argc, value: value_v112, settings: &settings_v111);
+      return cjson_decode(code: code, consts: consts, pc: pc, vm: vm, stack: stack, func: func, argc: argc, value: value_v112, settings: &settings_v111);
     }
     let buffer_v113 = box_slots_new::<u8>(capacity: 0_u64);
     if settings_v111[3_u64] != 0_u64 {
@@ -555,7 +620,7 @@ fn library_cjson(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, bound
   }
   if argc > nargs_v118 {
     let index_v119 = nargs_v118 +sat 1_u64;
-    return lib_argtext(vm: vm, id: id_v105, index: index_v119, text: &cj_many[0_u64..24_u64]);
+    return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: index_v119, text: &cj_many[0_u64..24_u64]);
   }
   let results_v120 = box_slots_new::<Value>(capacity: 3_u64);
   for (i_v121 in 0_u64..nargs_v118) {
@@ -667,7 +732,7 @@ fn library_cjson(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, bound
               let index_v135 = i_v121 +sat 1_u64;
               match str_of(v: string_v131) {
                 NoHandle() => {
-                  return lib_argerror(vm: vm, id: id_v105, index: index_v135, argc: argc, value: value_v126, expected: &cj_string[0_u64..6_u64]);
+                  return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: index_v135, argc: argc, value: value_v126, expected: &cj_string[0_u64..6_u64]);
                 }
                 Handle(..) => {
                 }
@@ -679,14 +744,14 @@ fn library_cjson(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, bound
               }
               bytes_push(bytes: &message_v136, byte: 39_u8);
               let length_v137 = message_v136.inner.len;
-              return lib_argtext(vm: vm, id: id_v105, index: index_v135, text: &message_v136.inner[0_u64..length_v137]);
+              return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: index_v135, text: &message_v136.inner[0_u64..length_v137]);
             }
           }
         } else {
           match lib_integer(vm: vm, value: value_v126) {
             None() => {
               let index_v138 = i_v121 +sat 1_u64;
-              return lib_argerror(vm: vm, id: id_v105, index: index_v138, argc: argc, value: value_v126, expected: &cj_number[0_u64..6_u64]);
+              return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: index_v138, argc: argc, value: value_v126, expected: &cj_number[0_u64..6_u64]);
             }
             Some(value: integer_v139) => {
               let narrowed_v140 = cvt.wrap::<i64, i32>(integer_v139);
@@ -708,7 +773,7 @@ fn library_cjson(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, bound
                 let s_v152 = coerce_string(vm: vm, v: v_v151);
                 bytes_string(vm: vm, bytes: &message_v146, value: s_v152);
                 let length_v153 = message_v146.inner.len;
-                return lib_argtext(vm: vm, id: id_v105, index: 1_u64, text: &message_v146.inner[0_u64..length_v153]);
+                return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, text: &message_v146.inner[0_u64..length_v153]);
               }
               set chosen_v128 = cvt.wrap::<i64, u64>(n_v141);
             }

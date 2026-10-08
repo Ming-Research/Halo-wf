@@ -4,6 +4,78 @@ Newest first. One entry per approved change of the tree: a dated title,
 `Nodes:` naming every node changed, `Owner-approved:` and `Summary:`; the
 owner-wide instructions' *Log format* owns the form.
 
+## 2026-10-08 Halo's embedding exposes collection statistics and a pause
+
+Nodes: halo/heap/collector-validation
+
+Owner-approved: 2026-10-08 on the WF status board, item "Collector pauses raise firn's p99": approved the new collector-validation.md decision of pull request 24, in the owner's words "the embedding provides last-collection statistics by object kind and a Lua 5.1-style collection pause (default 200%, below 100% counts as 100%, takes effect only after the next collection, kept across reset), because a host that runs one long-lived VM must see what a pause costs and tune collection frequency without reading heap fields; not 'fixed Lua defaults with no observation'. This is provisional until firn has measured collection work and a larger multiplier on its long-lived VM; the stop-the-world collector is unchanged".
+
+Summary: Firn's deployment measurement showed each full collection pausing its one long-lived VM for 3-4 ms, which sets the rate-limiter script's p99 at 50 connections. The owner chose to measure the pause's composition and try a larger trigger multiplier before any collector redesign. The embedding now reports, per object kind, the last completed collection's live and freed objects and bytes and visited slots, its marking work and the next threshold, and takes a pause percentage applied by the next completed collection. On the 14900K no kernel slowed beyond its noise bounds (`research/experiments/halo-bench/RESULTS.md`, "Collection statistics"). The collector probe checks every count exactly through the public API, and five deliberately wrong collectors each failed it.
+
+## 2026-10-08 Halo's pcall looks its error field up through __index
+
+Nodes: halo/embedding
+
+Owner-approved: 2026-10-08 on the WF status board, item "pcall reads the error field through __index": approved the rewritten embedding.md decision, in the owner's words "after catching an error table, pcall looks the field up by the full t.err rule including __index, as a resumable continuation run after the protected frame is removed, with Redis's result shapes; the raw read and moving pcall onto the xpcall callback path are rejected".
+
+Summary: Redis 7.0.15's replacement `pcall` reads a caught table's field with `lua_getfield`, which follows `__index` tables and functions, and returns `false`, the table and the field when the field is not a string or number; Halo read the field raw and always returned two values. The lookup now runs after the protected frame is removed, signalled by `unwind` through the VM and the run exit and drained by the driver through the callback continuation `table.sort` and `xpcall` use, so it survives budget suspension and host calls while the dispatch and the instruction handlers stay unchanged; draining it in the dispatch epilogue had made five kernels 4-21% slower on the 14900K (`research/experiments/halo-bench/RESULTS.md`, "pcall's post-catch field lookup"). The oracle case `lua-core/pcall-error-field-index` records Redis's replies for 59 observations.
+
+## 2026-10-08 Halo's dispatch is a plain loop { match }
+
+Nodes: halo/dispatch, halo/dispatch/continuations, halo/embedding
+
+Owner-approved: 2026-10-08 on the WF status board, item "Halo's dispatch rewritten as loop { match }": approved the design-tree changes of pull request 23, in the owner's words "dispatch.md's first decision from the provisional self-tail call to loop { match }, the self-tail call as Rejected; continuations.md keeps C1's decision and states that the two forms compile identically (the 2026-10-07 log had said this node would fold into dispatch.md; it is kept because the fast and slow path split it records still holds); embedding.md's 'run already takes eight parameters' reason restated for the loop form".
+
+Summary: `run` was a guaranteed self-tail call only because Whitefoot's checker refused `loop { match }` where arms updating different loop variables join (INV-1); Whitefoot v0.101 carries loop relations through joins and adds `continue`, and the checker accepted Halo's natural form as written. With `wf-691ea8106920` the loop form compiles to machine code byte-identical to the self-tail call, so the measurements made on that form, C1's included, hold (`research/experiments/halo-bench/RESULTS.md`, "The dispatch as loop { match }"); the vm module check takes 1.17 times as long. The rejection of passing host references through `run` keeps its grounds: the loop's eight carried values are the arms' transfers.
+
+## 2026-10-08 Halo reclaims cjson instance configurations after collection
+
+Nodes: halo/heap/closures
+
+Owner-approved: 2026-10-08 on the WF status board, item "cjson.new() configurations released after collection": approved the decision added to the design tree's heap/closures.md (reclaim configurations by scanning live cjson closures after collection, reuse freed indexes, keep index zero, keep index-addressed access).
+
+Summary: A long-lived VM that keeps running scripts calling `cjson.new()` retained every instance's settings and encode buffer. After each completed sweep, and only when instances beyond the module's own exist, the VM marks the configurations live cjson closures capture, releases the others' buffers, resets their settings, flags them free and trims free trailing slots; `cjson.new()` reuses the lowest free slot. Making each configuration a collector-managed heap object would have changed the host's direct, index-addressed snapshot and restore of the settings; the embedding probe's new observations failed before the change and pass after it.
+
+## 2026-10-08 Halo names argument errors from the call site
+
+Nodes: halo/operand-names
+
+Owner-approved: 2026-10-08 on the WF status board, item "argument errors name the called function as Redis does": approved, in the owner's words, "the decision added to the design tree's operand-names.md: argument errors are named from the call site, and names and locations share the rule that looks only at the immediate caller, instead of a fixed name per builtin".
+
+Summary: A library function's argument error names the called function as Lua 5.1's `getfuncname` does, through the same `getobjname` walk at the caller's CALL, TAILCALL or TFORLOOP cell, with `luaL_argerror`'s method adjustment and its `?` fallback, and errors raised by a native function are located only at an immediate Lua caller, as `luaL_where(L, 1)` does. Fixed names per builtin differed from Redis 7.0.15 for local aliases, fields, methods and shared builtins such as `math.mod`, and native callbacks took the outer Lua line; the oracle case `lua-core/argument-error-names` records Redis's replies for 34 such calls and Halo matches them all.
+
+## 2026-10-08 Halo keeps replacing table arrays: in-place growth through grow rejected
+
+Nodes: halo/heap/tables/growth
+
+Owner-approved: 2026-10-08 on the Halo-wf status board, item "table growth": approved, in the owner's words, "the Rejected item added to the design tree's heap/tables/growth.md (growing in place with Whitefoot's grow rejected, with its reasons)".
+
+Summary: Table growth takes about 30% of the integer-table kernel's samples on the 14900K, but growing a nonshrinking array in place with Whitefoot's `grow`, after every failure point so the table still changes only on success, left the kernel's median unchanged (1.000 times main in six interleaved pairs). Whitefoot lowers `grow` as allocation, copy and free, so the change kept the work it targeted; the alternative is reconsidered when `grow` reallocates in place (`research/experiments/halo-bench/RESULTS.md`, "Growing the array in place: result").
+
+## 2026-10-07 Halo reads string keys by cached hash and handle
+
+Nodes: halo/heap/tables
+
+Owner-approved: 2026-10-07 in the Halo session: "all agreed" (Q85 option A: a table read with a string key takes the lookup specialised for strings).
+
+Summary: A table read with a string key masks the string's cached hash by the power-of-two node count and compares interned handles along the chain, as PUC's `luaH_getstr` does, keeping the generic lookup for every other key and for any node vector whose length is not a power of two, so its result equals the generic lookup's for every table. The generic lookup's key classification, modulus and kind-matching equality made the string-key kernel about 1.3 times slower; the specialised read takes 0.771 times its time at the final engine on the 14900K with no kernel slower beyond its bounds (`research/experiments/halo-bench/RESULTS.md`, "String-key lookup").
+
+## 2026-10-07 Halo's library follows what real Redis scripts call
+
+Nodes: halo
+
+Owner-approved: 2026-10-07 in the Halo session: "all agreed" (Q89 option A: the library scope from the script survey).
+
+Summary: Halo provides the Lua 5.1 library that Redis 7.0.15's sandbox exposes except coroutines, `loadstring` and `load`, `getfenv` and `setfenv`, `collectgarbage`, `gcinfo`, `newproxy` with `__gc`, weak tables, `string.dump`, `string.gfind`, `table.foreachi` and `table.setn`, and gains `math.mod` and `table.foreach`. A survey of 2,700 files in 2,168 repositories that GitHub's code search found calling `redis.call`, with its corpus and criterion fixed before any script was read, found scripts calling `math.mod` (Ohm's save script) and `table.foreach` (Discourse's presence scripts) and none calling the others (`research/investigations/halo/SCRIPTS.md`); an excluded function is reconsidered when a host reports a script that calls it.
+
+## 2026-10-07 Halo's self-tail dispatch is provisional
+
+Nodes: halo/dispatch, halo/dispatch/continuations
+
+Owner-approved: 2026-10-07 in the Halo session: "all agreed" (Q87: withdraw the approval the 2026-10-06 batch gave the self-tail dispatch form, whose card did not say it replaced `loop { match }`), with the direction "when it is done, come back and update the code" (Q86: Halo's dispatch becomes `loop { match }` once Whitefoot accepts it).
+
+Summary: The interpreter stays the guaranteed self-tail call `run` only until Whitefoot accepts the same interpreter as a plain `loop { match }`, the form an interpreter is to take with the compiler emitting its tail calls; the checker's loss of the window facts where the loop's arms join is Whitefoot's gap to close, and a loop that re-checks the windows at run time on every dispatch is refused, since it would hide that gap. The per-arm continuation decision is replaced with the dispatch. The self-tail form had been recorded as a design choice and approved in a batch whose one-line card did not show that it replaced the loop form or why.
+
 ## 2026-10-07 Halo's fast store inserts missing keys into plain tables
 
 Nodes: halo/dispatch

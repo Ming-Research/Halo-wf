@@ -35,7 +35,8 @@ fn relative_position(index: i64, length: u64) -> r: i64 pure {
   return local_p_2;
 }
 
-fn library_string(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: u32) -> r: HostOutcome writes(vm), writes(stack) {
+fn library_string(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, pc: u64, vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: u32) -> r: HostOutcome reads(code), reads(consts), writes(vm), writes(stack) {
+  doc "Dispatches string builtins with the Lua call cell for argument errors.";
   let local_a_4 = argument(stack: stack, func: func, argc: argc, index: 0_u64);
   let local_b_5 = argument(stack: stack, func: func, argc: argc, index: 1_u64);
   let local_c_6 = argument(stack: stack, func: func, argc: argc, index: 2_u64);
@@ -45,18 +46,18 @@ fn library_string(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: 
       let local_value_8 = argument(stack: stack, func: func, argc: argc, index: i);
       let local_argindex_9 = i +sat 1_u64;
       match lib_int32(vm: vm, value: local_value_8) {
-        Some(value: code) => {
-          if code < 0_i64 {
-            return lib_argtext(vm: vm, id: id, index: local_argindex_9, text: &library_string_lib_text_2[0_u64..13_u64]);
+        Some(value: character_code) => {
+          if character_code < 0_i64 {
+            return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: local_argindex_9, text: &library_string_lib_text_2[0_u64..13_u64]);
           }
-          if code > 255_i64 {
-            return lib_argtext(vm: vm, id: id, index: local_argindex_9, text: &library_string_lib_text_3[0_u64..13_u64]);
+          if character_code > 255_i64 {
+            return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: local_argindex_9, text: &library_string_lib_text_3[0_u64..13_u64]);
           }
-          let local_byte_10 = cvt::<i64, u8>(code);
+          let local_byte_10 = cvt::<i64, u8>(character_code);
           bytes_push(bytes: &local_bytes_7, byte: local_byte_10);
         }
         None() => {
-          return lib_argerror(vm: vm, id: id, index: local_argindex_9, argc: argc, value: local_value_8, expected: &library_string_lib_text_0[0_u64..6_u64]);
+          return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: local_argindex_9, argc: argc, value: local_value_8, expected: &library_string_lib_text_0[0_u64..6_u64]);
         }
       }
     }
@@ -70,7 +71,7 @@ fn library_string(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: 
       set local_handle_13 = bound_h_1;
     }
     NoHandle() => {
-      return lib_argerror(vm: vm, id: id, index: 1_u64, argc: argc, value: local_a_4, expected: &library_string_lib_text_1[0_u64..6_u64]);
+      return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, argc: argc, value: local_a_4, expected: &library_string_lib_text_1[0_u64..6_u64]);
     }
   }
   let local_hi_14 = cvt::<u32, u64>(local_handle_13);
@@ -79,7 +80,7 @@ fn library_string(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: 
     set local_length_15 = vm^.heap.strings.inner[local_hi_14].payload.bytes.inner.len;
   }
   if id == builtin_string_format {
-    return library_format(vm: vm, stack: stack, func: func, argc: argc, format: local_text_12);
+    return library_format(code: code, consts: consts, pc: pc, vm: vm, stack: stack, func: func, argc: argc, format: local_text_12);
   }
   if id == builtin_string_len {
     let local_n_16 = cvt.nearest::<u64, f64>(local_length_15);
@@ -94,7 +95,7 @@ fn library_string(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: 
         set local_first_18 = index;
       }
       None() => {
-        return lib_argerror(vm: vm, id: id, index: 2_u64, argc: argc, value: local_b_5, expected: &library_string_lib_text_0[0_u64..6_u64]);
+        return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 2_u64, argc: argc, value: local_b_5, expected: &library_string_lib_text_0[0_u64..6_u64]);
       }
     }
     if argc >= 3_u64 {
@@ -105,7 +106,7 @@ fn library_string(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: 
             set local_last_19 = index;
           }
           None() => {
-            return lib_argerror(vm: vm, id: id, index: 3_u64, argc: argc, value: local_c_6, expected: &library_string_lib_text_0[0_u64..6_u64]);
+            return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 3_u64, argc: argc, value: local_c_6, expected: &library_string_lib_text_0[0_u64..6_u64]);
           }
         }
       }
@@ -120,7 +121,7 @@ fn library_string(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: 
             set local_first_18 = index;
           }
           None() => {
-            return lib_argerror(vm: vm, id: id, index: 2_u64, argc: argc, value: local_b_5, expected: &library_string_lib_text_0[0_u64..6_u64]);
+            return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 2_u64, argc: argc, value: local_b_5, expected: &library_string_lib_text_0[0_u64..6_u64]);
           }
         }
       }
@@ -135,7 +136,7 @@ fn library_string(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: 
             set local_last_19 = index;
           }
           None() => {
-            return lib_argerror(vm: vm, id: id, index: 3_u64, argc: argc, value: local_c_6, expected: &library_string_lib_text_0[0_u64..6_u64]);
+            return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 3_u64, argc: argc, value: local_c_6, expected: &library_string_lib_text_0[0_u64..6_u64]);
           }
         }
       }
@@ -200,7 +201,7 @@ fn library_string(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: 
         set local_repeats_40 = n;
       }
       None() => {
-        return lib_argerror(vm: vm, id: id, index: 2_u64, argc: argc, value: local_b_5, expected: &library_string_lib_text_0[0_u64..6_u64]);
+        return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 2_u64, argc: argc, value: local_b_5, expected: &library_string_lib_text_0[0_u64..6_u64]);
       }
     }
   }

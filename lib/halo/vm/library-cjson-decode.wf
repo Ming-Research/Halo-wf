@@ -1,3 +1,4 @@
+alias Cell = pkg::value::Cell;
 alias Value = pkg::value::Value;
 alias num_of = pkg::value::num_of;
 alias str_of = pkg::value::str_of;
@@ -457,11 +458,12 @@ fn cj_frame_push(frames: &Box<Slots<CjsonFrame>>, frame: CjsonFrame) -> r: unit 
   return unit;
 }
 
-fn cjson_decode(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, value: Value, settings: &Array<u64, 9>) -> r: HostOutcome reads(settings), writes(vm), writes(stack) {
+fn cjson_decode(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, pc: u64, vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, value: Value, settings: &Array<u64, 9>) -> r: HostOutcome reads(code), reads(consts), reads(settings), writes(vm), writes(stack) {
+  doc "Decodes JSON with the Lua call cell available for a rejected argument.";
   let text_v84 = coerce_string(vm: vm, v: value);
   match str_of(v: text_v84) {
     NoHandle() => {
-      return lib_argerror(vm: vm, id: 97_u32, index: 1_u64, argc: argc, value: value, expected: &cj_string[0_u64..6_u64]);
+      return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, argc: argc, value: value, expected: &cj_string[0_u64..6_u64]);
     }
     Handle(..) => {
     }

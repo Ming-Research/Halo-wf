@@ -1,0 +1,61 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "bulk",
+      "bytes": "1=10,2=20,3=30"
+    },
+    {
+      "type": "bulk",
+      "bytes": "nil"
+    },
+    {
+      "type": "bulk",
+      "bytes": "4=four,beta=2,alpha=1,gamma=3"
+    },
+    {
+      "type": "bulk",
+      "bytes": "200"
+    },
+    {
+      "type": "bulk",
+      "bytes": "false"
+    },
+    {
+      "type": "bulk",
+      "bytes": "number:6"
+    },
+    {
+      "type": "bulk",
+      "bytes": "7,14"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:26: bad argument #1 to 'foreach' (table expected, got nil)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:27: bad argument #2 to 'foreach' (function expected, got number)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:28: stop"
+    },
+    {
+      "type": "bulk",
+      "bytes": "bare"
+    },
+    {
+      "type": "bulk",
+      "bytes": "p2"
+    },
+    {
+      "type": "bulk",
+      "bytes": "aabb"
+    },
+    {
+      "type": "bulk",
+      "bytes": "1,2,3"
+    }
+  ]
+}

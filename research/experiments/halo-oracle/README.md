@@ -7,7 +7,7 @@ Halo's `make check-core` compares the corpus through the `oracle` target;
 recording reference replies remains the job of
 [oracle-reference.yml](../../../.github/workflows/oracle-reference.yml).
 
-There are 103 scripts: 63 `lua-core`, 23 `redis-api`, 6 `apps`, and 11 `libs`.
+There are 108 scripts: 68 `lua-core`, 23 `redis-api`, 6 `apps`, and 11 `libs`.
 The scripts, replies and runner belong here until the oracle is replaced or
 Halo/firn scripting is retired. Each case is consumed by `run.sh`; the table
 below is the index of the observations it protects.
@@ -157,7 +157,8 @@ reference, not portable-language promises for every case.
   This behavior is evidenced by Redis 7.0.15 `src/rand.c` and
   `src/script_lua.c` in the reference source distribution.
 - `next-pairs` sorts its observations, avoiding unspecified hash iteration
-  order. JSON encodings use arrays or a single object member, avoiding
+  order; `table-growth-order` records the unsorted order on purpose, with
+  number and string keys only, whose placement the reference fixes. JSON encodings use arrays or a single object member, avoiding
   unspecified multi-member object order. No script prints table/function
   addresses, samples wall time, or returns an expiry countdown. Application
   scripts use a fixed window timestamp and long expiry values (60 seconds).
@@ -191,6 +192,7 @@ not automatically used to overwrite this baseline.
 | libs | [cmsgpack-roundtrip](scripts/libs/cmsgpack-roundtrip.lua) | MessagePack round-trips maps, arrays, booleans, integers and strings. |
 | libs | [struct-integers](scripts/libs/struct-integers.lua) | struct packs explicit-endian signed and unsigned integer widths. |
 | libs | [struct-strings-floats](scripts/libs/struct-strings-floats.lua) | struct packs fixed strings and doubles with explicit endian and offsets. |
+| lua-core | [argument-error-names](scripts/lua-core/argument-error-names.lua) | Argument errors name the called function from the call site: aliases, fields, methods and bad self, upvalues, tail calls, generic-for iterators, metamethods, and '?' for calls from native code. |
 | lua-core | [array-holes](scripts/lua-core/array-holes.lua) | Lua 5.1 length selects a boundary for arrays with holes. |
 | lua-core | [assert](scripts/lua-core/assert.lua) | assert returns all successful arguments and raises a chosen message. |
 | lua-core | [call-kinds](scripts/lua-core/call-kinds.lua) | Ordinary calls reach native functions, native iterators and vararg Lua functions; number and nil callees raise errors checked apart from the variable description. |
@@ -216,6 +218,7 @@ not automatically used to overwrite this baseline.
 | lua-core | [integer-doubles](scripts/lua-core/integer-doubles.lua) | Integer-valued doubles, precision boundary and number type. |
 | lua-core | [ipairs](scripts/lua-core/ipairs.lua) | ipairs stops at the first nil even when later array entries exist. |
 | lua-core | [loop-closures](scripts/lua-core/loop-closures.lua) | Numeric and generic loops create captured iteration locals. |
+| lua-core | [math-mod](scripts/lua-core/math-mod.lua) | math.mod is math.fmod: the same function value and results, as Redis's Lua defines LUA_COMPAT_MOD. |
 | lua-core | [math-powers](scripts/lua-core/math-powers.lua) | sqrt, math.pow, exponentiation and math.huge. |
 | lua-core | [math-random](scripts/lua-core/math-random.lua) | Redis deterministic default seed and explicit reseeding. |
 | lua-core | [math-round-extrema](scripts/lua-core/math-round-extrema.lua) | floor, ceil, abs, max, min and fmod for signed numbers. |
@@ -234,6 +237,7 @@ not automatically used to overwrite this baseline.
 | lua-core | [nil-returns](scripts/lua-core/nil-returns.lua) | select observes nil return slots that RESP arrays would truncate. |
 | lua-core | [nonfinite](scripts/lua-core/nonfinite.lua) | Infinity and NaN arithmetic, comparisons and string conversion. |
 | lua-core | [numeric-coercion](scripts/lua-core/numeric-coercion.lua) | Arithmetic coerces numeric strings; tonumber handles bases and failures. |
+| lua-core | [pcall-error-field-index](scripts/lua-core/pcall-error-field-index.lua) | Post-catch err lookup preserves result types and counts, honors __index chains and functions through nested protected and sort callbacks and host calls, propagates lookup errors, and leaves xpcall unchanged. |
 | lua-core | [pcall-xpcall](scripts/lua-core/pcall-xpcall.lua) | Protected calls preserve success returns and handler-transformed errors. |
 | lua-core | [shared-upvalues](scripts/lua-core/shared-upvalues.lua) | Sibling closures share the same mutable captured local. |
 | lua-core | [string-byte-char](scripts/lua-core/string-byte-char.lua) | byte ranges and char preserve boundary bytes including NUL. |
@@ -247,6 +251,8 @@ not automatically used to overwrite this baseline.
 | lua-core | [string-match](scripts/lua-core/string-match.lua) | Patterns support captures, balanced matching and frontier boundaries. |
 | lua-core | [string-transforms](scripts/lua-core/string-transforms.lua) | sub negative indices, upper/lower, rep and reverse. |
 | lua-core | [table-concat](scripts/lua-core/table-concat.lua) | table.concat uses separators, slice bounds and numeric elements. |
+| lua-core | [table-foreach](scripts/lua-core/table-foreach.lua) | table.foreach visits pairs in next order, returns the first non-nil result, allows field assignment and Redis calls in its function, checks its arguments, passes callback errors on unchanged, and runs under pcall and inside sort and gsub callbacks. |
+| lua-core | [table-growth-order](scripts/lua-core/table-growth-order.lua) | pairs order and # after growth, key migration between hash and array, holes, regrowth and shrinking, unsorted. |
 | lua-core | [table-insert-remove](scripts/lua-core/table-insert-remove.lua) | Array insertion shifts entries; removal returns and shifts values. |
 | lua-core | [table-parts](scripts/lua-core/table-parts.lua) | Array and hash entries coexist; hash entries do not add array length. |
 | lua-core | [table-sort](scripts/lua-core/table-sort.lua) | Default and custom comparator sort numbers into opposite orders. |
