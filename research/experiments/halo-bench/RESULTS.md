@@ -2815,3 +2815,111 @@ split part, and a parameter slot that is a complete allocation nothing else
 writes) is not determined here. Measuring the entry copy needs either that
 rule widened to this case in Whitefoot or a Halo experiment that keeps the
 `Frame` from crossing the call as an aggregate.
+
+### Which condition the in-place rule refuses (Q94)
+
+The owner chose (Q94) to find which of the rule's conditions `push_frame`
+fails before deciding anything. Both compilers emitted the IR of Halo's
+bench program and of a minimal witness on a hosted runner
+([run 37711158274](https://github.com/Ming-Research/Halo-wf/actions/runs/37711158274),
+artifact `halo-inplace-ir`). `push_frame`'s IR is the same under both: at
+entry it copies the incoming `Frame` with `llvm.memmove` into a slot of its
+own, and that slot's only use is the pointer it hands to `place_back`, so
+its address is not exposed (the storage plan exposes a slot only through
+`AddressOf` and `SliceFromRun`).
+
+The witness takes one 80-byte struct by value in six functions, counting
+each definition's `llvm.memmove` and `llvm.memcpy`:
+
+| Function | Use of the parameter | Branch | Pinned | Experiment |
+|---|---|---|---:|---:|
+| `rec_first` | reads a field | no | 1 | 0 |
+| `rec_forward` | passes it to `rec_first` | no | 1 | 0 |
+| `rec_push_via` | passes it to `rec_push` | no | 1 | 0 |
+| `rec_pick` | reads one of two fields | yes | 1 | 1 |
+| `rec_push` | hands it to `place_back` | yes | 1 | 1 |
+| `rec_set` | assigns it into a container slot | yes | 2 | 2 |
+
+`rec_set`'s second copy is the assignment's own. The experiment's rule
+reads the parameter in place in every function without a branch and in no
+function with one, whatever the parameter's use, so the branch decides it:
+of the rule's conditions only `holds_only` can depend on a branch, and the
+likely cause is that a value carried across blocks becomes a block
+parameter sharing the parameter's slot, so the slot holds more than one
+value. That last step is an inference from the rule's code, not observed in
+Whitefoot's IR. Halo's functions nearly all branch, which is why the
+experiment build differed by one copy in the whole binary.
+
+```wf
+alias ExitStatus = std::process::ExitStatus;
+alias exit_status = std::process::exit_status;
+
+struct Rec {
+  a: u64;
+  b: u64;
+  c: u64;
+  d: u64;
+  e: u64;
+  f: u64;
+  g: u64;
+  h: u64;
+  i: u64;
+  j: u64;
+}
+
+fn rec_first(r: Rec) -> s: u64 pure {
+  return r.a;
+}
+
+fn rec_forward(r: Rec) -> s: u64 pure {
+  return rec_first(r: r);
+}
+
+fn rec_push(v: &Box<Slots<Rec>>, r: Rec) -> ok: Bool writes(v) {
+  if v^.inner.len < v^.inner.cap {
+    place_back(window: &v^.inner, value: r);
+    return True();
+  }
+  return False();
+}
+
+fn rec_push_via(v: &Box<Slots<Rec>>, r: Rec) -> ok: Bool writes(v) {
+  return rec_push(v: v, r: r);
+}
+
+fn rec_set(v: &Box<Slots<Rec>>, r: Rec) -> ok: Bool writes(v) {
+  if 0_u64 < v^.inner.len {
+    set v^.inner[0_u64] = r;
+    return True();
+  }
+  return False();
+}
+
+fn rec_pick(r: Rec, c: Bool) -> s: u64 pure {
+  if c {
+    return r.a;
+  }
+  return r.b;
+}
+
+fn main() -> status: ExitStatus pure {
+  let v = box_slots_new::<Rec>(capacity: 4_u64);
+  let r = Rec(a: 1_u64, b: 2_u64, c: 3_u64, d: 4_u64, e: 5_u64, f: 6_u64, g: 7_u64, h: 8_u64, i: 9_u64, j: 10_u64);
+  let first = rec_first(r: r);
+  let forwarded = rec_forward(r: r);
+  let pushed = rec_push(v: &v, r: r);
+  let via = rec_push_via(v: &v, r: r);
+  let stored = rec_set(v: &v, r: r);
+  let picked = rec_pick(r: r, c: via);
+  if pushed {
+    if stored {
+      if first == forwarded {
+        if picked == 1_u64 {
+          return exit_status(code: 0_u8);
+        }
+      }
+    }
+  }
+  return exit_status(code: 1_u8);
+}
+```
