@@ -225,7 +225,7 @@ fn callback<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value
 fn callback_values<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, dest: u64, f: Value, args: &[Value], wanted: i64, mode: u8) -> r: Bool reads(code), reads(consts), reads(args), writes(stack), writes(vm), writes(env) contract {
   ensures stack^.inner.len == entry(stack)^.inner.len;
 } {
-  doc "Nested activation with a finite continuation record for budget suspension. Stack storage is restored before returning to the caller.";
+  doc "Nested activation with a finite continuation record for budget suspension. An immediate native failure may still reach a protected frame, whose continuation must run before classifying the callback as failed. Stack storage is restored before returning to the caller.";
   let argc = args^.len;
   let depth = vm^.activation;
   if depth >= 199_u32 {
@@ -262,28 +262,49 @@ fn callback_values<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slot
   let step = prepare::<Host<E>>(code: code, consts: consts, vm: vm, stack: stack, env: env, func: scratch, argc: argc, wanted: wanted, return_pc: return_pc, base: 0_u64, kbase: 0_u64, tail: atom4);
   let out = dispatch_step::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, step: step);
   let ok = False();
-  match out {
-    Done(count: n) => {
-      library_callback_count(vm: vm, plan: plan, count: n);
-      set ok = True();
-      if wanted != 0_i64 {
-        let copied = adjust_results(vm: vm, stack: stack, dest: dest, src: scratch, count: n, wanted: wanted);
+  loop {
+    match out {
+      Done(count: n) => {
+        library_callback_count(vm: vm, plan: plan, count: n);
+        set ok = True();
+        if wanted != 0_i64 {
+          let copied = adjust_results(vm: vm, stack: stack, dest: dest, src: scratch, count: n, wanted: wanted);
+        }
+        break;
       }
-    }
-    Error() => {
-      let ignored = unwind(vm: vm, stack: stack);
-      if plan.kind == 4_u8 {
-        library_raw_error(vm: vm);
+      Error() => {
+        let caught = unwind(vm: vm, stack: stack);
+        match caught {
+          Error() => {
+            let library_callback = plan.kind == 4_u8;
+            if library_callback {
+              library_raw_error(vm: vm);
+            }
+            break;
+          }
+          Jump(..) => {
+          }
+          Done(..) => {
+          }
+          Stop() => {
+          }
+          Budget() => {
+          }
+        }
+        set out = dispatch_step::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, step: caught);
       }
-    }
-    Budget() => {
-      park_suspended_stack(vm: vm, stack: stack);
-    }
-    HostCall() => {
-      park_suspended_stack(vm: vm, stack: stack);
-    }
-    HostStopped() => {
-      park_stopped_stack(vm: vm, stack: stack);
+      Budget() => {
+        park_suspended_stack(vm: vm, stack: stack);
+        break;
+      }
+      HostCall() => {
+        park_suspended_stack(vm: vm, stack: stack);
+        break;
+      }
+      HostStopped() => {
+        park_stopped_stack(vm: vm, stack: stack);
+        break;
+      }
     }
   }
   resize_stack(stack: stack, size: length);

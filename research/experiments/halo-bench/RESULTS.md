@@ -3342,6 +3342,200 @@ by 1.3–3.5% per pair, while the twin's per-pair ratios span 0.972–1.010. A
 concat slowdown of about 1.5% with the new release is therefore possible and
 unresolved; these seven kernels on the 14900K show nothing else.
 
+## The dispatch as loop { match }
+
+### Question and reading, recorded before measuring
+
+`run` was a guaranteed self-tail call only because Whitefoot's checker
+refused the natural `loop { match }` (INV-1); Whitefoot v0.101 (#270) closed
+that, and this branch writes `run` as `loop { match }` with the three window
+facts as header invariants, the 18 hot arms continuing the loop and the
+others reaching the backedge through the shared epilogue. The owner's
+direction is the natural form, so the rewrite is kept whatever the timing.
+How do the kernels move?
+
+Comparison: the same compiler (`wf-691ea8106920`) building this branch's
+base `baa2225` (the self-tail `run`) and this branch, six interleaved
+full-LTO pairs over the seven kernels with a twin of the base, and two
+module-check samples each, on the 14900K. Reading: a kernel slower beyond its
+larger range and the twin's difference is a cost of the compiler's lowering
+of the loop form, reported to the loopmatch session as input to its second
+phase (lowering the natural form), not a reason to restore the self-tail
+call; a kernel faster beyond those bounds is reported the same way.
+
+### Result
+
+[Run 37793482368](https://github.com/Ming-Research/Halo-wf/actions/runs/37793482368),
+artifact `halo-bench-loopmatch`: `wf-691ea8106920`, clang 22.1.8, full LTO,
+the self-tail base `baa2225` against this branch at `060ea20` (only
+`dispatch.wf` and `module.wfm` differ in source, per the run's `git diff
+--stat`), on the 14900K; medians in seconds, six interleaved pairs:
+
+| Kernel | Self-tail | Loop | Ratio | Self-tail range | Loop range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1104 | 0.1120 | 1.014 | 4.53% | 5.94% | 1.002 |
+| loop | 0.4515 | 0.4535 | 1.005 | 3.31% | 2.05% | 0.999 |
+| integer-table | 0.5017 | 0.5076 | 1.012 | 4.86% | 7.07% | 0.993 |
+| string-key | 0.0263 | 0.0266 | 1.014 | 5.22% | 5.02% | 1.005 |
+| concat | 0.0751 | 0.0755 | 1.006 | 2.13% | 1.43% | 0.995 |
+| sort | 0.1883 | 0.1858 | 0.987 | 20.01% | 12.57% | 1.002 |
+| binary-trees | 1.9175 | 1.9336 | 1.008 | 5.40% | 7.61% | 0.994 |
+
+**The two builds are byte-identical.** The run's manifest gives the same
+SHA-256 (`6761c46c…`) for the self-tail build, its twin and the loop build,
+and every launch record names the same binary for both sides. The workflow
+built each side from its own source (`git diff --stat` shows `dispatch.wf`
+and `module.wfm` differ, and the two module checks took different times),
+and the same workflow gave different binaries for different sources in the
+table-growth and post-catch runs, so this is not a stale build: Whitefoot
+lowers the `loop { match }` dispatch to exactly the machine code of the
+guaranteed self-tail call. The loop form costs nothing at run time, and the
+table above is a second twin comparison: its differences, such as fib's
+0.1104 s here against 0.1050 s for the same binary in this run's twin
+comparison, are this run's noise. Every performance measurement made on the
+self-tail form therefore holds for the loop form with this compiler.
+
+The vm module check takes 1.17 times as long (7.774 and 7.638 s against
+8.997 and 8.970 s), a cost of checking the loop form; proving the header
+invariants on every backedge is the likely cause, not measured here.
+
+## pcall's post-catch field lookup
+
+### Criterion, recorded before measuring
+
+The change that makes `pcall` look up its error field through `__index` as a
+resumable continuation (owner's choice A) also changes the dispatch epilogue
+that instructions without a direct tail call return through: `checked_step`
+now receives the VM and the host environment so it can start a scheduled
+post-catch lookup, and `Step` gains a `PostCatch` variant. None of the seven
+kernels raises an error, so a change in their time is this change's overall
+effect on the normal path, through the epilogue or through code layout and
+inlining; the comparison does not separate those.
+
+Comparison: main `5885f9ab4`, which this branch has merged, against the
+branch with the change, same compiler (`wf-8b647edbbc95`), six interleaved
+full-LTO pairs on the 14900K with a twin of main. Kept only if no kernel is
+slower beyond its larger range and the twin's difference, and
+`--check-module pkg::vm` takes at most 1.25 times as long; otherwise the
+epilogue change is reworked before merging.
+
+### Result
+
+[Run 37776993971](https://github.com/Ming-Research/Halo-wf/actions/runs/37776993971),
+artifact `halo-bench-postcatch`: main `5885f9ab4` against the branch at
+`cdc423c` (ten engine files differ, per the run's `git diff --stat`), six
+interleaved full-LTO pairs on the 14900K; medians in seconds:
+
+| Kernel | Main | Branch | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1052 | 0.1261 | 1.198 | 0.80% | 1.17% | 1.003 |
+| loop | 0.4324 | 0.4514 | 1.044 | 0.88% | 0.38% | 0.999 |
+| integer-table | 0.4949 | 0.4923 | 0.995 | 1.24% | 2.10% | 0.994 |
+| string-key | 0.0260 | 0.0259 | 0.994 | 2.34% | 1.78% | 1.000 |
+| concat | 0.0735 | 0.0892 | 1.214 | 3.82% | 4.36% | 1.004 |
+| sort | 0.1766 | 0.1988 | 1.126 | 2.56% | 3.82% | 0.999 |
+| binary-trees | 1.9052 | 2.1124 | 1.109 | 1.72% | 2.90% | 1.000 |
+
+`--check-module pkg::vm`: main 7.522 and 7.555 s, branch 7.784 and 7.761 s.
+
+**The criterion is not met**: five kernels are slower far beyond their
+bounds. The binaries in the artifact show why: every dispatch arm of `run`
+grew by 700–950 bytes and its stack frame from 0x30 to 0xa0 bytes, and each
+arm now contains an indirect non-tail call; `pcall_lookup_drain`, which runs
+Lua through a nested `run`, was inlined into the shared epilogue of every
+arm. The epilogue change is reworked so that a `PostCatch` step never reaches
+`run`: the cold paths that produce it drain it before returning.
+
+### Rework
+
+The dispatch function and `checked_step` are restored to main. Post-catch
+requests now belong to the cold unwind result, which generic failure paths
+and resumed library callbacks drain before returning a dispatch step. Call
+preparation handles its own failures inside `prepare`; the non-generic fast
+stores and collector failures share ordinary catch completion for their
+string-only errors.
+Inlining, oracle behavior and performance remain to be checked in CI.
+
+The subsequent rework records the post-catch lookup index in the VM and uses
+the existing `Budget` exit to reach the generic driver, which clears and
+consumes the request before interpreting the exit, leaving the instruction
+budget, dispatch, handlers and `Step` unchanged.
+
+### Retried after the rework
+
+[Run 37787718241](https://github.com/Ming-Research/Halo-wf/actions/runs/37787718241),
+artifact `halo-bench-postcatch-retry`: main `5885f9ab4` against the branch at
+`0f09d8b`, whose `dispatch.wf`, `handlers.wf` and `continuations.wf` equal
+main's, the same criterion; medians in seconds:
+
+| Kernel | Main | Branch | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1050 | 0.1036 | 0.987 | 0.67% | 1.21% | 1.000 |
+| loop | 0.4315 | 0.4315 | 1.000 | 0.38% | 0.38% | 1.002 |
+| integer-table | 0.4959 | 0.4949 | 0.998 | 1.95% | 2.32% | 0.991 |
+| string-key | 0.0260 | 0.0259 | 0.993 | 3.56% | 2.68% | 1.001 |
+| concat | 0.0735 | 0.0739 | 1.005 | 2.25% | 6.05% | 0.999 |
+| sort | 0.1771 | 0.1768 | 0.998 | 5.04% | 2.12% | 1.003 |
+| binary-trees | 1.9072 | 1.9125 | 1.003 | 2.27% | 0.60% | 1.003 |
+
+`--check-module pkg::vm`: main 7.619 and 7.531 s, branch 7.746 and 7.820 s
+(at most 1.04 times).
+
+**The criterion is met**: no kernel is slower beyond its larger range and the
+twin's difference, and the module check stays within 1.25 times.
+
+## The handler word in Halo's dispatch
+
+### Criterion, recorded before measuring
+
+The loopmatch session's second phase lowers a `loop { match }` dispatch
+through a handler word stored in each matched value (Whitefoot, the two
+handler-word commits on `691ea8106`, release `wf-exp-78ff1a001486`): each
+`Cell` carries the address of its arm, 4-byte aligned, so Halo's `Cell`
+grows from 12 to 20 bytes. The control is `wf-691ea8106920`, the same
+commit without them. The loopmatch session asks whether Halo's `run`, now
+`loop { match }`, gets slower. A prototype on the former self-tail form
+measured fib 2.3% and loop 1.8% faster.
+
+Comparison: main `c78426ef8` (`run` as `loop { match }`) built with each release,
+six interleaved full-LTO pairs over the seven kernels with a twin of the
+control build, on the 14900K; each build's `--dispatch-ledger` output is
+kept, and the experiment's must contain "dispatches through the handler word
+in each" for `run`, or the comparison does not test the handler word.
+
+The loopmatch session's criterion: fib's and loop's medians with the
+experiment are each no more than 2% above the control's. The other kernels
+are reported, slower beyond their larger range and the twin's difference
+or not.
+
+### Result
+
+[Run 37837639995](https://github.com/Ming-Research/Halo-wf/actions/runs/37837639995),
+artifact `halo-bench-handler-word`: Halo main `c78426ef8` built by
+`wf-691ea8106920` (control) and `wf-exp-78ff1a001486` (handler word), clang
+22.1.8, full LTO, on the 14900K. The experiment's dispatch ledger contains
+"dispatches through the handler word in each Cell" for `run` (and for
+`cjson_decode`'s and `library_table`'s loops); the control's does not. The
+binaries differ. Medians in seconds, six interleaved pairs:
+
+| Kernel | Control | Handler word | Ratio | Control range | Handler-word range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1030 | 0.1045 | 1.015 | 0.45% | 0.94% | 0.999 |
+| loop | 0.4346 | 0.4249 | 0.978 | 1.50% | 0.95% | 1.001 |
+| integer-table | 0.4994 | 0.4952 | 0.992 | 2.79% | 3.98% | 1.003 |
+| string-key | 0.0258 | 0.0259 | 1.001 | 2.99% | 1.19% | 1.001 |
+| concat | 0.0743 | 0.0743 | 1.000 | 1.53% | 2.36% | 1.001 |
+| sort | 0.1753 | 0.1751 | 0.999 | 0.86% | 1.66% | 0.992 |
+| binary-trees | 1.8996 | 1.9017 | 1.001 | 2.19% | 2.66% | 0.998 |
+
+**The criterion is met**: neither fib (1.015) nor loop (0.978) is more than 2%
+slower than the control. Both moves exceed this run's bounds: fib is
+slower beyond both ranges and the twin's difference, loop faster beyond them;
+the other kernels do not move beyond their bounds. The fib slowdown runs
+against the loopmatch session's prototype on the former self-tail form (fib
+2.3% faster); a likely cause, not measured here, is the 20-byte `Cell` the
+handler word needs on fib's call path, against 12 bytes before.
+
 ## Collection statistics
 
 ### Criterion, recorded before measuring
