@@ -2751,8 +2751,9 @@ The repeat, the same three binaries, run after the review had finished
 **The criterion is not met, and the change is reverted with its
 measurements kept.** Integer-table's median is 1.004 times main's in the
 repeat and 0.987 in the first run, neither the 3% fall the criterion asks
-for. The M5's spread in both runs (single launches up to 1.6 times their
-kernel's median, which a fanless machine under sustained load and other
-processes on it can produce) is larger than the effect sought, so these
+for. The M5's spread in both runs (single launches up to 6.3 times their
+kernel's median in the first run and 1.7 times in the repeat, which a
+fanless machine under sustained load and other processes on it can
+produce) is larger than the effect sought, so these
 runs cannot show a gain of a few percent either; the candidate can be tried
 again on the 14900K.
