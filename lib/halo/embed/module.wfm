@@ -9,6 +9,7 @@ alias TableError = pkg::heap::TableError;
 alias Pair = pkg::heap::Pair;
 alias StringView = pkg::heap::StringView;
 alias NumView = pkg::value::NumView;
+alias CollectionStats = pkg::heap::CollectionStats;
 
 public struct ScriptId {
   public slot: u64;
@@ -39,9 +40,13 @@ public fn new_engine(limit: u64) -> r: Engine pure doc "Constructs an engine wit
 
 public fn set_pcall_error_field(engine: &Engine, field: &[u8]) -> r: unit reads(field), writes(engine.vm.pcall_field) doc "Names the field pcall looks up after catching a table, honoring __index through a resumable callback. A string or number gives false, field; every other value gives false, original table, field, including a counted trailing nil. Lookup errors escape this pcall. Non-table errors and xpcall are unaffected. An empty name, the default, disables the lookup and preserves false, original error.";
 
-public fn set_gc_stress(engine: &Engine, enabled: Bool) -> r: unit writes(engine.vm.heap.gc_stress) doc "Forces a full collection at each collector safepoint while enabled; new engines default to off.";
+public fn set_gc_stress(engine: &Engine, enabled: Bool) -> r: unit writes(engine.vm.heap.gc_stress) doc "Forces a full collection at each collector safepoint while enabled; new engines default to off. The setting survives reset and forget_all.";
 
 public fn collection_count(engine: &Engine) -> r: u64 reads(engine.vm.heap.collections) doc "Completed collections since engine construction, saturating at u64 maximum; reset does not clear the count.";
+
+public fn set_gc_pause(engine: &Engine, percent: u64) -> r: unit writes(engine.vm.heap.gc_pause) doc "Sets the Lua 5.1 collection pause for thresholds computed by subsequent collections; defaults to 200, clamps below 100 to 100, and survives reset and forget_all. The threshold is max(1 MiB, floor(live * (percent - 100) / 100)), saturating at u64 maximum; stress and the byte limit still override it.";
+
+public fn last_collection(engine: &Engine) -> r: CollectionStats reads(engine.vm.heap.last_collection) doc "Returns the heap CollectionStats snapshot of the last completed collection, or all zeros before the first; reset and forget_all preserve it. Counts and logical bytes are per kind; gray_pops counts marking work and slots_visited includes free slots. Hosts time collections around collection_count changes.";
 
 public fn compile(engine: &Engine, chunk_name: &[u8], source: &[u8]) -> r: Result<ScriptId, CompileError> reads(chunk_name), reads(source), writes(engine) doc "Caches a compiled chunk; compiler error text is preserved.";
 

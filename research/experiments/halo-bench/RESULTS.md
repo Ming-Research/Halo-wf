@@ -3535,3 +3535,38 @@ the other kernels do not move beyond their bounds. The fib slowdown runs
 against the loopmatch session's prototype on the former self-tail form (fib
 2.3% faster); a likely cause, not measured here, is the 20-byte `Cell` the
 handler word needs on fib's call path, against 12 bytes before.
+
+## Collection statistics
+
+### Criterion, recorded before measuring
+
+The collection statistics (pull request 24) add counter increments to the
+collector's mark and sweep loops and to the trigger arithmetic. The kernels
+that collect most (binary-trees, integer-table) pay for them. Comparison:
+this branch's base `fbd3bb2f1` against this branch, same compiler
+(`wf-691ea8106920`), six interleaved full-LTO pairs over the seven kernels
+with a twin of the base, on the 14900K. Kept only if no kernel is slower
+beyond its larger range and the twin's difference.
+
+### Result
+
+[Run 37835986400](https://github.com/Ming-Research/Halo-wf/actions/runs/37835986400),
+artifact `halo-bench-gcstats`: base `fbd3bb2f1` against the branch, the same
+compiler, on the 14900K; medians in seconds, six interleaved pairs:
+
+| Kernel | Base | Branch | Ratio | Base range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1051 | 0.1044 | 0.993 | 1.04% | 3.25% | 1.000 |
+| loop | 0.4323 | 0.4327 | 1.001 | 0.66% | 1.00% | 1.001 |
+| integer-table | 0.4921 | 0.4986 | 1.013 | 2.62% | 1.51% | 0.995 |
+| string-key | 0.0257 | 0.0255 | 0.989 | 2.42% | 2.90% | 1.001 |
+| concat | 0.0743 | 0.0733 | 0.986 | 4.30% | 0.78% | 0.997 |
+| sort | 0.1745 | 0.1758 | 1.008 | 1.21% | 1.17% | 1.008 |
+| binary-trees | 1.9103 | 1.9433 | 1.017 | 2.80% | 4.13% | 0.995 |
+
+`--check-module pkg::vm`: base 7.706 and 7.731 s, branch 7.697 and 7.809 s.
+
+**The criterion is met**: no kernel is slower beyond its larger range and the
+twin's difference. The two kernels that collect most lean the same way,
+binary-trees 1.7% and integer-table 1.3% slower, each within its bounds; a
+cost of that size from the counters is possible and unresolved by six pairs.
