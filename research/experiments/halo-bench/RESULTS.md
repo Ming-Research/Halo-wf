@@ -3483,3 +3483,27 @@ main's, the same criterion; medians in seconds:
 
 **The criterion is met**: no kernel is slower beyond its larger range and the
 twin's difference, and the module check stays within 1.25 times.
+
+## The handler word in Halo's dispatch
+
+### Criterion, recorded before measuring
+
+The loopmatch session's second phase lowers a `loop { match }` dispatch
+through a handler word stored in each matched value (Whitefoot, the two
+handler-word commits on `691ea8106`, release `wf-exp-78ff1a001486`): each
+`Cell` carries the address of its arm, 4-byte aligned, so Halo's `Cell`
+grows from 12 to 20 bytes. The control is `wf-691ea8106920`, the same
+commit without them. The loopmatch session asks whether Halo's `run`, now
+`loop { match }`, gets slower. A prototype on the former self-tail form
+measured fib 2.3% and loop 1.8% faster.
+
+Comparison: main `c78426ef8` (`run` as `loop { match }`) built with each release,
+six interleaved full-LTO pairs over the seven kernels with a twin of the
+control build, on the 14900K; each build's `--dispatch-ledger` output is
+kept, and the experiment's must contain "dispatches through the handler word
+in each" for `run`, or the comparison does not test the handler word.
+
+The loopmatch session's criterion: fib's and loop's medians with the
+experiment are each no more than 2% above the control's. The other kernels
+are reported, slower beyond their larger range and the twin's difference
+or not.

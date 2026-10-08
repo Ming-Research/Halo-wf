@@ -1,0 +1,114 @@
+# Temporary: Halo's loop { match } dispatch with and without Whitefoot's
+# handler word (research/experiments/halo-bench/RESULTS.md, "The handler word
+# in Halo's dispatch"). The hosted job checks that Halo
+# builds with both releases; the 14900K job runs only for a commit whose
+# message contains [bench], pushed once the runner is confirmed idle.
+# Removed before the pull request is marked ready.
+name: bench-handler-word
+
+on:
+  push:
+    branches: [claude/halo-handler-word]
+    paths: [.github/workflows/bench-handler-word.yml, research/experiments/halo-bench/RESULTS.md]
+
+env:
+  CONTROL: wf-691ea8106920
+  EXPERIMENT: wf-exp-78ff1a001486
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Build the bench program with both releases
+        run: |
+          set -euo pipefail
+          make toolchain
+          for release in "$CONTROL" "$EXPERIMENT"; do
+            echo "release = $release" > whitefoot.pin
+            make compiler
+            make toolchain-check
+            build/whitefoot/$release/whitefootc --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto --dispatch-ledger -o "build/halo-$release" > "build/ledger-$release.txt" 2>&1
+            echo "built with $release; dispatch ledger:"
+            cat "build/ledger-$release.txt"
+          done
+
+  bench:
+    needs: build
+    if: contains(github.event.head_commit.message, '[bench]')
+    runs-on: [self-hosted, 14900k]
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+      - name: Build with both releases and compare
+        run: |
+          set -euo pipefail
+          out="$PWD/build/bench-out"
+          rm -rf "$out"; mkdir -p "$out"
+          cp whitefoot.pin "$out/whitefoot.pin.orig"
+          for release in "$CONTROL" "$EXPERIMENT"; do
+            echo "release = $release" > whitefoot.pin
+            make compiler
+            make toolchain-check
+          done
+          cp "$out/whitefoot.pin.orig" whitefoot.pin
+          wfc_ctl="$PWD/build/whitefoot/$CONTROL/whitefootc"
+          wfc_exp="$PWD/build/whitefoot/$EXPERIMENT/whitefootc"
+          sh research/experiments/halo-oracle/fetch-redis.sh "$PWD/build/redis"
+          lua="$PWD/build/redis/redis-7.0.15/deps/lua/src/lua"
+          "$wfc_ctl" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-ctl"
+          cp "$out/halo-ctl" "$out/halo-ctl-twin"
+          "$wfc_exp" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-exp"
+          for side in ctl exp; do
+            wfc="$wfc_ctl"; [ "$side" = exp ] && wfc="$wfc_exp"
+            "$wfc" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto --dispatch-ledger -o "$out/ledger-build-$side" > "$out/dispatch-ledger-$side.txt" 2>&1 || true
+            echo "== dispatch ledger, $side"
+            grep -i "run" "$out/dispatch-ledger-$side.txt" | head -20 || true
+          done
+          grep -c "dispatches through the handler word in each" "$out/dispatch-ledger-exp.txt" || true
+          {
+            echo "branch $(git rev-parse HEAD), control $CONTROL, experiment $EXPERIMENT"
+            sha256sum "$wfc_ctl" "$wfc_exp" "$out"/halo-*
+            /usr/bin/clang --version | head -n 1
+          } | tee "$out/manifest.txt"
+          for side in ctl exp; do
+            sym=$(nm "$out/halo-$side" | awk '/ [tT] wf_package\.halo\.vm\.push_frame$/ {print $3}')
+            if [ -n "$sym" ]; then
+              objdump -d --no-show-raw-insn -M intel --disassemble="$sym" "$out/halo-$side" > "$out/push_frame-$side.txt"
+              echo "== push_frame, $side: $(grep -c -E '^ +[0-9a-f]+:' "$out/push_frame-$side.txt") instructions"
+              head -n 30 "$out/push_frame-$side.txt"
+            else
+              echo "== push_frame, $side: not a separate symbol"
+            fi
+            echo "== $side: $(objdump -d --no-show-raw-insn "$out/halo-$side" | grep -c -E 'movups|movdqu|vmovups|vmovdqu') unaligned 128/256-bit moves"
+          done
+          kernels=fib,loop,integer-table,string-key,concat,sort,binary-trees
+          compare() {
+            label=$1; before=$2; after=$3
+            for runs in 1 3 6; do
+              python3 -B research/experiments/halo-bench/run.py --lua "$lua" \
+                --before-binary "$before" --binary "$after" --kernels "$kernels" \
+                --scale binary-trees=14 --runs "$runs" --out "$out/$label-$runs.json" --compiler "$wfc_ctl" \
+                > "$out/$label-$runs.log" 2>&1 || { cat "$out/$label-$runs.log"; exit 1; }
+              echo "== $label, $runs pair(s)"
+              grep 'ratio=' "$out/$label-$runs.log" | sed 's/ before=.*//'
+            done
+          }
+          compare twin "$out/halo-ctl" "$out/halo-ctl-twin"
+          compare handlerword "$out/halo-ctl" "$out/halo-exp"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: halo-bench-handler-word
+          path: build/bench-out/
+          retention-days: 30
