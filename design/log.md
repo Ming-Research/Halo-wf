@@ -4,6 +4,14 @@ Newest first. One entry per approved change of the tree: a dated title,
 `Nodes:` naming every node changed, `Owner-approved:` and `Summary:`; the
 owner-wide instructions' *Log format* owns the form.
 
+## 2026-10-08 Halo keeps replacing table arrays: in-place growth through grow rejected
+
+Nodes: halo/heap/tables/growth
+
+Owner-approved: 2026-10-08 on the Halo-wf status board, item "表扩容": "同意：批准设计树 `heap/tables/growth.md` 新增的 Rejected 一条（用 Whitefoot 的 grow 原地扩容被否决及理由）".
+
+Summary: Table growth takes about 30% of the integer-table kernel's samples on the 14900K, but growing a nonshrinking array in place with Whitefoot's `grow`, after every failure point so the table still changes only on success, left the kernel's median unchanged (1.000 times main in six interleaved pairs). Whitefoot lowers `grow` as allocation, copy and free, so the change kept the work it targeted; the alternative is reconsidered when `grow` reallocates in place (`research/experiments/halo-bench/RESULTS.md`, "Growing the array in place: result").
+
 ## 2026-10-07 Halo reads string keys by cached hash and handle
 
 Nodes: halo/heap/tables
