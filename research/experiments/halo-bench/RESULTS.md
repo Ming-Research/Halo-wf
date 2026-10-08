@@ -2677,6 +2677,234 @@ final engine (`380b624f0`), main `bc4e2db17` against it with a twin:
 (1.000 times). The criterion still passes: integer-table takes 0.881 times
 as long, and no kernel is slower beyond its bounds.
 
+## String-key lookup
+
+### Criterion, recorded before the change
+
+A table read with a string key goes through `table_get`
+(`lib/halo/heap/tables.wf`): `integer_key` classification, `node_find`,
+`main_position` with the generic `key_hash` and a modulus, and the generic
+`equal`, which matches every value kind (`node_find` 19% of the string-key
+kernel's samples, 14% of binary-trees'). PUC's `luaH_getstr` takes the
+string's cached hash, masks it to the node vector, and compares string
+pointers along the chain. Change: a string-key read takes a lookup
+specialised for strings, the cached hash masked by the power-of-two node
+count and handle comparison along the chain, with the same result as
+`table_get` for every table (integer-keyed parts are never reached by a
+string key); every other key keeps `table_get`.
+
+Kept only if, on the 14900K, in six interleaved full-LTO pairs of main
+before the change against the branch after it, with a twin of the before
+binary: the string-key kernel's median falls at least 5%, by more than
+both ranges and the twin's difference; no kernel is slower beyond its
+larger range and the twin's; `--check-module pkg::vm` takes at most 1.25
+times as long; and `make check` passes. Otherwise the change is reverted
+with its measurements kept.
+
+### Result
+
+[Run 37595142933](https://github.com/Ming-Research/Halo-wf/actions/runs/37595142933):
+main `99936d6e6` against the branch at `b37e0dbba`, whose engine differs from
+main only in `lib/halo/heap/tables.wf`, its module interface and
+`lib/halo/vm/handlers.wf` (the run's own `git diff --stat`); six interleaved
+full-LTO pairs with `wf-8b647edbbc95`, medians in seconds:
+
+| Kernel | Main | Branch | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1043 | 0.1042 | 0.999 | 1.74% | 0.38% | 0.996 |
+| loop | 0.4338 | 0.4347 | 1.002 | 1.37% | 1.23% | 1.002 |
+| integer-table | 0.5344 | 0.5134 | 0.961 | 2.93% | 1.77% | 0.996 |
+| string-key | 0.0337 | 0.0259 | 0.769 | 2.69% | 0.49% | 1.013 |
+| concat | 0.0731 | 0.0742 | 1.015 | 1.93% | 2.98% | 1.005 |
+| sort | 0.1852 | 0.1766 | 0.954 | 0.92% | 0.77% | 0.996 |
+| binary-trees | 1.9550 | 1.9413 | 0.993 | 1.85% | 1.33% | 1.000 |
+
+`--check-module pkg::vm`: main 7.564 and 7.599 s, branch 7.544 and 7.639 s
+(1.001 times). `make check` passed at `c87aec0be`, the same engine
+([run 37594106496](https://github.com/Ming-Research/Halo-wf/actions/runs/37594106496)).
+
+**The criterion passes and the change is kept.** String-key takes 0.769
+times as long, beyond both ranges and the twin; integer-table (0.961) and
+sort (0.954) also move beyond their bounds, and no kernel is slower beyond
+its bounds. Against PUC's median in the paired P1 run above (0.0198 s),
+string-key's 0.0259 s is about 1.31 times PUC's (not measured in one
+session).
+
+### Remeasured at the final engine
+
+The power-of-two guard (review finding F1) adds a length test to every
+string lookup after the measurement above. [Run 37601538830](https://github.com/Ming-Research/Halo-wf/actions/runs/37601538830),
+from a measurement-only branch, repeats the comparison at the final engine
+(`448c217a2`, the run's own `git diff --stat` naming only
+`lib/halo/heap/tables.wf`, its module interface and
+`lib/halo/vm/handlers.wf`): main `99936d6e6` against it, six interleaved
+full-LTO pairs with a twin.
+
+| Kernel | Main | Branch | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1117 | 0.1103 | 0.987 | 4.57% | 1.78% | 1.004 |
+| loop | 0.4539 | 0.4557 | 1.004 | 1.45% | 2.90% | 1.007 |
+| integer-table | 0.5539 | 0.5333 | 0.963 | 2.72% | 4.24% | 0.999 |
+| string-key | 0.0355 | 0.0273 | 0.770 | 26.17% | 4.31% | 1.008 |
+| concat | 0.0759 | 0.0760 | 1.001 | 9.25% | 5.15% | 0.999 |
+| sort | 0.1848 | 0.1782 | 0.964 | 1.95% | 1.84% | 1.001 |
+| binary-trees | 2.0444 | 2.0338 | 0.995 | 5.26% | 5.81% | 1.000 |
+
+`--check-module pkg::vm`: main 8.098 and 8.170 s, branch 8.236 and 8.096 s.
+
+String-key again takes 0.770 times as long, and every main launch
+(0.0352–0.0445 s) is slower than every branch launch (0.0268–0.0279 s), but
+main's range is 26.17%, all of it one launch of 0.0445 s against 0.0352–0.0359
+s for the other five, so the fall of 23.0% is not beyond both ranges as the
+criterion requires. This comparison's main medians are 3.6–7.1% above the
+first run's for six kernels (sort's is unchanged), while the twin comparison just before it in
+the same job is within 2% of the first run; the runner had just come back
+online.
+The spread is too large to decide, so the comparison is repeated once, six
+pairs on the same branch, and that repeat decides; both runs stay recorded.
+
+The repeat ([run 37601538830, attempt 2](https://github.com/Ming-Research/Halo-wf/actions/runs/37601538830/attempts/2)),
+the same three binaries by hash:
+
+| Kernel | Main | Branch | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1043 | 0.1050 | 1.006 | 0.54% | 1.07% | 1.000 |
+| loop | 0.4332 | 0.4330 | 0.999 | 0.85% | 1.02% | 0.995 |
+| integer-table | 0.5277 | 0.5098 | 0.966 | 2.36% | 2.88% | 0.995 |
+| string-key | 0.0336 | 0.0259 | 0.771 | 1.50% | 1.21% | 0.997 |
+| concat | 0.0729 | 0.0740 | 1.016 | 2.77% | 1.02% | 1.006 |
+| sort | 0.1845 | 0.1754 | 0.951 | 0.78% | 2.96% | 1.008 |
+| binary-trees | 1.9616 | 1.9592 | 0.999 | 1.98% | 1.22% | 1.000 |
+
+`--check-module pkg::vm`: main 7.610 and 7.619 s, branch 7.603 and 7.586 s
+(0.997 times).
+
+**The criterion passes at the final engine.** String-key takes 0.771 times
+as long, beyond both ranges and the twin; no kernel is slower beyond its
+larger range and the twin's (concat's 1.016 is inside its 2.77% range).
+
+## Table construction and growth
+
+### Attribution, recorded before it runs
+
+Binary-trees is about 2.2 times PUC and integer-table about 2.35 times
+([P1 on the 14900K](#p1-on-the-14900k-with-wf-e1708490c384), with the
+changes since). Their profiles there put `heap.node_find` (13.8%), the
+collector's `collect_if_due` (5.5%) and libc's allocator (13.4%) in
+binary-trees, and `heap.rehash` (9.3%) beside the table arms in
+integer-table. Where does the time of table construction, insertion and
+growth go, instruction by instruction, against PUC's `luaH_new`,
+`luaH_set`/`newkey` and `luaH_resize`? This run tests no proposal: it
+chooses the next change and its criterion. As for the call path, each cost
+is classed as work Halo's source asks for that PUC does not do, a Halo-side
+candidate, or code the compiler emits beyond what the source asks for, a
+Whitefoot question for the owner. Costs inside the dispatch arms are noted
+but not acted on, since `loop { match }` dispatch is rewriting them.
+
+Run: on a GitHub-hosted ubuntu-24.04 x86-64 runner, which reads shares of
+samples, not times; Halo at main built with full LTO as `run.py` builds it,
+and Redis 7.0.15's bundled PUC Lua built from source, each running
+binary-trees at depth 14 (`run.py`'s scale) and integer-table; `perf record`
+of each, three launches, reported by symbol; `perf annotate` of Halo's
+sampled symbols; and the disassembly of the table functions with their
+instruction counts.
+
+### Attribution result
+
+[Run 37639344751](https://github.com/Ming-Research/Halo-wf/actions/runs/37639344751),
+artifact `halo-tables-profile`: an AMD EPYC 7763 guest sampling `task-clock`,
+Halo at main `99936d6e6` (before the string-key lookup), `wf-8b647edbbc95`
+with clang 22.1.8; both engines print the same sums. Shares of samples,
+three launches:
+
+- Binary-trees, Halo: `node_find` 12.2–12.5%, the `Call` arm 5.3–5.6%,
+  `enter_lua` 5.4–5.6%, `push_frame` 3.3–3.6%, `calloc` 3.6–3.7%,
+  `gc_mark` 2.8–2.9%, page faults 2.4–2.5%, `collect_if_due` 2.3–2.4%,
+  `malloc` 2.2–2.3%, the rest in dispatch arms. PUC: `luaV_execute`
+  18.9–19.3%, `luaH_get` 12.0–13.1%, `sweeplist` 8.0–8.7%, `propagatemark`
+  5.7–6.1%, `free` 5.2–6.2%, `luaD_precall` 3.5–4.0%, `malloc` 2.7–3.8%.
+  Launch 1's annotation holds about 13,100 Halo samples against about 7,300
+  of PUC's, `node_find` 2,352 of them against 1,131 in `luaH_get`.
+- Integer-table, Halo: arms 13 and 11 (the table store and load) 27.7–28.0%
+  and 25.2–26.1%, two more arms 17.8–19.1% together, `rehash` 7.0–10.1%,
+  `table_set` 6.0–6.7%, `gc_mark` 5.6–5.9%. PUC: `luaV_execute` 38.7–40.0%,
+  `luaH_get` 33.7–34.2%, `luaV_settable` 7.2–8.2%, `newkey` 3.3–3.5%.
+
+In binary-trees, every table constructor stores `item`, `left` and `right`
+through `table_set`, which looks the key up with `node_find` before
+inserting. Launch 1's annotation of `node_find`:
+
+- 19.7% of its samples follow the `div` that computes `hash % n` for a
+  string key in `main_position`. PUC's `hashstr` masks the hash instead
+  (`lmod`, with node counts always powers of two), and `main_position`'s own
+  doc names that rule, but its code divides by the node count.
+- 36.9% fall on loading each visited node's key and the indirect jump on its
+  kind in `equal`, which compares every kind. PUC's `luaH_get` sends a string
+  key to `luaH_getstr`, a loop that compares string pointers only. Since the
+  string-key lookup, Halo's reads do the same, but its writes do not.
+
+Both are work Halo's source asks for; no code the compiler adds beyond the
+source shows in these functions. The dispatch arms that carry most of
+integer-table's time are left to `loop { match }` dispatch; integer-table's
+`rehash` and `gc_mark` remain for a later candidate.
+
+### String keys in table writes: criterion, recorded before the change
+
+Change: string and boolean keys take their main position by masking the
+hash with the node count less one, as PUC's `hashpow2` does, which equals
+the present modulus for every power-of-two node count, the only counts Lua
+creates, and keeps insertion and lookup consistent for any count; a table
+write finds an existing string key by its cached hash and handle comparison,
+as reads have since the string-key lookup; and `table_get_str` drops its
+power-of-two guard, since the specialised and generic lookups then mask
+alike for every node count.
+
+Kept only if, on the 14900K, in six interleaved full-LTO pairs of the
+branch before the change (the string-key lookup's final engine,
+`448c217a2`) against the branch after it, with a twin of the before binary:
+the binary-trees kernel's median falls at least 3%, by more than both ranges
+and the twin's difference; no kernel is slower beyond its larger range and
+the twin's; `--check-module pkg::vm` takes at most 1.25 times as long; and
+`make check` passes. Otherwise the change is reverted with its measurements
+kept.
+
+The 14900K went out of service before this ran. By the owner's direction
+(Q93), the comparison runs instead on the M5 Air (Apple M5, 10 cores, 24 GB,
+macOS, arm64), under Whitefoot's `run-check.pl` lock, with the same pairs,
+twin and thresholds, recorded here before it runs; its result is an M5
+result.
+
+### String keys in table writes: result on the M5 Air
+
+On the M5 Air (Apple M5, macOS 27.0.1, arm64), under `run-check.pl`'s lock:
+the string-key lookup's final engine (`448c217a2`) against this branch's
+engine (`a5962bf8b`), both built with full LTO by `wf-8b647edbbc95`'s
+macOS compiler (base and twin identical by hash, `a89a07cd432d`, branch
+`715d76e285c3`), six interleaved pairs, binary-trees at depth 14, with
+Redis 7.0.15's Lua built from source as the independent reference. One
+sample pair per kernel took 7.2 s. Medians in seconds:
+
+| Kernel | Before | After | Ratio | Before range | After range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1053 | 0.1097 | 1.041 | 3.66% | 2.51% | 1.012 |
+| loop | 0.3564 | 0.3576 | 1.003 | 0.80% | 4.87% | 0.997 |
+| integer-table | 0.2568 | 0.2531 | 0.986 | 3.11% | 2.62% | 1.002 |
+| string-key | 0.0188 | 0.0188 | 1.002 | 2.18% | 2.72% | 0.994 |
+| concat | 0.0699 | 0.0747 | 1.068 | 10.18% | 7.41% | 1.014 |
+| sort | 0.1574 | 0.1574 | 1.000 | 5.37% | 2.20% | 0.996 |
+| binary-trees | 1.3417 | 1.2864 | 0.959 | 3.00% | 0.64% | 0.999 |
+
+`--check-module pkg::vm`: before 5.95 and 5.91 s, after 5.93 and 5.83 s.
+
+**The criterion is not met, and the change is reverted with its
+measurements kept.** Binary-trees falls 4.1%, beyond both ranges and the
+twin, but fib is 4.1% slower, beyond its larger range (3.66%) and the
+twin's difference (1.2%); fib's hot path reads no table, so a layout change
+in the rebuilt binary is the likely cause, which the criterion does not
+excuse. Both results lie within about a point of their bounds, so the
+comparison is repeated on the 14900K when it returns before the change is
+given up (Q93).
+
 ## Marking only collectable values
 
 ### Criterion, recorded before the change
