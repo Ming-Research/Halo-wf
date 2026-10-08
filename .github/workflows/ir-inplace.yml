@@ -11,6 +11,7 @@ on:
     branches: [claude/halo-call]
     paths: [.github/workflows/ir-inplace.yml]
 
+
 env:
   EXPERIMENT: wf-exp-5a3c70fc3351
 
@@ -49,6 +50,64 @@ jobs:
             cat "$out/push_frame-$side.ll"
           done
           grep -n 'call void @wf_package.halo.vm.push_frame\|call .*@wf_package.halo.vm.push_frame' "$out/bench-exp.ll" | head -5 || true
+          cat > "$out/witness.wf" <<'WF'
+          alias ExitStatus = std::process::ExitStatus;
+          alias exit_status = std::process::exit_status;
+
+          struct Rec {
+            a: u64;
+            b: u64;
+            c: u64;
+            d: u64;
+            e: u64;
+            f: u64;
+            g: u64;
+            h: u64;
+            i: u64;
+            j: u64;
+          }
+
+          fn rec_first(r: Rec) -> s: u64 pure {
+            return r.a;
+          }
+
+          fn rec_forward(r: Rec) -> s: u64 pure {
+            return rec_first(r: r);
+          }
+
+          fn rec_push(v: &Box<Slots<Rec>>, r: Rec) -> ok: Bool writes(v) {
+            if v^.inner.len < v^.inner.cap {
+              place_back(window: &v^.inner, value: r);
+              return True();
+            }
+            return False();
+          }
+
+          fn main() -> status: ExitStatus pure {
+            let v = box_slots_new::<Rec>(capacity: 4_u64);
+            let r = Rec(a: 1_u64, b: 2_u64, c: 3_u64, d: 4_u64, e: 5_u64, f: 6_u64, g: 7_u64, h: 8_u64, i: 9_u64, j: 10_u64);
+            let first = rec_first(r: r);
+            let forwarded = rec_forward(r: r);
+            let pushed = rec_push(v: &v, r: r);
+            if pushed {
+              if first == forwarded {
+                return exit_status(code: 0_u8);
+              }
+            }
+            return exit_status(code: 1_u8);
+          }
+          WF
+          sed -i 's/^          //' "$out/witness.wf"
+          for side in pin exp; do
+            release=$pinned; [ "$side" = exp ] && release=$EXPERIMENT
+            wfc="$PWD/build/whitefoot/$release/whitefootc"
+            "$wfc" "$out/witness.wf" --emit-llvm -o "$out/witness-$side.ll"
+            for fn in rec_first rec_forward rec_push; do
+              awk -v name="$fn" '$0 ~ "^define .*@[^ ]*" name "[(.]" {f=1} f{print} f&&/^}/{exit}' "$out/witness-$side.ll" > "$out/witness-$side-$fn.ll"
+              echo "== witness $side $fn: $(grep -c 'llvm.memmove\|llvm.memcpy' "$out/witness-$side-$fn.ll") entry copies"
+              head -n 8 "$out/witness-$side-$fn.ll"
+            done
+          done
 
       - uses: actions/upload-artifact@v4
         if: always()
