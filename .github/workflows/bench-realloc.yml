@@ -3,7 +3,7 @@
 # with a reallocating grow"). The hosted job checks that the branch builds
 # with both releases; the 14900K job runs only for a commit whose message
 # contains [bench], pushed once the runner is confirmed idle. Removed before
-# the pull request is marked ready.
+# the pull request is marked ready. Run on the 14900K: 2026-10-08.
 name: bench-realloc
 
 on:
