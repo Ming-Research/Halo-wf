@@ -12,6 +12,14 @@ Owner-approved: 2026-10-08 on the WF status board, item "argument errors name th
 
 Summary: A library function's argument error names the called function as Lua 5.1's `getfuncname` does, through the same `getobjname` walk at the caller's CALL, TAILCALL or TFORLOOP cell, with `luaL_argerror`'s method adjustment and its `?` fallback, and errors raised by a native function are located only at an immediate Lua caller, as `luaL_where(L, 1)` does. Fixed names per builtin differed from Redis 7.0.15 for local aliases, fields, methods and shared builtins such as `math.mod`, and native callbacks took the outer Lua line; the oracle case `lua-core/argument-error-names` records Redis's replies for 34 such calls and Halo matches them all.
 
+## 2026-10-08 Halo keeps replacing table arrays: in-place growth through grow rejected
+
+Nodes: halo/heap/tables/growth
+
+Owner-approved: 2026-10-08 on the Halo-wf status board, item "table growth": approved, in the owner's words, "the Rejected item added to the design tree's heap/tables/growth.md (growing in place with Whitefoot's grow rejected, with its reasons)".
+
+Summary: Table growth takes about 30% of the integer-table kernel's samples on the 14900K, but growing a nonshrinking array in place with Whitefoot's `grow`, after every failure point so the table still changes only on success, left the kernel's median unchanged (1.000 times main in six interleaved pairs). Whitefoot lowers `grow` as allocation, copy and free, so the change kept the work it targeted; the alternative is reconsidered when `grow` reallocates in place (`research/experiments/halo-bench/RESULTS.md`, "Growing the array in place: result").
+
 ## 2026-10-07 Halo reads string keys by cached hash and handle
 
 Nodes: halo/heap/tables

@@ -7,7 +7,7 @@ Halo's `make check-core` compares the corpus through the `oracle` target;
 recording reference replies remains the job of
 [oracle-reference.yml](../../../.github/workflows/oracle-reference.yml).
 
-There are 106 scripts: 66 `lua-core`, 23 `redis-api`, 6 `apps`, and 11 `libs`.
+There are 107 scripts: 67 `lua-core`, 23 `redis-api`, 6 `apps`, and 11 `libs`.
 The scripts, replies and runner belong here until the oracle is replaced or
 Halo/firn scripting is retired. Each case is consumed by `run.sh`; the table
 below is the index of the observations it protects.
@@ -157,7 +157,8 @@ reference, not portable-language promises for every case.
   This behavior is evidenced by Redis 7.0.15 `src/rand.c` and
   `src/script_lua.c` in the reference source distribution.
 - `next-pairs` sorts its observations, avoiding unspecified hash iteration
-  order. JSON encodings use arrays or a single object member, avoiding
+  order; `table-growth-order` records the unsorted order on purpose, with
+  number and string keys only, whose placement the reference fixes. JSON encodings use arrays or a single object member, avoiding
   unspecified multi-member object order. No script prints table/function
   addresses, samples wall time, or returns an expiry countdown. Application
   scripts use a fixed window timestamp and long expiry values (60 seconds).
@@ -250,6 +251,7 @@ not automatically used to overwrite this baseline.
 | lua-core | [string-transforms](scripts/lua-core/string-transforms.lua) | sub negative indices, upper/lower, rep and reverse. |
 | lua-core | [table-concat](scripts/lua-core/table-concat.lua) | table.concat uses separators, slice bounds and numeric elements. |
 | lua-core | [table-foreach](scripts/lua-core/table-foreach.lua) | table.foreach visits pairs in next order, returns the first non-nil result, allows field assignment and Redis calls in its function, checks its arguments, passes callback errors on unchanged, and runs under pcall and inside sort and gsub callbacks. |
+| lua-core | [table-growth-order](scripts/lua-core/table-growth-order.lua) | pairs order and # after growth, key migration between hash and array, holes, regrowth and shrinking, unsorted. |
 | lua-core | [table-insert-remove](scripts/lua-core/table-insert-remove.lua) | Array insertion shifts entries; removal returns and shifts values. |
 | lua-core | [table-parts](scripts/lua-core/table-parts.lua) | Array and hash entries coexist; hash entries do not add array length. |
 | lua-core | [table-sort](scripts/lua-core/table-sort.lua) | Default and custom comparator sort numbers into opposite orders. |
