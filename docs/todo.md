@@ -10,19 +10,6 @@ Gaps Halo needs Whitefoot to close, each stated as its minimal semantic
 example apart from the engine code that exposed it
 ([Whitefoot-kit](../whitefoot-kit/downstream.md#trying-an-unmerged-whitefoot-change)).
 
-- **A loop invariant is lost where a guarded update joins an untouched
-  path.** A loop whose body sets a variable from a guarded value on one path
-  and leaves it on another, then joins the two before the back edge, loses
-  the header invariant both paths re-prove, because the join keeps only
-  facts identical on both inputs (`INV-1 UndischargedLoopInvariant`,
-  obligation `Backedge`). Impact: Halo cannot write its dispatch as
-  `loop { match }`, the form an interpreter is to take, because its arms
-  update different loop variables; `run` stays a self-tail call only until
-  Whitefoot accepts the loop ([dispatch](../design/halo/dispatch.md)). The
-  minimal witness and the candidate repairs are in Whitefoot's
-  `docs/todo.md` (Ming-Research/Whitefoot#246). Reopen when Whitefoot
-  changes INV-1's join, and then rewrite `run` as `loop { match }`.
-
 - **`grow` never reallocates in place.** Whitefoot lowers
   `grow(cell: &b, capacity: n)` on a `Box<Slots<T>>` as a fresh allocation,
   a copy of the filled slots and a free of the old block, never `realloc`
@@ -40,6 +27,16 @@ example apart from the engine code that exposed it
   no kernel slower beyond its noise bounds ([result](../research/experiments/halo-bench/RESULTS.md#growing-the-array-in-place-with-a-reallocating-grow)).
   Reopen when a Whitefoot main release lowers `grow` through `realloc`:
   move the pin, reapply `6f49ca6` and repeat the recorded comparison.
+
+- **A loop without `break` still needs an unreachable return after it.**
+  FN-1 treats every `loop` as able to exit, so `run`'s `loop { match }`,
+  whose arms only `continue` or `return`, must end with a `return
+  Outcome::Error();` that never runs, a value the writer has to invent.
+  Minimal example: `fn f() -> r: u64 pure { loop { } return 0_u64; }` is
+  refused without the final `return`. The loopmatch session opened the
+  board card `lm-loop-diverge` (a `loop` with no `break` has no normal exit).
+  Reopen when Whitefoot decides it; if adopted, delete the dead returns
+  after `run`'s loop and `drive`'s.
 
 - **Checking Halo's vm package is on the build's critical path.** Whitefoot's
   [compile-speed investigation](https://github.com/Ming-Research/Whitefoot/blob/main/research/investigations/compile-speed/DESIGN.md#remaining-costs)
@@ -123,7 +120,8 @@ example apart from the engine code that exposed it
 
 - **Halo's measured hot paths exceed the P1 median target.** The source
   `lib/halo/vm/dispatch.wf` retains joined `Step` continuations on cold and
-  frame-changing paths; C1's 18 selected hot arms now tail-call directly.
+  frame-changing paths; C1's 18 selected hot arms now continue the loop
+  directly.
   The full-LTO native baseline already had per-arm functions and indirect
   tail jumps; a single native dispatch point was not the measured cause ([P1 results](../research/experiments/halo-bench/RESULTS.md#value-width-handles-and-native-dispatch-inspected-first)).
   Impact: the initial six unscaled workloads measured 1.964–4.081 times PUC;
@@ -178,7 +176,8 @@ example apart from the engine code that exposed it
   Whitefoot's code cursor (from release `wf-0b7f5c5b9854`) cannot see that
   `next` is `pc + 1` and forms the code address from the index as before. The
   stage-3 wasm interpreter computes `let next = pc + 1_u64` in the arm and
-  tail-calls with it, which the cursor turns into one addition per dispatch;
+  dispatches the next instruction with it, which the cursor turns into one
+  addition per dispatch;
   the wf session reported about 13% on CoreMark on x86-64 there. On Halo
   with `wf-0b7f5c5b9854`, computing `next` in 44 straight-line arms gained
   only 1.9% on loop and cost concat 4.9%, failing its criterion, and was
@@ -186,7 +185,8 @@ example apart from the engine code that exposed it
   Change, if reopened: limit the step to the arms the loop and fib profiles
   name (`ForLoop`'s body arms, `AddRR`) and leave concat's path alone.
   Reopen when a later Whitefoot release changes how `run`'s edges are
-  lowered.
+  lowered (with `wf-691ea8106920`, `run` as `loop { match }` compiles to the
+  same code as the self-tail form, so the measurement stands).
 
 - **Halo reused-binary reports identify current inputs, not build inputs.**
   `research/experiments/halo-e2e/run.py --binary` hashes the current library

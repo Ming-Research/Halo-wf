@@ -4,6 +4,14 @@ Newest first. One entry per approved change of the tree: a dated title,
 `Nodes:` naming every node changed, `Owner-approved:` and `Summary:`; the
 owner-wide instructions' *Log format* owns the form.
 
+## 2026-10-08 Halo's dispatch is a plain loop { match }
+
+Nodes: halo/dispatch, halo/dispatch/continuations, halo/embedding
+
+Owner-approved: 2026-10-08 on the WF status board, item "Halo's dispatch rewritten as loop { match }": approved the design-tree changes of pull request 23, in the owner's words "dispatch.md's first decision from the provisional self-tail call to loop { match }, the self-tail call as Rejected; continuations.md keeps C1's decision and states that the two forms compile identically (the 2026-10-07 log had said this node would fold into dispatch.md; it is kept because the fast and slow path split it records still holds); embedding.md's 'run already takes eight parameters' reason restated for the loop form".
+
+Summary: `run` was a guaranteed self-tail call only because Whitefoot's checker refused `loop { match }` where arms updating different loop variables join (INV-1); Whitefoot v0.101 carries loop relations through joins and adds `continue`, and the checker accepted Halo's natural form as written. With `wf-691ea8106920` the loop form compiles to machine code byte-identical to the self-tail call, so the measurements made on that form, C1's included, hold (`research/experiments/halo-bench/RESULTS.md`, "The dispatch as loop { match }"); the vm module check takes 1.17 times as long. The rejection of passing host references through `run` keeps its grounds: the loop's eight carried values are the arms' transfers.
+
 ## 2026-10-08 Halo reclaims cjson instance configurations after collection
 
 Nodes: halo/heap/closures

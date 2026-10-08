@@ -3342,6 +3342,63 @@ by 1.3–3.5% per pair, while the twin's per-pair ratios span 0.972–1.010. A
 concat slowdown of about 1.5% with the new release is therefore possible and
 unresolved; these seven kernels on the 14900K show nothing else.
 
+## The dispatch as loop { match }
+
+### Question and reading, recorded before measuring
+
+`run` was a guaranteed self-tail call only because Whitefoot's checker
+refused the natural `loop { match }` (INV-1); Whitefoot v0.101 (#270) closed
+that, and this branch writes `run` as `loop { match }` with the three window
+facts as header invariants, the 18 hot arms continuing the loop and the
+others reaching the backedge through the shared epilogue. The owner's
+direction is the natural form, so the rewrite is kept whatever the timing.
+How do the kernels move?
+
+Comparison: the same compiler (`wf-691ea8106920`) building this branch's
+base `baa2225` (the self-tail `run`) and this branch, six interleaved
+full-LTO pairs over the seven kernels with a twin of the base, and two
+module-check samples each, on the 14900K. Reading: a kernel slower beyond its
+larger range and the twin's difference is a cost of the compiler's lowering
+of the loop form, reported to the loopmatch session as input to its second
+phase (lowering the natural form), not a reason to restore the self-tail
+call; a kernel faster beyond those bounds is reported the same way.
+
+### Result
+
+[Run 37793482368](https://github.com/Ming-Research/Halo-wf/actions/runs/37793482368),
+artifact `halo-bench-loopmatch`: `wf-691ea8106920`, clang 22.1.8, full LTO,
+the self-tail base `baa2225` against this branch at `060ea20` (only
+`dispatch.wf` and `module.wfm` differ in source, per the run's `git diff
+--stat`), on the 14900K; medians in seconds, six interleaved pairs:
+
+| Kernel | Self-tail | Loop | Ratio | Self-tail range | Loop range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1104 | 0.1120 | 1.014 | 4.53% | 5.94% | 1.002 |
+| loop | 0.4515 | 0.4535 | 1.005 | 3.31% | 2.05% | 0.999 |
+| integer-table | 0.5017 | 0.5076 | 1.012 | 4.86% | 7.07% | 0.993 |
+| string-key | 0.0263 | 0.0266 | 1.014 | 5.22% | 5.02% | 1.005 |
+| concat | 0.0751 | 0.0755 | 1.006 | 2.13% | 1.43% | 0.995 |
+| sort | 0.1883 | 0.1858 | 0.987 | 20.01% | 12.57% | 1.002 |
+| binary-trees | 1.9175 | 1.9336 | 1.008 | 5.40% | 7.61% | 0.994 |
+
+**The two builds are byte-identical.** The run's manifest gives the same
+SHA-256 (`6761c46c…`) for the self-tail build, its twin and the loop build,
+and every launch record names the same binary for both sides. The workflow
+built each side from its own source (`git diff --stat` shows `dispatch.wf`
+and `module.wfm` differ, and the two module checks took different times),
+and the same workflow gave different binaries for different sources in the
+table-growth and post-catch runs, so this is not a stale build: Whitefoot
+lowers the `loop { match }` dispatch to exactly the machine code of the
+guaranteed self-tail call. The loop form costs nothing at run time, and the
+table above is a second twin comparison: its differences, such as fib's
+0.1104 s here against 0.1050 s for the same binary in this run's twin
+comparison, are this run's noise. Every performance measurement made on the
+self-tail form therefore holds for the loop form with this compiler.
+
+The vm module check takes 1.17 times as long (7.774 and 7.638 s against
+8.997 and 8.970 s), a cost of checking the loop form; proving the header
+invariants on every backedge is the likely cause, not measured here.
+
 ## pcall's post-catch field lookup
 
 ### Criterion, recorded before measuring

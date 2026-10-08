@@ -198,7 +198,7 @@ public fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Val
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
-} doc "Eight-parameter guaranteed self-tail dispatch.";
+} doc "Dispatches instructions from pc, in the frame at base with the prototype's constants at kbase, until the run ends, raises or suspends.";
 
 public struct BuiltinBinding {
   public library: u8;
