@@ -3128,3 +3128,36 @@ range and the twin's; `--check-module pkg::vm` takes at most 1.25 times as
 long; and `make check` passes, the oracle under collector stress and the
 collector's root controls included. Otherwise the change is reverted and
 this section records the result.
+
+### Growing the array in place: result
+
+[Run 37756391939](https://github.com/Ming-Research/Halo-wf/actions/runs/37756391939),
+artifact `halo-bench-grow`: main `5e98dabf5` against the branch at `31b92e5`
+(the change is `6f49ca6`), whose engine differs only in
+`lib/halo/heap/tables.wf`, six interleaved full-LTO pairs on the 14900K with
+`wf-8b647edbbc95`; medians in seconds:
+
+| Kernel | Main | Branch | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1056 | 0.1054 | 0.998 | 1.08% | 2.17% | 1.000 |
+| loop | 0.4334 | 0.4333 | 1.000 | 0.55% | 1.23% | 0.997 |
+| integer-table | 0.4934 | 0.4933 | 1.000 | 1.63% | 0.52% | 0.997 |
+| string-key | 0.0262 | 0.0258 | 0.985 | 4.95% | 2.96% | 0.997 |
+| concat | 0.0736 | 0.0734 | 0.998 | 0.32% | 1.74% | 1.003 |
+| sort | 0.1762 | 0.1752 | 0.994 | 3.68% | 1.74% | 1.000 |
+| binary-trees | 1.9150 | 1.9282 | 1.007 | 4.07% | 2.73% | 0.992 |
+
+`--check-module pkg::vm`: main 7.660 and 7.551 s, branch 7.595 and 7.558 s.
+`make check` passed at `5bbaabb3c`, including the unsorted iteration case
+`lua-core/table-growth-order` ([run 37754466451](https://github.com/Ming-Research/Halo-wf/actions/runs/37754466451)).
+
+**The criterion is not met, and the change is reverted.** Integer-table's
+median is unchanged. The cause is in the compiler, not the engine: Whitefoot
+lowers `grow` as a fresh `malloc`, a `memmove` of the filled slots and a
+`free` of the old block (`compiler/src/backend/emitter/runs.rs`,
+`emit_window_grow`, at `8b647edbb`), never `realloc`, as its design records
+as a provisional choice awaiting performance grounds
+(`design/compiler/storage-representation.md`). The change therefore replaced
+Halo's copy of the retained prefix with the compiler's copy of the same
+bytes. Whether in-place reallocation would save the time is untested; it is
+a Whitefoot question (`docs/todo.md`, *Whitefoot requirements*).
