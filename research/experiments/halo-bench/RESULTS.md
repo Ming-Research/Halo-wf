@@ -2981,7 +2981,7 @@ binary-trees at depth 14. Medians in seconds:
 | string-key | 0.0207 | 0.0199 | 0.961 | 6.01% | 8.70% | 1.010 |
 | concat | 0.0848 | 0.0739 | 0.872 | 30.72% | 10.96% | 1.018 |
 | sort | 0.1601 | 0.1580 | 0.987 | 2.33% | 7.84% | 0.994 |
-| binary-trees | 1.3712 | 1.3759 | 1.003 | 7.08% | 6.15% | 1.000 |
+| binary-trees | 1.3712 | 1.3759 | 1.003 | 7.08% | 6.15% | 1.006 |
 
 `--check-module pkg::vm`: main 6.03 and 6.14 s, branch 6.03 and 6.16 s.
 
@@ -3047,5 +3047,6 @@ seconds:
 
 **The criterion is not met, and the change is reverted again.** Integer-table
 falls 1.6%, short of the 3% required; no kernel is slower beyond its bounds.
-Skipping `gc_mark` for values that name no object saves integer-table 1.6%
-on the 14900K, less than its hosted profile share suggested.
+Integer-table's median was 1.6% lower in this run, within main's 3.01%
+range, so these runs do not establish a saving from skipping `gc_mark` for
+values that name no object.
