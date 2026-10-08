@@ -2777,7 +2777,7 @@ the same three binaries by hash:
 | binary-trees | 1.9616 | 1.9592 | 0.999 | 1.98% | 1.22% | 1.000 |
 
 `--check-module pkg::vm`: main 7.610 and 7.619 s, branch 7.603 and 7.586 s
-(0.998 times).
+(0.997 times).
 
 **The criterion passes at the final engine.** String-key takes 0.771 times
 as long, beyond both ranges and the twin; no kernel is slower beyond its
@@ -2824,11 +2824,11 @@ three launches:
   18.9–19.3%, `luaH_get` 12.0–13.1%, `sweeplist` 8.0–8.7%, `propagatemark`
   5.7–6.1%, `free` 5.2–6.2%, `luaD_precall` 3.5–4.0%, `malloc` 2.7–3.8%.
   Launch 1's annotation holds about 13,100 Halo samples against about 7,300
-  of PUC's, `node_find` 2,352 of them against about 900 in `luaH_get`.
+  of PUC's, `node_find` 2,352 of them against 1,131 in `luaH_get`.
 - Integer-table, Halo: arms 13 and 11 (the table store and load) 27.7–28.0%
   and 25.2–26.1%, two more arms 17.8–19.1% together, `rehash` 7.0–10.1%,
-  `table_set` 6.0–6.7%, `gc_mark` 5.6–5.9%. PUC: `luaV_execute` 39.1–40.0%,
-  `luaH_get` 33.7–34.2%, `luaV_settable` 7.7–8.2%, `newkey` 3.3–3.5%.
+  `table_set` 6.0–6.7%, `gc_mark` 5.6–5.9%. PUC: `luaV_execute` 38.7–40.0%,
+  `luaH_get` 33.7–34.2%, `luaV_settable` 7.2–8.2%, `newkey` 3.3–3.5%.
 
 In binary-trees, every table constructor stores `item`, `left` and `right`
 through `table_set`, which looks the key up with `node_find` before

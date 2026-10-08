@@ -10,7 +10,7 @@ Nodes: halo/heap/tables
 
 Owner-approved: 2026-10-07 in the Halo session: "all agreed" (Q85 option A: a table read with a string key takes the lookup specialised for strings).
 
-Summary: A table read with a string key masks the string's cached hash by the power-of-two node count and compares interned handles along the chain, as PUC's `luaH_getstr` does, keeping the generic lookup for every other key and for any node vector whose length is not a power of two, so its result equals the generic lookup's for every table. The generic lookup's key classification, modulus and kind-matching equality made the string-key kernel about 1.3 times slower; the specialised read takes 0.771 times its time at the final engine on the 14900K with no kernel slower (`research/experiments/halo-bench/RESULTS.md`, "String-key lookup").
+Summary: A table read with a string key masks the string's cached hash by the power-of-two node count and compares interned handles along the chain, as PUC's `luaH_getstr` does, keeping the generic lookup for every other key and for any node vector whose length is not a power of two, so its result equals the generic lookup's for every table. The generic lookup's key classification, modulus and kind-matching equality made the string-key kernel about 1.3 times slower; the specialised read takes 0.771 times its time at the final engine on the 14900K with no kernel slower beyond its bounds (`research/experiments/halo-bench/RESULTS.md`, "String-key lookup").
 
 ## 2026-10-07 Halo's library follows what real Redis scripts call
 
