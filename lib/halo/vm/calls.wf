@@ -393,9 +393,11 @@ fn prepare<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
             let context_index = vm^.library_contexts.inner.len;
             let string_call = bound_id_1 == builtin_tostring;
             let sort_call = bound_id_1 == builtin_table_sort;
+            let table_foreach_call = bound_id_1 == builtin_table_foreach;
             let protected_call = bound_id_1 == builtin_xpcall;
             let substitution_call = bound_id_1 == builtin_string_gsub;
-            let ordinary_callback = bor(string_call, sort_call);
+            let table_foreach_or_sort = bor(sort_call, table_foreach_call);
+            let ordinary_callback = bor(string_call, table_foreach_or_sort);
             let protected_callback = bor(ordinary_callback, protected_call);
             let library_callback = bor(protected_callback, substitution_call);
             if library_callback {
@@ -403,7 +405,7 @@ fn prepare<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
               let b = argument(stack: stack, func: fslot, argc: nargs, index: 1_u64);
               let nil = Value::Nil();
               let frame = Frame(func: fslot, base: base, return_pc: return_pc, kbase: kbase, closure: no_handle, nresults: nr, activation: vm^.activation, flags: 0_u8, varbase: 0_u64, varcount: 0_u64, frame_top: vm^.top);
-              let context = LibraryContext(frame: frame, tail: tailing, id: bound_id_1, phase: 0_u8, count: 0_u64, table: a, comparator: b, saved_error: nil);
+              let context = LibraryContext(frame: frame, tail: tailing, id: bound_id_1, phase: 0_u8, count: 0_u64, table: a, comparator: b, saved_error: nil, foreach_key: nil);
               push_library_context(vm: vm, context: context);
               let expected = False();
               set vm^.callback_plan = CallbackPlan(pc: return_pc, base: base, kbase: kbase, kind: 4_u8, dest: fslot, first: context_index, index: 0_u64, target: 0_u64, expected: expected);

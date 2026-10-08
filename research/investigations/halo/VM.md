@@ -30,6 +30,12 @@ time before `set pc`, two comparisons per dispatch. (The consultation first
 attributed this to the header batch as a whole; a loop with two invariants
 whose body sets only one variable is accepted, which refutes that.)
 
+Superseded as a design choice: an interpreter is to be written as
+`loop { match }` with the compiler emitting its tail calls, so the gap
+above is Whitefoot's to close; the self-tail call below stays only until
+Whitefoot accepts the loop, and the run-time re-check fallback described at
+the end of this section is refused ([dispatch](../../../design/halo/dispatch.md)).
+
 The interpreter is therefore the guaranteed self-tail call [FN-10], whose
 parameters are never set, so the entry requirements hold in every arm:
 
