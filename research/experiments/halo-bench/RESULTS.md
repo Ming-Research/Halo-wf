@@ -3353,14 +3353,20 @@ the self-tail base `baa2225` against this branch at `060ea20` (only
 | sort | 0.1883 | 0.1858 | 0.987 | 20.01% | 12.57% | 1.002 |
 | binary-trees | 1.9175 | 1.9336 | 1.008 | 5.40% | 7.61% | 0.994 |
 
-`--check-module pkg::vm`: self-tail 7.774 and 7.638 s, loop 8.997 and
-8.970 s, 1.17 times as long.
+**The two builds are byte-identical.** The run's manifest gives the same
+SHA-256 (`6761c46c…`) for the self-tail build, its twin and the loop build,
+and every launch record names the same binary for both sides. The workflow
+built each side from its own source (`git diff --stat` shows `dispatch.wf`
+and `module.wfm` differ, and the two module checks took different times),
+and the same workflow gave different binaries for different sources in the
+table-growth and post-catch runs, so this is not a stale build: Whitefoot
+lowers the `loop { match }` dispatch to exactly the machine code of the
+guaranteed self-tail call. The loop form costs nothing at run time, and the
+table above is a second twin comparison: its differences, such as fib's
+0.1104 s here against 0.1050 s for the same binary in this run's twin
+comparison, are this run's noise. Every performance measurement made on the
+self-tail form therefore holds for the loop form with this compiler.
 
-No kernel moves beyond its larger range and the twin's difference. This run
-was noisier than the others on the 14900K that day (ranges of 2–20% against
-0.4–3% in the upgrade's run, and the base's fib at 0.110 s against 0.105 s),
-so it resolves no difference smaller than about 5%: the loop form is not
-measurably slower or faster, and differences of a few percent remain open
-for the loopmatch session's second-phase measurement. The vm module check
-takes 1.17 times as long, the checker's cost of proving the loop's header
-invariants on every backedge.
+The vm module check takes 1.17 times as long (7.774 and 7.638 s against
+8.997 and 8.970 s), a cost of checking the loop form; proving the header
+invariants on every backedge is the likely cause, not measured here.

@@ -28,6 +28,16 @@ example apart from the engine code that exposed it
   Reopen when a Whitefoot main release lowers `grow` through `realloc`:
   move the pin, reapply `6f49ca6` and repeat the recorded comparison.
 
+- **A loop without `break` still needs an unreachable return after it.**
+  FN-1 treats every `loop` as able to exit, so `run`'s `loop { match }`,
+  whose arms only `continue` or `return`, must end with a `return
+  Outcome::Error();` that never runs, a value the writer has to invent.
+  Minimal example: `fn f() -> r: u64 pure { loop { } return 0_u64; }` is
+  refused without the final `return`. The loopmatch session opened the
+  board card `lm-loop-diverge` (a `loop` with no `break` has no normal exit).
+  Reopen when Whitefoot decides it; if adopted, delete the dead returns
+  after `run`'s loop and `drive`'s.
+
 - **Checking Halo's vm package is on the build's critical path.** Whitefoot's
   [compile-speed investigation](https://github.com/Ming-Research/Whitefoot/blob/main/research/investigations/compile-speed/DESIGN.md#remaining-costs)
   brought `pkg::vm`'s module check to 16.6–17.2 s and records the remaining
@@ -173,8 +183,8 @@ example apart from the engine code that exposed it
   Change, if reopened: limit the step to the arms the loop and fib profiles
   name (`ForLoop`'s body arms, `AddRR`) and leave concat's path alone.
   Reopen when a later Whitefoot release changes how `run`'s edges are
-  lowered, and with the first measurement of `run` as `loop { match }`,
-  whose `continue` edges the compiler lowers.
+  lowered (with `wf-691ea8106920`, `run` as `loop { match }` compiles to the
+  same code as the self-tail form, so the measurement stands).
 
 - **Halo reused-binary reports identify current inputs, not build inputs.**
   `research/experiments/halo-e2e/run.py --binary` hashes the current library
