@@ -3654,3 +3654,28 @@ compiler and goes to Whitefoot as a minimal witness; splitting other library
 functions would only route around it, so no other function is split in
 Halo. If neither copies, the effect was fixed in Whitefoot since
 `wf-e1708490c384`, and the slow-path item closes with this record.
+
+### Second result
+
+[Run 37857130998](https://github.com/Ming-Research/Halo-wf/actions/runs/37857130998),
+same runner and artifact name, adds main (`47eb867`, the split form) and
+main with the split undone, both with `wf-691ea8106920`; the patch changes
+`lib/halo/vm/library-sort.wf` only. The before and after builds repeat the
+first run byte for byte (same digests).
+
+| Build | Compiler | `sort_compare` size | Stack frame | `memcpy` |
+|---|---|---:|---:|---:|
+| `f70f0a8af`, inline | `wf-e1708490c384` | 0x44e | 0x1e8 | 1 |
+| `22aadda57`, split | `wf-e1708490c384` | 0x330 | 0x60 | 0 |
+| main, split | `wf-691ea8106920` | 0x330 | 0x60 | 0 |
+| main, inline | `wf-691ea8106920` | 0x44e | 0x1f8 | 1 |
+
+**The effect stands on the current compiler.** Writing the slow call inline
+makes `sort_compare` copy the whole 152-byte library context, and the
+operands, on every call; moving that call into another function removes
+the copy. This is a Whitefoot lowering gap and goes to the Whitefoot session
+that owns copy elimination with these builds as its witness. No other
+library function is split in Halo, since that would route around the gap.
+The sort kernel no longer reaches `sort_compare` (homogeneous arrays take
+`sort_array_run`), so this costs Halo's kernels nothing today; a sort with
+a comparator or mixed operands still runs it.
