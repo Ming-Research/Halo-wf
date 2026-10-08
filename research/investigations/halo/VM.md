@@ -32,9 +32,15 @@ whose body sets only one variable is accepted, which refutes that.)
 
 Superseded as a design choice: an interpreter is to be written as
 `loop { match }` with the compiler emitting its tail calls, so the gap
-above is Whitefoot's to close; the self-tail call below stays only until
-Whitefoot accepts the loop, and the run-time re-check fallback described at
-the end of this section is refused ([dispatch](../../../design/halo/dispatch.md)).
+above was Whitefoot's to close, and the run-time re-check fallback described
+at the end of this section is refused ([dispatch](../../../design/halo/dispatch.md)).
+Whitefoot v0.101 (Ming-Research/Whitefoot#270) closed it: INV-1 proves the
+header invariants on every `continue` and on the body's fallthrough, each
+against its own state, and a relation every joined input re-proves over its
+own values survives the join. `run` is now the loop with header invariants
+`pc < code^.inner.len`, `base + 256_u64 <= stack^.inner.len` and
+`kbase + 256_u64 <= consts^.inner.len`; the self-tail form below is the
+record of what stood in for it.
 
 The interpreter is therefore the guaranteed self-tail call [FN-10], whose
 parameters are never set, so the entry requirements hold in every arm:
@@ -211,7 +217,7 @@ coercion, metamethods, hash misses, `__index` chains and readonly refusal
 and writes the destination slot itself; it returns `Err` after raising
 into `vm.error`. Outcomes: `Done(count)`, `Error`, `Budget`, `HostStopped`.
 The retained C1 form lets selected hot arms
-self-tail-call with the current window facts; callback-free variants expose
+continue the loop with the current window facts; callback-free variants expose
 the next pc, while fast misses, frame changes and other instructions keep
 the checked shared Step epilogue (section 11).
 
