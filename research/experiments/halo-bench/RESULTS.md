@@ -3079,3 +3079,52 @@ otherwise table growth is not selected and this section records why. The
 kernels exercise no string comparison, pattern matching, `table.concat` or
 codec, so this run says nothing about the slow-executor split in library
 functions (`docs/todo.md`).
+
+### Result
+
+[Run 37752821669](https://github.com/Ming-Research/Halo-wf/actions/runs/37752821669),
+artifact `halo-growth-profile`: the 14900K (a Hyper-V guest, 32 CPUs),
+Halo at main `5e98dabf5` with `wf-8b647edbbc95` and clang 22.1.8, full LTO;
+LBR was unavailable in the guest, so call graphs used DWARF unwinding. Every
+launch printed the kernel's checksum. Shares of `cycles` samples:
+
+| Kernel, launch | `rehash` own | `rehash` with children |
+|---|---:|---:|
+| integer-table 1 | 9.39% | 29.87% |
+| integer-table 2 | 12.65% | 29.91% |
+| integer-table 3 | 9.02% | 30.16% |
+| binary-trees 1–3 | below 0.3% | below 0.3% |
+
+In binary-trees only `insert_parts` appears (1.43–1.67%). Integer-table's
+remaining time is the table store and load arms (20.5–25.8% each), arm 66
+(8.2–8.6%), `table_set`, `collect_if_due` and `gc_mark`. Beneath `rehash`,
+the profile shows the kernel's page-fault and unmapping paths (the guest
+hides kernel symbols) and libc's `free` reaching `munmap` (3.07% in launch
+1): each growth allocates a new array, copies the retained prefix into it
+and frees the old one.
+
+**The criterion is met for integer-table**: `rehash` takes about 30% of its
+samples in every launch, so a change is prepared. The bounded growth
+decision ([growth](../../../design/halo/heap/tables/growth.md)) is reopened
+by its own condition, retained-prefix allocation and copying measured as a
+bottleneck. The guarantee needs no trade: every way `rehash` can fail, a
+size that overflows, an insertion that finds no free node, and a charge
+beyond the memory limit, can be decided before the table's array is
+touched, so the array can grow in place and still change only on success.
+
+### Growing the array in place: criterion, recorded before the change
+
+Change: `rehash` builds the new node vector from the old array's tail and
+the old nodes and charges the size difference first, as now, and only then
+resizes the table's array: Whitefoot's `grow` in place when it gets larger,
+filling the added slots with nil, instead of allocating a new array and
+copying the retained prefix. A shrinking array keeps the current
+replacement. Lua's size selection and reinsertion order are unchanged.
+
+Kept only if, in six interleaved full-LTO pairs on the 14900K against main
+with a twin, integer-table's median falls at least 5%, by more than both
+ranges and the twin's difference; no kernel is slower beyond its larger
+range and the twin's; `--check-module pkg::vm` takes at most 1.25 times as
+long; and `make check` passes, the oracle under collector stress and the
+collector's root controls included. Otherwise the change is reverted and
+this section records the result.
