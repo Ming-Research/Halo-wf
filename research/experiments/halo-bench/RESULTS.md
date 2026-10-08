@@ -3167,7 +3167,61 @@ hypothesis, not a measured attribution, and whether in-place reallocation
 would save time is untested; both are a Whitefoot question (`docs/todo.md`,
 *Whitefoot requirements*).
 
-<<<<<<< HEAD
+## Reading by-value parameters in place, measured
+
+### Criterion, recorded before measuring
+
+[The entry copy of a by-value parameter](https://github.com/Ming-Research/Halo-wf/blob/claude/halo-call/research/experiments/halo-bench/RESULTS.md#the-entry-copy-of-a-by-value-parameter-measured)
+(on the call-path branch, pull request 12)
+could not be timed because Whitefoot's in-place rule then applied only to
+functions without a branch. The loopmatch session widened the rule to
+functions with branches (Whitefoot branch `claude/in-place-branches`, release
+`wf-exp-8eaba144a41f` on main `c18e6708b`); its gate asserts that every
+function of the six-function witness lost its entry copy. Its control is the
+release of the same main commit, `wf-c18e6708b6cc`.
+
+Comparison: Halo main built with full LTO by each release, six interleaved
+pairs over the seven kernels on the 14900K with a twin of the control build,
+and both builds' disassembly of `push_frame`. The comparison tests the
+hypothesis only if the experiment build's `push_frame` loses its entry copy.
+A fib median below the control build's by more than both ranges and the
+twin's difference is a measured cost of the entry copy; anything else is no
+evidence of one. No kernel may be slower beyond its larger range and the
+twin's difference for the result to count in the rule's favour. The result
+goes to the loopmatch session either way; no Halo source changes.
+
+### Result
+
+[Run 37771086458](https://github.com/Ming-Research/Halo-wf/actions/runs/37771086458),
+artifact `halo-bench-inplace`: Halo at this branch's base, main `76c3c03f1`
+(the run checked out `3def116`, which changes no source), built by `wf-c18e6708b6cc`
+(control) and `wf-exp-8eaba144a41f` (experiment) with clang 22.1.8, on the
+14900K. The experiment's `push_frame` no longer copies the incoming 80-byte
+`Frame` at entry: the control's begins with five 128-bit loads from the
+incoming pointer and five stores to its own stack slot, the experiment's
+reads through the pointer, 91 against 85 instructions. Medians in seconds,
+six interleaved pairs:
+
+| Kernel | Control | Experiment | Ratio | Control range | Experiment range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1055 | 0.1014 | 0.962 | 2.57% | 0.77% | 1.009 |
+| loop | 0.4333 | 0.4321 | 0.997 | 0.74% | 0.33% | 0.996 |
+| integer-table | 0.4952 | 0.4970 | 1.004 | 1.95% | 3.24% | 0.998 |
+| string-key | 0.0257 | 0.0256 | 0.997 | 1.29% | 2.15% | 0.996 |
+| concat | 0.0735 | 0.0728 | 0.990 | 0.52% | 1.04% | 0.999 |
+| sort | 0.1750 | 0.1762 | 1.007 | 1.68% | 4.04% | 1.007 |
+| binary-trees | 1.8924 | 1.8717 | 0.989 | 2.56% | 4.32% | 1.002 |
+
+**The criterion is met.** Fib's median is 3.8% below the control's, beyond
+both ranges (2.57% and 0.77%) and the twin's 0.9% difference, and no kernel
+is slower beyond its bounds. The widened rule as a whole makes fib about 4%
+faster on the 14900K. It applies to every function that takes an aggregate by
+value, so the comparison does not isolate `push_frame`'s copy, the one fib's
+earlier profile pointed at, from the others it removes. This is the evidence
+the loopmatch session takes to the owner for widening Whitefoot's in-place
+parameter rule.
+Halo's source is unchanged.
+
 ## Growing the array in place with a reallocating grow
 
 ### Criterion, recorded before measuring
@@ -3240,59 +3294,3 @@ of main until Whitefoot's main line lowers `grow` through `realloc`; it is
 reverted on this branch, which keeps only this record, and is reapplied with
 the Whitefoot release that adopts the lowering (`docs/todo.md`, *Whitefoot
 requirements*).
-=======
-## Reading by-value parameters in place, measured
-
-### Criterion, recorded before measuring
-
-[The entry copy of a by-value parameter](https://github.com/Ming-Research/Halo-wf/blob/claude/halo-call/research/experiments/halo-bench/RESULTS.md#the-entry-copy-of-a-by-value-parameter-measured)
-(on the call-path branch, pull request 12)
-could not be timed because Whitefoot's in-place rule then applied only to
-functions without a branch. The loopmatch session widened the rule to
-functions with branches (Whitefoot branch `claude/in-place-branches`, release
-`wf-exp-8eaba144a41f` on main `c18e6708b`); its gate asserts that every
-function of the six-function witness lost its entry copy. Its control is the
-release of the same main commit, `wf-c18e6708b6cc`.
-
-Comparison: Halo main built with full LTO by each release, six interleaved
-pairs over the seven kernels on the 14900K with a twin of the control build,
-and both builds' disassembly of `push_frame`. The comparison tests the
-hypothesis only if the experiment build's `push_frame` loses its entry copy.
-A fib median below the control build's by more than both ranges and the
-twin's difference is a measured cost of the entry copy; anything else is no
-evidence of one. No kernel may be slower beyond its larger range and the
-twin's difference for the result to count in the rule's favour. The result
-goes to the loopmatch session either way; no Halo source changes.
-
-### Result
-
-[Run 37771086458](https://github.com/Ming-Research/Halo-wf/actions/runs/37771086458),
-artifact `halo-bench-inplace`: Halo at this branch's base, main `76c3c03f1`
-(the run checked out `3def116`, which changes no source), built by `wf-c18e6708b6cc`
-(control) and `wf-exp-8eaba144a41f` (experiment) with clang 22.1.8, on the
-14900K. The experiment's `push_frame` no longer copies the incoming 80-byte
-`Frame` at entry: the control's begins with five 128-bit loads from the
-incoming pointer and five stores to its own stack slot, the experiment's
-reads through the pointer, 91 against 85 instructions. Medians in seconds,
-six interleaved pairs:
-
-| Kernel | Control | Experiment | Ratio | Control range | Experiment range | Twin ratio |
-|---|---:|---:|---:|---:|---:|---:|
-| fib | 0.1055 | 0.1014 | 0.962 | 2.57% | 0.77% | 1.009 |
-| loop | 0.4333 | 0.4321 | 0.997 | 0.74% | 0.33% | 0.996 |
-| integer-table | 0.4952 | 0.4970 | 1.004 | 1.95% | 3.24% | 0.998 |
-| string-key | 0.0257 | 0.0256 | 0.997 | 1.29% | 2.15% | 0.996 |
-| concat | 0.0735 | 0.0728 | 0.990 | 0.52% | 1.04% | 0.999 |
-| sort | 0.1750 | 0.1762 | 1.007 | 1.68% | 4.04% | 1.007 |
-| binary-trees | 1.8924 | 1.8717 | 0.989 | 2.56% | 4.32% | 1.002 |
-
-**The criterion is met.** Fib's median is 3.8% below the control's, beyond
-both ranges (2.57% and 0.77%) and the twin's 0.9% difference, and no kernel
-is slower beyond its bounds. The widened rule as a whole makes fib about 4%
-faster on the 14900K. It applies to every function that takes an aggregate by
-value, so the comparison does not isolate `push_frame`'s copy, the one fib's
-earlier profile pointed at, from the others it removes. This is the evidence
-the loopmatch session takes to the owner for widening Whitefoot's in-place
-parameter rule.
-Halo's source is unchanged.
->>>>>>> origin/main
