@@ -99,8 +99,12 @@ example apart from the engine code that exposed it
   make the allocation trigger due, although
   [collector validation](../design/halo/heap/collector-validation.md) has
   embedding clients force and observe collection through the embedding API.
-  The API offers stress, which bypasses the due check those runs exercise, so
-  they cannot simply switch. Impact: the probe depends on collector trigger
+  The API offers stress and a collection pause setting: stress bypasses the
+  due check those runs exercise, while pause applies after a collection and
+  retains the 1 MiB floor, so neither simply replaces immediate trigger
+  arming. The statistics and pause observations use only the embedding API;
+  these older trigger cases remain deferred to the instrumentation-boundary
+  ruling below. Impact: the probe depends on collector trigger
   storage; a change to it breaks the probe rather than an API. Change: add an
   embedding control that makes the next safepoint's allocation trigger due, or
   record in the decision that the probe may arm it. Reopen at the next
