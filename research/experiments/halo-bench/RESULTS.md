@@ -2734,3 +2734,25 @@ concat 0.0993 s, integer-table 0.2907 s) put the ranges well beyond any
 effect the criterion asks for; a code review ran on the machine at the same
 time. The spread is too large to decide, so the comparison is repeated once
 with nothing else running, and that repeat decides; both runs stay recorded.
+
+The repeat, the same three binaries, run after the review had finished
+(another session's process still ran; load average 2.8 rising to 3.9):
+
+| Kernel | Main | Branch | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1178 | 0.1164 | 0.988 | 10.48% | 9.21% | 1.002 |
+| loop | 0.3900 | 0.3908 | 1.002 | 35.88% | 70.90% | 1.012 |
+| integer-table | 0.2681 | 0.2692 | 1.004 | 9.59% | 15.78% | 1.014 |
+| string-key | 0.0223 | 0.0216 | 0.969 | 4.04% | 3.20% | 0.998 |
+| concat | 0.0748 | 0.0733 | 0.980 | 8.48% | 7.60% | 0.990 |
+| sort | 0.1608 | 0.1601 | 0.996 | 4.87% | 11.31% | 0.995 |
+| binary-trees | 1.5027 | 1.4685 | 0.977 | 56.66% | 27.50% | 1.013 |
+
+**The criterion is not met, and the change is reverted with its
+measurements kept.** Integer-table's median is 1.004 times main's in the
+repeat and 0.987 in the first run, neither the 3% fall the criterion asks
+for. The M5's spread in both runs (single launches up to 1.6 times their
+kernel's median, which a fanless machine under sustained load and other
+processes on it can produce) is larger than the effect sought, so these
+runs cannot show a gain of a few percent either; the candidate can be tried
+again on the 14900K.
