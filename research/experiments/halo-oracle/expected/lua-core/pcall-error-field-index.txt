@@ -1549,6 +1549,122 @@
           "bytes": "nil"
         }
       ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "index-error-level-1"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "user_script:143: boom"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "index-error-level-2"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "boom"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "index-error-level-3"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "user_script:146: boom"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "index-error-level-0"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "boom"
+        }
+      ]
     }
   ]
 }
