@@ -2873,3 +2873,34 @@ The 14900K went out of service before this ran. By the owner's direction
 macOS, arm64), under Whitefoot's `run-check.pl` lock, with the same pairs,
 twin and thresholds, recorded here before it runs; its result is an M5
 result.
+
+### String keys in table writes: result on the M5 Air
+
+On the M5 Air (Apple M5, macOS 27.0.1, arm64), under `run-check.pl`'s lock:
+the string-key lookup's final engine (`448c217a2`) against this branch's
+engine (`a5962bf8b`), both built with full LTO by `wf-8b647edbbc95`'s
+macOS compiler (base and twin identical by hash, `a89a07cd432d`, branch
+`715d76e285c3`), six interleaved pairs, binary-trees at depth 14, with
+Redis 7.0.15's Lua built from source as the independent reference. One
+sample pair per kernel took 7.2 s. Medians in seconds:
+
+| Kernel | Before | After | Ratio | Before range | After range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1053 | 0.1097 | 1.041 | 3.66% | 2.51% | 1.012 |
+| loop | 0.3564 | 0.3576 | 1.003 | 0.80% | 4.87% | 0.997 |
+| integer-table | 0.2568 | 0.2531 | 0.986 | 3.11% | 2.62% | 1.002 |
+| string-key | 0.0188 | 0.0188 | 1.002 | 2.18% | 2.72% | 0.994 |
+| concat | 0.0699 | 0.0747 | 1.068 | 10.18% | 7.41% | 1.014 |
+| sort | 0.1574 | 0.1574 | 1.000 | 5.37% | 2.20% | 0.996 |
+| binary-trees | 1.3417 | 1.2864 | 0.959 | 3.00% | 0.64% | 0.999 |
+
+`--check-module pkg::vm`: before 5.95 and 5.91 s, after 5.93 and 5.83 s.
+
+**The criterion is not met, and the change is reverted with its
+measurements kept.** Binary-trees falls 4.1%, beyond both ranges and the
+twin, but fib is 4.1% slower, beyond its larger range (3.66%) and the
+twin's difference (1.2%); fib's hot path reads no table, so a layout change
+in the rebuilt binary is the likely cause, which the criterion does not
+excuse. Both results lie within about a point of their bounds, so the
+comparison is repeated on the 14900K when it returns before the change is
+given up (Q93).
