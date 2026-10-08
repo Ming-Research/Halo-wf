@@ -4,6 +4,14 @@ Newest first. One entry per approved change of the tree: a dated title,
 `Nodes:` naming every node changed, `Owner-approved:` and `Summary:`; the
 owner-wide instructions' *Log format* owns the form.
 
+## 2026-10-08 Halo's embedding exposes collection statistics and a pause
+
+Nodes: halo/heap/collector-validation
+
+Owner-approved: 2026-10-08 on the WF status board, item "Collector pauses raise firn's p99": approved the new collector-validation.md decision of pull request 24, in the owner's words "the embedding provides last-collection statistics by object kind and a Lua 5.1-style collection pause (default 200%, below 100% counts as 100%, takes effect only after the next collection, kept across reset), because a host that runs one long-lived VM must see what a pause costs and tune collection frequency without reading heap fields; not 'fixed Lua defaults with no observation'. This is provisional until firn has measured collection work and a larger multiplier on its long-lived VM; the stop-the-world collector is unchanged".
+
+Summary: Firn's deployment measurement showed each full collection pausing its one long-lived VM for 3-4 ms, which sets the rate-limiter script's p99 at 50 connections. The owner chose to measure the pause's composition and try a larger trigger multiplier before any collector redesign. The embedding now reports, per object kind, the last completed collection's live and freed objects and bytes and visited slots, its marking work and the next threshold, and takes a pause percentage applied by the next completed collection. On the 14900K no kernel slowed beyond its noise bounds (`research/experiments/halo-bench/RESULTS.md`, "Collection statistics"). The collector probe checks every count exactly through the public API, and five deliberately wrong collectors each failed it.
+
 ## 2026-10-08 Halo's pcall looks its error field up through __index
 
 Nodes: halo/embedding
