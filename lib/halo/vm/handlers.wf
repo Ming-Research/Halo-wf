@@ -30,7 +30,7 @@ const dispatch_text_144: Array<u8, 25> = "invalid iterator register";
 
 const dispatch_text_147: Array<u8, 21> = "invalid setlist block";
 
-fn instruction_move<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8, bv: u8) -> r: Result<u64, Step> reads(code), writes(stack), writes(vm) contract {
+fn instruction_move<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8, bv: u8) -> r: Result<u64, Step> reads(code), reads(consts), writes(stack), writes(vm), writes(env) contract {
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
@@ -54,7 +54,7 @@ fn instruction_move<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slo
       let failure = Step::Stop();
       return Err<u64, Step>(error: failure);
     }
-    let failure = unwind(vm: vm, stack: stack);
+    let failure = unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
     return Err<u64, Step>(error: failure);
   }
   if next < n {
@@ -65,7 +65,7 @@ fn instruction_move<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slo
   return Err<u64, Step>(error: failure);
 }
 
-fn instruction_load_k<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8, kv: u8) -> r: Result<u64, Step> reads(code), reads(consts), writes(stack), writes(vm) contract {
+fn instruction_load_k<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8, kv: u8) -> r: Result<u64, Step> reads(code), reads(consts), writes(stack), writes(vm), writes(env) contract {
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
@@ -89,7 +89,7 @@ fn instruction_load_k<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       let failure = Step::Stop();
       return Err<u64, Step>(error: failure);
     }
-    let failure = unwind(vm: vm, stack: stack);
+    let failure = unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
     return Err<u64, Step>(error: failure);
   }
   if next < n {
@@ -100,7 +100,7 @@ fn instruction_load_k<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   return Err<u64, Step>(error: failure);
 }
 
-fn instruction_load_kx<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8, kv: u32) -> r: Step reads(code), reads(consts), writes(stack), writes(vm) contract {
+fn instruction_load_kx<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8, kv: u32) -> r: Step reads(code), reads(consts), writes(stack), writes(vm), writes(env) contract {
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
@@ -126,7 +126,7 @@ fn instruction_load_kx<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -135,7 +135,7 @@ fn instruction_load_kx<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<
   return Step::Error();
 }
 
-fn instruction_load_bool<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8, bv: u8, skipv: u8) -> r: Step reads(code), writes(stack), writes(vm) contract {
+fn instruction_load_bool<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8, bv: u8, skipv: u8) -> r: Step reads(code), reads(consts), writes(stack), writes(vm), writes(env) contract {
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
@@ -161,7 +161,7 @@ fn instruction_load_bool<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -170,7 +170,7 @@ fn instruction_load_bool<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
   return Step::Error();
 }
 
-fn instruction_load_nil<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8, bv: u8) -> r: Step reads(code), writes(stack), writes(vm) contract {
+fn instruction_load_nil<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8, bv: u8) -> r: Step reads(code), reads(consts), writes(stack), writes(vm), writes(env) contract {
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
@@ -197,7 +197,7 @@ fn instruction_load_nil<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -206,7 +206,7 @@ fn instruction_load_nil<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box
   return Step::Error();
 }
 
-fn instruction_get_upval<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8, uv: u8) -> r: Result<u64, Step> reads(code), writes(stack), writes(vm) contract {
+fn instruction_get_upval<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8, uv: u8) -> r: Result<u64, Step> reads(code), reads(consts), writes(stack), writes(vm), writes(env) contract {
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
@@ -237,7 +237,7 @@ fn instruction_get_upval<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
       let failure = Step::Stop();
       return Err<u64, Step>(error: failure);
     }
-    let failure = unwind(vm: vm, stack: stack);
+    let failure = unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
     return Err<u64, Step>(error: failure);
   }
   if next < n {
@@ -248,7 +248,7 @@ fn instruction_get_upval<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
   return Err<u64, Step>(error: failure);
 }
 
-fn instruction_set_upval<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8, uv: u8) -> r: Step reads(code), writes(stack), writes(vm) contract {
+fn instruction_set_upval<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8, uv: u8) -> r: Step reads(code), reads(consts), writes(stack), writes(vm), writes(env) contract {
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
@@ -274,7 +274,7 @@ fn instruction_set_upval<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -311,7 +311,7 @@ fn instruction_get_global<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &B
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -349,7 +349,7 @@ fn instruction_set_global<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &B
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -394,7 +394,7 @@ fn instruction_get_table_r<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -439,7 +439,7 @@ fn instruction_get_table_k<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -486,7 +486,7 @@ fn instruction_set_table_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: 
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -534,7 +534,7 @@ fn instruction_set_table_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: 
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -582,7 +582,7 @@ fn instruction_set_table_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: 
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -631,7 +631,7 @@ fn instruction_set_table_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: 
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -640,7 +640,7 @@ fn instruction_set_table_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: 
   return Step::Error();
 }
 
-fn instruction_new_table<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8, asizev: u8, hsizev: u8) -> r: Step reads(code), writes(stack), writes(vm) contract {
+fn instruction_new_table<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8, asizev: u8, hsizev: u8) -> r: Step reads(code), reads(consts), writes(stack), writes(vm), writes(env) contract {
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
@@ -668,7 +668,7 @@ fn instruction_new_table<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -719,7 +719,7 @@ fn instruction_self_r<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -779,7 +779,7 @@ fn instruction_self_k<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -842,7 +842,7 @@ fn instruction_add_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -903,7 +903,7 @@ fn instruction_add_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -964,7 +964,7 @@ fn instruction_add_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -1023,7 +1023,7 @@ fn instruction_add_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -1086,7 +1086,7 @@ fn instruction_sub_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -1147,7 +1147,7 @@ fn instruction_sub_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -1208,7 +1208,7 @@ fn instruction_sub_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -1267,7 +1267,7 @@ fn instruction_sub_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -1330,7 +1330,7 @@ fn instruction_mul_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -1391,7 +1391,7 @@ fn instruction_mul_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -1452,7 +1452,7 @@ fn instruction_mul_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -1511,7 +1511,7 @@ fn instruction_mul_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -1574,7 +1574,7 @@ fn instruction_div_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -1635,7 +1635,7 @@ fn instruction_div_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -1696,7 +1696,7 @@ fn instruction_div_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -1755,7 +1755,7 @@ fn instruction_div_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -1821,7 +1821,7 @@ fn instruction_mod_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -1885,7 +1885,7 @@ fn instruction_mod_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -1949,7 +1949,7 @@ fn instruction_mod_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -2011,7 +2011,7 @@ fn instruction_mod_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -2073,7 +2073,7 @@ fn instruction_pow_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -2133,7 +2133,7 @@ fn instruction_pow_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -2193,7 +2193,7 @@ fn instruction_pow_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -2251,7 +2251,7 @@ fn instruction_pow_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -2297,7 +2297,7 @@ fn instruction_unm<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slot
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -2306,7 +2306,7 @@ fn instruction_unm<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slot
   return Step::Error();
 }
 
-fn instruction_not<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8, bv: u8) -> r: Step reads(code), writes(stack), writes(vm) contract {
+fn instruction_not<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8, bv: u8) -> r: Step reads(code), reads(consts), writes(stack), writes(vm), writes(env) contract {
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
@@ -2329,7 +2329,7 @@ fn instruction_not<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slot
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -2366,7 +2366,7 @@ fn instruction_len<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slot
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -2391,7 +2391,7 @@ fn instruction_concat<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   return step;
 }
 
-fn instruction_jmp<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, targetv: u32) -> r: Step reads(code), reads(consts), writes(stack), writes(vm) contract {
+fn instruction_jmp<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, targetv: u32) -> r: Step reads(code), reads(consts), writes(stack), writes(vm), writes(env) contract {
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
@@ -2414,7 +2414,7 @@ fn instruction_jmp<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slot
     if bor(vm^.heap.gc_stress, allocation_due) {
       let collected = collect_if_due(vm: vm, stack: stack, consts: consts);
       if bnot(collected) {
-        return unwind(vm: vm, stack: stack);
+        return unwind_plain(vm: vm, stack: stack);
       }
     }
   }
@@ -2427,7 +2427,7 @@ fn instruction_jmp<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slot
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -2492,7 +2492,7 @@ fn instruction_eq_jmp_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -2557,7 +2557,7 @@ fn instruction_eq_jmp_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -2622,7 +2622,7 @@ fn instruction_eq_jmp_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -2687,7 +2687,7 @@ fn instruction_eq_jmp_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -2752,7 +2752,7 @@ fn instruction_lt_jmp_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -2817,7 +2817,7 @@ fn instruction_lt_jmp_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -2882,7 +2882,7 @@ fn instruction_lt_jmp_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -2947,7 +2947,7 @@ fn instruction_lt_jmp_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -3012,7 +3012,7 @@ fn instruction_le_jmp_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -3077,7 +3077,7 @@ fn instruction_le_jmp_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -3142,7 +3142,7 @@ fn instruction_le_jmp_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -3207,7 +3207,7 @@ fn instruction_le_jmp_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -3216,7 +3216,7 @@ fn instruction_le_jmp_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
   return Step::Error();
 }
 
-fn instruction_test_jmp<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8, cv: u8, targetv: u32) -> r: Step reads(code), writes(stack), writes(vm) contract {
+fn instruction_test_jmp<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8, cv: u8, targetv: u32) -> r: Step reads(code), reads(consts), writes(stack), writes(vm), writes(env) contract {
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
@@ -3241,7 +3241,7 @@ fn instruction_test_jmp<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -3250,7 +3250,7 @@ fn instruction_test_jmp<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box
   return Step::Error();
 }
 
-fn instruction_test_set_jmp<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8, bv: u8, cv: u8, targetv: u32) -> r: Step reads(code), writes(stack), writes(vm) contract {
+fn instruction_test_set_jmp<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8, bv: u8, cv: u8, targetv: u32) -> r: Step reads(code), reads(consts), writes(stack), writes(vm), writes(env) contract {
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
@@ -3277,7 +3277,7 @@ fn instruction_test_set_jmp<interface Host<E>>(code: &Box<Slots<Cell>>, consts: 
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -3291,7 +3291,7 @@ fn instruction_call<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slo
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
-  doc "Prepares a call and unwinds immediate failures, passing post-catch work to the dispatch epilogue.";
+  doc "Prepares a call and unwinds immediate failures, with post-catch lookup work completed inside prepare.";
   let n = code^.inner.len;
   let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
@@ -3312,7 +3312,7 @@ fn instruction_call<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slo
   if bor(vm^.heap.gc_stress, allocation_due) {
     let collected = collect_if_due(vm: vm, stack: stack, consts: consts);
     if bnot(collected) {
-      return unwind(vm: vm, stack: stack);
+      return unwind_plain(vm: vm, stack: stack);
     }
   }
   let argc = 0_u64;
@@ -3329,24 +3329,7 @@ fn instruction_call<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slo
     set wanted = cvt::<u64, i64>(nr);
   }
   let tailing = False();
-  let step = prepare::<Host<E>>(code: code, consts: consts, vm: vm, stack: stack, env: env, func: ra, argc: argc, wanted: wanted, return_pc: next, base: base, kbase: kbase, tail: tailing);
-  let final_step = step;
-  match step {
-    PostCatch(..) => {
-    }
-    Error() => {
-      set final_step = unwind(vm: vm, stack: stack);
-    }
-    Jump(..) => {
-    }
-    Done(..) => {
-    }
-    Stop() => {
-    }
-    Budget() => {
-    }
-  }
-  return final_step;
+  return prepare::<Host<E>>(code: code, consts: consts, vm: vm, stack: stack, env: env, func: ra, argc: argc, wanted: wanted, return_pc: next, base: base, kbase: kbase, tail: tailing);
 }
 
 fn instruction_tail_call<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8, bv: u8, cv: u8) -> r: Step reads(code), reads(consts), writes(stack), writes(vm), writes(env) contract {
@@ -3354,7 +3337,7 @@ fn instruction_tail_call<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
-  doc "Prepares a tail call and unwinds immediate failures, passing post-catch work to the dispatch epilogue.";
+  doc "Prepares a tail call and unwinds immediate failures, with post-catch lookup work completed inside prepare.";
   let n = code^.inner.len;
   let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
@@ -3375,7 +3358,7 @@ fn instruction_tail_call<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
   if bor(vm^.heap.gc_stress, allocation_due) {
     let collected = collect_if_due(vm: vm, stack: stack, consts: consts);
     if bnot(collected) {
-      return unwind(vm: vm, stack: stack);
+      return unwind_plain(vm: vm, stack: stack);
     }
   }
   let argc = 0_u64;
@@ -3392,24 +3375,7 @@ fn instruction_tail_call<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
     set wanted = cvt::<u64, i64>(nr);
   }
   let tailing = True();
-  let step = prepare::<Host<E>>(code: code, consts: consts, vm: vm, stack: stack, env: env, func: ra, argc: argc, wanted: wanted, return_pc: next, base: base, kbase: kbase, tail: tailing);
-  let final_step = step;
-  match step {
-    PostCatch(..) => {
-    }
-    Error() => {
-      set final_step = unwind(vm: vm, stack: stack);
-    }
-    Jump(..) => {
-    }
-    Done(..) => {
-    }
-    Stop() => {
-    }
-    Budget() => {
-    }
-  }
-  return final_step;
+  return prepare::<Host<E>>(code: code, consts: consts, vm: vm, stack: stack, env: env, func: ra, argc: argc, wanted: wanted, return_pc: next, base: base, kbase: kbase, tail: tailing);
 }
 
 fn instruction_return<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8, bv: u8) -> r: Step reads(code), writes(stack), writes(vm) contract {
@@ -3439,7 +3405,7 @@ fn instruction_return<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   return step;
 }
 
-fn instruction_for_loop<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8, targetv: u32) -> r: Result<u64, Step> reads(code), reads(consts), writes(stack), writes(vm) contract {
+fn instruction_for_loop<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8, targetv: u32) -> r: Result<u64, Step> reads(code), reads(consts), writes(stack), writes(vm), writes(env) contract {
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
@@ -3466,7 +3432,7 @@ fn instruction_for_loop<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box
   if bor(vm^.heap.gc_stress, allocation_due) {
     let collected = collect_if_due(vm: vm, stack: stack, consts: consts);
     if bnot(collected) {
-      let failure = unwind(vm: vm, stack: stack);
+      let failure = unwind_plain(vm: vm, stack: stack);
       return Err<u64, Step>(error: failure);
     }
   }
@@ -3521,7 +3487,7 @@ fn instruction_for_loop<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box
       let failure = Step::Stop();
       return Err<u64, Step>(error: failure);
     }
-    let failure = unwind(vm: vm, stack: stack);
+    let failure = unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
     return Err<u64, Step>(error: failure);
   }
   if next < n {
@@ -3532,7 +3498,7 @@ fn instruction_for_loop<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box
   return Err<u64, Step>(error: failure);
 }
 
-fn instruction_for_prep<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8, targetv: u32) -> r: Step reads(code), writes(stack), writes(vm) contract {
+fn instruction_for_prep<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8, targetv: u32) -> r: Step reads(code), reads(consts), writes(stack), writes(vm), writes(env) contract {
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
@@ -3588,7 +3554,7 @@ fn instruction_for_prep<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -3622,7 +3588,7 @@ fn instruction_tfor_loop<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
   if bor(vm^.heap.gc_stress, allocation_due) {
     let collected = collect_if_due(vm: vm, stack: stack, consts: consts);
     if bnot(collected) {
-      return unwind(vm: vm, stack: stack);
+      return unwind_plain(vm: vm, stack: stack);
     }
   }
   if a <= 252_u64 {
@@ -3658,7 +3624,7 @@ fn instruction_tfor_loop<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -3667,7 +3633,7 @@ fn instruction_tfor_loop<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
   return Step::Error();
 }
 
-fn instruction_set_list<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8, bv: u8, cv: u32) -> r: Step reads(code), writes(stack), writes(vm) contract {
+fn instruction_set_list<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8, bv: u8, cv: u32) -> r: Step reads(code), reads(consts), writes(stack), writes(vm), writes(env) contract {
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
@@ -3718,7 +3684,7 @@ fn instruction_set_list<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -3727,7 +3693,7 @@ fn instruction_set_list<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box
   return Step::Error();
 }
 
-fn instruction_close<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8) -> r: Step reads(code), writes(stack), writes(vm) contract {
+fn instruction_close<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8) -> r: Step reads(code), reads(consts), writes(stack), writes(vm), writes(env) contract {
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
@@ -3746,7 +3712,7 @@ fn instruction_close<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Sl
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -3755,7 +3721,7 @@ fn instruction_close<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Sl
   return Step::Error();
 }
 
-fn instruction_closure<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8, protov: u32) -> r: Step reads(code), writes(stack), writes(vm) contract {
+fn instruction_closure<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8, protov: u32) -> r: Step reads(code), reads(consts), writes(stack), writes(vm), writes(env) contract {
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
@@ -3783,7 +3749,7 @@ fn instruction_closure<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -3792,7 +3758,7 @@ fn instruction_closure<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<
   return Step::Error();
 }
 
-fn instruction_var_arg<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8, bv: u8) -> r: Step reads(code), writes(stack), writes(vm) contract {
+fn instruction_var_arg<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8, bv: u8) -> r: Step reads(code), reads(consts), writes(stack), writes(vm), writes(env) contract {
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
@@ -3808,7 +3774,7 @@ fn instruction_var_arg<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   return Step::Jump(pc: next, base: base, kbase: kbase);
 }
@@ -3847,7 +3813,7 @@ fn instruction_get_global_wide<interface Host<E>>(code: &Box<Slots<Cell>>, const
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -3891,7 +3857,7 @@ fn instruction_set_global_wide<interface Host<E>>(code: &Box<Slots<Cell>>, const
       restore_stopped_stack(vm: vm, stack: stack);
       return Step::Stop();
     }
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -4070,7 +4036,7 @@ fn fast_instruction_set_table_rr(code: &Box<Slots<Cell>>, consts: &Box<Slots<Val
       let failure = Step::Stop();
       return Err<FastCursor, Step>(error: failure);
     }
-    let failure = unwind(vm: vm, stack: stack);
+    let failure = unwind_plain(vm: vm, stack: stack);
     return Err<FastCursor, Step>(error: failure);
   }
   if next < n {
@@ -4125,7 +4091,7 @@ fn fast_instruction_set_table_kr(code: &Box<Slots<Cell>>, consts: &Box<Slots<Val
       let failure = Step::Stop();
       return Err<FastCursor, Step>(error: failure);
     }
-    let failure = unwind(vm: vm, stack: stack);
+    let failure = unwind_plain(vm: vm, stack: stack);
     return Err<FastCursor, Step>(error: failure);
   }
   if next < n {

@@ -98,7 +98,7 @@ fn concat_step<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Va
   let index = last;
   if first > last {
     let ignored = raise_text(vm: vm, text: &concat_range_error[0_u64..20_u64]);
-    return unwind(vm: vm, stack: stack);
+    return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
   }
   loop (
     invariant preserved: stack^.inner.len == length
@@ -112,7 +112,7 @@ fn concat_step<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Va
         set index = lowest;
       }
       Failed() => {
-        return unwind(vm: vm, stack: stack);
+        return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
       }
       Slow() => {
         let ok = concat_pair_slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, dest: dest, first: first, previous: previous, index: index);
@@ -125,7 +125,7 @@ fn concat_step<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Va
             restore_stopped_stack(vm: vm, stack: stack);
             return Step::Stop();
           }
-          return unwind(vm: vm, stack: stack);
+          return unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
         }
         set index = previous;
       }

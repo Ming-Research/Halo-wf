@@ -273,7 +273,7 @@ fn callback_values<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slot
         break;
       }
       Error() => {
-        let caught = unwind(vm: vm, stack: stack);
+        let caught = unwind_drained::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env);
         match caught {
           Error() => {
             let library_callback = plan.kind == 4_u8;
@@ -281,8 +281,6 @@ fn callback_values<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slot
               library_raw_error(vm: vm);
             }
             break;
-          }
-          PostCatch(..) => {
           }
           Jump(..) => {
           }

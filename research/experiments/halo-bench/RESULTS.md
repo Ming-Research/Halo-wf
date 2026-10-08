@@ -3341,3 +3341,13 @@ arm now contains an indirect non-tail call; `pcall_lookup_drain`, which runs
 Lua through a nested `run`, was inlined into the shared epilogue of every
 arm. The epilogue change is reworked so that a `PostCatch` step never reaches
 `run`: the cold paths that produce it drain it before returning.
+
+### Rework
+
+The dispatch function and `checked_step` are restored to main. Post-catch
+requests now belong to the cold unwind result, which generic failure paths
+and resumed library callbacks drain before returning a dispatch step. Call
+preparation handles its own failures inside `prepare`; the non-generic fast
+stores and collector failures share ordinary catch completion for their
+string-only errors.
+Inlining, oracle behavior and performance remain to be checked in CI.

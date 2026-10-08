@@ -70,6 +70,10 @@ enum Step {
   Error();
   Stop();
   Budget();
+}
+
+enum UnwindStep {
+  Ready(step: Step);
   PostCatch(index: u64);
 }
 
