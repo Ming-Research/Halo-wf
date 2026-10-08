@@ -83,7 +83,7 @@
     },
     {
       "type": "bulk",
-      "bytes": "unexpected success"
+      "bytes": "user_script:32: bad argument #2 to 'f' (value expected)"
     },
     {
       "type": "bulk",
@@ -112,6 +112,18 @@
     {
       "type": "bulk",
       "bytes": "user_script:39: bad argument #2 to 'f' (number expected, got table)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:40: invalid format (width or precision too long)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "invalid format (width or precision too long)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:42: invalid format (width or precision too long)"
     }
   ]
 }
