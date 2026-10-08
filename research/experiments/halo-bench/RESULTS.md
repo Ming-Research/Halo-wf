@@ -3333,6 +3333,11 @@ medians in seconds, six interleaved pairs:
 
 `--check-module pkg::vm`: old 7.631 and 7.525 s, new 7.613 and 7.780 s.
 
-No kernel moves beyond its larger range and the twin's difference: the
-upgrade leaves Halo's speed unchanged. Concat's old range is 24% because of
-one slow launch.
+No kernel moves beyond its larger range and the twin's difference, a test
+chosen after measuring since the question set no criterion. Six kernels show
+no difference. Concat passes that test only because one old-side run (pair
+2, 0.0911 s) widened the old range to 24%: without it, all six new runs
+(0.0741–0.0759 s) are slower than the five other old runs (0.0733–0.0737 s),
+by 1.3–3.5% per pair, while the twin's per-pair ratios span 0.972–1.010. A
+concat slowdown of about 1.5% with the new release is therefore possible and
+unresolved; these seven kernels on the 14900K show nothing else.
