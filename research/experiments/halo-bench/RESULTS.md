@@ -3171,7 +3171,8 @@ would save time is untested; both are a Whitefoot question (`docs/todo.md`,
 
 ### Criterion, recorded before measuring
 
-[The entry copy of a by-value parameter](#the-entry-copy-of-a-by-value-parameter-measured)
+[The entry copy of a by-value parameter](https://github.com/Ming-Research/Halo-wf/blob/claude/halo-call/research/experiments/halo-bench/RESULTS.md#the-entry-copy-of-a-by-value-parameter-measured)
+(on the call-path branch, pull request 12)
 could not be timed because Whitefoot's in-place rule then applied only to
 functions without a branch. The loopmatch session widened the rule to
 functions with branches (Whitefoot branch `claude/in-place-branches`, release
@@ -3192,7 +3193,8 @@ goes to the loopmatch session either way; no Halo source changes.
 ### Result
 
 [Run 37771086458](https://github.com/Ming-Research/Halo-wf/actions/runs/37771086458),
-artifact `halo-bench-inplace`: Halo main `0def88248`, built by `wf-c18e6708b6cc`
+artifact `halo-bench-inplace`: Halo at this branch's base, main `76c3c03f1`
+(the run checked out `3def116`, which changes no source), built by `wf-c18e6708b6cc`
 (control) and `wf-exp-8eaba144a41f` (experiment) with clang 22.1.8, on the
 14900K. The experiment's `push_frame` no longer copies the incoming 80-byte
 `Frame` at entry: the control's begins with five 128-bit loads from the
@@ -3212,7 +3214,10 @@ six interleaved pairs:
 
 **The criterion is met.** Fib's median is 3.8% below the control's, beyond
 both ranges (2.57% and 0.77%) and the twin's 0.9% difference, and no kernel
-is slower beyond its bounds. This measures the entry copy's cost in Halo's
-call path at about 4% of fib on the 14900K; it is the evidence the loopmatch
-session takes to the owner for widening Whitefoot's in-place parameter rule.
+is slower beyond its bounds. The widened rule as a whole makes fib about 4%
+faster on the 14900K. It applies to every function that takes an aggregate by
+value, so the comparison does not isolate `push_frame`'s copy, the one fib's
+earlier profile pointed at, from the others it removes. This is the evidence
+the loopmatch session takes to the owner for widening Whitefoot's in-place
+parameter rule.
 Halo's source is unchanged.
