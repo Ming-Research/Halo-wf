@@ -7,7 +7,7 @@ Halo's `make check-core` compares the corpus through the `oracle` target;
 recording reference replies remains the job of
 [oracle-reference.yml](../../../.github/workflows/oracle-reference.yml).
 
-There are 105 scripts: 65 `lua-core`, 23 `redis-api`, 6 `apps`, and 11 `libs`.
+There are 106 scripts: 66 `lua-core`, 23 `redis-api`, 6 `apps`, and 11 `libs`.
 The scripts, replies and runner belong here until the oracle is replaced or
 Halo/firn scripting is retired. Each case is consumed by `run.sh`; the table
 below is the index of the observations it protects.
@@ -191,6 +191,7 @@ not automatically used to overwrite this baseline.
 | libs | [cmsgpack-roundtrip](scripts/libs/cmsgpack-roundtrip.lua) | MessagePack round-trips maps, arrays, booleans, integers and strings. |
 | libs | [struct-integers](scripts/libs/struct-integers.lua) | struct packs explicit-endian signed and unsigned integer widths. |
 | libs | [struct-strings-floats](scripts/libs/struct-strings-floats.lua) | struct packs fixed strings and doubles with explicit endian and offsets. |
+| lua-core | [argument-error-names](scripts/lua-core/argument-error-names.lua) | Argument errors name the called function from the call site: aliases, fields, methods and bad self, upvalues, tail calls, generic-for iterators, metamethods, and '?' for calls from native code. |
 | lua-core | [array-holes](scripts/lua-core/array-holes.lua) | Lua 5.1 length selects a boundary for arrays with holes. |
 | lua-core | [assert](scripts/lua-core/assert.lua) | assert returns all successful arguments and raises a chosen message. |
 | lua-core | [call-kinds](scripts/lua-core/call-kinds.lua) | Ordinary calls reach native functions, native iterators and vararg Lua functions; number and nil callees raise errors checked apart from the variable description. |
