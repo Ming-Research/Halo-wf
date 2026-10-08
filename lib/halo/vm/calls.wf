@@ -696,11 +696,11 @@ fn complete_call<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, 
 }
 
 fn fail_call<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, error: Value, budget: u64) -> r: Outcome reads(script), writes(stack), writes(vm), writes(env) {
+  doc "Raises a pending host error and preserves any post-catch lookup for the driver.";
   if bnot(vm^.call_pending) {
     let ignored = raise_text(vm: vm, text: &calls_text_no_call[0_u64..23_u64]);
     return Outcome::Error();
   }
-  doc "Raises a pending host error and preserves any post-catch lookup for the driver.";
   let call = resume_pending(stack: stack, vm: vm, budget: budget);
   set vm^.error = error;
   let step = unwind(vm: vm, stack: stack);
