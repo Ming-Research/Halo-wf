@@ -148,7 +148,8 @@ fn pattern_sub_return(vm: &Vm, index: u64, result: Value) -> r: Bool writes(vm) 
   return False();
 }
 
-fn pattern_gsub_start<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, env: &E, vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, source: Value, pattern: Value) -> r: HostOutcome reads(code), reads(consts), writes(env), writes(vm), writes(stack) {
+fn pattern_gsub_start<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, pc: u64, env: &E, vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, source: Value, pattern: Value) -> r: HostOutcome reads(code), reads(consts), writes(env), writes(vm), writes(stack) {
+  doc "Validates substitution arguments at the Lua call cell before starting the resumable operation.";
   let replacement = argument(stack: stack, func: func, argc: argc, index: 2_u64);
   let k = kind(v: replacement);
   let length = pattern_length(vm: vm, text: source);
@@ -163,12 +164,12 @@ fn pattern_gsub_start<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
         set maximum = integer;
       }
       None() => {
-        return lib_argerror(vm: vm, id: builtin_string_gsub, index: 4_u64, argc: argc, value: n, expected: &pattern_expected_number[0_u64..6_u64]);
+        return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 4_u64, argc: argc, value: n, expected: &pattern_expected_number[0_u64..6_u64]);
       }
     }
   }
   if k < 2_u8 {
-    return lib_argtext(vm: vm, id: builtin_string_gsub, index: 3_u64, text: &pattern_replacement_expected[0_u64..30_u64]);
+    return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 3_u64, text: &pattern_replacement_expected[0_u64..30_u64]);
   }
   let first = pattern_textbyte(vm: vm, text: pattern, at: 0_u64);
   let anchor = first == 94_u8;

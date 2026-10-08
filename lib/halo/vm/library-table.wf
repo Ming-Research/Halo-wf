@@ -94,7 +94,7 @@ fn table_swap(vm: &Vm, table: Value, i: i64, j: i64, a: Value, b: Value) -> r: B
   return False();
 }
 
-fn library_table<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, stack: &Box<Slots<Value>>, env: &E, func: u64, argc: u64, id: u32) -> r: HostOutcome reads(code), reads(consts), writes(vm), writes(stack), writes(env) {
+fn library_table<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, pc: u64, vm: &Vm, stack: &Box<Slots<Value>>, env: &E, func: u64, argc: u64, id: u32) -> r: HostOutcome reads(code), reads(consts), writes(vm), writes(stack), writes(env) {
   doc "Validates table library arguments and dispatches raw operations or resumable callbacks; foreach requires a function just as sort's explicit comparator does.";
   let local_a_3 = argument(stack: stack, func: func, argc: argc, index: 0_u64);
   let local_b_4 = argument(stack: stack, func: func, argc: argc, index: 1_u64);
@@ -111,7 +111,7 @@ fn library_table<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<
       Handle(..) => {
       }
       NoHandle() => {
-        return lib_argerror(vm: vm, id: id, index: 2_u64, argc: argc, value: local_b_4, expected: &library_table_lib_text_1[0_u64..6_u64]);
+        return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 2_u64, argc: argc, value: local_b_4, expected: &library_table_lib_text_1[0_u64..6_u64]);
       }
     }
   }
@@ -119,7 +119,7 @@ fn library_table<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<
     Handle(..) => {
     }
     NoHandle() => {
-      return lib_argerror(vm: vm, id: id, index: 1_u64, argc: argc, value: local_a_3, expected: &library_table_lib_text_2[0_u64..5_u64]);
+      return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, argc: argc, value: local_a_3, expected: &library_table_lib_text_2[0_u64..5_u64]);
     }
   }
   if id == builtin_table_foreach {
@@ -129,7 +129,7 @@ fn library_table<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<
       Native(..) => {
       }
       Other() => {
-        return lib_argerror(vm: vm, id: id, index: 2_u64, argc: argc, value: local_b_4, expected: &library_table_lib_text_3[0_u64..8_u64]);
+        return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 2_u64, argc: argc, value: local_b_4, expected: &library_table_lib_text_3[0_u64..8_u64]);
       }
     }
     let table_foreach_index = vm^.library_contexts.inner.len -sat 1_u64;
@@ -185,7 +185,7 @@ fn library_table<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<
           set local_pos_17 = cvt::<i32, i64>(local_narrow_20);
         }
         None() => {
-          return lib_argerror(vm: vm, id: id, index: 2_u64, argc: argc, value: local_b_4, expected: &library_table_lib_text_0[0_u64..6_u64]);
+          return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 2_u64, argc: argc, value: local_b_4, expected: &library_table_lib_text_0[0_u64..6_u64]);
         }
       }
       set local_value_19 = local_c_5;
@@ -224,7 +224,7 @@ fn library_table<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<
           set local_pos_26 = cvt::<i32, i64>(local_narrow_28);
         }
         None() => {
-          return lib_argerror(vm: vm, id: id, index: 2_u64, argc: argc, value: local_b_4, expected: &library_table_lib_text_0[0_u64..6_u64]);
+          return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 2_u64, argc: argc, value: local_b_4, expected: &library_table_lib_text_0[0_u64..6_u64]);
         }
       }
     }
@@ -264,7 +264,7 @@ fn library_table<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<
           set local_first_35 = i;
         }
         None() => {
-          return lib_argerror(vm: vm, id: id, index: 3_u64, argc: argc, value: local_c_5, expected: &library_table_lib_text_0[0_u64..6_u64]);
+          return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 3_u64, argc: argc, value: local_c_5, expected: &library_table_lib_text_0[0_u64..6_u64]);
         }
       }
     }
@@ -275,7 +275,7 @@ fn library_table<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<
           set local_last_36 = i;
         }
         None() => {
-          return lib_argerror(vm: vm, id: id, index: 4_u64, argc: argc, value: local_d_6, expected: &library_table_lib_text_0[0_u64..6_u64]);
+          return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 4_u64, argc: argc, value: local_d_6, expected: &library_table_lib_text_0[0_u64..6_u64]);
         }
       }
     }
@@ -323,7 +323,7 @@ fn library_table<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<
         Native(..) => {
         }
         Other() => {
-          return lib_argerror(vm: vm, id: id, index: 2_u64, argc: argc, value: local_b_4, expected: &library_table_lib_text_3[0_u64..8_u64]);
+          return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 2_u64, argc: argc, value: local_b_4, expected: &library_table_lib_text_3[0_u64..8_u64]);
         }
       }
     }

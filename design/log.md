@@ -4,6 +4,14 @@ Newest first. One entry per approved change of the tree: a dated title,
 `Nodes:` naming every node changed, `Owner-approved:` and `Summary:`; the
 owner-wide instructions' *Log format* owns the form.
 
+## 2026-10-08 Halo names argument errors from the call site
+
+Nodes: halo/operand-names
+
+Owner-approved: 2026-10-08 on the WF status board, item "argument errors name the called function as Redis does": approved, in the owner's words, "the decision added to the design tree's operand-names.md: argument errors are named from the call site, and names and locations share the rule that looks only at the immediate caller, instead of a fixed name per builtin".
+
+Summary: A library function's argument error names the called function as Lua 5.1's `getfuncname` does, through the same `getobjname` walk at the caller's CALL, TAILCALL or TFORLOOP cell, with `luaL_argerror`'s method adjustment and its `?` fallback, and errors raised by a native function are located only at an immediate Lua caller, as `luaL_where(L, 1)` does. Fixed names per builtin differed from Redis 7.0.15 for local aliases, fields, methods and shared builtins such as `math.mod`, and native callbacks took the outer Lua line; the oracle case `lua-core/argument-error-names` records Redis's replies for 34 such calls and Halo matches them all.
+
 ## 2026-10-08 Halo keeps replacing table arrays: in-place growth through grow rejected
 
 Nodes: halo/heap/tables/growth

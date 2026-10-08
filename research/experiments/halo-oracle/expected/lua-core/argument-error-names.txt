@@ -1,0 +1,141 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "bulk",
+      "bytes": "user_script:10: bad argument #1 to 'select' (index out of range)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:11: bad argument #1 to 'f' (number expected, got boolean)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:12: bad argument #2 to 'rep' (number expected, got table)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:13: bad argument #1 to 'mod' (number expected, got boolean)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:14: bad argument #1 to 'rep' (number expected, got table)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:15: calling 'rep' on bad self (string expected, got table)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:17: bad argument #1 to 'captured' (number expected, got boolean)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:18: bad argument #1 to 'f' (number expected, got boolean)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "bad argument #1 to '?' (string expected, got no value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "bad argument #1 to '?' (number expected, got boolean)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "bad argument #2 to '?' (number expected, got no value)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:23: bad argument #2 to '(for generator)' (number expected, got nil)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:24: bad argument #1 to 'decode' (string expected, got boolean)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:25: bad argument #1 to 'f' (index out of range)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:26: bad argument #1 to 'f' (value expected)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:27: bad argument #2 to 'f' (value expected)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:28: bad argument #3 to 'f' (value expected)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:29: bad argument #2 to 'f' (nil or table expected)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:30: bad argument #1 to 'f' (value expected)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:31: bad argument #2 to 'f' (number expected, got boolean)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:32: bad argument #2 to 'f' (value expected)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:33: bad argument #1 to 'set' (nil or table expected)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:34: bad argument #0 to 'f' (MessagePack pack needs input.)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:35: bad argument #1 to '?' (number expected, got table)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:36: bad argument #1 to 't' (number expected, got table)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:37: bad argument #1 to '(for generator)' (string expected, got boolean)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:38: bad argument #1 to 'f' (invalid format option '?')"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:39: bad argument #2 to 'f' (number expected, got table)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:40: invalid format (width or precision too long)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "invalid format (width or precision too long)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:42: invalid format (width or precision too long)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "x"
+    },
+    {
+      "type": "bulk",
+      "bytes": "message"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:45: bad argument #1 to 'f' (number expected, got boolean)"
+    }
+  ]
+}
