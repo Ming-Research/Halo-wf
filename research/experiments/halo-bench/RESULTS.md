@@ -3341,3 +3341,15 @@ no difference. Concat passes that test only because one old-side run (pair
 by 1.3–3.5% per pair, while the twin's per-pair ratios span 0.972–1.010. A
 concat slowdown of about 1.5% with the new release is therefore possible and
 unresolved; these seven kernels on the 14900K show nothing else.
+
+## Collection statistics
+
+### Criterion, recorded before measuring
+
+The collection statistics (pull request 24) add counter increments to the
+collector's mark and sweep loops and to the trigger arithmetic. The kernels
+that collect most (binary-trees, integer-table) pay for them. Comparison:
+this branch's base `fbd3bb2f1` against this branch, same compiler
+(`wf-691ea8106920`), six interleaved full-LTO pairs over the seven kernels
+with a twin of the base, on the 14900K. Kept only if no kernel is slower
+beyond its larger range and the twin's difference.
