@@ -429,7 +429,22 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       set step = instruction_var_arg::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^);
     }
   }
-  let cursor_result = checked_step::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, step: step);
+  match step {
+    PostCatch(..) => {
+      set step = pcall_lookup_drain::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, step: step);
+    }
+    Jump(..) => {
+    }
+    Done(..) => {
+    }
+    Error() => {
+    }
+    Stop() => {
+    }
+    Budget() => {
+    }
+  }
+  let cursor_result = checked_step(code: code, consts: consts, stack: stack, step: step);
   match cursor_result {
     Ok(value: cursor) => {
       let np = cursor.pc;

@@ -769,60 +769,84 @@ fn dispatch_step<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<
   return Outcome::Error();
 }
 
-struct Cursor {
-  pc: u64;
-  base: u64;
-  kbase: u64;
-}
-
-fn checked_step<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, step: Step) -> r: Result<Cursor, Outcome> reads(code), reads(consts), writes(stack), writes(vm), writes(env) contract {
-  ensures when Ok(value: cursor): cursor.pc < code^.inner.len;
-  ensures when Ok(value: cursor): cursor.base + 256_u64 <= stack^.inner.len;
-  ensures when Ok(value: cursor): cursor.kbase + 256_u64 <= consts^.inner.len;
-} {
-  doc "Checks the dispatch windows after draining post-catch lookups, including another catch reached by a failed lookup.";
+fn pcall_lookup_drain<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, step: Step) -> r: Step reads(code), reads(consts), writes(stack), writes(vm), writes(env) {
+  doc "Drains post-catch lookups, including another catch reached by a failed lookup, and returns the first other step before dispatch windows are checked.";
   let current = step;
   loop {
     match current {
       PostCatch(index: lookup_index) => {
         set current = pcall_lookup_start::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, index: lookup_index);
       }
-      Jump(pc: np, base: nb, kbase: nk) => {
-        if nb <= 18446744073709551359_u64 {
-          let blim = nb + 256_u64;
-          if blim <= stack^.inner.len {
-            if nk <= 18446744073709551359_u64 {
-              let klim = nk + 256_u64;
-              if klim <= consts^.inner.len {
-                if np < code^.inner.len {
-                  let cursor = Cursor(pc: np, base: nb, kbase: nk);
-                  return Ok<Cursor, Outcome>(value: cursor);
-                }
+      Jump(..) => {
+        return current;
+      }
+      Done(..) => {
+        return current;
+      }
+      Error() => {
+        return current;
+      }
+      Stop() => {
+        return current;
+      }
+      Budget() => {
+        return current;
+      }
+    }
+  }
+  return Step::Error();
+}
+
+struct Cursor {
+  pc: u64;
+  base: u64;
+  kbase: u64;
+}
+
+fn checked_step(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, step: Step) -> r: Result<Cursor, Outcome> reads(code), reads(consts), reads(stack) contract {
+  ensures when Ok(value: cursor): cursor.pc < code^.inner.len;
+  ensures when Ok(value: cursor): cursor.base + 256_u64 <= stack^.inner.len;
+  ensures when Ok(value: cursor): cursor.kbase + 256_u64 <= consts^.inner.len;
+} {
+  doc "Checks dispatch windows without callbacks so the recursive VM component can use its postconditions. Callers drain post-catch lookups first; PostCatch is unreachable here and returns an error if passed.";
+  match step {
+    Jump(pc: np, base: nb, kbase: nk) => {
+      if nb <= 18446744073709551359_u64 {
+        let blim = nb + 256_u64;
+        if blim <= stack^.inner.len {
+          if nk <= 18446744073709551359_u64 {
+            let klim = nk + 256_u64;
+            if klim <= consts^.inner.len {
+              if np < code^.inner.len {
+                let cursor = Cursor(pc: np, base: nb, kbase: nk);
+                return Ok<Cursor, Outcome>(value: cursor);
               }
             }
           }
         }
-        let error = Outcome::Error();
-        return Err<Cursor, Outcome>(error: error);
       }
-      Done(count: countv) => {
-        let done = Outcome::Done(count: countv);
-        return Err<Cursor, Outcome>(error: done);
-      }
-      Error() => {
-        let error = Outcome::Error();
-        return Err<Cursor, Outcome>(error: error);
-      }
-      Stop() => {
-        let stop = Outcome::HostStopped();
-        return Err<Cursor, Outcome>(error: stop);
-      }
-      Budget() => {
-        let budget = Outcome::Budget();
-        return Err<Cursor, Outcome>(error: budget);
-      }
+      let error = Outcome::Error();
+      return Err<Cursor, Outcome>(error: error);
+    }
+    PostCatch(..) => {
+      let error = Outcome::Error();
+      return Err<Cursor, Outcome>(error: error);
+    }
+    Done(count: countv) => {
+      let done = Outcome::Done(count: countv);
+      return Err<Cursor, Outcome>(error: done);
+    }
+    Error() => {
+      let error = Outcome::Error();
+      return Err<Cursor, Outcome>(error: error);
+    }
+    Stop() => {
+      let stop = Outcome::HostStopped();
+      return Err<Cursor, Outcome>(error: stop);
+    }
+    Budget() => {
+      let budget = Outcome::Budget();
+      return Err<Cursor, Outcome>(error: budget);
     }
   }
-  let error = Outcome::Error();
-  return Err<Cursor, Outcome>(error: error);
 }
