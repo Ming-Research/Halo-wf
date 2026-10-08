@@ -138,4 +138,14 @@ observe("number-error", nil, pcall(error, 31))
 observe("nil-error", nil, pcall(error, nil))
 observe("false-error", nil, pcall(error, false))
 observe("success", nil, pcall(function() return "ok", 42, nil end))
+for _, level in ipairs({1, 2, 3, 0}) do
+  local failure = object("level-error", {}, function()
+    error("boom", level)
+  end)
+  local function run()
+    local ok, value = pcall(error, failure)
+    return ok, value
+  end
+  observe("index-error-level-" .. level, failure, pcall(run))
+end
 return out

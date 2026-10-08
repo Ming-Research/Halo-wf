@@ -802,12 +802,15 @@ fn lib_index(vm: &Vm, value: Value, default_value: i64) -> r: i64 reads(vm) {
 }
 
 fn lib_call_has_lua_caller(vm: &Vm) -> r: Bool reads(vm) {
-  doc "Shared immediate-caller rule for native names and luaL_error locations. A same-activation Lua frame calls directly; one nested activation retains that caller for VM metamethod and iterator plans (kinds 0 through 3), but not library callbacks (kind 4). Protected-call markers are native callers.";
+  doc "Shared immediate-caller rule for native names and luaL_error locations. A same-activation Lua frame calls directly; one nested activation retains that caller for VM metamethod and iterator plans (kinds 0 through 3), but not library callbacks (kind 4). Protected-call and post-catch native markers are native callers.";
   let count = vm^.frames.inner.len;
   if count > 0_u64 {
     let last = count - 1_u64;
     let frame = vm^.frames.inner[last];
-    if frame.flags == protected_flag {
+    let protected = frame.flags == protected_flag;
+    let native = frame.flags == native_flag;
+    let native_caller = bor(protected, native);
+    if native_caller {
       return False();
     }
     if frame.activation == vm^.activation {

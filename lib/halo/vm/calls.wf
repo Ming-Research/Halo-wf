@@ -103,7 +103,7 @@ fn finish(vm: &Vm, stack: &Box<Slots<Value>>, frame: Frame, src: u64, count: u64
 fn unwind(vm: &Vm, stack: &Box<Slots<Value>>) -> r: Step writes(vm), writes(stack) contract {
   ensures stack^.inner.len == entry(stack)^.inner.len;
 } {
-  doc "Catches in the current activation, removing the protected frame before scheduling an embedding field lookup so lookup errors escape this catch.";
+  doc "Catches in the current activation, retaining only a non-catching native frame during an embedding field lookup so explicit error levels count pcall while lookup errors escape it.";
   let length = stack^.inner.len;
   loop (
     invariant preserved: stack^.inner.len == length
@@ -115,13 +115,14 @@ fn unwind(vm: &Vm, stack: &Box<Slots<Value>>) -> r: Step writes(vm), writes(stac
     if vm^.frames.inner[i].activation != vm^.activation {
       return Step::Error();
     }
-    let f = take_back(window: &vm^.frames.inner);
+    let f = vm^.frames.inner[i];
     if f.flags == protected_flag {
       set vm^.raise_pc = 0_u64;
       if vm^.pcall_field.inner.len > 0_u64 {
         let error = vm^.error;
         match tab_of(v: error) {
           Handle(..) => {
+            set vm^.frames.inner[i].flags = native_flag;
             let index = vm^.library_contexts.inner.len;
             let nil = Value::Nil();
             let tail = False();
@@ -133,6 +134,7 @@ fn unwind(vm: &Vm, stack: &Box<Slots<Value>>) -> r: Step writes(vm), writes(stac
           }
         }
       }
+      let protected_frame = take_back(window: &vm^.frames.inner);
       let dest = f.func;
       if dest < stack^.inner.len {
         set stack^.inner[dest] = Value::False();
@@ -146,6 +148,7 @@ fn unwind(vm: &Vm, stack: &Box<Slots<Value>>) -> r: Step writes(vm), writes(stac
       resize_stack(stack: stack, size: length);
       return outcome;
     }
+    let discarded = take_back(window: &vm^.frames.inner);
     let b = f.base;
     close_upvalues(vm: vm, stack: stack, level: b);
   }

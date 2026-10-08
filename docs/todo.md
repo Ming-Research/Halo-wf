@@ -58,6 +58,18 @@ example apart from the engine code that exposed it
 
 ## Engine
 
+- **Explicit error levels across library callbacks need an oracle check.**
+  Source inspection found that `table.sort` retains its native caller in a
+  library context, while `error_location` walks only VM frames; unlike a
+  post-catch `pcall`, sort has no native marker there. Impact: a comparator's
+  `error("boom", 2)` appears to select the Lua caller rather than the native
+  sort level. The existing `lua-core/error-in-comparator-line` case uses the
+  default level and does not settle this. Deferred beyond the post-catch
+  pcall repair: record levels 0 through 3 against Redis in CI, then represent
+  native library callers in the walk if the comparison confirms the gap.
+  Reopen at the next library-callback error-location change, covering nested
+  callbacks and suspension as well as sort.
+
 - **The gate's fixtures and runners still live under `research/`.**
   Impact: maintained regression checks share a home with experiments, so
   their location does not distinguish gate dependencies from research

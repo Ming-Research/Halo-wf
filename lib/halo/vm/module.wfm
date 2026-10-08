@@ -155,6 +155,8 @@ public const protected_flag: u8 = 1_u8;
 
 public const tail_flag: u8 = 2_u8;
 
+public const native_flag: u8 = 4_u8;
+
 public const builtin_pcall: u32 = 0_u32;
 
 public const builtin_error: u32 = 1_u32;

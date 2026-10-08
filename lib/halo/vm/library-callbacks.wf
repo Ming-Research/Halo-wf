@@ -99,10 +99,13 @@ fn pcall_lookup_start<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
 }
 
 fn pcall_lookup_finish(vm: &Vm, stack: &Box<Slots<Value>>, index: u64, failed: Bool) -> r: Step writes(vm), writes(stack) {
-  doc "Completes either a synchronous or resumed field lookup: strings and numbers replace the table; all other values follow it as a third result, including nil. Lookup errors propagate beyond the removed protected frame.";
+  doc "Completes either a synchronous or resumed field lookup: strings and numbers replace the table; all other values follow it as a third result, including nil. Removes the non-catching native frame before returning or propagating a lookup error.";
   if index < vm^.library_contexts.inner.len {
     let context = vm^.library_contexts.inner[index];
     discard_library_context(vm: vm, index: index);
+    if vm^.frames.inner.len > 0_u64 {
+      let discarded = take_back(window: &vm^.frames.inner);
+    }
     if failed {
       let pc = context.frame.return_pc -sat 1_u64;
       note_raise(vm: vm, pc: pc);
