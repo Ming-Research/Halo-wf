@@ -1,14 +1,14 @@
 # Temporary, for the Halo performance line: disassembles the sort library
 # before and after the sort_compare split (research/experiments/halo-bench/
 # RESULTS.md, "Why moving the slow call out made sort faster"). A push of
-# this file runs it on a hosted runner; it times nothing. Removed before the
+# this file or of .github/slowsplit/ runs it on a hosted runner; it times nothing. Removed before the
 # pull request is marked ready.
 name: slowsplit-disasm
 
 on:
   push:
     branches: [claude/halo-slowsplit]
-    paths: [.github/workflows/slowsplit-disasm.yml]
+    paths: [.github/workflows/slowsplit-disasm.yml, .github/slowsplit/**]
 
 defaults:
   run:
@@ -34,11 +34,17 @@ jobs:
           set -euo pipefail
           out="$PWD/build/slowsplit-out"
           rm -rf "$out"; mkdir -p "$out"
-          for pair in before:f70f0a8af after:22aadda57; do
+          patch="$PWD/.github/slowsplit/unsplit.patch"
+          head=$(git rev-parse HEAD)
+          for pair in before:f70f0a8af after:22aadda57 main:$head main-unsplit:$head; do
             side=${pair%%:*}; rev=${pair#*:}
             tree="$PWD/build/tree-$side"
             git worktree add --detach "$tree" "$rev"
             git -C "$tree" submodule update --init --recursive
+            if [ "$side" = main-unsplit ]; then
+              git -C "$tree" apply "$patch"
+              git -C "$tree" diff --stat | tee "$out/main-unsplit-diff-stat.txt"
+            fi
             release=$(sed -n 's/^release = //p' "$tree/whitefoot.pin")
             make -C "$tree" compiler
             wfc="$tree/build/whitefoot/$release/whitefootc"
