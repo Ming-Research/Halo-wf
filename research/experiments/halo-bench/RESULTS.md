@@ -2799,3 +2799,19 @@ The 14900K went out of service before this ran. By the owner's direction
 a hosted arm64 macOS runner and timed on the M5 Air under Whitefoot's
 `run-check.pl` lock, with the same pairs, twin and reading, recorded here
 before it runs; its result is an M5 result.
+
+Result: [run 37709134977](https://github.com/Ming-Research/Halo-wf/actions/runs/37709134977)
+built both binaries on a hosted arm64 macOS runner (macOS 15.7.9, Apple
+clang 17.0.0; artifact `halo-inplace-binaries`). The experiment build keeps
+`push_frame`'s entry copy: its 81 instructions equal the pinned build's
+apart from addresses, both starting by loading the 80-byte `Frame` through
+the incoming pointer and storing it to the stack with 128-bit pairs. Across
+the whole binary the two builds differ by one 128-bit load or store pair
+(1,315 against 1,314). The research branch's rule therefore does not reach
+`push_frame`'s parameter, and as recorded above, the comparison cannot test
+the hypothesis; it was not timed. Which of that rule's conditions
+`push_frame` fails (no result destination, no wait, no overlap group or
+split part, and a parameter slot that is a complete allocation nothing else
+writes) is not determined here. Measuring the entry copy needs either that
+rule widened to this case in Whitefoot or a Halo experiment that keeps the
+`Frame` from crossing the call as an aggregate.
