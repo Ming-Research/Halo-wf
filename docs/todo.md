@@ -64,22 +64,6 @@ example apart from the engine code that exposed it
   tooling. Change: move the gate's fixtures and runners to `tests/` and
   update their callers and references. Reopen at the next gate change.
 
-- **Argument errors hardcode the called function's name.** Lua 5.1's
-  `luaL_argerror` uses `getfuncname` (`getobjname` at the caller's CALL
-  register), so `bad argument #N to 'NAME'` names a local alias or a field,
-  and for a method it subtracts the implicit self argument and reports a bad
-  self as `calling 'NAME' on bad self`. Halo's builtins hardcode their names,
-  for example `bad argument #1 to 'select'` in `lib/halo/vm/builtins.wf`.
-  Witness: `local f=bit.tobit; return f(false)` gives Redis 7.0.15's
-  `bad argument #1 to 'f' (number expected, got boolean)` and Halo's
-  `... to 'tobit' ...` (`research/experiments/halo-luacodecs/RESULTS.md`,
-  case cjson/222). Impact: aliases, field calls and methods can disagree in
-  both name and argument number. Change: route argument errors through the
-  operand description at the caller's call cell and apply `luaL_argerror`'s
-  method adjustment. Validate with recorded oracle replies for local aliases,
-  fields, methods and bad self. Reopen before clients compare argument-error
-  text.
-
 - **A closure kept from one script cannot be called while another runs.**
   `start` in `lib/halo/vm/calls.wf` replaces the VM's prototypes and line
   metadata with the started script's, and a Lua closure finds its
@@ -96,6 +80,20 @@ example apart from the engine code that exposed it
   script's closure. Reopen when a host needs to keep or call a closure
   across scripts.
 
+- **The embedding probe arms the allocation trigger through heap fields.**
+  `research/experiments/halo-e2e/test/probe.wf` sets
+  `engine.vm.heap.threshold` and `bytes_since_gc` directly before two runs to
+  make the allocation trigger due, although
+  [collector validation](../design/halo/heap/collector-validation.md) has
+  embedding clients force and observe collection through the embedding API.
+  The API offers stress, which bypasses the due check those runs exercise, so
+  they cannot simply switch. Impact: the probe depends on collector trigger
+  storage; a change to it breaks the probe rather than an API. Change: add an
+  embedding control that makes the next safepoint's allocation trigger due, or
+  record in the decision that the probe may arm it. Reopen at the next
+  collector trigger change or the owner's ruling on F4's instrumentation
+  boundary.
+
 - **Halo F4 has no every-allocation reachability verifier.**
   The safepoint stress and four missing-root mutations in
   `research/experiments/halo-gc/RESULTS.md` distinguish selected root
@@ -107,16 +105,6 @@ example apart from the engine code that exposed it
   extending stress to allocation boundaries. Reopen at the next F4 extension
   or before claiming every-allocation validation; verify omitted-reference
   controls and allocating helpers with live temporary values.
-
-- **Halo retains cjson instance configurations after collection.**
-  `Vm.cjson_configs` owns settings and reusable encoding buffers; native
-  closures select an instance, but collecting its last closure does not
-  release that configuration. Impact: repeated `cjson.new()` retains
-  configuration slots and buffers for the VM's lifetime. Change: connect
-  instance lifetime to reachable native closures and reclaim unreachable
-  buffers and slots. Validate retained extracted methods, discarded tables
-  and repeated new/encode/collect cycles. Reopen before long-lived Halo VMs
-  use independent cjson instances.
 
 - **Halo's measured hot paths exceed the P1 median target.** The source
   `lib/halo/vm/dispatch.wf` retains joined `Step` continuations on cold and

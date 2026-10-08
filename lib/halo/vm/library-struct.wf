@@ -1,3 +1,4 @@
+alias Cell = pkg::value::Cell;
 alias Value = pkg::value::Value;
 alias num_of = pkg::value::num_of;
 alias str_of = pkg::value::str_of;
@@ -142,7 +143,8 @@ fn struct_padding(pos: u64, state: &StructFormat) -> r: u64 reads(state) {
   return iand(rest_v19, mask_v17);
 }
 
-fn struct_error(vm: &Vm, state: &StructFormat, id: u32) -> r: HostOutcome reads(state), writes(vm) {
+fn struct_error(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, pc: u64, vm: &Vm, state: &StructFormat) -> r: HostOutcome reads(code), reads(consts), reads(state), writes(vm) {
+  doc "Formats a struct format failure, naming the Lua call only for argument errors.";
   let text_v20 = box_slots_new::<u8>(capacity: 80_u64);
   if state^.error == 1_u8 {
     bytes_append(bytes: &text_v20, text: &struct_overflow[0_u64..22_u64]);
@@ -165,7 +167,7 @@ fn struct_error(vm: &Vm, state: &StructFormat, id: u32) -> r: HostOutcome reads(
     bytes_push(bytes: &text_v20, byte: state^.option);
     bytes_push(bytes: &text_v20, byte: 39_u8);
     let n_v27 = text_v20.inner.len;
-    return lib_argtext(vm: vm, id: id, index: 1_u64, text: &text_v20.inner[0_u64..n_v27]);
+    return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, text: &text_v20.inner[0_u64..n_v27]);
   }
   let n_v28 = text_v20.inner.len;
   return lib_failure(vm: vm, text: &text_v20.inner[0_u64..n_v28]);
@@ -254,12 +256,13 @@ fn struct_control(option: u8) -> r: Bool pure {
   return False();
 }
 
-fn library_struct(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: u32) -> r: HostOutcome writes(vm), writes(stack) {
+fn library_struct(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, pc: u64, vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: u32) -> r: HostOutcome reads(code), reads(consts), writes(vm), writes(stack) {
+  doc "Dispatches struct operations with the Lua call cell for argument errors.";
   let av_v29 = argument(stack: stack, func: func, argc: argc, index: 0_u64);
   let fmt_v30 = coerce_string(vm: vm, v: av_v29);
   match str_of(v: fmt_v30) {
     NoHandle() => {
-      return lib_argerror(vm: vm, id: id, index: 1_u64, argc: argc, value: av_v29, expected: &struct_string[0_u64..6_u64]);
+      return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, argc: argc, value: av_v29, expected: &struct_string[0_u64..6_u64]);
     }
     Handle(..) => {
     }
@@ -273,7 +276,7 @@ fn library_struct(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: 
     let dv_v35 = coerce_string(vm: vm, v: av_v34);
     match str_of(v: dv_v35) {
       NoHandle() => {
-        return lib_argerror(vm: vm, id: id, index: 2_u64, argc: argc, value: av_v34, expected: &struct_string[0_u64..6_u64]);
+        return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 2_u64, argc: argc, value: av_v34, expected: &struct_string[0_u64..6_u64]);
       }
       Handle(..) => {
       }
@@ -285,13 +288,13 @@ fn library_struct(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: 
       match lib_integer(vm: vm, value: ov_v36) {
         Some(value: n_v38) => {
           if n_v38 == 0_i64 {
-            return lib_argtext(vm: vm, id: id, index: 3_u64, text: &struct_offset[0_u64..27_u64]);
+            return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 3_u64, text: &struct_offset[0_u64..27_u64]);
           }
           let wide_v39 = cvt.wrap::<i64, u64>(n_v38);
           set pos_v33 = wide_v39 -wrap 1_u64;
         }
         None() => {
-          return lib_argerror(vm: vm, id: id, index: 3_u64, argc: argc, value: ov_v36, expected: &struct_number[0_u64..6_u64]);
+          return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 3_u64, argc: argc, value: ov_v36, expected: &struct_number[0_u64..6_u64]);
         }
       }
     }
@@ -307,7 +310,7 @@ fn library_struct(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: 
     }
     struct_option(bytes: &format_v31, state: &state_v41);
     if state_v41.error != 0_u8 {
-      return struct_error(vm: vm, state: &state_v41, id: id);
+      return struct_error(code: code, consts: consts, pc: pc, vm: vm, state: &state_v41);
     }
     let pad_v45 = struct_padding(pos: pos_v33, state: &state_v41);
     set pos_v33 = pos_v33 +sat pad_v45;
@@ -320,7 +323,7 @@ fn library_struct(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: 
     if id == 137_u32 {
       let end_v48 = pos_v33 +sat size_v47;
       if end_v48 > data_v32.inner.len {
-        return lib_argtext(vm: vm, id: id, index: 2_u64, text: &struct_short[0_u64..21_u64]);
+        return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 2_u64, text: &struct_short[0_u64..21_u64]);
       }
       let result_top = argc +sat results_v43.inner.len;
       if result_top > 7998_u64 {
@@ -334,11 +337,11 @@ fn library_struct(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: 
     set numeric_v52 = bor(numeric_v52, double_v51);
     if id == 138_u32 {
       if opt_v44 == 115_u8 {
-        return lib_argtext(vm: vm, id: id, index: 1_u64, text: &struct_variable_s[0_u64..28_u64]);
+        return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, text: &struct_variable_s[0_u64..28_u64]);
       }
       if opt_v44 == 99_u8 {
         if size_v47 == 0_u64 {
-          return lib_argtext(vm: vm, id: id, index: 1_u64, text: &struct_variable_c[0_u64..29_u64]);
+          return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, text: &struct_variable_c[0_u64..29_u64]);
         }
       }
       let alnum_v53 = format_isdigit(byte: opt_v44);
@@ -353,7 +356,7 @@ fn library_struct(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: 
       if bnot(alnum_v53) {
         let probe_valid_v61 = struct_control(option: opt_v44);
         if bnot(probe_valid_v61) {
-          return struct_error(vm: vm, state: &state_v41, id: id);
+          return struct_error(code: code, consts: consts, pc: pc, vm: vm, state: &state_v41);
         }
       }
     } else if numeric_v52 {
@@ -368,7 +371,7 @@ fn library_struct(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: 
           Not() => {
             let index_v66 = arg_v42 +sat 1_u64;
             let pack_argc = argc +sat 1_u64;
-            return lib_argerror(vm: vm, id: id, index: index_v66, argc: pack_argc, value: v_v63, expected: &struct_number[0_u64..6_u64]);
+            return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: index_v66, argc: pack_argc, value: v_v63, expected: &struct_number[0_u64..6_u64]);
           }
         }
         set arg_v42 = arg_v42 +sat 1_u64;
@@ -460,7 +463,7 @@ fn library_struct(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: 
             NoHandle() => {
               let index_v98 = arg_v42 +sat 1_u64;
               let pack_argc = argc +sat 1_u64;
-              return lib_argerror(vm: vm, id: id, index: index_v98, argc: pack_argc, value: v_v96, expected: &struct_string[0_u64..6_u64]);
+              return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: index_v98, argc: pack_argc, value: v_v96, expected: &struct_string[0_u64..6_u64]);
             }
             Handle(..) => {
             }
@@ -473,7 +476,7 @@ fn library_struct(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: 
           }
           if bytes_v99.inner.len < size_v47 {
             let index_v100 = arg_v42 +sat 1_u64;
-            return lib_argtext(vm: vm, id: id, index: index_v100, text: &struct_string_short[0_u64..16_u64]);
+            return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: index_v100, text: &struct_string_short[0_u64..16_u64]);
           }
           for (i_v101 in 0_u64..size_v47) {
             if i_v101 < bytes_v99.inner.len {
@@ -521,7 +524,7 @@ fn library_struct(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: 
           }
           let end_v108 = pos_v33 +sat size_v47;
           if end_v108 > data_v32.inner.len {
-            return lib_argtext(vm: vm, id: id, index: 2_u64, text: &struct_short[0_u64..21_u64]);
+            return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 2_u64, text: &struct_short[0_u64..21_u64]);
           }
           if pos_v33 <= end_v108 {
             if end_v108 <= data_v32.inner.len {
@@ -536,7 +539,7 @@ fn library_struct(vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: 
       } else {
         let probe_valid_v110 = struct_control(option: opt_v44);
         if bnot(probe_valid_v110) {
-          return struct_error(vm: vm, state: &state_v41, id: id);
+          return struct_error(code: code, consts: consts, pc: pc, vm: vm, state: &state_v41);
         }
       }
     }

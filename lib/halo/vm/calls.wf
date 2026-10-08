@@ -16,7 +16,7 @@ const calls_text_1: Array<u8, 19> = "invalid Lua closure";
 
 const calls_text_2: Array<u8, 14> = "stack overflow";
 
-const calls_text_3: Array<u8, 43> = "bad argument #1 to 'pcall' (value expected)";
+const calls_text_3: Array<u8, 14> = "value expected";
 
 const calls_text_4: Array<u8, 6> = "__call";
 
@@ -259,6 +259,7 @@ fn enter_lua(vm: &Vm, stack: &Box<Slots<Value>>, h: u32, func: u64, argc: u64, w
 }
 
 fn prepare<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, stack: &Box<Slots<Value>>, env: &E, func: u64, argc: u64, wanted: i64, return_pc: u64, base: u64, kbase: u64, tail: Bool) -> r: Step reads(code), reads(consts), writes(vm), writes(stack), writes(env) {
+  doc "Prepares Lua, native and protected calls while retaining the invoking Lua frame through native tail calls.";
   let fslot = func;
   let nargs = argc;
   let nr = wanted;
@@ -299,7 +300,9 @@ fn prepare<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
         }
         if bound_id_1 == builtin_pcall {
           if nargs == 0_u64 {
-            let ignored = raise_text(vm: vm, text: &calls_text_3[0_u64..43_u64]);
+            let call_pc = return_pc -sat 1_u64;
+            let ignored = lib_argtext(code: code, consts: consts, vm: vm, pc: call_pc, index: 1_u64, text: &calls_text_3[0_u64..14_u64]);
+            library_call_error_location(vm: vm, id: bound_id_1, pc: call_pc);
             return Step::Error();
           }
           let marker = Frame(func: fslot, base: base, return_pc: return_pc, kbase: kbase, closure: no_handle, nresults: nr, activation: vm^.activation, flags: protected_flag, varbase: 0_u64, varcount: 0_u64, frame_top: vm^.top);
