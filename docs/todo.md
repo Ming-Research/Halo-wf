@@ -56,6 +56,22 @@ example apart from the engine code that exposed it
   match-dispatch work (Ming-Research/Whitefoot#237). The Halo-side layout
   question is the Cell stride entry under *Engine*.
 
+- **A by-value binding of a place is copied whole when a slow call sits
+  beside it.** `sort_compare` binds `let local_call_5 =
+  vm^.library_contexts.inner[context];` and its fast path reads two fields.
+  With the slow-executor call written in the same function, the compiler
+  copies the whole context and both operands on every call (`memcpy`; with
+  `wf-e1708490c384` a 152-byte context and a 0x1e8-byte frame, with
+  `wf-691ea8106920` and the current layout 168 bytes and 0x1f8); with that
+  call moved to another function, it reads the two fields in place
+  (0x60-byte frame) with both compilers; the split that
+  removed the copy made the sort kernel 25% faster when it was made
+  ([result](../research/experiments/halo-bench/RESULTS.md#second-result)).
+  Halo keeps the split it has and splits no other function. Handed to the
+  loopmatch session, which owns copy elimination; reopen when Whitefoot
+  reads such a binding's fields in place: undo the split and check that
+  `sort_compare` has no `memcpy`.
+
 ## Engine
 
 - **Explicit error levels across library callbacks need an oracle check.**
