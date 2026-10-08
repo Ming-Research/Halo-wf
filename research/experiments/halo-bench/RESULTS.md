@@ -2708,3 +2708,29 @@ The 14900K went out of service before this ran. By the owner's direction
 macOS, arm64), under Whitefoot's `run-check.pl` lock, with the same pairs,
 twin and thresholds, recorded here before it runs; its result is an M5
 result.
+
+### Result on the M5 Air
+
+On the M5 Air (macOS 27.0.1, arm64), under `run-check.pl`'s lock: main
+`89a9ce23a` against this branch's engine (`82d43d67e`), both built with
+full LTO by `wf-8b647edbbc95`'s macOS compiler (base and twin identical by
+hash, `492f8b78456f`, branch `cea6b1399c62`), six interleaved pairs,
+binary-trees at depth 14. Medians in seconds:
+
+| Kernel | Main | Branch | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1137 | 0.1110 | 0.976 | 4.23% | 527.47% | 0.989 |
+| loop | 0.3734 | 0.3702 | 0.991 | 2.49% | 4.87% | 1.003 |
+| integer-table | 0.2540 | 0.2507 | 0.987 | 3.80% | 18.98% | 1.022 |
+| string-key | 0.0207 | 0.0199 | 0.961 | 6.01% | 8.70% | 1.010 |
+| concat | 0.0848 | 0.0739 | 0.872 | 30.72% | 10.96% | 1.018 |
+| sort | 0.1601 | 0.1580 | 0.987 | 2.33% | 7.84% | 0.994 |
+| binary-trees | 1.3712 | 1.3759 | 1.003 | 7.08% | 6.15% | 1.000 |
+
+`--check-module pkg::vm`: main 6.03 and 6.14 s, branch 6.03 and 6.16 s.
+
+Single launches far from the rest (fib 0.6941 s against 0.108–0.114 s,
+concat 0.0993 s, integer-table 0.2907 s) put the ranges well beyond any
+effect the criterion asks for; a code review ran on the machine at the same
+time. The spread is too large to decide, so the comparison is repeated once
+with nothing else running, and that repeat decides; both runs stay recorded.
