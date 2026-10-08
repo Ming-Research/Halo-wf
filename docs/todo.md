@@ -181,17 +181,6 @@ example apart from the engine code that exposed it
   Reopen when a later Whitefoot release changes how `run`'s edges are
   lowered.
 
-- **Halo's oracle hides next/pairs hash iteration order.**
-  `research/experiments/halo-oracle/scripts/lua-core/next-pairs.lua` sorts both
-  observations; passing the oracle comparison proves contents, not order.
-  Impact: a table-layout change can pass while diverging from the selected
-  Redis Lua order. Change: add an independent unsorted table-growth and
-  iteration observation in the oracle's existing home, with recorded Redis
-  expected bytes and unchanged existing cases. Reopen at the next oracle
-  coverage update; validate that an order-only permutation fails comparison.
-  The [bounded growth experiment](../research/experiments/halo-bench/RESULTS.md#iteration-order-evidence-correction)
-  uses scratch unsorted PUC comparisons to qualify its own change.
-
 - **Halo reused-binary reports identify current inputs, not build inputs.**
   `research/experiments/halo-e2e/run.py --binary` hashes the current library
   and harness source even when the supplied executable was built from other
