@@ -56,7 +56,5 @@ Whitefoot change and upgrading Whitefoot. A Whitefoot gap goes under
 
 ## Reports
 
-Status board: https://claude.ai/artifact/Gp8N4mEmYrVdd8j2Si2x4i
-
 At completion a report also names any pin or submodule moved, any Whitefoot
 gap filed, and the oracle comparison's result on the validated revision.
