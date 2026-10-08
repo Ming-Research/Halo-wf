@@ -1,6 +1,17 @@
 alias Engine = halo::embed::Engine;
+alias ScriptId = halo::embed::ScriptId;
 alias CollectionStats = halo::heap::CollectionStats;
 alias CollectionKindStats = halo::heap::CollectionKindStats;
+
+fn gc_probe_run_cached(engine: &Engine, env: &Probe, script: ScriptId) -> r: Bool writes(engine), writes(env) {
+  doc "Runs an already compiled collector chunk without compiler allocations between controlled snapshots or threshold observations.";
+  let outcome = halo::embed::start::<ProbeHost>(engine: engine, env: env, script: script, budget: 1000000_u64);
+  let code = outcome_code(outcome: outcome);
+  if code != 0_u8 {
+    return False();
+  }
+  return returned(engine: engine, expected: 1.0_f64);
+}
 
 fn gc_probe_run(engine: &Engine, env: &Probe, source: &[u8]) -> r: Bool reads(source), writes(engine), writes(env) {
   doc "Runs a collector probe chunk with enough budget for the allocation workload; each chunk returns one on success.";
@@ -10,12 +21,7 @@ fn gc_probe_run(engine: &Engine, env: &Probe, source: &[u8]) -> r: Bool reads(so
       return False();
     }
     Ok(value: script) => {
-      let outcome = halo::embed::start::<ProbeHost>(engine: engine, env: env, script: script, budget: 1000000_u64);
-      let code = outcome_code(outcome: outcome);
-      if code != 0_u8 {
-        return False();
-      }
-      return returned(engine: engine, expected: 1.0_f64);
+      return gc_probe_run_cached(engine: engine, env: env, script: script);
     }
   }
 }
@@ -59,14 +65,139 @@ fn gc_probe_kind_zero(stats: CollectionKindStats) -> r: Bool pure {
   return stats.slots_visited == 0_u64;
 }
 
-fn gc_probe_kind_slots(stats: CollectionKindStats) -> r: Bool pure {
-  doc "Every live or freed object occupies a visited slot, and already free slots may add work.";
-  let occupied = stats.live_objects +sat stats.freed_objects;
-  return stats.slots_visited >= occupied;
+fn gc_probe_census(engine: &Engine) -> r: CollectionStats reads(engine) {
+  doc "Independently counts occupied cells and slab lengths, using the allocation formulas in heap/slabs.wf: string 24 plus byte capacity, table 48 plus 16 per array slot and 32 per node, closure 24 plus 4 per capture, upvalue 32. It reads no collection counters or marks.";
+  let string_objects = 0_u64;
+  let string_bytes = 0_u64;
+  for (si in 0_u64..engine^.vm.heap.strings.inner.len) {
+    if engine^.vm.heap.strings.inner[si].live {
+      let amount = 24_u64 +sat engine^.vm.heap.strings.inner[si].payload.bytes.inner.cap;
+      set string_objects = string_objects +sat 1_u64;
+      set string_bytes = string_bytes +sat amount;
+    }
+  }
+  let table_objects = 0_u64;
+  let table_bytes = 0_u64;
+  for (ti in 0_u64..engine^.vm.heap.tables.inner.len) {
+    if engine^.vm.heap.tables.inner[ti].live {
+      let array_bytes = 16_u64 *sat engine^.vm.heap.tables.inner[ti].payload.array.inner.cap;
+      let node_bytes = 32_u64 *sat engine^.vm.heap.tables.inner[ti].payload.nodes.inner.cap;
+      let buffers = array_bytes +sat node_bytes;
+      let amount = 48_u64 +sat buffers;
+      set table_objects = table_objects +sat 1_u64;
+      set table_bytes = table_bytes +sat amount;
+    }
+  }
+  let closure_objects = 0_u64;
+  let closure_bytes = 0_u64;
+  for (ci in 0_u64..engine^.vm.heap.closures.inner.len) {
+    if engine^.vm.heap.closures.inner[ci].live {
+      let captures = 4_u64 *sat engine^.vm.heap.closures.inner[ci].payload.upvals.inner.cap;
+      let amount = 24_u64 +sat captures;
+      set closure_objects = closure_objects +sat 1_u64;
+      set closure_bytes = closure_bytes +sat amount;
+    }
+  }
+  let upvalue_objects = 0_u64;
+  for (ui in 0_u64..engine^.vm.heap.upvalues.inner.len) {
+    if engine^.vm.heap.upvalues.inner[ui].live {
+      set upvalue_objects = upvalue_objects +sat 1_u64;
+    }
+  }
+  let upvalue_bytes = 32_u64 *sat upvalue_objects;
+  let strings = CollectionKindStats(live_objects: string_objects, live_bytes: string_bytes, freed_objects: 0_u64, freed_bytes: 0_u64, slots_visited: engine^.vm.heap.strings.inner.len);
+  let tables = CollectionKindStats(live_objects: table_objects, live_bytes: table_bytes, freed_objects: 0_u64, freed_bytes: 0_u64, slots_visited: engine^.vm.heap.tables.inner.len);
+  let closures = CollectionKindStats(live_objects: closure_objects, live_bytes: closure_bytes, freed_objects: 0_u64, freed_bytes: 0_u64, slots_visited: engine^.vm.heap.closures.inner.len);
+  let upvalues = CollectionKindStats(live_objects: upvalue_objects, live_bytes: upvalue_bytes, freed_objects: 0_u64, freed_bytes: 0_u64, slots_visited: engine^.vm.heap.upvalues.inner.len);
+  return CollectionStats(strings: strings, tables: tables, closures: closures, upvalues: upvalues, gray_pops: 0_u64, next_threshold: 0_u64);
+}
+
+fn gc_probe_kind_live(stats: CollectionKindStats, census: CollectionKindStats) -> r: Bool pure {
+  doc "Checks exact completed live counts and bytes against occupied payloads, including live upvalues.";
+  if stats.live_objects != census.live_objects {
+    return False();
+  }
+  return stats.live_bytes == census.live_bytes;
+}
+
+fn gc_probe_kind_freed(stats: CollectionKindStats, before: CollectionKindStats, after: CollectionKindStats, added_objects: u64, added_bytes: u64) -> r: Bool pure {
+  doc "Checks exact reclaimed counts and bytes by conservation between independent payload censuses; the idle start adds only one 24-byte uncaptured entry closure.";
+  let objects = before.live_objects +sat added_objects;
+  let bytes = before.live_bytes +sat added_bytes;
+  let freed_objects = objects -sat after.live_objects;
+  let freed_bytes = bytes -sat after.live_bytes;
+  if stats.freed_objects != freed_objects {
+    return False();
+  }
+  return stats.freed_bytes == freed_bytes;
+}
+
+fn gc_probe_checked_collect(engine: &Engine, env: &Probe, keep: Bool) -> r: u8 writes(engine), writes(env) {
+  doc "Tightens observations 150, 151 and 155 in both modes: compile before the census, force exactly one idle-entry sweep, and compare every live, freed and visited-slot field with independent allocation accounting. Compiler and library interning are included in the census, not guessed.";
+  let compiled = halo::embed::compile(engine: engine, chunk_name: &gc_probe_name[0_u64..9_u64], source: &gc_probe_idle[0_u64..8_u64]);
+  match move compiled {
+    Err(..) => {
+      return 147_u8;
+    }
+    Ok(value: idle_script) => {
+      let before = gc_probe_census(engine: engine);
+      let count_before = halo::embed::collection_count(engine: engine);
+      let enabled = True();
+      halo::embed::set_gc_stress(engine: engine, enabled: enabled);
+      let ran = gc_probe_run_cached(engine: engine, env: env, script: idle_script);
+      halo::embed::set_gc_stress(engine: engine, enabled: keep);
+      let failed = bnot(ran);
+      if failed {
+        return 147_u8;
+      }
+      let count_after = halo::embed::collection_count(engine: engine);
+      let wanted_count = count_before +sat 1_u64;
+      if count_after != wanted_count {
+        return 147_u8;
+      }
+      let after = gc_probe_census(engine: engine);
+      let stats = halo::embed::last_collection(engine: engine);
+      let strings_live = gc_probe_kind_live(stats: stats.strings, census: after.strings);
+      let tables_live = gc_probe_kind_live(stats: stats.tables, census: after.tables);
+      let closures_live = gc_probe_kind_live(stats: stats.closures, census: after.closures);
+      let upvalues_live = gc_probe_kind_live(stats: stats.upvalues, census: after.upvalues);
+      let first_live = band(strings_live, tables_live);
+      let second_live = band(closures_live, upvalues_live);
+      let all_live = band(first_live, second_live);
+      let wrong_live = bnot(all_live);
+      if wrong_live {
+        return 150_u8;
+      }
+      let strings_freed = gc_probe_kind_freed(stats: stats.strings, before: before.strings, after: after.strings, added_objects: 0_u64, added_bytes: 0_u64);
+      let tables_freed = gc_probe_kind_freed(stats: stats.tables, before: before.tables, after: after.tables, added_objects: 0_u64, added_bytes: 0_u64);
+      let closures_freed = gc_probe_kind_freed(stats: stats.closures, before: before.closures, after: after.closures, added_objects: 1_u64, added_bytes: 24_u64);
+      let upvalues_freed = gc_probe_kind_freed(stats: stats.upvalues, before: before.upvalues, after: after.upvalues, added_objects: 0_u64, added_bytes: 0_u64);
+      let first_freed = band(strings_freed, tables_freed);
+      let second_freed = band(closures_freed, upvalues_freed);
+      let all_freed = band(first_freed, second_freed);
+      let wrong_freed = bnot(all_freed);
+      if wrong_freed {
+        return 151_u8;
+      }
+      if stats.strings.slots_visited != after.strings.slots_visited {
+        return 155_u8;
+      }
+      if stats.tables.slots_visited != after.tables.slots_visited {
+        return 155_u8;
+      }
+      if stats.closures.slots_visited != after.closures.slots_visited {
+        return 155_u8;
+      }
+      if stats.upvalues.slots_visited != after.upvalues.slots_visited {
+        return 155_u8;
+      }
+    }
+  }
+  return 0_u8;
 }
 
 fn gc_stats_probe(stress: Bool) -> r: u8 pure {
-  doc "Observations 146 through 155 check initial and completed snapshots, exact reclamation of three empty tables and one captured upvalue, marking work, free slab visits and reset preservation in both collector modes.";
+  doc "Observations 146 through 155 check initial and exact completed snapshots, reclamation of three empty tables and one captured upvalue, marking work, free slab visits and reset preservation in both collector modes. Observation 170 pins a returned closure with two distinct captures and checks their exact live count and bytes against the baseline.";
   let engine = halo::embed::new_engine(limit: 0_u64);
   let env = Probe(mode: 0_u8, calls: 0_u64);
   let initial = halo::embed::last_collection(engine: &engine);
@@ -87,22 +218,52 @@ fn gc_stats_probe(stress: Bool) -> r: u8 pure {
   if initial.next_threshold != 0_u64 {
     return 146_u8;
   }
-  let baseline = gc_probe_collect(engine: &engine, env: &env, keep: stress);
-  let baseline_failed = bnot(baseline);
-  if baseline_failed {
-    return 147_u8;
+  let baseline_code = gc_probe_checked_collect(engine: &engine, env: &env, keep: stress);
+  if baseline_code != 0_u8 {
+    return baseline_code;
   }
-  let dropped = gc_probe_run(engine: &engine, env: &env, source: &gc_probe_drop[0_u64..89_u64]);
+  let baseline = halo::embed::last_collection(engine: &engine);
+  let dropped = gc_probe_run(engine: &engine, env: &env, source: &gc_probe_drop[0_u64..147_u64]);
   let drop_failed = bnot(dropped);
   if drop_failed {
     return 148_u8;
   }
-  let swept = gc_probe_collect(engine: &engine, env: &env, keep: stress);
-  let sweep_failed = bnot(swept);
-  if sweep_failed {
+  let kept = halo::embed::result(engine: &engine, index: 1_u64);
+  match kept {
+    None() => {
+      return 170_u8;
+    }
+    Some(value: held_closure) => {
+      let held_kind = halo::embed::kind(value: held_closure);
+      if held_kind != 5_u8 {
+        return 170_u8;
+      }
+      let pinned = halo::embed::pin(engine: &engine, value: held_closure);
+      match pinned {
+        None() => {
+          return 170_u8;
+        }
+        Some(..) => {
+        }
+      }
+    }
+  }
+  let sweep_code = gc_probe_checked_collect(engine: &engine, env: &env, keep: stress);
+  if sweep_code == 147_u8 {
     return 149_u8;
   }
+  if sweep_code != 0_u8 {
+    return sweep_code;
+  }
   let stats = halo::embed::last_collection(engine: &engine);
+  let kept_objects = baseline.upvalues.live_objects +sat 2_u64;
+  let kept_bytes = baseline.upvalues.live_bytes +sat 64_u64;
+  if stats.upvalues.live_objects != kept_objects {
+    return 170_u8;
+  }
+  if stats.upvalues.live_bytes != kept_bytes {
+    return 170_u8;
+  }
   if stats.tables.live_objects == 0_u64 {
     return 150_u8;
   }
@@ -125,12 +286,6 @@ fn gc_stats_probe(stress: Bool) -> r: u8 pure {
     return 151_u8;
   }
   if stats.upvalues.freed_bytes != 32_u64 {
-    return 151_u8;
-  }
-  if stats.closures.freed_objects < 2_u64 {
-    return 151_u8;
-  }
-  if stats.closures.freed_bytes < 52_u64 {
     return 151_u8;
   }
   if stats.strings.freed_objects == 0_u64 {
@@ -161,27 +316,18 @@ fn gc_stats_probe(stress: Bool) -> r: u8 pure {
   if saved.next_threshold != stats.next_threshold {
     return 154_u8;
   }
-  let swept_again = gc_probe_collect(engine: &engine, env: &env, keep: stress);
-  let again_failed = bnot(swept_again);
-  if again_failed {
+  let again_code = gc_probe_checked_collect(engine: &engine, env: &env, keep: stress);
+  if again_code == 147_u8 {
     return 155_u8;
+  }
+  if again_code != 0_u8 {
+    return again_code;
   }
   let again = halo::embed::last_collection(engine: &engine);
   if again.tables.freed_objects != 0_u64 {
     return 155_u8;
   }
   if again.tables.freed_bytes != 0_u64 {
-    return 155_u8;
-  }
-  let string_slots = gc_probe_kind_slots(stats: stats.strings);
-  let table_slots = gc_probe_kind_slots(stats: stats.tables);
-  let closure_slots = gc_probe_kind_slots(stats: stats.closures);
-  let upvalue_slots = gc_probe_kind_slots(stats: stats.upvalues);
-  let first_slots = band(string_slots, table_slots);
-  let second_slots = band(closure_slots, upvalue_slots);
-  let all_slots = band(first_slots, second_slots);
-  let missing_slots = bnot(all_slots);
-  if missing_slots {
     return 155_u8;
   }
   if again.tables.slots_visited <= again.tables.live_objects {
@@ -351,8 +497,128 @@ fn gc_pause_trial(percent: u64, stress: Bool) -> r: Result<u64, u8> pure {
   return Ok<u64, u8>(value: delta);
 }
 
+fn gc_pause_pending_trial(engine: &Engine, env: &Probe, script: ScriptId) -> r: u8 writes(engine), writes(env) {
+  doc "Ordinary-mode observations 172 through 176 distinguish when pause takes effect: a default-pause collection precedes set_gc_pause(400), an unpinned 4 MiB table crosses only the old threshold, then one such allocation stays below the new threshold and two cross it. Cached idle starts add exactly 24 bytes each; no collection is forced after the setter.";
+  let ordinary = False();
+  let collected = gc_probe_collect(engine: engine, env: env, keep: ordinary);
+  let collect_failed = bnot(collected);
+  if collect_failed {
+    return 172_u8;
+  }
+  let defaults = halo::embed::last_collection(engine: engine);
+  let default_live = gc_probe_live_bytes(stats: defaults);
+  if default_live <= 1048576_u64 {
+    return 172_u8;
+  }
+  if defaults.next_threshold != default_live {
+    return 172_u8;
+  }
+  let array_bytes = 16_u64 *sat 262144_u64;
+  let table_bytes = 48_u64 +sat array_bytes;
+  let allocation = table_bytes +sat 24_u64;
+  let pending_threshold = default_live *sat 3_u64;
+  if allocation <= defaults.next_threshold {
+    return 172_u8;
+  }
+  if allocation >= pending_threshold {
+    return 172_u8;
+  }
+  let before = halo::embed::collection_count(engine: engine);
+  halo::embed::set_gc_pause(engine: engine, percent: 400_u64);
+  let after_setter = halo::embed::collection_count(engine: engine);
+  if after_setter != before {
+    return 173_u8;
+  }
+  let first = halo::embed::new_table(engine: engine, asize: 262144_u32, hsize: 0_u32);
+  let first_kind = halo::embed::kind(value: first);
+  if first_kind != 4_u8 {
+    return 173_u8;
+  }
+  let first_run = gc_probe_run_cached(engine: engine, env: env, script: script);
+  let first_failed = bnot(first_run);
+  if first_failed {
+    return 173_u8;
+  }
+  let after = halo::embed::collection_count(engine: engine);
+  let wanted = before +sat 1_u64;
+  if after != wanted {
+    return 173_u8;
+  }
+  let changed = halo::embed::last_collection(engine: engine);
+  let changed_live = gc_probe_live_bytes(stats: changed);
+  let changed_threshold = changed_live *sat 3_u64;
+  if changed.next_threshold != changed_threshold {
+    return 174_u8;
+  }
+  if allocation >= changed_threshold {
+    return 174_u8;
+  }
+  let twice = allocation *sat 2_u64;
+  if twice <= changed_threshold {
+    return 174_u8;
+  }
+  let second = halo::embed::new_table(engine: engine, asize: 262144_u32, hsize: 0_u32);
+  let second_kind = halo::embed::kind(value: second);
+  if second_kind != 4_u8 {
+    return 175_u8;
+  }
+  let second_run = gc_probe_run_cached(engine: engine, env: env, script: script);
+  let second_failed = bnot(second_run);
+  if second_failed {
+    return 175_u8;
+  }
+  let below = halo::embed::collection_count(engine: engine);
+  if below != after {
+    return 175_u8;
+  }
+  let third = halo::embed::new_table(engine: engine, asize: 262144_u32, hsize: 0_u32);
+  let third_kind = halo::embed::kind(value: third);
+  if third_kind != 4_u8 {
+    return 176_u8;
+  }
+  let third_run = gc_probe_run_cached(engine: engine, env: env, script: script);
+  let third_failed = bnot(third_run);
+  if third_failed {
+    return 176_u8;
+  }
+  let above = halo::embed::collection_count(engine: engine);
+  let wanted_above = after +sat 1_u64;
+  if above != wanted_above {
+    return 176_u8;
+  }
+  return 0_u8;
+}
+
+fn gc_pause_pending_probe() -> r: u8 pure {
+  doc "Ordinary-mode observation 171 prepares a fresh unlimited engine with a pinned 2 MiB table and a cached idle chunk for the pending-pause trial; stress-mode probes skip this allocation-trigger observation.";
+  let engine = halo::embed::new_engine(limit: 0_u64);
+  let env = Probe(mode: 0_u8, calls: 0_u64);
+  let retained = halo::embed::new_table(engine: &engine, asize: 131072_u32, hsize: 0_u32);
+  let retained_kind = halo::embed::kind(value: retained);
+  if retained_kind != 4_u8 {
+    return 171_u8;
+  }
+  let pinned = halo::embed::pin(engine: &engine, value: retained);
+  match pinned {
+    None() => {
+      return 171_u8;
+    }
+    Some(..) => {
+    }
+  }
+  let compiled = halo::embed::compile(engine: &engine, chunk_name: &gc_probe_name[0_u64..9_u64], source: &gc_probe_idle[0_u64..8_u64]);
+  match move compiled {
+    Err(..) => {
+      return 171_u8;
+    }
+    Ok(value: pending_script) => {
+      return gc_pause_pending_trial(engine: &engine, env: &env, script: pending_script);
+    }
+  }
+}
+
 fn gc_pause_probe(stress: Bool) -> r: u8 pure {
-  doc "Observation 167 requires a 400 percent pause to cause fewer completed collections than 200 percent over identical allocations on fresh engines.";
+  doc "Observation 167 requires a 400 percent pause to cause fewer completed collections than 200 percent over identical allocations on fresh engines. Observations 171 through 176 also check that a pause change waits for the next collection and then controls the allocation trigger, in ordinary mode only.";
   let standard = gc_pause_trial(percent: 200_u64, stress: stress);
   match standard {
     Err(error: standard_error) => {
@@ -375,6 +641,10 @@ fn gc_pause_probe(stress: Bool) -> r: u8 pure {
       }
     }
   }
+  let ordinary = bnot(stress);
+  if ordinary {
+    return gc_pause_pending_probe();
+  }
   return 0_u8;
 }
 
@@ -382,6 +652,6 @@ const gc_probe_name: Array<u8, 9> = "@gc_probe";
 
 const gc_probe_idle: Array<u8, 8> = "return 1";
 
-const gc_probe_drop: Array<u8, 89> = "local a,b,c={},{},{}; local function f() return a end; local s='gc-'..'garbage'; return 1";
+const gc_probe_drop: Array<u8, 147> = "local a,b,c={},{},{}; local x,y=1,2; local kept=function() return x+y end; local function f() return a end; local s='gc-'..'garbage'; return 1,kept";
 
 const gc_probe_allocations: Array<u8, 79> = "for i=1,32768 do local t={1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16} end; return 1";

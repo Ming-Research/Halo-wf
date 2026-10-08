@@ -86,11 +86,20 @@ embedding contract; the unchanged cjson oracle scripts still compare replies
 with Redis. [GAPS.md](GAPS.md) names limits and concrete reopening
 conditions.
 
-Collector statistics and pause observations (exits 146–169) use only the
-embedding controls and snapshots. They run in ordinary and stress modes,
-check the zero snapshot before collection, reclaim three empty tables and a
-captured upvalue, account for gray-stack pops and already free slab slots,
-and preserve observations across reset. Pause checks cover clamping below
+Collector statistics and pause observations (exits 146–176) control and observe
+collections through the embedding API. Statistics checks run in ordinary and
+stress modes, check the zero snapshot before collection, reclaim three empty
+tables and a captured upvalue, and pin a returned closure with two distinct
+captures to check live upvalues. An independent read-only census counts occupied
+slab cells and their payload capacities using the allocation formulas in
+[`heap/slabs.wf`](../../../lib/halo/heap/slabs.wf). Exact freed counts and bytes
+come from the difference between censuses before and after one idle-entry
+collection, accounting for its one new 24-byte entry closure; compilation
+precedes the first census so compiler and library interning need no assumed
+counts. Exact live counts and bytes match the remaining payloads, and exact
+visited slots match slab lengths including already free slots. The checks also
+account for gray-stack pops and preserve observations across reset.
+Pause checks cover clamping below
 100, the 1 MiB floor, fractional percentages, saturation without premature
 product overflow, reset persistence, stress overriding the
 threshold, and exact restoration of the 200 percent threshold. Fresh engines
@@ -98,6 +107,14 @@ with an equally sized pinned table run the same allocation loop with stress
 disabled to distinguish collection frequency at 200 and 400 percent; stress
 would otherwise override that comparison. Byte expectations use the heap's
 specified logical accounting, not process memory or slab reserve.
+Ordinary-mode observations 171–176 cache an idle chunk and pin a 2 MiB table,
+collect with the default pause, then set 400 percent without forcing collection.
+A discarded 4 MiB table must still trigger one collection at the old threshold.
+The completed snapshot must then report the 400 percent threshold: one more
+4 MiB allocation stays below it, while two cross it. Each cached idle start
+adds one 24-byte entry closure. This catches a setter that immediately rewrites
+the current threshold, and a collector that reports the new threshold but keeps
+using the old one or never schedules another collection.
 
 The Redis error/SHA-1 comparison uses Redis 7.0.15's local `script_lua.c`
 and `eval.c` as the formatting reference: command errors are tables, Lua
