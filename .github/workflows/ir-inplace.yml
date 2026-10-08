@@ -83,15 +83,41 @@ jobs:
             return False();
           }
 
+          fn rec_push_via(v: &Box<Slots<Rec>>, r: Rec) -> ok: Bool writes(v) {
+            return rec_push(v: v, r: r);
+          }
+
+          fn rec_set(v: &Box<Slots<Rec>>, r: Rec) -> ok: Bool writes(v) {
+            if 0_u64 < v^.inner.len {
+              set v^.inner[0_u64] = r;
+              return True();
+            }
+            return False();
+          }
+
+          fn rec_pick(r: Rec, c: Bool) -> s: u64 pure {
+            if c {
+              return r.a;
+            }
+            return r.b;
+          }
+
           fn main() -> status: ExitStatus pure {
             let v = box_slots_new::<Rec>(capacity: 4_u64);
             let r = Rec(a: 1_u64, b: 2_u64, c: 3_u64, d: 4_u64, e: 5_u64, f: 6_u64, g: 7_u64, h: 8_u64, i: 9_u64, j: 10_u64);
             let first = rec_first(r: r);
             let forwarded = rec_forward(r: r);
             let pushed = rec_push(v: &v, r: r);
+            let via = rec_push_via(v: &v, r: r);
+            let stored = rec_set(v: &v, r: r);
+            let picked = rec_pick(r: r, c: via);
             if pushed {
-              if first == forwarded {
-                return exit_status(code: 0_u8);
+              if stored {
+                if first == forwarded {
+                  if picked == 1_u64 {
+                    return exit_status(code: 0_u8);
+                  }
+                }
               }
             }
             return exit_status(code: 1_u8);
@@ -102,7 +128,7 @@ jobs:
             release=$pinned; [ "$side" = exp ] && release=$EXPERIMENT
             wfc="$PWD/build/whitefoot/$release/whitefootc"
             "$wfc" "$out/witness.wf" --emit-llvm -o "$out/witness-$side.ll"
-            for fn in rec_first rec_forward rec_push; do
+            for fn in rec_first rec_forward rec_push rec_push_via rec_set rec_pick; do
               awk -v name="$fn" '$0 ~ "^define .*@[^ ]*" name "[(.]" {f=1} f{print} f&&/^}/{exit}' "$out/witness-$side.ll" > "$out/witness-$side-$fn.ll"
               echo "== witness $side $fn: $(grep -c 'llvm.memmove\|llvm.memcpy' "$out/witness-$side-$fn.ll") entry copies"
               head -n 8 "$out/witness-$side-$fn.ll"
