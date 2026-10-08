@@ -3356,3 +3356,26 @@ The subsequent rework records the post-catch lookup index in the VM and uses
 the existing `Budget` exit to reach the generic driver, which clears and
 consumes the request before interpreting the exit, leaving the instruction
 budget, dispatch, handlers and `Step` unchanged.
+
+### Retried after the rework
+
+[Run 37787718241](https://github.com/Ming-Research/Halo-wf/actions/runs/37787718241),
+artifact `halo-bench-postcatch-retry`: main `5885f9ab4` against the branch at
+`0f09d8b`, whose `dispatch.wf`, `handlers.wf` and `continuations.wf` equal
+main's, the same criterion; medians in seconds:
+
+| Kernel | Main | Branch | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1050 | 0.1036 | 0.987 | 0.67% | 1.21% | 1.000 |
+| loop | 0.4315 | 0.4315 | 1.000 | 0.38% | 0.38% | 1.002 |
+| integer-table | 0.4959 | 0.4949 | 0.998 | 1.95% | 2.32% | 0.991 |
+| string-key | 0.0260 | 0.0259 | 0.993 | 3.56% | 2.68% | 1.001 |
+| concat | 0.0735 | 0.0739 | 1.005 | 2.25% | 6.05% | 0.999 |
+| sort | 0.1771 | 0.1768 | 0.998 | 5.04% | 2.12% | 1.003 |
+| binary-trees | 1.9072 | 1.9125 | 1.003 | 2.27% | 0.60% | 1.003 |
+
+`--check-module pkg::vm`: main 7.619 and 7.531 s, branch 7.746 and 7.820 s
+(at most 1.04 times).
+
+**The criterion is met**: no kernel is slower beyond its larger range and the
+twin's difference, and the module check stays within 1.25 times.
