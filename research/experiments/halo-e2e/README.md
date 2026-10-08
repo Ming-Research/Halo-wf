@@ -102,13 +102,24 @@ reclaims three empty tables (144 bytes), one 10-byte concatenated string
 upvalue (32 bytes). The pinned two-capture closure adds exactly one live closure
 (32 bytes) and two live upvalues (64 bytes) to the baseline.
 Observation 150 checks live totals relative to that baseline without reading
-heap storage. Observation 151 checks exact reclamation and conservation; counting
-a freed closure twice fails it. Observation 155 checks that visited slots cover
-live plus freed objects, then uses budget/resume on a cached allocation-free
-loop to require equal visits, equal live totals and zero reclamation in two
-consecutive forced collections. Already free table slots must still be visited;
-the public API does not independently expose absolute slab lengths. The checks
-also account for gray-stack pops and preserve every snapshot field across reset.
+heap storage. After the allocation-free sweeps, the public `intern` and `pin`
+calls create and retain the fresh 14-byte `gc-live-string` (38 logical bytes).
+A forced cached idle sweep must gain exactly one live string and 38 bytes with
+zero string reclamation; after public `unpin`, the next sweep must free exactly
+one string and 38 bytes and return live strings to their previous totals.
+A constant live-string count fails observation 150. Observation 151 checks exact
+reclamation and conservation; counting a freed closure twice fails it.
+Observation 155 checks that visited slots cover live plus freed objects, a
+lower bound that does not establish visits to already free slots. It then uses
+budget/resume on a cached allocation-free loop to require equal visits, equal
+live totals and zero reclamation in two consecutive forced collections.
+Compared with the reclamation sweep, string visits must not decrease and
+upvalue and table visits must remain equal: no strings, upvalues or tables are
+allocated between these snapshots, and the slots freed by that sweep must still
+be visited. Counting only occupied string or upvalue slots fails observation
+155. Table visits must also exceed live tables; the public API does not
+independently expose absolute slab lengths. The checks also account for
+gray-stack pops and preserve every snapshot field across reset.
 Pause checks cover clamping below
 100, the 1 MiB floor, fractional percentages, saturation without premature
 product overflow, reset persistence, stress overriding the

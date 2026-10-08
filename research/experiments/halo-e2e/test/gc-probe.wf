@@ -81,7 +81,7 @@ fn gc_probe_kind_zero(stats: CollectionKindStats) -> r: Bool pure {
 }
 
 fn gc_probe_kind_check(stats: CollectionKindStats, before: CollectionKindStats, added_objects: u64, added_bytes: u64, freed_objects: u64, freed_bytes: u64) -> r: u8 pure {
-  doc "Observation 150 checks exact live totals from the previous completed collection plus named allocations minus independently expected reclamation; 151 checks exact freed totals and conservation using the reported freed totals. Observation 155 requires slots_visited at least live_objects plus freed_objects, including slots already free.";
+  doc "Observation 150 checks exact live totals from the previous completed collection plus named allocations minus independently expected reclamation; 151 checks exact freed totals and conservation using the reported freed totals. Observation 155 requires slots_visited at least live_objects plus freed_objects; this lower bound covers objects occupied at sweep entry and does not establish visits to already free slots.";
   let objects = before.live_objects +sat added_objects;
   let bytes = before.live_bytes +sat added_bytes;
   if freed_objects > objects {
@@ -180,7 +180,7 @@ fn gc_probe_kind_stable(stats: CollectionKindStats, before: CollectionKindStats)
 }
 
 fn gc_probe_slots_probe(engine: &Engine, env: &Probe, script: ScriptId, before: CollectionStats, keep: Bool) -> r: u8 writes(engine), writes(env) {
-  doc "Observation 155 starts the precompiled allocation-free while-true loop with budget zero: its entry collection replaces the idle 24-byte closure and then it parks before the loop safepoint. Resuming with budget one forces exactly one further collection and parks again, allocating nothing; every kind must keep equal live totals and slots_visited with zero reclamation. Table slots must exceed live tables and equal the workload sweep's visits, so the three already freed table slots are still visited.";
+  doc "Observation 155 starts the precompiled allocation-free while-true loop with budget zero: its entry collection replaces the idle 24-byte closure and then it parks before the loop safepoint. Resuming with budget one forces exactly one further collection and parks again, allocating nothing; every kind must keep equal live totals and slots_visited with zero reclamation. Relative to the workload sweep, string visits must not decrease and upvalue visits must be equal, since neither kind allocates between them; the string and captured upvalue freed by that sweep must still be visited. Table slots must exceed live tables and equal the workload sweep's visits, so the three already freed table slots are still visited.";
   let count_before = halo::embed::collection_count(engine: engine);
   let enabled = True();
   halo::embed::set_gc_stress(engine: engine, enabled: enabled);
@@ -203,6 +203,12 @@ fn gc_probe_slots_probe(engine: &Engine, env: &Probe, script: ScriptId, before: 
     return 155_u8;
   }
   if first.tables.slots_visited != before.tables.slots_visited {
+    return 155_u8;
+  }
+  if first.strings.slots_visited < before.strings.slots_visited {
+    return 155_u8;
+  }
+  if first.upvalues.slots_visited != before.upvalues.slots_visited {
     return 155_u8;
   }
   let resumed = halo::embed::resume::<ProbeHost>(engine: engine, env: env, budget: 1_u64);
@@ -231,8 +237,45 @@ fn gc_probe_slots_probe(engine: &Engine, env: &Probe, script: ScriptId, before: 
   return 0_u8;
 }
 
+fn gc_probe_string_lifetime(engine: &Engine, env: &Probe, script: ScriptId, keep: Bool) -> r: u8 writes(engine), writes(env) {
+  doc "After the allocation-free sweeps, held interns the fresh 14-byte gc-live-string at 24 + 14 = 38 logical bytes and pins it through the public embedding API. The next forced cached idle collection retains exactly one additional string and 38 bytes with no string reclamation; unpin then lets the following collection free exactly that string and 38 bytes, returning live strings to the previous totals. Each idle start allocates one uncaptured 24-byte entry closure and frees the previous one; no other strings, tables or upvalues are allocated.";
+  let before = halo::embed::last_collection(engine: engine);
+  let held = halo::embed::intern(engine: engine, bytes: &gc_probe_live_string[0_u64..14_u64]);
+  let held_kind = halo::embed::kind(value: held);
+  if held_kind != 3_u8 {
+    return 150_u8;
+  }
+  let pinned = halo::embed::pin(engine: engine, value: held);
+  let token = match pinned {
+    None() => {
+      return 150_u8;
+    }
+    Some(value: held_token) => {
+      give held_token;
+    }
+  }
+  let retained_run = gc_probe_collect_cached(engine: engine, env: env, script: script, keep: keep);
+  let retained_failed = bnot(retained_run);
+  if retained_failed {
+    return 149_u8;
+  }
+  let retained = halo::embed::last_collection(engine: engine);
+  let retained_code = gc_probe_kind_check(stats: retained.strings, before: before.strings, added_objects: 1_u64, added_bytes: 38_u64, freed_objects: 0_u64, freed_bytes: 0_u64);
+  if retained_code != 0_u8 {
+    return retained_code;
+  }
+  halo::embed::unpin(engine: engine, token: token);
+  let released_run = gc_probe_collect_cached(engine: engine, env: env, script: script, keep: keep);
+  let released_failed = bnot(released_run);
+  if released_failed {
+    return 149_u8;
+  }
+  let released = halo::embed::last_collection(engine: engine);
+  return gc_probe_kind_check(stats: released.strings, before: retained.strings, added_objects: 0_u64, added_bytes: 0_u64, freed_objects: 1_u64, freed_bytes: 38_u64);
+}
+
 fn gc_stats_probe(stress: Bool) -> r: u8 pure {
-  doc "Observations 146 through 155 check initial and completed snapshots using only embedding calls, exact per-kind conservation and live deltas, reclamation, marking work, pause arithmetic, reset preservation and allocation-free repeated sweeps in both modes. All three chunks compile before the baseline collection, which includes compiler/library interning. A forced workload entry collection replaces the baseline entry closure; its snapshot W precedes the named Lua allocations despite being read after return. Observation 170 pins kept and checks W's upvalue totals plus exactly two objects and 64 bytes.";
+  doc "Observations 146 through 155 check initial and completed snapshots using only embedding calls, exact per-kind conservation and live deltas, reclamation, marking work, pause arithmetic, reset preservation and allocation-free repeated sweeps in both modes, followed by a fresh pinned string's exact live gain and release. All three chunks compile before the baseline collection, which includes compiler/library interning. A forced workload entry collection replaces the baseline entry closure; its snapshot W precedes the named Lua allocations despite being read after return. Observation 170 pins kept and checks W's upvalue totals plus exactly two objects and 64 bytes.";
   let engine = halo::embed::new_engine(limit: 0_u64);
   let env = Probe(mode: 0_u8, calls: 0_u64);
   let initial = halo::embed::last_collection(engine: &engine);
@@ -379,7 +422,11 @@ fn gc_stats_probe(stress: Bool) -> r: u8 pure {
   if saved.next_threshold != stats.next_threshold {
     return 154_u8;
   }
-  return gc_probe_slots_probe(engine: &engine, env: &env, script: repeat_script, before: stats, keep: stress);
+  let slots_code = gc_probe_slots_probe(engine: &engine, env: &env, script: repeat_script, before: stats, keep: stress);
+  if slots_code != 0_u8 {
+    return slots_code;
+  }
+  return gc_probe_string_lifetime(engine: &engine, env: &env, script: idle_script, keep: stress);
 }
 
 fn gc_pause_trial(percent: u64, stress: Bool) -> r: Result<u64, u8> pure {
@@ -687,6 +734,8 @@ const gc_probe_name: Array<u8, 9> = "@gc_probe";
 const gc_probe_idle: Array<u8, 8> = "return 1";
 
 const gc_probe_repeat: Array<u8, 17> = "while true do end";
+
+const gc_probe_live_string: Array<u8, 14> = "gc-live-string";
 
 const gc_probe_drop: Array<u8, 147> = "local a,b,c={},{},{}; local x,y=1,2; local kept=function() return x+y end; local function f() return a end; local s='gc-'..'garbage'; return 1,kept";
 
