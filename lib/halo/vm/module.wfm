@@ -331,4 +331,5 @@ public fn install_libraries(vm: &Vm) -> r: unit writes(vm) doc "Installs the bui
 public struct CjsonConfig {
   public settings: Array<u64, 9>;
   public buffer: Box<Slots<u8>>;
+  free: Bool;
 }

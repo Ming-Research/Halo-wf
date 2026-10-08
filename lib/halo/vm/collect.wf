@@ -157,6 +157,7 @@ fn collect_if_due(vm: &Vm, stack: &Box<Slots<Value>>, consts: &Box<Slots<Value>>
     }
   }
   let freed = pkg::heap::gc_sweep(heap: &vm^.heap);
+  cjson_reclaim(vm: vm);
   if vm^.heap.limit > 0_u64 {
     if vm^.heap.bytes > vm^.heap.limit {
       return raise_text(vm: vm, text: &collection_memory_error[0_u64..17_u64]);

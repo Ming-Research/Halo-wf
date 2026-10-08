@@ -928,6 +928,7 @@ fn long_chunk_error(engine: &Engine, env: &Probe, name: &[u8], want: &[u8]) -> r
 }
 
 fn smoke() -> status: ExitStatus pure {
+  doc "Runs the embedding lifecycle observations, including cjson configuration reclamation with ordinary and stress collection.";
   let code = embed_probe();
   if code == 0_u8 {
     set code = pending_probe();
@@ -937,6 +938,14 @@ fn smoke() -> status: ExitStatus pure {
   }
   if code == 0_u8 {
     set code = pcall_field_probe();
+  }
+  if code == 0_u8 {
+    let ordinary = False();
+    set code = cjson_configs_probe(stress: ordinary);
+  }
+  if code == 0_u8 {
+    let stress = True();
+    set code = cjson_configs_probe(stress: stress);
   }
   return std::process::exit_status(code: code);
 }
