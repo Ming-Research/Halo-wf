@@ -2905,6 +2905,34 @@ excuse. Both results lie within about a point of their bounds, so the
 comparison is repeated on the 14900K when it returns before the change is
 given up (Q93).
 
+### String keys in table writes: retried on the 14900K
+
+The M5 result lay within about a point of the criterion's bounds, so, as the
+owner chose (Q93), the comparison was repeated on the 14900K once it was
+back, against the criterion as first recorded and recorded before it ran (on
+the measurement-only branch `claude/halo-strwrite-retry`, `f24cf32b5`):
+main `2945f3b99`, which holds the string-key lookup, against the same change
+applied on it (the write change `a5962bf8b`, cherry-picked), six interleaved
+full-LTO pairs with a twin.
+[Run 37726526163](https://github.com/Ming-Research/Halo-wf/actions/runs/37726526163),
+medians in seconds:
+
+| Kernel | Main | Branch | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1055 | 0.1062 | 1.007 | 0.55% | 1.80% | 0.996 |
+| loop | 0.4326 | 0.4318 | 0.998 | 0.69% | 0.88% | 1.001 |
+| integer-table | 0.4995 | 0.4975 | 0.996 | 3.27% | 9.08% | 1.003 |
+| string-key | 0.0259 | 0.0258 | 0.997 | 39.82% | 0.95% | 1.002 |
+| concat | 0.0734 | 0.0734 | 1.001 | 0.51% | 0.85% | 1.003 |
+| sort | 0.1760 | 0.1729 | 0.982 | 1.60% | 2.10% | 1.002 |
+| binary-trees | 1.9083 | 1.8711 | 0.981 | 1.99% | 1.62% | 1.009 |
+
+`--check-module pkg::vm`: main 7.798 and 7.577 s, branch 7.539 and 7.614 s.
+
+**The criterion is not met; the change stays reverted.** Binary-trees falls
+1.9%, short of the 3% required; no kernel is slower beyond its bounds, so the
+M5 run's slower fib does not recur here.
+
 ## Marking only collectable values
 
 ### Criterion, recorded before the change
@@ -2997,3 +3025,27 @@ the twin's difference, no kernel is slower beyond its larger range and the
 twin's, `--check-module pkg::vm` takes at most 1.25 times as long, and
 `make check` passes, the collector's root controls and the oracle under
 collector stress included; otherwise the change is reverted again.
+
+Result: [run 37726529192](https://github.com/Ming-Research/Halo-wf/actions/runs/37726529192),
+main `2945f3b99` against the branch at `f2d9ac43d`, whose engine differs only
+in `lib/halo/heap/gc.wf` (the run's own `git diff --stat`); medians in
+seconds:
+
+| Kernel | Main | Branch | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1060 | 0.1056 | 0.996 | 2.33% | 1.77% | 0.996 |
+| loop | 0.4327 | 0.4334 | 1.002 | 1.04% | 1.22% | 0.999 |
+| integer-table | 0.4924 | 0.4847 | 0.984 | 3.01% | 1.41% | 1.006 |
+| string-key | 0.0259 | 0.0257 | 0.994 | 1.87% | 1.81% | 1.000 |
+| concat | 0.0737 | 0.0737 | 1.000 | 34.65% | 0.87% | 0.999 |
+| sort | 0.1740 | 0.1732 | 0.995 | 2.16% | 0.37% | 1.003 |
+| binary-trees | 1.9198 | 1.9189 | 1.000 | 2.77% | 4.21% | 1.003 |
+
+`--check-module pkg::vm`: main 7.604 and 7.628 s, branch 7.658 and 7.540 s.
+`make check` passed at the branch
+([run 37726529195](https://github.com/Ming-Research/Halo-wf/actions/runs/37726529195)).
+
+**The criterion is not met, and the change is reverted again.** Integer-table
+falls 1.6%, short of the 3% required; no kernel is slower beyond its bounds.
+Skipping `gc_mark` for values that name no object saves integer-table 1.6%
+on the 14900K, less than its hosted profile share suggested.
