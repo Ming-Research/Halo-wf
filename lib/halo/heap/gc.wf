@@ -102,47 +102,14 @@ fn gc_mark_upvalue(heap: &Heap, h: u32) -> r: unit writes(heap) {
   return unit;
 }
 
-fn gc_names_object(v: Value) -> r: Bool pure {
-  doc "Whether a value names a collectable object; numbers, nil, booleans and builtins name none, so marking them does nothing.";
-  match v {
-    Str(..) => {
-      return True();
-    }
-    Tab(..) => {
-      return True();
-    }
-    Fun(..) => {
-      return True();
-    }
-    Nil() => {
-      return False();
-    }
-    False() => {
-      return False();
-    }
-    True() => {
-      return False();
-    }
-    Num(..) => {
-      return False();
-    }
-    Builtin(..) => {
-      return False();
-    }
-  }
-}
-
 fn mark_table_contents(heap: &Heap, ti: u64) -> r: unit writes(heap) {
-  doc "Marks a table's array values, node keys and values, and metatable, calling gc_mark only for values that name an object, as PUC's markvalue tests in line; bounds are re-read after every mark, which writes the heap.";
+  doc "Marks a table's array values, node keys and values, and metatable; bounds are re-read after every mark, which writes the heap.";
   let j = 0_u64;
   loop {
     if ti < heap^.tables.inner.len {
       if j < heap^.tables.inner[ti].payload.array.inner.len {
         let v = heap^.tables.inner[ti].payload.array.inner[j];
-        let value_names_object = gc_names_object(v: v);
-        if value_names_object {
-          gc_mark(heap: heap, v: v);
-        }
+        gc_mark(heap: heap, v: v);
         set j = j +wrap 1_u64;
       } else {
         break;
@@ -157,14 +124,8 @@ fn mark_table_contents(heap: &Heap, ti: u64) -> r: unit writes(heap) {
       if k < heap^.tables.inner[ti].payload.nodes.inner.len {
         let key = heap^.tables.inner[ti].payload.nodes.inner[k].key;
         let val = heap^.tables.inner[ti].payload.nodes.inner[k].val;
-        let key_names_object = gc_names_object(v: key);
-        if key_names_object {
-          gc_mark(heap: heap, v: key);
-        }
-        let val_names_object = gc_names_object(v: val);
-        if val_names_object {
-          gc_mark(heap: heap, v: val);
-        }
+        gc_mark(heap: heap, v: key);
+        gc_mark(heap: heap, v: val);
         set k = k +wrap 1_u64;
       } else {
         break;
