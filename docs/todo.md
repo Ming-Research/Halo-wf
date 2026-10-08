@@ -103,9 +103,9 @@ example apart from the engine code that exposed it
   due check those runs exercise, while pause applies after a collection and
   retains the 1 MiB floor, so neither simply replaces immediate trigger
   arming. The statistics and pause observations control and observe collection
-  through the embedding API; their independent statistics oracle reads slab
-  payloads and lengths without changing trigger fields. These older trigger
-  cases remain deferred to the instrumentation-boundary
+  through the embedding API; their statistics oracle uses controlled allocations
+  and conservation between completed collections without reading heap fields.
+  These older trigger cases remain deferred to the instrumentation-boundary
   ruling below. Impact: the probe depends on collector trigger
   storage; a change to it breaks the probe rather than an API. Change: add an
   embedding control that makes the next safepoint's allocation trigger due, or

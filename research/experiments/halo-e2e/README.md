@@ -90,15 +90,25 @@ Collector statistics and pause observations (exits 146–176) control and observ
 collections through the embedding API. Statistics checks run in ordinary and
 stress modes, check the zero snapshot before collection, reclaim three empty
 tables and a captured upvalue, and pin a returned closure with two distinct
-captures to check live upvalues. An independent read-only census counts occupied
-slab cells and their payload capacities using the allocation formulas in
-[`heap/slabs.wf`](../../../lib/halo/heap/slabs.wf). Exact freed counts and bytes
-come from the difference between censuses before and after one idle-entry
-collection, accounting for its one new 24-byte entry closure; compilation
-precedes the first census so compiler and library interning need no assumed
-counts. Exact live counts and bytes match the remaining payloads, and exact
-visited slots match slab lengths including already free slots. The checks also
-account for gray-stack pops and preserve observations across reset.
+captures to check live upvalues. All statistics chunks compile before the
+baseline collection, so compiler and library interning are already included in
+its live totals. Each following collection checks per-kind conservation using
+the allocation formulas in
+[`heap/slabs.wf`](../../../lib/halo/heap/slabs.wf), plus exact expected live
+deltas and freed totals. The workload entry replaces one 24-byte entry closure
+with another; its snapshot precedes the Lua allocations. The next idle sweep
+reclaims three empty tables (144 bytes), one 10-byte concatenated string
+(34 bytes), the workload entry and its one-capture closure (52 bytes), and one
+upvalue (32 bytes). The pinned two-capture closure adds exactly one live closure
+(32 bytes) and two live upvalues (64 bytes) to the baseline.
+Observation 150 checks live totals relative to that baseline without reading
+heap storage. Observation 151 checks exact reclamation and conservation; counting
+a freed closure twice fails it. Observation 155 checks that visited slots cover
+live plus freed objects, then uses budget/resume on a cached allocation-free
+loop to require equal visits, equal live totals and zero reclamation in two
+consecutive forced collections. Already free table slots must still be visited;
+the public API does not independently expose absolute slab lengths. The checks
+also account for gray-stack pops and preserve every snapshot field across reset.
 Pause checks cover clamping below
 100, the 1 MiB floor, fractional percentages, saturation without premature
 product overflow, reset persistence, stress overriding the

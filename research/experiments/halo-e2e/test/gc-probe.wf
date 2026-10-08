@@ -41,6 +41,21 @@ fn gc_probe_collect(engine: &Engine, env: &Probe, keep: Bool) -> r: Bool writes(
   return False();
 }
 
+fn gc_probe_collect_cached(engine: &Engine, env: &Probe, script: ScriptId, keep: Bool) -> r: Bool writes(engine), writes(env) {
+  doc "Forces exactly one cached chunk's entry collection and restores the requested mode. Each start allocates one uncaptured 24-byte entry closure before collecting; the statistics workload has no later call or loop safepoint.";
+  let before = halo::embed::collection_count(engine: engine);
+  let enabled = True();
+  halo::embed::set_gc_stress(engine: engine, enabled: enabled);
+  let ran = gc_probe_run_cached(engine: engine, env: env, script: script);
+  halo::embed::set_gc_stress(engine: engine, enabled: keep);
+  if ran {
+    let after = halo::embed::collection_count(engine: engine);
+    let expected = before +sat 1_u64;
+    return after == expected;
+  }
+  return False();
+}
+
 fn gc_probe_live_bytes(stats: CollectionStats) -> r: u64 pure {
   doc "Sums the public per-kind accounting to check the independently specified pause formula.";
   let first = stats.strings.live_bytes +sat stats.tables.live_bytes;
@@ -65,139 +80,159 @@ fn gc_probe_kind_zero(stats: CollectionKindStats) -> r: Bool pure {
   return stats.slots_visited == 0_u64;
 }
 
-fn gc_probe_census(engine: &Engine) -> r: CollectionStats reads(engine) {
-  doc "Independently counts occupied cells and slab lengths, using the allocation formulas in heap/slabs.wf: string 24 plus byte capacity, table 48 plus 16 per array slot and 32 per node, closure 24 plus 4 per capture, upvalue 32. It reads no collection counters or marks.";
-  let string_objects = 0_u64;
-  let string_bytes = 0_u64;
-  for (si in 0_u64..engine^.vm.heap.strings.inner.len) {
-    if engine^.vm.heap.strings.inner[si].live {
-      let amount = 24_u64 +sat engine^.vm.heap.strings.inner[si].payload.bytes.inner.cap;
-      set string_objects = string_objects +sat 1_u64;
-      set string_bytes = string_bytes +sat amount;
-    }
-  }
-  let table_objects = 0_u64;
-  let table_bytes = 0_u64;
-  for (ti in 0_u64..engine^.vm.heap.tables.inner.len) {
-    if engine^.vm.heap.tables.inner[ti].live {
-      let array_bytes = 16_u64 *sat engine^.vm.heap.tables.inner[ti].payload.array.inner.cap;
-      let node_bytes = 32_u64 *sat engine^.vm.heap.tables.inner[ti].payload.nodes.inner.cap;
-      let buffers = array_bytes +sat node_bytes;
-      let amount = 48_u64 +sat buffers;
-      set table_objects = table_objects +sat 1_u64;
-      set table_bytes = table_bytes +sat amount;
-    }
-  }
-  let closure_objects = 0_u64;
-  let closure_bytes = 0_u64;
-  for (ci in 0_u64..engine^.vm.heap.closures.inner.len) {
-    if engine^.vm.heap.closures.inner[ci].live {
-      let captures = 4_u64 *sat engine^.vm.heap.closures.inner[ci].payload.upvals.inner.cap;
-      let amount = 24_u64 +sat captures;
-      set closure_objects = closure_objects +sat 1_u64;
-      set closure_bytes = closure_bytes +sat amount;
-    }
-  }
-  let upvalue_objects = 0_u64;
-  for (ui in 0_u64..engine^.vm.heap.upvalues.inner.len) {
-    if engine^.vm.heap.upvalues.inner[ui].live {
-      set upvalue_objects = upvalue_objects +sat 1_u64;
-    }
-  }
-  let upvalue_bytes = 32_u64 *sat upvalue_objects;
-  let strings = CollectionKindStats(live_objects: string_objects, live_bytes: string_bytes, freed_objects: 0_u64, freed_bytes: 0_u64, slots_visited: engine^.vm.heap.strings.inner.len);
-  let tables = CollectionKindStats(live_objects: table_objects, live_bytes: table_bytes, freed_objects: 0_u64, freed_bytes: 0_u64, slots_visited: engine^.vm.heap.tables.inner.len);
-  let closures = CollectionKindStats(live_objects: closure_objects, live_bytes: closure_bytes, freed_objects: 0_u64, freed_bytes: 0_u64, slots_visited: engine^.vm.heap.closures.inner.len);
-  let upvalues = CollectionKindStats(live_objects: upvalue_objects, live_bytes: upvalue_bytes, freed_objects: 0_u64, freed_bytes: 0_u64, slots_visited: engine^.vm.heap.upvalues.inner.len);
-  return CollectionStats(strings: strings, tables: tables, closures: closures, upvalues: upvalues, gray_pops: 0_u64, next_threshold: 0_u64);
-}
-
-fn gc_probe_kind_live(stats: CollectionKindStats, census: CollectionKindStats) -> r: Bool pure {
-  doc "Checks exact completed live counts and bytes against occupied payloads, including live upvalues.";
-  if stats.live_objects != census.live_objects {
-    return False();
-  }
-  return stats.live_bytes == census.live_bytes;
-}
-
-fn gc_probe_kind_freed(stats: CollectionKindStats, before: CollectionKindStats, after: CollectionKindStats, added_objects: u64, added_bytes: u64) -> r: Bool pure {
-  doc "Checks exact reclaimed counts and bytes by conservation between independent payload censuses; the idle start adds only one 24-byte uncaptured entry closure.";
+fn gc_probe_kind_check(stats: CollectionKindStats, before: CollectionKindStats, added_objects: u64, added_bytes: u64, freed_objects: u64, freed_bytes: u64) -> r: u8 pure {
+  doc "Observation 150 checks exact live totals from the previous completed collection plus named allocations minus independently expected reclamation; 151 checks exact freed totals and conservation using the reported freed totals. Observation 155 requires slots_visited at least live_objects plus freed_objects, including slots already free.";
   let objects = before.live_objects +sat added_objects;
   let bytes = before.live_bytes +sat added_bytes;
-  let freed_objects = objects -sat after.live_objects;
-  let freed_bytes = bytes -sat after.live_bytes;
-  if stats.freed_objects != freed_objects {
-    return False();
+  if freed_objects > objects {
+    return 150_u8;
   }
-  return stats.freed_bytes == freed_bytes;
+  if freed_bytes > bytes {
+    return 150_u8;
+  }
+  let live_objects = objects -sat freed_objects;
+  let live_bytes = bytes -sat freed_bytes;
+  if stats.live_objects != live_objects {
+    return 150_u8;
+  }
+  if stats.live_bytes != live_bytes {
+    return 150_u8;
+  }
+  if stats.freed_objects != freed_objects {
+    return 151_u8;
+  }
+  if stats.freed_bytes != freed_bytes {
+    return 151_u8;
+  }
+  let conserved_objects = objects -sat stats.freed_objects;
+  let conserved_bytes = bytes -sat stats.freed_bytes;
+  if conserved_objects != stats.live_objects {
+    return 151_u8;
+  }
+  if conserved_bytes != stats.live_bytes {
+    return 151_u8;
+  }
+  let occupied = stats.live_objects +sat stats.freed_objects;
+  if stats.slots_visited < occupied {
+    return 155_u8;
+  }
+  return 0_u8;
 }
 
-fn gc_probe_checked_collect(engine: &Engine, env: &Probe, keep: Bool) -> r: u8 writes(engine), writes(env) {
-  doc "Tightens observations 150, 151 and 155 in both modes: compile before the census, force exactly one idle-entry sweep, and compare every live, freed and visited-slot field with independent allocation accounting. Compiler and library interning are included in the census, not guessed.";
-  let compiled = halo::embed::compile(engine: engine, chunk_name: &gc_probe_name[0_u64..9_u64], source: &gc_probe_idle[0_u64..8_u64]);
-  match move compiled {
-    Err(..) => {
-      return 147_u8;
-    }
-    Ok(value: idle_script) => {
-      let before = gc_probe_census(engine: engine);
-      let count_before = halo::embed::collection_count(engine: engine);
-      let enabled = True();
-      halo::embed::set_gc_stress(engine: engine, enabled: enabled);
-      let ran = gc_probe_run_cached(engine: engine, env: env, script: idle_script);
-      halo::embed::set_gc_stress(engine: engine, enabled: keep);
-      let failed = bnot(ran);
-      if failed {
-        return 147_u8;
-      }
-      let count_after = halo::embed::collection_count(engine: engine);
-      let wanted_count = count_before +sat 1_u64;
-      if count_after != wanted_count {
-        return 147_u8;
-      }
-      let after = gc_probe_census(engine: engine);
-      let stats = halo::embed::last_collection(engine: engine);
-      let strings_live = gc_probe_kind_live(stats: stats.strings, census: after.strings);
-      let tables_live = gc_probe_kind_live(stats: stats.tables, census: after.tables);
-      let closures_live = gc_probe_kind_live(stats: stats.closures, census: after.closures);
-      let upvalues_live = gc_probe_kind_live(stats: stats.upvalues, census: after.upvalues);
-      let first_live = band(strings_live, tables_live);
-      let second_live = band(closures_live, upvalues_live);
-      let all_live = band(first_live, second_live);
-      let wrong_live = bnot(all_live);
-      if wrong_live {
-        return 150_u8;
-      }
-      let strings_freed = gc_probe_kind_freed(stats: stats.strings, before: before.strings, after: after.strings, added_objects: 0_u64, added_bytes: 0_u64);
-      let tables_freed = gc_probe_kind_freed(stats: stats.tables, before: before.tables, after: after.tables, added_objects: 0_u64, added_bytes: 0_u64);
-      let closures_freed = gc_probe_kind_freed(stats: stats.closures, before: before.closures, after: after.closures, added_objects: 1_u64, added_bytes: 24_u64);
-      let upvalues_freed = gc_probe_kind_freed(stats: stats.upvalues, before: before.upvalues, after: after.upvalues, added_objects: 0_u64, added_bytes: 0_u64);
-      let first_freed = band(strings_freed, tables_freed);
-      let second_freed = band(closures_freed, upvalues_freed);
-      let all_freed = band(first_freed, second_freed);
-      let wrong_freed = bnot(all_freed);
-      if wrong_freed {
-        return 151_u8;
-      }
-      if stats.strings.slots_visited != after.strings.slots_visited {
-        return 155_u8;
-      }
-      if stats.tables.slots_visited != after.tables.slots_visited {
-        return 155_u8;
-      }
-      if stats.closures.slots_visited != after.closures.slots_visited {
-        return 155_u8;
-      }
-      if stats.upvalues.slots_visited != after.upvalues.slots_visited {
-        return 155_u8;
-      }
-    }
+fn gc_probe_entry_stats(stats: CollectionStats, before: CollectionStats) -> r: u8 pure {
+  doc "A cached start after an idle collection allocates its uncaptured 24-byte entry closure and frees the previous uncaptured 24-byte entry closure. All four kinds retain exactly the previous live objects and bytes; no string, table or upvalue is allocated or freed at entry.";
+  let strings = gc_probe_kind_check(stats: stats.strings, before: before.strings, added_objects: 0_u64, added_bytes: 0_u64, freed_objects: 0_u64, freed_bytes: 0_u64);
+  if strings != 0_u8 {
+    return strings;
+  }
+  let tables = gc_probe_kind_check(stats: stats.tables, before: before.tables, added_objects: 0_u64, added_bytes: 0_u64, freed_objects: 0_u64, freed_bytes: 0_u64);
+  if tables != 0_u8 {
+    return tables;
+  }
+  let closures = gc_probe_kind_check(stats: stats.closures, before: before.closures, added_objects: 1_u64, added_bytes: 24_u64, freed_objects: 1_u64, freed_bytes: 24_u64);
+  if closures != 0_u8 {
+    return closures;
+  }
+  return gc_probe_kind_check(stats: stats.upvalues, before: before.upvalues, added_objects: 0_u64, added_bytes: 0_u64, freed_objects: 0_u64, freed_bytes: 0_u64);
+}
+
+fn gc_probe_work_stats(stats: CollectionStats, before: CollectionStats) -> r: u8 pure {
+  doc "Between the workload's entry collection W and idle collection X, a, b and c allocate three empty tables at 48 bytes each; kept captures distinct x and y in one 32-byte closure and two 32-byte upvalues; f captures a in one 28-byte closure and one 32-byte upvalue; s joins compiled literal strings gc- and garbage into one fresh 10-byte string at 24 + 10 bytes, with no numeric coercion or library call; X's idle start adds one 24-byte entry closure. X frees the three tables (144 bytes), s (34 bytes), f and W's entry closure (two closures, 52 bytes), and a's upvalue (32 bytes). Relative to W, only kept and x/y remain in addition to the replacement entry closure: closures +1 object/+32 bytes and upvalues +2 objects/+64 bytes.";
+  let strings = gc_probe_kind_check(stats: stats.strings, before: before.strings, added_objects: 1_u64, added_bytes: 34_u64, freed_objects: 1_u64, freed_bytes: 34_u64);
+  if strings != 0_u8 {
+    return strings;
+  }
+  let tables = gc_probe_kind_check(stats: stats.tables, before: before.tables, added_objects: 3_u64, added_bytes: 144_u64, freed_objects: 3_u64, freed_bytes: 144_u64);
+  if tables != 0_u8 {
+    return tables;
+  }
+  let closures = gc_probe_kind_check(stats: stats.closures, before: before.closures, added_objects: 3_u64, added_bytes: 84_u64, freed_objects: 2_u64, freed_bytes: 52_u64);
+  if closures != 0_u8 {
+    return closures;
+  }
+  return gc_probe_kind_check(stats: stats.upvalues, before: before.upvalues, added_objects: 3_u64, added_bytes: 96_u64, freed_objects: 1_u64, freed_bytes: 32_u64);
+}
+
+fn gc_probe_kind_equal(stats: CollectionKindStats, before: CollectionKindStats) -> r: Bool pure {
+  doc "Checks preservation of every public per-kind snapshot field across reset.";
+  if stats.live_objects != before.live_objects {
+    return False();
+  }
+  if stats.live_bytes != before.live_bytes {
+    return False();
+  }
+  if stats.freed_objects != before.freed_objects {
+    return False();
+  }
+  if stats.freed_bytes != before.freed_bytes {
+    return False();
+  }
+  return stats.slots_visited == before.slots_visited;
+}
+
+fn gc_probe_kind_stable(stats: CollectionKindStats, before: CollectionKindStats) -> r: Bool pure {
+  doc "Observation 155 checks consecutive collections with no intervening allocation: exact zero freed objects/bytes, unchanged live objects/bytes and equal slots_visited, plus slots_visited at least live_objects plus freed_objects. It does not infer a private slab length.";
+  let code = gc_probe_kind_check(stats: stats, before: before, added_objects: 0_u64, added_bytes: 0_u64, freed_objects: 0_u64, freed_bytes: 0_u64);
+  if code != 0_u8 {
+    return False();
+  }
+  return stats.slots_visited == before.slots_visited;
+}
+
+fn gc_probe_slots_probe(engine: &Engine, env: &Probe, script: ScriptId, before: CollectionStats, keep: Bool) -> r: u8 writes(engine), writes(env) {
+  doc "Observation 155 starts the precompiled allocation-free while-true loop with budget zero: its entry collection replaces the idle 24-byte closure and then it parks before the loop safepoint. Resuming with budget one forces exactly one further collection and parks again, allocating nothing; every kind must keep equal live totals and slots_visited with zero reclamation. Table slots must exceed live tables and equal the workload sweep's visits, so the three already freed table slots are still visited.";
+  let count_before = halo::embed::collection_count(engine: engine);
+  let enabled = True();
+  halo::embed::set_gc_stress(engine: engine, enabled: enabled);
+  let started = halo::embed::start::<ProbeHost>(engine: engine, env: env, script: script, budget: 0_u64);
+  let start_code = outcome_code(outcome: started);
+  if start_code != 2_u8 {
+    return 155_u8;
+  }
+  let count_started = halo::embed::collection_count(engine: engine);
+  let wanted_start = count_before +sat 1_u64;
+  if count_started != wanted_start {
+    return 155_u8;
+  }
+  let first = halo::embed::last_collection(engine: engine);
+  let entry_code = gc_probe_entry_stats(stats: first, before: before);
+  if entry_code != 0_u8 {
+    return 155_u8;
+  }
+  if first.tables.slots_visited <= first.tables.live_objects {
+    return 155_u8;
+  }
+  if first.tables.slots_visited != before.tables.slots_visited {
+    return 155_u8;
+  }
+  let resumed = halo::embed::resume::<ProbeHost>(engine: engine, env: env, budget: 1_u64);
+  halo::embed::set_gc_stress(engine: engine, enabled: keep);
+  let resume_code = outcome_code(outcome: resumed);
+  if resume_code != 2_u8 {
+    return 155_u8;
+  }
+  let count_resumed = halo::embed::collection_count(engine: engine);
+  let wanted_resume = count_started +sat 1_u64;
+  if count_resumed != wanted_resume {
+    return 155_u8;
+  }
+  let second = halo::embed::last_collection(engine: engine);
+  let strings = gc_probe_kind_stable(stats: second.strings, before: first.strings);
+  let tables = gc_probe_kind_stable(stats: second.tables, before: first.tables);
+  let closures = gc_probe_kind_stable(stats: second.closures, before: first.closures);
+  let upvalues = gc_probe_kind_stable(stats: second.upvalues, before: first.upvalues);
+  let first_stable = band(strings, tables);
+  let second_stable = band(closures, upvalues);
+  let all_stable = band(first_stable, second_stable);
+  let unstable = bnot(all_stable);
+  if unstable {
+    return 155_u8;
   }
   return 0_u8;
 }
 
 fn gc_stats_probe(stress: Bool) -> r: u8 pure {
-  doc "Observations 146 through 155 check initial and exact completed snapshots, reclamation of three empty tables and one captured upvalue, marking work, free slab visits and reset preservation in both collector modes. Observation 170 pins a returned closure with two distinct captures and checks their exact live count and bytes against the baseline.";
+  doc "Observations 146 through 155 check initial and completed snapshots using only embedding calls, exact per-kind conservation and live deltas, reclamation, marking work, pause arithmetic, reset preservation and allocation-free repeated sweeps in both modes. All three chunks compile before the baseline collection, which includes compiler/library interning. A forced workload entry collection replaces the baseline entry closure; its snapshot W precedes the named Lua allocations despite being read after return. Observation 170 pins kept and checks W's upvalue totals plus exactly two objects and 64 bytes.";
   let engine = halo::embed::new_engine(limit: 0_u64);
   let env = Probe(mode: 0_u8, calls: 0_u64);
   let initial = halo::embed::last_collection(engine: &engine);
@@ -218,15 +253,48 @@ fn gc_stats_probe(stress: Bool) -> r: u8 pure {
   if initial.next_threshold != 0_u64 {
     return 146_u8;
   }
-  let baseline_code = gc_probe_checked_collect(engine: &engine, env: &env, keep: stress);
-  if baseline_code != 0_u8 {
-    return baseline_code;
+  let idle = halo::embed::compile(engine: &engine, chunk_name: &gc_probe_name[0_u64..9_u64], source: &gc_probe_idle[0_u64..8_u64]);
+  let idle_script = match move idle {
+    Err(..) => {
+      return 147_u8;
+    }
+    Ok(value: cached_idle) => {
+      give cached_idle;
+    }
+  }
+  let drop = halo::embed::compile(engine: &engine, chunk_name: &gc_probe_name[0_u64..9_u64], source: &gc_probe_drop[0_u64..147_u64]);
+  let drop_script = match move drop {
+    Err(..) => {
+      return 148_u8;
+    }
+    Ok(value: cached_drop) => {
+      give cached_drop;
+    }
+  }
+  let repeat = halo::embed::compile(engine: &engine, chunk_name: &gc_probe_name[0_u64..9_u64], source: &gc_probe_repeat[0_u64..17_u64]);
+  let repeat_script = match move repeat {
+    Err(..) => {
+      return 155_u8;
+    }
+    Ok(value: cached_repeat) => {
+      give cached_repeat;
+    }
+  }
+  let baseline_run = gc_probe_collect_cached(engine: &engine, env: &env, script: idle_script, keep: stress);
+  let baseline_failed = bnot(baseline_run);
+  if baseline_failed {
+    return 147_u8;
   }
   let baseline = halo::embed::last_collection(engine: &engine);
-  let dropped = gc_probe_run(engine: &engine, env: &env, source: &gc_probe_drop[0_u64..147_u64]);
+  let dropped = gc_probe_collect_cached(engine: &engine, env: &env, script: drop_script, keep: stress);
   let drop_failed = bnot(dropped);
   if drop_failed {
     return 148_u8;
+  }
+  let workload = halo::embed::last_collection(engine: &engine);
+  let entry_code = gc_probe_entry_stats(stats: workload, before: baseline);
+  if entry_code != 0_u8 {
+    return entry_code;
   }
   let kept = halo::embed::result(engine: &engine, index: 1_u64);
   match kept {
@@ -248,21 +316,23 @@ fn gc_stats_probe(stress: Bool) -> r: u8 pure {
       }
     }
   }
-  let sweep_code = gc_probe_checked_collect(engine: &engine, env: &env, keep: stress);
-  if sweep_code == 147_u8 {
+  let sweep = gc_probe_collect_cached(engine: &engine, env: &env, script: idle_script, keep: stress);
+  let sweep_failed = bnot(sweep);
+  if sweep_failed {
     return 149_u8;
   }
-  if sweep_code != 0_u8 {
-    return sweep_code;
-  }
   let stats = halo::embed::last_collection(engine: &engine);
-  let kept_objects = baseline.upvalues.live_objects +sat 2_u64;
-  let kept_bytes = baseline.upvalues.live_bytes +sat 64_u64;
+  let kept_objects = workload.upvalues.live_objects +sat 2_u64;
+  let kept_bytes = workload.upvalues.live_bytes +sat 64_u64;
   if stats.upvalues.live_objects != kept_objects {
     return 170_u8;
   }
   if stats.upvalues.live_bytes != kept_bytes {
     return 170_u8;
+  }
+  let work_code = gc_probe_work_stats(stats: stats, before: workload);
+  if work_code != 0_u8 {
+    return work_code;
   }
   if stats.tables.live_objects == 0_u64 {
     return 150_u8;
@@ -275,24 +345,6 @@ fn gc_stats_probe(stress: Bool) -> r: u8 pure {
   }
   if stats.strings.live_bytes == 0_u64 {
     return 150_u8;
-  }
-  if stats.tables.freed_objects != 3_u64 {
-    return 151_u8;
-  }
-  if stats.tables.freed_bytes != 144_u64 {
-    return 151_u8;
-  }
-  if stats.upvalues.freed_objects != 1_u64 {
-    return 151_u8;
-  }
-  if stats.upvalues.freed_bytes != 32_u64 {
-    return 151_u8;
-  }
-  if stats.strings.freed_objects == 0_u64 {
-    return 151_u8;
-  }
-  if stats.strings.freed_bytes == 0_u64 {
-    return 151_u8;
   }
   let marked = stats.tables.live_objects +sat stats.closures.live_objects;
   if stats.gray_pops != marked {
@@ -310,42 +362,24 @@ fn gc_stats_probe(stress: Bool) -> r: u8 pure {
   if count_after != count_before {
     return 154_u8;
   }
-  if saved.tables.freed_objects != stats.tables.freed_objects {
+  let strings_saved = gc_probe_kind_equal(stats: saved.strings, before: stats.strings);
+  let tables_saved = gc_probe_kind_equal(stats: saved.tables, before: stats.tables);
+  let closures_saved = gc_probe_kind_equal(stats: saved.closures, before: stats.closures);
+  let upvalues_saved = gc_probe_kind_equal(stats: saved.upvalues, before: stats.upvalues);
+  let first_saved = band(strings_saved, tables_saved);
+  let second_saved = band(closures_saved, upvalues_saved);
+  let all_saved = band(first_saved, second_saved);
+  let changed = bnot(all_saved);
+  if changed {
+    return 154_u8;
+  }
+  if saved.gray_pops != stats.gray_pops {
     return 154_u8;
   }
   if saved.next_threshold != stats.next_threshold {
     return 154_u8;
   }
-  let again_code = gc_probe_checked_collect(engine: &engine, env: &env, keep: stress);
-  if again_code == 147_u8 {
-    return 155_u8;
-  }
-  if again_code != 0_u8 {
-    return again_code;
-  }
-  let again = halo::embed::last_collection(engine: &engine);
-  if again.tables.freed_objects != 0_u64 {
-    return 155_u8;
-  }
-  if again.tables.freed_bytes != 0_u64 {
-    return 155_u8;
-  }
-  if again.tables.slots_visited <= again.tables.live_objects {
-    return 155_u8;
-  }
-  if again.tables.slots_visited != stats.tables.slots_visited {
-    return 155_u8;
-  }
-  if again.strings.slots_visited < stats.strings.slots_visited {
-    return 155_u8;
-  }
-  if again.closures.slots_visited < stats.closures.slots_visited {
-    return 155_u8;
-  }
-  if again.upvalues.slots_visited != stats.upvalues.slots_visited {
-    return 155_u8;
-  }
-  return 0_u8;
+  return gc_probe_slots_probe(engine: &engine, env: &env, script: repeat_script, before: stats, keep: stress);
 }
 
 fn gc_pause_trial(percent: u64, stress: Bool) -> r: Result<u64, u8> pure {
@@ -651,6 +685,8 @@ fn gc_pause_probe(stress: Bool) -> r: u8 pure {
 const gc_probe_name: Array<u8, 9> = "@gc_probe";
 
 const gc_probe_idle: Array<u8, 8> = "return 1";
+
+const gc_probe_repeat: Array<u8, 17> = "while true do end";
 
 const gc_probe_drop: Array<u8, 147> = "local a,b,c={},{},{}; local x,y=1,2; local kept=function() return x+y end; local function f() return a end; local s='gc-'..'garbage'; return 1,kept";
 
