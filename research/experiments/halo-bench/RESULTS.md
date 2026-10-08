@@ -2904,3 +2904,149 @@ in the rebuilt binary is the likely cause, which the criterion does not
 excuse. Both results lie within about a point of their bounds, so the
 comparison is repeated on the 14900K when it returns before the change is
 given up (Q93).
+
+### String keys in table writes: retried on the 14900K
+
+The M5 result lay within about a point of the criterion's bounds, so, as the
+owner chose (Q93), the comparison was repeated on the 14900K once it was
+back, against the criterion as first recorded and recorded before it ran (on
+the measurement-only branch `claude/halo-strwrite-retry`, `f24cf32b5`):
+main `2945f3b99`, which holds the string-key lookup, against the same change
+applied on it (the write change `a5962bf8b`, cherry-picked), six interleaved
+full-LTO pairs with a twin.
+[Run 37726526163](https://github.com/Ming-Research/Halo-wf/actions/runs/37726526163),
+medians in seconds:
+
+| Kernel | Main | Branch | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1055 | 0.1062 | 1.007 | 0.55% | 1.80% | 0.996 |
+| loop | 0.4326 | 0.4318 | 0.998 | 0.69% | 0.88% | 1.001 |
+| integer-table | 0.4995 | 0.4975 | 0.996 | 3.27% | 9.08% | 1.003 |
+| string-key | 0.0259 | 0.0258 | 0.997 | 39.82% | 0.95% | 1.002 |
+| concat | 0.0734 | 0.0734 | 1.001 | 0.51% | 0.85% | 1.003 |
+| sort | 0.1760 | 0.1729 | 0.982 | 1.60% | 2.10% | 1.002 |
+| binary-trees | 1.9083 | 1.8711 | 0.981 | 1.99% | 1.62% | 1.009 |
+
+`--check-module pkg::vm`: main 7.798 and 7.577 s, branch 7.539 and 7.614 s.
+
+**The criterion is not met; the change stays reverted.** Binary-trees falls
+1.9%, short of the 3% required; no kernel is slower beyond its bounds, so the
+M5 run's slower fib does not recur here.
+
+## Marking only collectable values
+
+### Criterion, recorded before the change
+
+The collector marks a table's contents by calling `gc_mark` for every array
+slot and for every node's key and value (`mark_table_contents`,
+`lib/halo/heap/gc.wf`), and `gc_mark` dispatches on the value's kind. In
+integer-table, whose ten-million-slot array holds only numbers, `gc_mark`
+takes 5.6–5.9% of Halo's samples and half of its own samples fall on that
+dispatch ([run 37639344751](https://github.com/Ming-Research/Halo-wf/actions/runs/37639344751),
+a hosted EPYC guest reading shares of samples, artifact `halo-tables-profile`).
+PUC's `traversetable` marks each value through `markvalue`, which tests in
+line that the value is collectable before calling `reallymarkobject`.
+Change: `mark_table_contents` calls `gc_mark` only for a string, table or
+closure value; numbers, nil, booleans and builtins, which name no object,
+are skipped in line.
+
+Kept only if, on the 14900K, in six interleaved full-LTO pairs of main before
+the change against the branch after it, with a twin of the before binary:
+the integer-table kernel's median falls at least 3%, by more than both
+ranges and the twin's difference; no kernel is slower beyond its larger
+range and the twin's; `--check-module pkg::vm` takes at most 1.25 times as
+long; and `make check` passes, the collector's root controls and the oracle
+under collector stress included. Otherwise the change is reverted with its
+measurements kept.
+
+The 14900K went out of service before this ran. By the owner's direction
+(Q93), the comparison runs instead on the M5 Air (Apple M5, 10 cores, 24 GB,
+macOS, arm64), under Whitefoot's `run-check.pl` lock, with the same pairs,
+twin and thresholds, recorded here before it runs; its result is an M5
+result.
+
+### Result on the M5 Air
+
+On the M5 Air (macOS 27.0.1, arm64), under `run-check.pl`'s lock: main
+`89a9ce23a` against this branch's engine (`82d43d67e`), both built with
+full LTO by `wf-8b647edbbc95`'s macOS compiler (base and twin identical by
+hash, `492f8b78456f`, branch `cea6b1399c62`), six interleaved pairs,
+binary-trees at depth 14. Medians in seconds:
+
+| Kernel | Main | Branch | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1137 | 0.1110 | 0.976 | 4.23% | 527.47% | 0.989 |
+| loop | 0.3734 | 0.3702 | 0.991 | 2.49% | 4.87% | 1.003 |
+| integer-table | 0.2540 | 0.2507 | 0.987 | 3.80% | 18.98% | 1.022 |
+| string-key | 0.0207 | 0.0199 | 0.961 | 6.01% | 8.70% | 1.010 |
+| concat | 0.0848 | 0.0739 | 0.872 | 30.72% | 10.96% | 1.018 |
+| sort | 0.1601 | 0.1580 | 0.987 | 2.33% | 7.84% | 0.994 |
+| binary-trees | 1.3712 | 1.3759 | 1.003 | 7.08% | 6.15% | 1.006 |
+
+`--check-module pkg::vm`: main 6.03 and 6.14 s, branch 6.03 and 6.16 s.
+
+Single launches far from the rest (fib 0.6941 s against 0.108–0.114 s,
+concat 0.0993 s, integer-table 0.2907 s) put the ranges well beyond any
+effect the criterion asks for; a code review ran on the machine at the same
+time. The spread is too large to decide, so the comparison is repeated once
+with nothing else running, and that repeat decides; both runs stay recorded.
+
+The repeat, the same three binaries, run after the review had finished
+(another session's process still ran; load average 2.8 rising to 3.9):
+
+| Kernel | Main | Branch | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1178 | 0.1164 | 0.988 | 10.48% | 9.21% | 1.002 |
+| loop | 0.3900 | 0.3908 | 1.002 | 35.88% | 70.90% | 1.012 |
+| integer-table | 0.2681 | 0.2692 | 1.004 | 9.59% | 15.78% | 1.014 |
+| string-key | 0.0223 | 0.0216 | 0.969 | 4.04% | 3.20% | 0.998 |
+| concat | 0.0748 | 0.0733 | 0.980 | 8.48% | 7.60% | 0.990 |
+| sort | 0.1608 | 0.1601 | 0.996 | 4.87% | 11.31% | 0.995 |
+| binary-trees | 1.5027 | 1.4685 | 0.977 | 56.66% | 27.50% | 1.013 |
+
+**The criterion is not met, and the change is reverted with its
+measurements kept.** Integer-table's median is 1.004 times main's in the
+repeat and 0.987 in the first run, neither the 3% fall the criterion asks
+for. The M5's spread in both runs (single launches up to 6.3 times their
+kernel's median in the first run and 1.7 times in the repeat, which a
+fanless machine under sustained load and other processes on it can
+produce) is larger than the effect sought, so these
+runs cannot show a gain of a few percent either; the candidate can be tried
+again on the 14900K.
+
+### Retried on the 14900K
+
+The M5 runs' spread exceeded the effect sought, so, as the owner chose
+(Q93), the comparison is repeated on the 14900K now that it is back, against
+the criterion as first recorded: main `2945f3b99` against this branch with
+the change applied again on it, six interleaved full-LTO pairs with a twin.
+Kept only if integer-table falls at least 3%, by more than both ranges and
+the twin's difference, no kernel is slower beyond its larger range and the
+twin's, `--check-module pkg::vm` takes at most 1.25 times as long, and
+`make check` passes, the collector's root controls and the oracle under
+collector stress included; otherwise the change is reverted again.
+
+Result: [run 37726529192](https://github.com/Ming-Research/Halo-wf/actions/runs/37726529192),
+main `2945f3b99` against the branch at `f2d9ac43d`, whose engine differs only
+in `lib/halo/heap/gc.wf` (the run's own `git diff --stat`); medians in
+seconds:
+
+| Kernel | Main | Branch | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1060 | 0.1056 | 0.996 | 2.33% | 1.77% | 0.996 |
+| loop | 0.4327 | 0.4334 | 1.002 | 1.04% | 1.22% | 0.999 |
+| integer-table | 0.4924 | 0.4847 | 0.984 | 3.01% | 1.41% | 1.006 |
+| string-key | 0.0259 | 0.0257 | 0.994 | 1.87% | 1.81% | 1.000 |
+| concat | 0.0737 | 0.0737 | 1.000 | 34.65% | 0.87% | 0.999 |
+| sort | 0.1740 | 0.1732 | 0.995 | 2.16% | 0.37% | 1.003 |
+| binary-trees | 1.9198 | 1.9189 | 1.000 | 2.77% | 4.21% | 1.003 |
+
+`--check-module pkg::vm`: main 7.604 and 7.628 s, branch 7.658 and 7.540 s.
+`make check` passed at the branch
+([run 37726529195](https://github.com/Ming-Research/Halo-wf/actions/runs/37726529195)).
+
+**The criterion is not met, and the change is reverted again.** Integer-table
+falls 1.6%, short of the 3% required; no kernel is slower beyond its bounds.
+Integer-table's median was 1.6% lower in this run, within main's 3.01%
+range, so these runs do not establish a saving from skipping `gc_mark` for
+values that name no object.
