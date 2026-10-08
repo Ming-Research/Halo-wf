@@ -3398,3 +3398,88 @@ self-tail form therefore holds for the loop form with this compiler.
 The vm module check takes 1.17 times as long (7.774 and 7.638 s against
 8.997 and 8.970 s), a cost of checking the loop form; proving the header
 invariants on every backedge is the likely cause, not measured here.
+
+## pcall's post-catch field lookup
+
+### Criterion, recorded before measuring
+
+The change that makes `pcall` look up its error field through `__index` as a
+resumable continuation (owner's choice A) also changes the dispatch epilogue
+that instructions without a direct tail call return through: `checked_step`
+now receives the VM and the host environment so it can start a scheduled
+post-catch lookup, and `Step` gains a `PostCatch` variant. None of the seven
+kernels raises an error, so a change in their time is this change's overall
+effect on the normal path, through the epilogue or through code layout and
+inlining; the comparison does not separate those.
+
+Comparison: main `5885f9ab4`, which this branch has merged, against the
+branch with the change, same compiler (`wf-8b647edbbc95`), six interleaved
+full-LTO pairs on the 14900K with a twin of main. Kept only if no kernel is
+slower beyond its larger range and the twin's difference, and
+`--check-module pkg::vm` takes at most 1.25 times as long; otherwise the
+epilogue change is reworked before merging.
+
+### Result
+
+[Run 37776993971](https://github.com/Ming-Research/Halo-wf/actions/runs/37776993971),
+artifact `halo-bench-postcatch`: main `5885f9ab4` against the branch at
+`cdc423c` (ten engine files differ, per the run's `git diff --stat`), six
+interleaved full-LTO pairs on the 14900K; medians in seconds:
+
+| Kernel | Main | Branch | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1052 | 0.1261 | 1.198 | 0.80% | 1.17% | 1.003 |
+| loop | 0.4324 | 0.4514 | 1.044 | 0.88% | 0.38% | 0.999 |
+| integer-table | 0.4949 | 0.4923 | 0.995 | 1.24% | 2.10% | 0.994 |
+| string-key | 0.0260 | 0.0259 | 0.994 | 2.34% | 1.78% | 1.000 |
+| concat | 0.0735 | 0.0892 | 1.214 | 3.82% | 4.36% | 1.004 |
+| sort | 0.1766 | 0.1988 | 1.126 | 2.56% | 3.82% | 0.999 |
+| binary-trees | 1.9052 | 2.1124 | 1.109 | 1.72% | 2.90% | 1.000 |
+
+`--check-module pkg::vm`: main 7.522 and 7.555 s, branch 7.784 and 7.761 s.
+
+**The criterion is not met**: five kernels are slower far beyond their
+bounds. The binaries in the artifact show why: every dispatch arm of `run`
+grew by 700–950 bytes and its stack frame from 0x30 to 0xa0 bytes, and each
+arm now contains an indirect non-tail call; `pcall_lookup_drain`, which runs
+Lua through a nested `run`, was inlined into the shared epilogue of every
+arm. The epilogue change is reworked so that a `PostCatch` step never reaches
+`run`: the cold paths that produce it drain it before returning.
+
+### Rework
+
+The dispatch function and `checked_step` are restored to main. Post-catch
+requests now belong to the cold unwind result, which generic failure paths
+and resumed library callbacks drain before returning a dispatch step. Call
+preparation handles its own failures inside `prepare`; the non-generic fast
+stores and collector failures share ordinary catch completion for their
+string-only errors.
+Inlining, oracle behavior and performance remain to be checked in CI.
+
+The subsequent rework records the post-catch lookup index in the VM and uses
+the existing `Budget` exit to reach the generic driver, which clears and
+consumes the request before interpreting the exit, leaving the instruction
+budget, dispatch, handlers and `Step` unchanged.
+
+### Retried after the rework
+
+[Run 37787718241](https://github.com/Ming-Research/Halo-wf/actions/runs/37787718241),
+artifact `halo-bench-postcatch-retry`: main `5885f9ab4` against the branch at
+`0f09d8b`, whose `dispatch.wf`, `handlers.wf` and `continuations.wf` equal
+main's, the same criterion; medians in seconds:
+
+| Kernel | Main | Branch | Ratio | Main range | Branch range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1050 | 0.1036 | 0.987 | 0.67% | 1.21% | 1.000 |
+| loop | 0.4315 | 0.4315 | 1.000 | 0.38% | 0.38% | 1.002 |
+| integer-table | 0.4959 | 0.4949 | 0.998 | 1.95% | 2.32% | 0.991 |
+| string-key | 0.0260 | 0.0259 | 0.993 | 3.56% | 2.68% | 1.001 |
+| concat | 0.0735 | 0.0739 | 1.005 | 2.25% | 6.05% | 0.999 |
+| sort | 0.1771 | 0.1768 | 0.998 | 5.04% | 2.12% | 1.003 |
+| binary-trees | 1.9072 | 1.9125 | 1.003 | 2.27% | 0.60% | 1.003 |
+
+`--check-module pkg::vm`: main 7.619 and 7.531 s, branch 7.746 and 7.820 s
+(at most 1.04 times).
+
+**The criterion is met**: no kernel is slower beyond its larger range and the
+twin's difference, and the module check stays within 1.25 times.

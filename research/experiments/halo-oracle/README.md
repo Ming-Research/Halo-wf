@@ -7,7 +7,7 @@ Halo's `make check-core` compares the corpus through the `oracle` target;
 recording reference replies remains the job of
 [oracle-reference.yml](../../../.github/workflows/oracle-reference.yml).
 
-There are 107 scripts: 67 `lua-core`, 23 `redis-api`, 6 `apps`, and 11 `libs`.
+There are 108 scripts: 68 `lua-core`, 23 `redis-api`, 6 `apps`, and 11 `libs`.
 The scripts, replies and runner belong here until the oracle is replaced or
 Halo/firn scripting is retired. Each case is consumed by `run.sh`; the table
 below is the index of the observations it protects.
@@ -237,6 +237,7 @@ not automatically used to overwrite this baseline.
 | lua-core | [nil-returns](scripts/lua-core/nil-returns.lua) | select observes nil return slots that RESP arrays would truncate. |
 | lua-core | [nonfinite](scripts/lua-core/nonfinite.lua) | Infinity and NaN arithmetic, comparisons and string conversion. |
 | lua-core | [numeric-coercion](scripts/lua-core/numeric-coercion.lua) | Arithmetic coerces numeric strings; tonumber handles bases and failures. |
+| lua-core | [pcall-error-field-index](scripts/lua-core/pcall-error-field-index.lua) | Post-catch err lookup preserves result types and counts, honors __index chains and functions through nested protected and sort callbacks and host calls, propagates lookup errors, and leaves xpcall unchanged. |
 | lua-core | [pcall-xpcall](scripts/lua-core/pcall-xpcall.lua) | Protected calls preserve success returns and handler-transformed errors. |
 | lua-core | [shared-upvalues](scripts/lua-core/shared-upvalues.lua) | Sibling closures share the same mutable captured local. |
 | lua-core | [string-byte-char](scripts/lua-core/string-byte-char.lua) | byte ranges and char preserve boundary bytes including NUL. |

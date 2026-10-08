@@ -1,0 +1,1670 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "raw-string"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "raw-string"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "xpcall-raw-string"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "raw-string-table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "handler-original-raw-string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "integer",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "raw-number"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "number"
+        },
+        {
+          "type": "bulk",
+          "bytes": "17"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "xpcall-raw-number"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "raw-number-table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "handler-original-raw-number"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "integer",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "missing"
+        },
+        {
+          "type": "integer",
+          "value": 3
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "missing-table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "bulk",
+          "bytes": "nil"
+        },
+        {
+          "type": "bulk",
+          "bytes": "nil"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "xpcall-missing"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "missing-table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "handler-original-missing"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "integer",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "table"
+        },
+        {
+          "type": "integer",
+          "value": 3
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "table-field-table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "bulk",
+          "bytes": "table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "field-table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "xpcall-table"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "table-field-table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "handler-original-table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "integer",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "integer",
+          "value": 3
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false-field-table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "xpcall-false"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false-field-table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "handler-original-false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "integer",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "index-table"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "inherited-string"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "xpcall-index-table"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "index-table-error"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "handler-original-index-table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "integer",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "index-chain"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "inherited-string"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "xpcall-index-chain"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "index-chain-error"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "handler-original-index-chain"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "integer",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "index-string"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "index-string-table:err"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "xpcall-index-string"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "index-string-table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "handler-original-index-string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "integer",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "index-number"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "number"
+        },
+        {
+          "type": "bulk",
+          "bytes": "23"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "xpcall-index-number"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "index-number-table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "handler-original-index-number"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "integer",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "index-nil"
+        },
+        {
+          "type": "integer",
+          "value": 3
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "index-nil-table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "bulk",
+          "bytes": "nil"
+        },
+        {
+          "type": "bulk",
+          "bytes": "nil"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "xpcall-index-nil"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "index-nil-table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "handler-original-index-nil"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "integer",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "index-raises"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "user_script:50: field lookup failed"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "xpcall-index-raises"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "index-raises-table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "handler-original-index-raises"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "integer",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "index-host"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "host:false"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "xpcall-index-host"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "index-host-table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "handler-original-index-host"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "integer",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "host-present"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "host:stored"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "host-raw-present"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "stored"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "host-raw-missing"
+        },
+        {
+          "type": "integer",
+          "value": 3
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "host-raw-table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "inside-index"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "inner"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "nested"
+        },
+        {
+          "type": "integer",
+          "value": 3
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "nested-table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "bulk",
+          "bytes": "nil"
+        },
+        {
+          "type": "bulk",
+          "bytes": "nil"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "ephemeral"
+        },
+        {
+          "type": "integer",
+          "value": 3
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "ephemeral-table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "nil"
+        },
+        {
+          "type": "bulk",
+          "bytes": "nil"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "sorted"
+        },
+        {
+          "type": "bulk",
+          "bytes": "1,2,3"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "host-raises"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "ERR Wrong number of args calling Redis command from script"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "index-cycle"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "loop in gettable"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "index-invalid"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "attempt to index a boolean value"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "native-index"
+        },
+        {
+          "type": "integer",
+          "value": 3
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "native-index"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "native-nested"
+        },
+        {
+          "type": "integer",
+          "value": 3
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "string-error"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "plain"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "number-error"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "31"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "nil-error"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "nil"
+        },
+        {
+          "type": "bulk",
+          "bytes": "nil"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "false-error"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "success"
+        },
+        {
+          "type": "integer",
+          "value": 4
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "ok"
+        },
+        {
+          "type": "bulk",
+          "bytes": "number"
+        },
+        {
+          "type": "bulk",
+          "bytes": "42"
+        },
+        {
+          "type": "bulk",
+          "bytes": "nil"
+        },
+        {
+          "type": "bulk",
+          "bytes": "nil"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "index-error-level-1"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "user_script:143: boom"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "index-error-level-2"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "boom"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "index-error-level-3"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "user_script:146: boom"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "index-error-level-0"
+        },
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "boom"
+        }
+      ]
+    }
+  ]
+}

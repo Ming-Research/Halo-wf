@@ -125,6 +125,7 @@ public struct Vm {
   public call_pending: Bool;
   public raise_pc: u64;
   public pcall_field: Box<Slots<u8>>;
+  public post_catch: u64;
   public debug_names: Box<Slots<u8>>;
   public local_variables: Box<Slots<LocalVariable>>;
   public upvalue_names: Box<Slots<DebugName>>;
@@ -154,6 +155,8 @@ public interface Host<E> {
 public const protected_flag: u8 = 1_u8;
 
 public const tail_flag: u8 = 2_u8;
+
+public const native_flag: u8 = 4_u8;
 
 public const builtin_pcall: u32 = 0_u32;
 

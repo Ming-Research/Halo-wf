@@ -58,21 +58,23 @@ example apart from the engine code that exposed it
 
 ## Engine
 
+- **Explicit error levels across library callbacks need an oracle check.**
+  Source inspection found that `table.sort` retains its native caller in a
+  library context, while `error_location` walks only VM frames; unlike a
+  post-catch `pcall`, sort has no native marker there. Impact: a comparator's
+  `error("boom", 2)` appears to select the Lua caller rather than the native
+  sort level. The existing `lua-core/error-in-comparator-line` case uses the
+  default level and does not settle this. Deferred beyond the post-catch
+  pcall repair: record levels 0 through 3 against Redis in CI, then represent
+  native library callers in the walk if the comparison confirms the gap.
+  Reopen at the next library-callback error-location change, covering nested
+  callbacks and suspension as well as sort.
+
 - **The gate's fixtures and runners still live under `research/`.**
   Impact: maintained regression checks share a home with experiments, so
   their location does not distinguish gate dependencies from research
   tooling. Change: move the gate's fixtures and runners to `tests/` and
   update their callers and references. Reopen at the next gate change.
-
-- **pcall's error field is read raw.** With an error field named
-  (`set_pcall_error_field`), `pcall` reads it with a raw lookup; Redis's
-  replacement `pcall` uses `lua_getfield`, which also consults the table's
-  `__index`. Witness: `pcall(error, setmetatable({}, {__index={err="E"}}))`
-  returns the string `E` in Redis and the table in Halo (by reading
-  `script_lua.c`, not recorded). Impact: only an error table whose field
-  comes from a metatable differs. Change: run the lookup through the VM's
-  metamethod-aware get, which may call Lua during unwinding. Reopen when a
-  script raises such a table, with a recorded oracle case.
 
 - **A closure kept from one script cannot be called while another runs.**
   `start` in `lib/halo/vm/calls.wf` replaces the VM's prototypes and line
