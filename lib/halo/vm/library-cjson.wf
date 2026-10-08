@@ -18,6 +18,7 @@ const cj_expected: Array<u8, 19> = "expected 1 argument";
 const cj_many: Array<u8, 24> = "found too many arguments";
 
 fn cjson_default() -> r: CjsonConfig pure {
+  doc "An occupied configuration with the module defaults and no retained encoding buffer.";
   let settings_v1 = array_filled::<u64, 9>(value: 0_u64);
   set settings_v1[0_u64] = 1000_u64;
   set settings_v1[1_u64] = 1000_u64;
@@ -27,10 +28,21 @@ fn cjson_default() -> r: CjsonConfig pure {
   set settings_v1[7_u64] = 2_u64;
   set settings_v1[8_u64] = 10_u64;
   let buffer_v2 = box_slots_new::<u8>(capacity: 0_u64);
-  return CjsonConfig(settings: settings_v1, buffer: move buffer_v2);
+  let free = False();
+  return CjsonConfig(settings: settings_v1, buffer: move buffer_v2, free: free);
 }
 
 fn cjson_config(vm: &Vm) -> r: u64 writes(vm) {
+  doc "Reuses the lowest free slot before appending; rebuilds defaults because a host may have restored settings into a free slot.";
+  for (i in 1_u64..vm^.cjson_configs.inner.len) {
+    if i < vm^.cjson_configs.inner.len {
+      if vm^.cjson_configs.inner[i].free {
+        let replacement = cjson_default();
+        set vm^.cjson_configs.inner[i] = move replacement;
+        return i;
+      }
+    }
+  }
   let cap_v3 = vm^.cjson_configs.inner.cap;
   let index_v4 = vm^.cjson_configs.inner.len;
   if index_v4 == cap_v3 {
@@ -42,6 +54,57 @@ fn cjson_config(vm: &Vm) -> r: u64 writes(vm) {
     place_back(window: &vm^.cjson_configs.inner, value: move config_v6);
   }
   return index_v4;
+}
+
+fn cjson_reclaim(vm: &Vm) -> r: unit writes(vm) {
+  doc "After sweep, marks occupied slots from surviving cjson native closures, releases unreachable buffers and trims free trailing slots. Slot zero belongs to the module permanently; slot-local free flags survive host settings restores and disappear with host truncation.";
+  if vm^.cjson_configs.inner.len <= 1_u64 {
+    return unit;
+  }
+  for (i in 1_u64..vm^.cjson_configs.inner.len) {
+    set vm^.cjson_configs.inner[i].free = True();
+  }
+  for (i in 0_u64..vm^.heap.closures.inner.len) {
+    if i < 4294967296_u64 {
+      let handle = cvt::<u64, u32>(i);
+      match native_binding(vm: vm, handle: handle) {
+        Some(value: native_record) => {
+          let lower = native_record.id >= 96_u32;
+          let upper = native_record.id <= 105_u32;
+          let captured = band(lower, upper);
+          if captured {
+            let index = native_record.config;
+            if index < vm^.cjson_configs.inner.len {
+              set vm^.cjson_configs.inner[index].free = False();
+            }
+          }
+        }
+        None() => {
+        }
+      }
+    }
+  }
+  for (i in 1_u64..vm^.cjson_configs.inner.len) {
+    if vm^.cjson_configs.inner[i].free {
+      let replacement = cjson_default();
+      set replacement.free = True();
+      set vm^.cjson_configs.inner[i] = move replacement;
+    }
+  }
+  loop {
+    let length = vm^.cjson_configs.inner.len;
+    if length > 1_u64 {
+      let last = length - 1_u64;
+      if vm^.cjson_configs.inner[last].free {
+        let dropped = take_back(window: &vm^.cjson_configs.inner);
+      } else {
+        break;
+      }
+    } else {
+      break;
+    }
+  }
+  return unit;
 }
 
 struct NativeBinding {

@@ -103,16 +103,6 @@ example apart from the engine code that exposed it
   or before claiming every-allocation validation; verify omitted-reference
   controls and allocating helpers with live temporary values.
 
-- **Halo retains cjson instance configurations after collection.**
-  `Vm.cjson_configs` owns settings and reusable encoding buffers; native
-  closures select an instance, but collecting its last closure does not
-  release that configuration. Impact: repeated `cjson.new()` retains
-  configuration slots and buffers for the VM's lifetime. Change: connect
-  instance lifetime to reachable native closures and reclaim unreachable
-  buffers and slots. Validate retained extracted methods, discarded tables
-  and repeated new/encode/collect cycles. Reopen before long-lived Halo VMs
-  use independent cjson instances.
-
 - **Halo's measured hot paths exceed the P1 median target.** The source
   `lib/halo/vm/dispatch.wf` retains joined `Step` continuations on cold and
   frame-changing paths; C1's 18 selected hot arms now tail-call directly.
