@@ -3313,3 +3313,24 @@ comparison; it reports the difference and rejects nothing.
 Comparison: Halo main built with each release, six interleaved full-LTO
 pairs over the seven kernels, a twin of the old build, and two interleaved
 module-check samples per compiler, on the 14900K.
+
+## The dispatch as loop { match }
+
+### Question and reading, recorded before measuring
+
+`run` was a guaranteed self-tail call only because Whitefoot's checker
+refused the natural `loop { match }` (INV-1); Whitefoot v0.101 (#270) closed
+that, and this branch writes `run` as `loop { match }` with the three window
+facts as header invariants, the 18 hot arms continuing the loop and the
+others reaching the backedge through the shared epilogue. The owner's
+direction is the natural form, so the rewrite is kept whatever the timing.
+How do the kernels move?
+
+Comparison: the same compiler (`wf-691ea8106920`) building this branch's
+base `baa2225` (the self-tail `run`) and this branch, six interleaved
+full-LTO pairs over the seven kernels with a twin of the base, and two
+module-check samples each, on the 14900K. Reading: a kernel slower beyond its
+larger range and the twin's difference is a cost of the compiler's lowering
+of the loop form, reported to the loopmatch session as input to its second
+phase (lowering the natural form), not a reason to restore the self-tail
+call; a kernel faster beyond those bounds is reported the same way.
