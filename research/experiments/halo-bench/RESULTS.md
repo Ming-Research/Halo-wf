@@ -2793,3 +2793,9 @@ field-by-field stores. A fib median below the pinned build's by more than
 both ranges and the twin's difference is a measured cost of the entry copy;
 anything else is no evidence of one. The result goes to the owner either
 way; no Halo source changes.
+
+The 14900K went out of service before this ran. By the owner's direction
+(Q93 and the rule that the M5 Air only times), the two binaries are built by
+a hosted arm64 macOS runner and timed on the M5 Air under Whitefoot's
+`run-check.pl` lock, with the same pairs, twin and reading, recorded here
+before it runs; its result is an M5 result.

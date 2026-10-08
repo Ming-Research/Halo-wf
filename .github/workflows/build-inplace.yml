@@ -1,0 +1,63 @@
+# Temporary, for the Halo performance line: builds the same source with the
+# pinned compiler and with the experiment release that reads by-value
+# parameters in place, on a hosted arm64 macOS runner, for timing on the M5
+# Air while the 14900K is out of service (research/experiments/halo-bench/
+# RESULTS.md, "The entry copy of a by-value parameter, measured"). A push of
+# this file runs it. Removed before the pull request is marked ready.
+name: build-inplace
+
+on:
+  push:
+    branches: [claude/halo-call]
+    paths: [.github/workflows/build-inplace.yml]
+
+env:
+  EXPERIMENT: wf-exp-5a3c70fc3351
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Build with both compilers
+        run: |
+          set -euo pipefail
+          out="$PWD/build/bench-out"
+          rm -rf "$out"; mkdir -p "$out"
+          pinned=$(sed -n 's/^release = //p' whitefoot.pin)
+          make compiler
+          echo "release = $EXPERIMENT" > "$out/exp.pin"
+          make PIN="$out/exp.pin" compiler
+          wfc_pin="$PWD/build/whitefoot/$pinned/whitefootc"
+          wfc_exp="$PWD/build/whitefoot/$EXPERIMENT/whitefootc"
+          "$wfc_pin" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-pin"
+          "$wfc_exp" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-exp"
+          {
+            echo "branch $(git rev-parse HEAD), pinned $pinned, experiment $EXPERIMENT"
+            shasum -a 256 "$wfc_pin" "$wfc_exp" "$out"/halo-*
+            /usr/bin/clang --version | head -n 1
+            sw_vers
+            uname -m
+          } | tee "$out/manifest.txt"
+          for side in pin exp; do
+            sym=$(nm "$out/halo-$side" | awk '/ [tT] _?wf_package\.halo\.vm\.push_frame$/ {print $3}')
+            otool -tV -p "$sym" "$out/halo-$side" | sed -n '1,/^[^ ].*:$/p' > "$out/push_frame-$side.txt" || true
+            echo "== push_frame, $side ($sym)"
+            head -n 40 "$out/push_frame-$side.txt"
+          done
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: halo-inplace-binaries
+          path: build/bench-out/
+          retention-days: 30
