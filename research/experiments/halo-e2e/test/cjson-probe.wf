@@ -1,0 +1,222 @@
+alias Engine = halo::embed::Engine;
+alias ScriptId = halo::embed::ScriptId;
+alias Value = halo::value::Value;
+
+fn cjson_probe_run(engine: &Engine, env: &Probe, script: ScriptId) -> r: Bool writes(engine), writes(env) {
+  doc "Runs a cached chunk on the same engine after clearing the previous run's stack roots; each probe chunk returns one on success.";
+  halo::embed::reset(engine: engine);
+  let outcome = probe_run(engine: engine, env: env, script: script);
+  let code = outcome_code(outcome: outcome);
+  if code != 0_u8 {
+    return False();
+  }
+  return returned(engine: engine, expected: 1.0_f64);
+}
+
+fn cjson_probe_source(engine: &Engine, env: &Probe, source: &[u8]) -> r: Bool reads(source), writes(engine), writes(env) {
+  doc "Compiles a probe phase through the ordinary embedding interface and runs it on the shared engine.";
+  let compiled = halo::embed::compile(engine: engine, chunk_name: &cjson_probe_name[0_u64..12_u64], source: source);
+  match move compiled {
+    Err(..) => {
+      return False();
+    }
+    Ok(value: script) => {
+      return cjson_probe_run(engine: engine, env: env, script: script);
+    }
+  }
+}
+
+fn cjson_probe_collect(engine: &Engine, env: &Probe) -> r: Bool writes(engine), writes(env) {
+  doc "Makes the ordinary start safepoint collect, then verifies completion rather than assuming the allocation trigger fired.";
+  let before = halo::embed::collection_count(engine: engine);
+  set engine^.vm.heap.threshold = 0_u64;
+  set engine^.vm.heap.bytes_since_gc = 1_u64;
+  let ran = cjson_probe_source(engine: engine, env: env, source: &cjson_probe_idle[0_u64..8_u64]);
+  if ran {
+    let after = halo::embed::collection_count(engine: engine);
+    return after > before;
+  }
+  return False();
+}
+
+fn cjson_configs_probe(stress: Bool) -> r: u8 pure {
+  doc "Checks permanent module settings, released buffers, lowest-index reuse after host settings restoration, a retained extracted encoder, bounded churn in ordinary and stress collection, and host truncation before allocation.";
+  let engine = halo::embed::new_engine(limit: 67108864_u64);
+  let env = Probe(mode: 0_u8, calls: 0_u64);
+  if engine.vm.cjson_configs.inner.len != 1_u64 {
+    return 120_u8;
+  }
+  let setup = cjson_probe_source(engine: &engine, env: &env, source: &cjson_probe_setup[0_u64..270_u64]);
+  let setup_failed = bnot(setup);
+  if setup_failed {
+    return 121_u8;
+  }
+  if engine.vm.cjson_configs.inner.len != 4_u64 {
+    return 122_u8;
+  }
+  for (i in 1_u64..3_u64) {
+    if i < engine.vm.cjson_configs.inner.len {
+      if engine.vm.cjson_configs.inner[i].buffer.inner.cap == 0_u64 {
+        return 123_u8;
+      }
+    } else {
+      return 123_u8;
+    }
+  }
+  let collected = cjson_probe_collect(engine: &engine, env: &env);
+  let collected_failed = bnot(collected);
+  if collected_failed {
+    return 124_u8;
+  }
+  if engine.vm.cjson_configs.inner.len != 4_u64 {
+    return 125_u8;
+  }
+  for (i in 1_u64..3_u64) {
+    if i < engine.vm.cjson_configs.inner.len {
+      if engine.vm.cjson_configs.inner[i].buffer.inner.cap != 0_u64 {
+        return 126_u8;
+      }
+      if engine.vm.cjson_configs.inner[i].settings[2_u64] != 14_u64 {
+        return 127_u8;
+      }
+    } else {
+      return 126_u8;
+    }
+  }
+  if engine.vm.cjson_configs.inner.len > 1_u64 {
+    set engine.vm.cjson_configs.inner[1_u64].settings[2_u64] = 9_u64;
+    set engine.vm.cjson_configs.inner[1_u64].settings[3_u64] = 0_u64;
+  }
+  let reused = cjson_probe_source(engine: &engine, env: &env, source: &cjson_probe_reuse[0_u64..212_u64]);
+  let reused_failed = bnot(reused);
+  if reused_failed {
+    return 128_u8;
+  }
+  if engine.vm.cjson_configs.inner.len != 4_u64 {
+    return 129_u8;
+  }
+  if engine.vm.cjson_configs.inner.len > 3_u64 {
+    if engine.vm.cjson_configs.inner[1_u64].settings[2_u64] != 7_u64 {
+      return 130_u8;
+    }
+    if engine.vm.cjson_configs.inner[1_u64].buffer.inner.cap == 0_u64 {
+      return 130_u8;
+    }
+    if engine.vm.cjson_configs.inner[2_u64].settings[2_u64] != 14_u64 {
+      return 130_u8;
+    }
+    if engine.vm.cjson_configs.inner[3_u64].settings[2_u64] != 3_u64 {
+      return 131_u8;
+    }
+    if engine.vm.cjson_configs.inner[3_u64].buffer.inner.cap != 0_u64 {
+      return 131_u8;
+    }
+  } else {
+    return 129_u8;
+  }
+  let compiled = halo::embed::compile(engine: &engine, chunk_name: &cjson_probe_name[0_u64..12_u64], source: &cjson_probe_cycle[0_u64..205_u64]);
+  match move compiled {
+    Err(..) => {
+      return 132_u8;
+    }
+    Ok(value: cycle_script) => {
+      halo::embed::set_gc_stress(engine: &engine, enabled: stress);
+      for (round in 0_u64..32_u64) {
+        let swept = cjson_probe_collect(engine: &engine, env: &env);
+        let swept_failed = bnot(swept);
+        if swept_failed {
+          return 133_u8;
+        }
+        let ran = cjson_probe_run(engine: &engine, env: &env, script: cycle_script);
+        let ran_failed = bnot(ran);
+        if ran_failed {
+          return 134_u8;
+        }
+        if engine.vm.cjson_configs.inner.len > 12_u64 {
+          return 135_u8;
+        }
+      }
+    }
+  }
+  let trimmed = cjson_probe_collect(engine: &engine, env: &env);
+  let trimmed_failed = bnot(trimmed);
+  if trimmed_failed {
+    return 136_u8;
+  }
+  if engine.vm.cjson_configs.inner.len != 4_u64 {
+    return 137_u8;
+  }
+  let released = cjson_probe_source(engine: &engine, env: &env, source: &cjson_probe_release[0_u64..18_u64]);
+  let released_failed = bnot(released);
+  if released_failed {
+    return 138_u8;
+  }
+  let emptied = cjson_probe_collect(engine: &engine, env: &env);
+  let emptied_failed = bnot(emptied);
+  if emptied_failed {
+    return 139_u8;
+  }
+  if engine.vm.cjson_configs.inner.len != 1_u64 {
+    return 140_u8;
+  }
+  let disabled = False();
+  halo::embed::set_gc_stress(engine: &engine, enabled: disabled);
+  let restored_setup = cjson_probe_source(engine: &engine, env: &env, source: &cjson_probe_setup[0_u64..270_u64]);
+  let restored_setup_failed = bnot(restored_setup);
+  if restored_setup_failed {
+    return 141_u8;
+  }
+  let restored_sweep = cjson_probe_collect(engine: &engine, env: &env);
+  let restored_sweep_failed = bnot(restored_sweep);
+  if restored_sweep_failed {
+    return 142_u8;
+  }
+  let nil = Value::Nil();
+  let cleared = halo::embed::set_global(engine: &engine, name: &cjson_probe_held[0_u64..4_u64], value: nil);
+  halo::embed::reset(engine: &engine);
+  let saved = array_filled::<u64, 9>(value: 0_u64);
+  if engine.vm.cjson_configs.inner.len > 0_u64 {
+    set saved = engine.vm.cjson_configs.inner[0_u64].settings;
+  }
+  loop {
+    if engine.vm.cjson_configs.inner.len > 1_u64 {
+      let dropped = take_back(window: &engine.vm.cjson_configs.inner);
+    } else {
+      break;
+    }
+  }
+  if engine.vm.cjson_configs.inner.len > 0_u64 {
+    set engine.vm.cjson_configs.inner[0_u64].settings = saved;
+  }
+  set engine.vm.cjson_active_config = 0_u64;
+  let before_restore_run = halo::embed::collection_count(engine: &engine);
+  let after_restore = cjson_probe_source(engine: &engine, env: &env, source: &cjson_probe_after_restore[0_u64..162_u64]);
+  let after_restore_failed = bnot(after_restore);
+  if after_restore_failed {
+    return 143_u8;
+  }
+  let after_restore_run = halo::embed::collection_count(engine: &engine);
+  if after_restore_run != before_restore_run {
+    return 144_u8;
+  }
+  if engine.vm.cjson_configs.inner.len != 2_u64 {
+    return 145_u8;
+  }
+  return 0_u8;
+}
+
+const cjson_probe_name: Array<u8, 12> = "@cjson_probe";
+
+const cjson_probe_held: Array<u8, 4> = "held";
+
+const cjson_probe_setup: Array<u8, 270> = "cjson.encode_number_precision(5); local a=cjson.new(); a.encode_number_precision(9); a.encode('discard first'); local b=cjson.new(); b.encode('discard second'); local c=cjson.new(); c.encode_number_precision(3); c.encode_keep_buffer(false); held={enc=c.encode}; return 1";
+
+const cjson_probe_idle: Array<u8, 8> = "return 1";
+
+const cjson_probe_reuse: Array<u8, 212> = "local j=cjson.new(); assert(j.encode_number_precision()==14); assert(j.encode_keep_buffer()==true); j.encode_number_precision(7); j.encode('reused buffer'); held.next=j; assert(held.enc(1.2345)=='1.23'); return 1";
+
+const cjson_probe_cycle: Array<u8, 205> = "held.next=nil; for i=1,8 do local j=cjson.new(); j.encode_number_precision(6); assert(j.encode(1.2345)=='1.2345'); assert(held.enc(1.2345)=='1.23') end; assert(cjson.encode_number_precision()==5); return 1";
+
+const cjson_probe_release: Array<u8, 18> = "held=nil; return 1";
+
+const cjson_probe_after_restore: Array<u8, 162> = "local j=cjson.new(); assert(j.encode_number_precision()==14); j.encode('after restore'); held={enc=j.encode}; assert(cjson.encode_number_precision()==5); return 1";

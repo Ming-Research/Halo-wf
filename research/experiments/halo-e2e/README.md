@@ -74,7 +74,16 @@ changes between suspended budget checkpoints, the chunk name runtime errors
 are located in, and host calls left pending: completed, failed into a `pcall`
 inside a library callback, and refused by `resume`. A nonzero exit is the
 probe's numbered failed observation; `make check` runs it before the oracle
-comparison. [GAPS.md](GAPS.md) names limits and concrete reopening
+comparison. Its cjson lifecycle observations (exits 120–145) keep an extracted
+encoder in a global table while discarded instances lose their buffers, slots
+are reused in index order, and 32 runs of eight new/encode operations stay
+bounded on one VM in both ordinary and stress collection. They also check
+module settings at permanent index zero, default settings after a host rewrites
+a free slot, and allocation after the host truncates trailing slots without an
+intervening collection. Before reclamation, exit 126 detects a discarded
+instance's retained buffer. These are resource-lifetime assertions of the
+embedding contract; the unchanged cjson oracle scripts still compare replies
+with Redis. [GAPS.md](GAPS.md) names limits and concrete reopening
 conditions.
 
 The Redis error/SHA-1 comparison uses Redis 7.0.15's local `script_lua.c`
