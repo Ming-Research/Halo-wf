@@ -262,8 +262,8 @@ fn gc_stats_probe(stress: Bool) -> r: u8 pure {
       give cached_idle;
     }
   }
-  let drop = halo::embed::compile(engine: &engine, chunk_name: &gc_probe_name[0_u64..9_u64], source: &gc_probe_drop[0_u64..147_u64]);
-  let drop_script = match move drop {
+  let drop_compiled = halo::embed::compile(engine: &engine, chunk_name: &gc_probe_name[0_u64..9_u64], source: &gc_probe_drop[0_u64..147_u64]);
+  let drop_script = match move drop_compiled {
     Err(..) => {
       return 148_u8;
     }
