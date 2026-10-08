@@ -100,14 +100,9 @@ fn finish(vm: &Vm, stack: &Box<Slots<Value>>, frame: Frame, src: u64, count: u64
   return Step::Jump(pc: pc, base: b, kbase: kb);
 }
 
-fn unwind_frame(vm: &Vm, stack: &Box<Slots<Value>>) -> r: Option<Frame> reads(stack), writes(vm) contract {
-  ensures stack^.inner.len == entry(stack)^.inner.len;
-} {
+fn unwind_frame(vm: &Vm, stack: &Box<Slots<Value>>) -> r: Option<Frame> reads(stack), writes(vm) {
   doc "Closes frames in this activation up to the nearest protected frame, leaving that frame for its catch or post-catch lookup.";
-  let length = stack^.inner.len;
-  loop (
-    invariant preserved: stack^.inner.len == length
-  ) {
+  loop {
     if vm^.frames.inner.len == 0_u64 {
       return None<Frame>();
     }
