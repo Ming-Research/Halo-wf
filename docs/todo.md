@@ -149,8 +149,9 @@ example apart from the engine code that exposed it
   [bounded table-growth change](../research/experiments/halo-bench/RESULTS.md#six-pair-table-growth-result)
   removes per-array-key histogram walks, repeated Nil initialization and
   retained-prefix reinsertion, improving integer-table by 25.70% on the
-  measured host. Fresh prefix allocation/copying and checked handle/bounds
-  work remain; their isolated costs are unmeasured. The
+  measured host. Replacement prefix allocation/copying remains only when
+  arrays shrink; checked handle/bounds work remains, with its isolated cost
+  unmeasured. The
   [frame inspection](../research/experiments/halo-bench/RESULTS.md#fib-frame-input-for-the-next-experiment)
   points to metadata checks, native call storage and 80-byte frame/result
   transport; sampled offsets do not isolate cycle shares. The

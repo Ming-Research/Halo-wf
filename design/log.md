@@ -4,6 +4,14 @@ Newest first. One entry per approved change of the tree: a dated title,
 `Nodes:` naming every node changed, `Owner-approved:` and `Summary:`; the
 owner-wide instructions' *Log format* owns the form.
 
+## 2026-10-09 Halo grows a nonshrinking table array in place
+
+Nodes: halo/heap/tables/growth
+
+Owner-approved: 2026-10-09 on the WF status board, item "Upgrade Whitefoot to wf-b2209fd31035 and reapply in-place growth": approved, in the owner's words, "the design-tree change of #30 (tables/growth.md): a nonshrinking table array grows in place after every step that can fail (using Whitefoot's realloc), shrinking still replaces the whole array, and the table still changes only on success, because integer-table is 12% faster with no kernel slower; this overturns the earlier approved rejection of in-place growth, whose reopening condition (Whitefoot's grow using realloc) is now met".
+
+Summary: In-place growth was rejected while Whitefoot's `grow` allocated, copied and freed, which left integer-table unchanged although table growth took about 30% of its samples. Whitefoot#280 lowers `grow` through a counted reallocation and the pin `wf-b2209fd31035` adopted it; reapplied on that release, growing a nonshrinking array in place made integer-table 12.0% faster on the 14900K with no kernel slower beyond its noise bounds (`research/experiments/halo-bench/RESULTS.md`, "Growing the array in place on the main release").
+
 ## 2026-10-09 Halo collects after 64 KiB of allocation at least
 
 Nodes: halo/heap

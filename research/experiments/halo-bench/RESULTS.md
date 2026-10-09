@@ -4499,3 +4499,42 @@ faster, within its ranges, not the 3.8% the experiment release gave in
 that comparison differed from this one in base compiler and Halo source
 (before `loop { match }`), and this run does not explain the difference.
 Integer-table's 2.5% is also within its ranges.
+
+## Growing the array in place on the main release
+
+### Criterion, recorded before measuring
+
+Whitefoot main now lowers `grow` through a counted reallocation
+(Whitefoot#280, release `wf-b2209fd31035`), the reopening condition of the
+rejected in-place growth. This branch reapplies `6f49ca6` on the pinned main
+release. On the experiment release the change made integer-table 14.0%
+faster ([reallocating grow](#growing-the-array-in-place-with-a-reallocating-grow)).
+Comparison: the upgrade branch (pin `wf-b2209fd31035`) against this branch,
+same compiler, six interleaved full-LTO pairs over the seven kernels with a
+twin of the base, on the 14900K. Kept if integer-table's median falls at
+least 5%, by more than both ranges and the twin's difference, no other
+kernel is slower beyond its larger range and the twin's difference, and
+`make check` passes, including the table-growth oracle cases; otherwise
+reverted with its measurements kept.
+
+### Result
+
+[Run 37880509263](https://github.com/Ming-Research/Halo-wf/actions/runs/37880509263),
+artifact `halo-bench-grow`: the upgrade branch `eb4d2f2f4` against this
+branch (the run's `git diff --stat`: `lib/halo/heap/tables.wf` only),
+`wf-b2209fd31035`, six interleaved full-LTO pairs with a twin of the base:
+
+| Kernel | Base | In place | Ratio | Base range | In-place range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1037 | 0.1033 | 0.996 | 1.12% | 0.76% | 1.010 |
+| loop | 0.4347 | 0.4340 | 0.998 | 1.03% | 1.34% | 1.001 |
+| integer-table | 0.4794 | 0.4218 | 0.880 | 2.80% | 1.93% | 1.009 |
+| string-key | 0.0259 | 0.0259 | 1.000 | 7.82% | 3.60% | 0.999 |
+| concat | 0.0776 | 0.0741 | 0.956 | 12.04% | 8.60% | 1.003 |
+| sort | 0.1782 | 0.1746 | 0.980 | 12.50% | 5.91% | 0.991 |
+| binary-trees | 1.9030 | 1.9059 | 1.002 | 0.85% | 2.48% | 0.995 |
+
+**The runtime part of the criterion passes:** integer-table takes 0.880
+times as long, beyond both ranges and the twin's difference, close to the
+experiment release's 14.0%; no kernel is slower beyond its bounds. The
+change is kept if `make check` passes on the final revision.
