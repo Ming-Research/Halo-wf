@@ -3786,3 +3786,35 @@ Halo's kernels if no kernel is slower beyond its larger range and the twin's
 difference; a kernel slower beyond that is reported with its collection
 count, and the default is then the owner's trade-off between Firn's p99 and
 that kernel.
+
+### A 64 KiB default on Halo's kernels: result
+
+[Run 37864849133](https://github.com/Ming-Research/Halo-wf/actions/runs/37864849133),
+artifact `halo-bench-floor64`: main `872dbf838` against the measurement
+branch at `0a3844317` (this branch's floor setting plus the 64 KiB default
+and initial threshold; the run's `git diff --stat` lists only the five
+library files of the floor change), `wf-691ea8106920`, six interleaved
+full-LTO pairs, `run.py --collections-may-change` (the first attempt,
+[run 37863440621](https://github.com/Ming-Research/Halo-wf/actions/runs/37863440621),
+stopped at integer-table's changed collection count before that option
+existed). Medians in seconds, collections per launch:
+
+| Kernel | Main | 64 KiB | Ratio | Main range | 64 KiB range | Twin ratio | Collections |
+|---|---:|---:|---:|---:|---:|---:|---|
+| fib | 0.1041 | 0.1033 | 0.992 | 0.47% | 0.48% | 1.001 | 0 → 0 |
+| loop | 0.4331 | 0.4327 | 0.999 | 1.21% | 0.90% | 0.999 | 0 → 0 |
+| integer-table | 0.4970 | 0.5022 | 1.010 | 2.51% | 2.79% | 0.994 | 5 → 7 |
+| string-key | 0.0253 | 0.0258 | 1.018 | 1.23% | 0.87% | 1.003 | 0 → 0 |
+| concat | 0.0728 | 0.0740 | 1.017 | 2.52% | 3.67% | 0.999 | 0 → 0 |
+| sort | 0.1757 | 0.1769 | 1.007 | 1.31% | 1.04% | 0.997 | 3 → 5 |
+| binary-trees | 1.9583 | 1.9587 | 1.000 | 1.55% | 1.79% | 1.009 | 177 → 182 |
+
+**The criterion is not met as written:** string-key is 1.8% slower, beyond
+its larger range (1.23%) and the twin's difference (0.3%); every other
+kernel is within its bounds, the three that collect more included. One and
+three pairs gave string-key 0.996 and 1.015. String-key collects in neither
+build, so the floor changes nothing it executes; the two binaries also
+differ by the floor field in the heap and the setter, so code layout is the
+likelier cause, but this run does not separate the two. The default is the
+owner's choice between Firn's p99 (3.4 ms at 1 MiB, 0.83 ms at 64 KiB) and
+this unexplained 1.8% on string-key.
