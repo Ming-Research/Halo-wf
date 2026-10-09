@@ -4777,3 +4777,60 @@ does not attribute them among the adopted changes. #292's smaller frames
 and fewer copies on the call path are a candidate, not an established
 cause. The timed process includes the bench driver, whose stdin and stdout
 calls differ between the sides only by the never-firing cancel watch.
+
+## Whitefoot wf-01697d2de8a1 upgrade
+
+### Question, recorded before it runs
+
+The pin moves from `wf-5268f516c3f8` (Whitefoot main `5268f516c`,
+specification v0.110) to `wf-01697d2de8a1` (main `01697d2de`, v0.112). In
+between: removing the whole-value copies of `Step` at the joins after a
+match and of a subscripted `Value` read only for its tag and payload
+(Whitefoot#310, the call-path work), releasing a concurrent map's reserve
+(v0.111, not used by Halo) and range facts below elements (Whitefoot#315,
+v0.112). Halo's source needs no change; the gate passes unchanged. #310's
+experiment release measured fib 0.779 times as long as #292's release on
+the same source and loop 1.024 times, beyond the bounds (Halo-wf run
+37986461719); the loopmatch session's reading of the disassembly suspects a
+register-allocation side effect in the ForLoop arm (its next-instruction
+position kept on the stack), unmeasured, tracked as lm-bl-forloop-spill. Comparison: this branch's
+source built with both releases, six interleaved full-LTO pairs over the
+seven kernels on the 14900K with a twin of the old build, and two
+`--check-module pkg::vm` samples each. Expected: fib faster beyond its
+bounds by roughly a fifth; loop at most about 2.5% slower; no other kernel
+slower beyond its bounds. Fib not faster beyond its bounds would mean #310's
+gain did not reach the main release; another kernel slower beyond its
+bounds would stop the upgrade for an attribution.
+
+### Result
+
+[Run 37998120809](https://github.com/Ming-Research/Halo-wf/actions/runs/37998120809),
+artifact `halo-bench-upgrade-01697d2`: this branch's source built by both
+releases, six interleaved full-LTO pairs with a twin of the old build. The
+artifact's `upgrade-*.json` record the old compiler's digest as
+`compiler_sha256`, as in the previous upgrade; the manifest gives each
+binary's compiler.
+
+| Kernel | `wf-5268f516c3f8` | `wf-01697d2de8a1` | Ratio | Old range | New range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.0992 | 0.0781 | 0.787 | 1.44% | 4.13% | 0.999 |
+| loop | 0.4315 | 0.4426 | 1.026 | 1.51% | 1.89% | 1.000 |
+| integer-table | 0.3462 | 0.3475 | 1.004 | 2.83% | 2.70% | 1.001 |
+| string-key | 0.0193 | 0.0197 | 1.017 | 2.17% | 2.10% | 1.003 |
+| concat | 0.0635 | 0.0637 | 1.002 | 0.92% | 0.89% | 0.999 |
+| sort | 0.1640 | 0.1626 | 0.991 | 1.49% | 1.68% | 1.007 |
+| binary-trees | 1.5063 | 1.3898 | 0.923 | 0.72% | 1.91% | 0.998 |
+
+`--check-module pkg::vm`: old 8.205 and 8.169 s, new 8.214 and 8.240 s; the
+ratio of the two medians is 1.005.
+
+**The prediction holds: fib takes 0.787 times as long, beyond its bounds**
+(0.0989-0.1003 s before, 0.0780-0.0812 s after; 0.808 and 0.789 at one and
+three pairs), as #310's experiment release measured (0.779). Loop is 2.6%
+slower beyond its bounds (1.020 and 1.022 at one and three pairs), slightly
+more than the about 2.5% the question allowed and close to #310's own
+measurement (1.024); its suspected cause, from the disassembly only, is the
+register-allocation change tracked as lm-bl-forloop-spill, and binary-trees is 7.7%
+faster beyond its bounds (#310's release: 0.913). The other four kernels'
+ranges overlap. The upgrade stands; loop's recovery belongs to the
+loopmatch session's follow-up.
