@@ -3829,3 +3829,27 @@ run). If string-key is then within its bounds, its 1.8% above came from the
 added field and setter, not from the floor; the 64 KiB default meets the
 criterion if no kernel is slower beyond its larger range and the twin's
 difference.
+
+### The default constant alone: result
+
+[Run 37865476707](https://github.com/Ming-Research/Halo-wf/actions/runs/37865476707):
+this branch at `0ad19cbb2` against the same source with the default floor
+and initial threshold at 64 KiB (the run's `git diff --stat`: one line of
+`lib/halo/heap/slabs.wf`), otherwise as above:
+
+| Kernel | 1 MiB | 64 KiB | Ratio | 1 MiB range | 64 KiB range | Twin ratio | Collections |
+|---|---:|---:|---:|---:|---:|---:|---|
+| fib | 0.1030 | 0.1035 | 1.005 | 1.67% | 0.99% | 1.000 | 0 → 0 |
+| loop | 0.4325 | 0.4326 | 1.000 | 0.82% | 0.36% | 0.998 | 0 → 0 |
+| integer-table | 0.5042 | 0.5022 | 0.996 | 2.07% | 2.32% | 0.997 | 5 → 7 |
+| string-key | 0.0260 | 0.0259 | 0.998 | 1.26% | 0.69% | 0.995 | 0 → 0 |
+| concat | 0.0736 | 0.0736 | 1.000 | 2.22% | 1.99% | 0.997 | 0 → 0 |
+| sort | 0.1749 | 0.1750 | 1.000 | 1.29% | 1.89% | 0.994 | 3 → 5 |
+| binary-trees | 1.9340 | 1.9214 | 0.994 | 5.11% | 1.56% | 1.003 | 177 → 182 |
+
+**The 64 KiB default meets the criterion:** no kernel is slower beyond its
+bounds, the three that collect more included. String-key's 1.8% in the
+previous run therefore came with the added field and setter, not with the
+floor; this run's 1 MiB build, which has them, also ran string-key at
+0.0260 s against main's 0.0253 s there, a comparison across runs that this
+run does not test.
