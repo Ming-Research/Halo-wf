@@ -3771,3 +3771,18 @@ variant; `set_gc_floor` applies only from the next collection on. A default
 floor that also sets the initial threshold would keep the slabs near the
 garbage allocated between collections; a sweep that skips never-used slots,
 or slabs that shrink, would remove the cost for any floor.
+
+### A 64 KiB default on Halo's kernels: criterion, recorded before measuring
+
+A lower default floor means more collections wherever the live heap is
+small; the kernels with large live heaps already collect at `live` and
+should not change. Comparison: main (`872dbf838`, floor and initial
+threshold 1 MiB) against the same source with the default floor and the
+initial threshold at 64 KiB (measurement-only branch
+`claude/halo-gc-floor-64k`, deleted after the run), same compiler
+(`wf-691ea8106920`), six interleaved full-LTO pairs over the seven kernels
+with a twin of main, on the 14900K. A 64 KiB default is acceptable for
+Halo's kernels if no kernel is slower beyond its larger range and the twin's
+difference; a kernel slower beyond that is reported with its collection
+count, and the default is then the owner's trade-off between Firn's p99 and
+that kernel.
