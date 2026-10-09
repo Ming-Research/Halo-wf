@@ -3818,3 +3818,14 @@ differ by the floor field in the heap and the setter, so code layout is the
 likelier cause, but this run does not separate the two. The default is the
 owner's choice between Firn's p99 (3.4 ms at 1 MiB, 0.83 ms at 64 KiB) and
 this unexplained 1.8% on string-key.
+
+### The default constant alone: criterion, recorded before measuring
+
+To separate the floor from the layout change, this branch's source with
+the 1 MiB default (`f46378c`, setting included) is compared against the
+same source with only the default floor and initial threshold changed to
+64 KiB, otherwise as above (measurement-only branch, deleted after the
+run). If string-key is then within its bounds, its 1.8% above came from the
+added field and setter, not from the floor; the 64 KiB default meets the
+criterion if no kernel is slower beyond its larger range and the twin's
+difference.
