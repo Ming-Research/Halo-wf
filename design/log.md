@@ -4,6 +4,14 @@ Newest first. One entry per approved change of the tree: a dated title,
 `Nodes:` naming every node changed, `Owner-approved:` and `Summary:`; the
 owner-wide instructions' *Log format* owns the form.
 
+## 2026-10-09 Halo's collector is forced and observed only through the embedding API
+
+Nodes: halo/heap/collector-validation
+
+Owner-approved: 2026-10-09 on the WF status board, card "Should Halo's collections always be forced and observed through the embedding API, with no host or probe reading or writing heap fields?" under item "The embedding probe makes the allocation trigger due through heap fields": chose option A, "always go through the embedding API: the first decision changes from provisional to approved; add an embedding function that makes the collection due at the next safepoint, and switch the probe to it, deleting its two direct heap-field writes".
+
+Summary: The decision to force and observe the collector through the embedding API had stayed provisional on an owner question that never reached the board, while the embedding probe still wrote the trigger's two heap fields to make a collection due, and the oracle driver read the heap's byte count directly. The embedding now offers `collect_at_next_safepoint`, a one-shot control that makes the allocation trigger due (stress would bypass the due check the probe exercises, and a pause takes effect only after a collection), and `heap_bytes`; the probe and the driver use them, and no embedding client reads or writes the collector's trigger or telemetry fields any longer. The probe now also checks that each of its two runs completed a collection.
+
 ## 2026-10-09 Halo grows a nonshrinking table array in place
 
 Nodes: halo/heap/tables/growth

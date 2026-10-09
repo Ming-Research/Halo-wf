@@ -157,7 +157,7 @@ error value and a host-stopped stack, clears the stack above as Lua 5.1's
 `traversestack` does, and sweeps. The byte limit applies to logical live
 heap bytes after a safepoint collection; it does not bound temporary
 allocation inside library calls, slab/intern reserve or process RSS. Trigger:
-`bytes_since_gc > max(1 MiB, live_bytes_after_last_gc)`. Byte accounting
+`bytes_since_gc > max(64 KiB, live_bytes_after_last_gc * (pause - 100) / 100)`, with the pause defaulting to 200 ([heap.md](../../../design/halo/heap.md)). Byte accounting
 answers G5: past `memory_limit`, collect once, then raise "not enough
 memory". Not incremental, no weak tables, no `__gc` in slice 1.
 
