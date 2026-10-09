@@ -4800,3 +4800,34 @@ bounds by roughly a fifth; loop at most about 2.5% slower; no other kernel
 slower beyond its bounds. Fib not faster beyond its bounds would mean #310's
 gain did not reach the main release; another kernel slower beyond its
 bounds would stop the upgrade for an attribution.
+
+### Result
+
+[Run 37998120809](https://github.com/Ming-Research/Halo-wf/actions/runs/37998120809),
+artifact `halo-bench-upgrade-01697d2`: this branch's source built by both
+releases, six interleaved full-LTO pairs with a twin of the old build. The
+artifact's `upgrade-*.json` record the old compiler's digest as
+`compiler_sha256`, as in the previous upgrade; the manifest gives each
+binary's compiler.
+
+| Kernel | `wf-5268f516c3f8` | `wf-01697d2de8a1` | Ratio | Old range | New range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.0992 | 0.0781 | 0.787 | 1.44% | 4.13% | 0.999 |
+| loop | 0.4315 | 0.4426 | 1.026 | 1.51% | 1.89% | 1.000 |
+| integer-table | 0.3462 | 0.3475 | 1.004 | 2.83% | 2.70% | 1.001 |
+| string-key | 0.0193 | 0.0197 | 1.017 | 2.17% | 2.10% | 1.003 |
+| concat | 0.0635 | 0.0637 | 1.002 | 0.92% | 0.89% | 0.999 |
+| sort | 0.1640 | 0.1626 | 0.991 | 1.49% | 1.68% | 1.007 |
+| binary-trees | 1.5063 | 1.3898 | 0.923 | 0.72% | 1.91% | 0.998 |
+
+`--check-module pkg::vm`: old 8.205 and 8.169 s, new 8.214 and 8.240 s; the
+ratio of the two medians is 1.005.
+
+**The prediction holds: fib takes 0.787 times as long, beyond its bounds**
+(0.0989-0.1003 s before, 0.0780-0.0812 s after; 0.808 and 0.789 at one and
+three pairs), as #310's experiment release measured (0.779). Loop is 2.6%
+slower beyond its bounds, the register-allocation side effect #310's
+measurement found (1.024; lm-bl-forloop-spill), and binary-trees is 7.7%
+faster beyond its bounds (#310's release: 0.913). The other four kernels'
+ranges overlap. The upgrade stands; loop's recovery belongs to the
+loopmatch session's follow-up.
