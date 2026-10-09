@@ -3889,3 +3889,27 @@ interleaved full-LTO pairs with a twin of main:
 **The criterion is met:** no kernel is slower beyond its bounds, string-key
 included, so the final revision without the setting shows none of the
 earlier 1.8%.
+
+## Whitefoot wf-b2209fd31035 upgrade
+
+### Question, recorded before it runs
+
+The pin moves from `wf-691ea8106920` (Whitefoot main `691ea8106`,
+specification v0.102) to `wf-b2209fd31035` (main `b2209fd31`, v0.105). Among
+the changes between them, two touch Halo's generated code: Whitefoot#279
+reads a by-value parameter in place in branched functions too, which on an
+experiment release removed `push_frame`'s entry copy and made fib 3.8%
+faster ([reading by-value parameters in place, measured](#reading-by-value-parameters-in-place-measured));
+and Whitefoot#280 lowers `grow` through a counted reallocation, which Halo's
+current source does not call on its hot paths (reapplying `6f49ca6`, which
+does, is a separate change measured after this one). The specification
+changes add standard-library inputs Halo does not use and narrow when a
+saved Bool comparison holds; Halo's source needed no change beyond naming
+`Inputs`' new fields with a rest pattern, which both releases accept.
+
+Comparison: this branch's source built with both releases, six interleaved
+full-LTO pairs over the seven kernels on the 14900K with a twin of the old
+build, `push_frame`'s disassembly from both, and two `--check-module pkg::vm`
+samples each. Expected: `push_frame` loses its entry copy, fib is faster by
+more than both ranges and the twin's difference, and no kernel is slower
+beyond its bounds; a kernel that is slower is reported with the upgrade.
