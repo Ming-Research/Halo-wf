@@ -80,7 +80,9 @@ data and supported attribution are in [RESULTS.md](RESULTS.md).
 `--before-binary PATH` alternates Before/Halo then Halo/Before launches,
 feeding identical source bytes to both. A separate PUC launch supplies the
 independent checksum; both native outputs and stats must validate, and their
-collection counts must agree. `--before-budget large|realistic` selects the
+collection counts must agree unless `--collections-may-change` says the
+change under test alters collection timing, when both counts are recorded per
+pair instead. `--before-budget large|realistic` selects the
 first binary's budget independently of `--budget` for the second. Before/after
 pairs cannot be profiled or reference-only. `before` replaces `puc` in this
 mode's timing summaries; the PUC check is not a timed pair member.

@@ -3684,3 +3684,208 @@ library function is split in Halo, since that would route around the gap.
 The sort kernel no longer reaches `sort_compare` (homogeneous arrays take
 `sort_array_run`), so this costs Halo's kernels nothing today; a sort with
 a comparator or mixed operands still runs it.
+
+## The collection floor on Firn's long-lived VM
+
+### What Firn measured with the statistics
+
+Firn-wf [run 37859639750](https://github.com/Ming-Research/Firn-wf/actions/runs/37859639750)
+(the firn session's experiment branch at `413b34a`, Halo `10a9b02e4`,
+14900K, one core, the rate-limiter script through EVALSHA at 50
+connections, two interleaved five-second passes per side), as the firn
+session reported it; the numbers below are its, not recomputed here:
+
+- The live heap is small and constant from the first collection on: 134
+  strings (4.1 KB), 13 tables (6.1 KB), one closure (24 B), no upvalues;
+  marking pops 14 gray values every time.
+- Each collection frees about 16,600 objects and 1.05 MB (about 10,190
+  tables, 3,220 closures and 3,180 strings) and visits about 17,200 slots;
+  pauses average 3.9–4.0 ms, about 240 ns per freed object.
+- `set_gc_pause(400)` changed nothing: `next_threshold` stayed 1,048,576
+  bytes on both sides, since `live * (pause - 100) / 100` with 10 KB live is
+  far below the 1 MiB floor. Collections, pause lengths, p99 (3.4–3.5 ms)
+  and p99.9 (6.6–7.0 ms) were unchanged.
+
+So the pause is set by the 1 MiB floor and the per-object cost of sweeping
+and freeing, not by the pause multiplier. PUC Lua 5.1 has no such floor; its
+threshold is the estimate times the pause.
+
+### Question and criterion, recorded before measuring
+
+This branch makes the floor an embedding setting, `set_gc_floor(engine,
+bytes)` (default 1 MiB, applied by the next completed collection, like the
+pause), so that one Firn build can run several floors side by side.
+
+Question: does a lower floor shorten pauses in proportion and bring the
+rate-limiter script's p99 at 50 connections down, without costing
+throughput? Each collection's work should scale with the garbage allocated
+since the last one, and the slabs' length with the garbage alive at once, so
+a floor of F should give pauses of about 4 ms × F / 1 MiB and about
+1 MiB / F times as many collections; a fixed cost per collection would show
+as pauses that do not fall in proportion.
+
+Comparison, measured by the firn session on the 14900K with its harness:
+floors of 1 MiB (control), 256 KiB and 64 KiB in one interleaved run, the
+rate-limiter script at 50 connections, reporting per side collections,
+mean and maximum pause, freed objects and slots visited per collection,
+p99, p99.9 and throughput, with its pass-to-pass spread.
+
+A floor is a candidate for the default if its p99 is at least 30% below the
+1 MiB control and its throughput is not lower than the control's by more
+than the run's own pass-to-pass spread. If no floor meets this, a lower
+floor is rejected as the remedy and the per-object sweep and free cost is
+the next target. The default stays 1 MiB on this branch; changing it, or
+keeping `set_gc_floor`, is the owner's decision after the result.
+
+### Result
+
+Firn-wf [run 37862972166](https://github.com/Ming-Research/Firn-wf/actions/runs/37862972166)
+(the firn session's experiment branch at `101abee`, Halo `f6b51e4`, pause
+200, 14900K, one core, the rate-limiter script at 50 connections, two
+interleaved five-second passes per floor), as the firn session reported it;
+two values per cell, one per pass:
+
+| Floor | Collections | Mean pause (ms) | Freed per collection | Slots visited | p99 (ms) | p99.9 (ms) | Throughput (k/s) |
+|---|---|---|---:|---:|---|---|---|
+| 1 MiB | 194, 165 | 3.82, 4.34 | ≈16,600 | ≈17,200 | 3.40, 3.45 | 6.61, 6.71 | 125.4, 106.1 |
+| 256 KiB | 750, 720 | 0.68, 0.70 | ≈4,170 | ≈16,000 | 1.51, 1.49 | 2.19, 1.55 | 121.2, 116.2 |
+| 64 KiB | 3,019, 3,089 | 0.18, 0.18 | ≈1,050 | ≈16,000 | 0.84, 0.82 | 2.24, 0.93 | 121.8, 124.8 |
+
+Redis 7.0.15 in the same run: p99 0.77 and 0.91 ms, 148k and 142k calls a
+second.
+
+**Both lower floors meet the criterion.** Against the 1 MiB control, p99
+falls 56% at 256 KiB and 76% at 64 KiB, where it matches Redis's, and
+neither floor's throughput is below the control's by more than the
+control's own pass-to-pass spread (17%), which is too wide to resolve a
+throughput difference of a few percent. Pauses fell in proportion to the
+floor, and the cost per freed object fell from about 240 ns to about
+165 ns; total collection time over a pass fell too (about 0.55 s of 5 s at
+64 KiB against about 0.74 s at 1 MiB, the firn session's figures).
+
+One cost did not scale: every collection visits about 16,000 slots however
+few it frees, since the sweep walks each slab's whole length and slabs never
+shrink. In this run the slabs reached that length before the first
+collection, which happens at the engine's initial 1 MiB threshold in every
+variant; `set_gc_floor` applies only from the next collection on. A default
+floor that also sets the initial threshold would keep the slabs near the
+garbage allocated between collections; a sweep that skips never-used slots,
+or slabs that shrink, would remove the cost for any floor.
+
+### A 64 KiB default on Halo's kernels: criterion, recorded before measuring
+
+A lower default floor means more collections wherever the live heap is
+small; the kernels with large live heaps already collect at `live` and
+should not change. Comparison: main (`872dbf838`, floor and initial
+threshold 1 MiB) against the same source with the default floor and the
+initial threshold at 64 KiB (measurement-only branch
+`claude/halo-gc-floor-64k`, deleted after the run), same compiler
+(`wf-691ea8106920`), six interleaved full-LTO pairs over the seven kernels
+with a twin of main, on the 14900K. A 64 KiB default is acceptable for
+Halo's kernels if no kernel is slower beyond its larger range and the twin's
+difference; a kernel slower beyond that is reported with its collection
+count, and the default is then the owner's trade-off between Firn's p99 and
+that kernel.
+
+### A 64 KiB default on Halo's kernels: result
+
+[Run 37864849133](https://github.com/Ming-Research/Halo-wf/actions/runs/37864849133),
+artifact `halo-bench-floor64`: main `872dbf838` against the measurement
+branch at `0a3844317` (this branch's floor setting plus the 64 KiB default
+and initial threshold; the run's `git diff --stat` lists only the five
+library files of the floor change), `wf-691ea8106920`, six interleaved
+full-LTO pairs, `run.py --collections-may-change` (the first attempt,
+[run 37863440621](https://github.com/Ming-Research/Halo-wf/actions/runs/37863440621),
+stopped at integer-table's changed collection count before that option
+existed). Medians in seconds, collections per launch:
+
+| Kernel | Main | 64 KiB | Ratio | Main range | 64 KiB range | Twin ratio | Collections |
+|---|---:|---:|---:|---:|---:|---:|---|
+| fib | 0.1041 | 0.1033 | 0.992 | 0.47% | 0.48% | 1.001 | 0 → 0 |
+| loop | 0.4331 | 0.4327 | 0.999 | 1.21% | 0.90% | 0.999 | 0 → 0 |
+| integer-table | 0.4970 | 0.5022 | 1.010 | 2.51% | 2.79% | 0.994 | 5 → 7 |
+| string-key | 0.0253 | 0.0258 | 1.018 | 1.23% | 0.87% | 1.003 | 0 → 0 |
+| concat | 0.0728 | 0.0740 | 1.017 | 2.52% | 3.67% | 0.999 | 0 → 0 |
+| sort | 0.1757 | 0.1769 | 1.007 | 1.31% | 1.04% | 0.997 | 3 → 5 |
+| binary-trees | 1.9583 | 1.9587 | 1.000 | 1.55% | 1.79% | 1.009 | 177 → 182 |
+
+**The criterion is not met as written:** string-key is 1.8% slower, beyond
+its larger range (1.23%) and the twin's difference (0.3%); every other
+kernel is within its bounds, the three that collect more included. One and
+three pairs gave string-key 0.996 and 1.015. String-key collects in neither
+build, so the floor changes nothing it executes; the two binaries also
+differ by the floor field in the heap and the setter, so code layout is the
+likelier cause, but this run does not separate the two. The default is the
+owner's choice between Firn's p99 (3.4 ms at 1 MiB, 0.83 ms at 64 KiB) and
+this unexplained 1.8% on string-key.
+
+### The default constant alone: criterion, recorded before measuring
+
+To separate the floor from the layout change, this branch's source with
+the 1 MiB default (`f46378c`, setting included) is compared against the
+same source with only the default floor and initial threshold changed to
+64 KiB, otherwise as above (measurement-only branch, deleted after the
+run). If string-key is then within its bounds, its 1.8% above came from the
+added field and setter, not from the floor; the 64 KiB default meets the
+criterion if no kernel is slower beyond its larger range and the twin's
+difference.
+
+### The default constant alone: result
+
+[Run 37865476707](https://github.com/Ming-Research/Halo-wf/actions/runs/37865476707):
+this branch at `0ad19cbb2` against the same source with the default floor
+and initial threshold at 64 KiB (the run's `git diff --stat`: one line of
+`lib/halo/heap/slabs.wf`), otherwise as above:
+
+| Kernel | 1 MiB | 64 KiB | Ratio | 1 MiB range | 64 KiB range | Twin ratio | Collections |
+|---|---:|---:|---:|---:|---:|---:|---|
+| fib | 0.1030 | 0.1035 | 1.005 | 1.67% | 0.99% | 1.000 | 0 → 0 |
+| loop | 0.4325 | 0.4326 | 1.000 | 0.82% | 0.36% | 0.998 | 0 → 0 |
+| integer-table | 0.5042 | 0.5022 | 0.996 | 2.07% | 2.32% | 0.997 | 5 → 7 |
+| string-key | 0.0260 | 0.0259 | 0.998 | 1.26% | 0.69% | 0.995 | 0 → 0 |
+| concat | 0.0736 | 0.0736 | 1.000 | 2.22% | 1.99% | 0.997 | 0 → 0 |
+| sort | 0.1749 | 0.1750 | 1.000 | 1.29% | 1.89% | 0.994 | 3 → 5 |
+| binary-trees | 1.9340 | 1.9214 | 0.994 | 5.11% | 1.56% | 1.003 | 177 → 182 |
+
+**The 64 KiB default meets the criterion:** no kernel is slower beyond its
+bounds, the three that collect more included. String-key's 1.8% in the
+previous run therefore did not come from the floor; that it came from the
+added field and setter, through code layout or otherwise, is a hypothesis:
+both sides of this run have them, so this run does not measure their cost.
+This run's 1 MiB build ran string-key at 0.0260 s against main's 0.0253 s
+in the previous run, a comparison across runs that neither run tests.
+
+### Outcome
+
+The owner chose a 64 KiB default floor and initial threshold without the
+`set_gc_floor` setting, which this branch then removed; the floor is the
+heap's `collection_floor` constant.
+
+### The final revision against main: criterion, recorded before measuring
+
+The comparisons above measured the floor with the experimental setting in
+both builds; the final revision has no setting. Main (`872dbf838`) against
+this branch's final source, whose library differs from main only in the
+`collection_floor` constant and its two uses, otherwise as above. Kept if no
+kernel is slower beyond its larger range and the twin's difference.
+
+### The final revision against main: result
+
+[Run 37872228924](https://github.com/Ming-Research/Halo-wf/actions/runs/37872228924):
+main `872dbf838` against this branch's final source (`60385dc`; the run's
+`git diff --stat` lists the four library files of the constant), six
+interleaved full-LTO pairs with a twin of main:
+
+| Kernel | Main | Final | Ratio | Main range | Final range | Twin ratio | Collections |
+|---|---:|---:|---:|---:|---:|---:|---|
+| fib | 0.1042 | 0.1045 | 1.003 | 1.12% | 3.41% | 1.005 | 0 → 0 |
+| loop | 0.4329 | 0.4330 | 1.000 | 0.64% | 0.75% | 1.002 | 0 → 0 |
+| integer-table | 0.4881 | 0.4835 | 0.991 | 3.90% | 2.80% | 1.013 | 5 → 7 |
+| string-key | 0.0255 | 0.0255 | 1.002 | 1.77% | 6.52% | 1.002 | 0 → 0 |
+| concat | 0.0726 | 0.0727 | 1.001 | 1.64% | 1.12% | 1.000 | 0 → 0 |
+| sort | 0.1747 | 0.1751 | 1.002 | 1.01% | 2.13% | 0.990 | 3 → 5 |
+| binary-trees | 1.8915 | 1.8888 | 0.999 | 2.07% | 1.23% | 1.001 | 177 → 182 |
+
+**The criterion is met:** no kernel is slower beyond its bounds, string-key
+included, so the final revision without the setting shows none of the
+earlier 1.8%.

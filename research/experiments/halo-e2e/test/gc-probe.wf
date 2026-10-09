@@ -394,7 +394,7 @@ fn gc_stats_probe(stress: Bool) -> r: u8 pure {
     return 152_u8;
   }
   let live = gc_probe_live_bytes(stats: stats);
-  let expected = imax(live, 1048576_u64);
+  let expected = imax(live, 65536_u64);
   if stats.next_threshold != expected {
     return 153_u8;
   }
@@ -453,7 +453,7 @@ fn gc_pause_trial(percent: u64, stress: Bool) -> r: Result<u64, u8> pure {
   }
   let defaults = halo::embed::last_collection(engine: &engine);
   let default_live = gc_probe_live_bytes(stats: defaults);
-  if default_live <= 1048576_u64 {
+  if default_live <= 65536_u64 {
     return Err<u64, u8>(error: 158_u8);
   }
   if defaults.next_threshold != default_live {
@@ -495,7 +495,7 @@ fn gc_pause_trial(percent: u64, stress: Bool) -> r: Result<u64, u8> pure {
     return Err<u64, u8>(error: 160_u8);
   }
   let clamped = halo::embed::last_collection(engine: &engine);
-  if clamped.next_threshold != 1048576_u64 {
+  if clamped.next_threshold != 65536_u64 {
     return Err<u64, u8>(error: 160_u8);
   }
   halo::embed::set_gc_pause(engine: &engine, percent: 100_u64);
@@ -545,7 +545,7 @@ fn gc_pause_trial(percent: u64, stress: Bool) -> r: Result<u64, u8> pure {
   }
   let configured = halo::embed::last_collection(engine: &engine);
   let live = gc_probe_live_bytes(stats: configured);
-  if live <= 1048576_u64 {
+  if live <= 65536_u64 {
     return Err<u64, u8>(error: 163_u8);
   }
   let expected = live;
@@ -571,7 +571,7 @@ fn gc_pause_trial(percent: u64, stress: Bool) -> r: Result<u64, u8> pure {
   }
   let restored = halo::embed::last_collection(engine: &engine);
   let restored_live = gc_probe_live_bytes(stats: restored);
-  let restored_expected = imax(restored_live, 1048576_u64);
+  let restored_expected = imax(restored_live, 65536_u64);
   if restored.next_threshold != restored_expected {
     return Err<u64, u8>(error: 166_u8);
   }
@@ -588,7 +588,7 @@ fn gc_pause_pending_trial(engine: &Engine, env: &Probe, script: ScriptId) -> r: 
   }
   let defaults = halo::embed::last_collection(engine: engine);
   let default_live = gc_probe_live_bytes(stats: defaults);
-  if default_live <= 1048576_u64 {
+  if default_live <= 65536_u64 {
     return 172_u8;
   }
   if defaults.next_threshold != default_live {

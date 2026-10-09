@@ -121,7 +121,7 @@ be visited. Counting only occupied string or upvalue slots fails observation
 independently expose absolute slab lengths. The checks also account for
 gray-stack pops and preserve every snapshot field across reset.
 Pause checks cover clamping below
-100, the 1 MiB floor, fractional percentages, saturation without premature
+100, the 64 KiB floor, fractional percentages, saturation without premature
 product overflow, reset persistence, stress overriding the
 threshold, and exact restoration of the 200 percent threshold. Fresh engines
 with an equally sized pinned table run the same allocation loop with stress
