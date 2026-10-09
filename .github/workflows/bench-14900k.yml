@@ -39,13 +39,13 @@ jobs:
           wfc="$PWD/build/whitefoot/$release/whitefootc"
           sh research/experiments/halo-oracle/fetch-redis.sh "$PWD/build/redis"
           lua="$PWD/build/redis/redis-7.0.15/deps/lua/src/lua"
-          git archive "eb4d2f2f4de7b58ac8607353aa063082d2da9c59_SOURCE" | tar -x -C build/base-src
-          git diff --stat "eb4d2f2f4de7b58ac8607353aa063082d2da9c59_SOURCE" HEAD -- lib research/experiments/halo-bench/host research/experiments/halo-bench/modules.wfg | tee "$out/source-diff.txt"
+          git archive "$BASE_SOURCE" | tar -x -C build/base-src
+          git diff --stat "$BASE_SOURCE" HEAD -- lib research/experiments/halo-bench/host research/experiments/halo-bench/modules.wfg | tee "$out/source-diff.txt"
           (cd build/base-src && "$wfc" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-base")
           cp "$out/halo-base" "$out/halo-base-twin"
           "$wfc" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-head"
           {
-            echo "branch $(git rev-parse HEAD), base source eb4d2f2f4de7b58ac8607353aa063082d2da9c59_SOURCE, release $release"
+            echo "branch $(git rev-parse HEAD), base source $BASE_SOURCE, release $release"
             sha256sum "$wfc" "$out"/halo-*
             /usr/bin/clang --version | head -n 1
           } | tee "$out/manifest.txt"
