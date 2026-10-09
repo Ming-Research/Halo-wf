@@ -44,6 +44,8 @@ fn text(buffer: &Slots<u8, 256>, value: &[u8]) -> result: unit reads(value), wri
 }
 
 fn trace(factory: &HandleFactory, output: &OutputStream, tag: u64, step: u64, key: u64, val: u64, border: u64, count: u64, sum: u64) -> r: Bool writes(factory), writes(output) waits {
+  doc "Write one collector trace record.";
+  let never = std::time::cancel_never();
   let buffer = slots_new::<u8, 256>();
   number(buffer: &buffer, value: tag);
   if buffer.len < buffer.cap {
@@ -77,8 +79,9 @@ fn trace(factory: &HandleFactory, output: &OutputStream, tag: u64, step: u64, ke
   loop @write {
     if sent < buffer.len {
       let deadline = None<std::time::Instant>();
-      match std::io::write_once(factory: factory, output: output, source: &buffer[0_u64..buffer.len], start: sent, end: buffer.len, deadline: deadline) {
+      match std::io::write_once(factory: factory, output: output, source: &buffer[0_u64..buffer.len], start: sent, end: buffer.len, deadline: deadline, cancel: &never) {
         Err(error: problem) => {
+          std::time::close_cancel_watch(watch: move never);
           return False();
         }
         Ok(value: next) => {
@@ -86,6 +89,7 @@ fn trace(factory: &HandleFactory, output: &OutputStream, tag: u64, step: u64, ke
         }
       }
     } else {
+      std::time::close_cancel_watch(watch: move never);
       return True();
     }
   }

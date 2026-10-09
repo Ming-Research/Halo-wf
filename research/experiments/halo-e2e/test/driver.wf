@@ -428,10 +428,11 @@ fn protect(engine: &Engine) -> r: unit writes(engine) {
 
 fn read_source(factory: &HandleFactory, input: &InputStream, source: &Box<Slots<u8>>) -> success: Bool writes(factory), writes(input), writes(source) waits {
   doc "Read stdin in small host operations, preserving all binary bytes.";
+  let never = std::time::cancel_never();
   let scratch_v91 = array_filled::<u8, 4096>(value: 0_u8);
   loop {
     let deadline_v92 = None<std::time::Instant>();
-    let got_v93 = std::io::read_next(factory: factory, input: input, destination: &scratch_v91[0_u64..4096_u64], start: 0_u64, end: 4096_u64, deadline: deadline_v92);
+    let got_v93 = std::io::read_next(factory: factory, input: input, destination: &scratch_v91[0_u64..4096_u64], start: 0_u64, end: 4096_u64, deadline: deadline_v92, cancel: &never);
     match got_v93 {
       Ok(value: count_v94) => {
         for (i_v95 in 0_u64..count_v94) {
@@ -444,9 +445,11 @@ fn read_source(factory: &HandleFactory, input: &InputStream, source: &Box<Slots<
       Err(error: stop_v97) => {
         match stop_v97 {
           ReadEnd() => {
+            std::time::close_cancel_watch(watch: move never);
             return True();
           }
           ReadFailed(error: problem_v98) => {
+            std::time::close_cancel_watch(watch: move never);
             return False();
           }
         }
@@ -713,22 +716,27 @@ fn argument_is(args: &std::text::Args, index: u64, text: &[u8]) -> r: Bool reads
 }
 
 fn write_bytes(factory: &HandleFactory, output: &OutputStream, bytes: &Box<Slots<u8>>) -> r: Bool reads(bytes), writes(factory), writes(output) waits {
+  doc "Write the buffered bytes, reporting a failed transfer or lack of progress.";
+  let never = std::time::cancel_never();
   let length = bytes^.inner.len;
   let position = 0_u64;
   loop {
     if position >= length {
+      std::time::close_cancel_watch(watch: move never);
       return True();
     }
     let deadline = None<std::time::Instant>();
-    let written = std::io::write_once(factory: factory, output: output, source: &bytes^.inner[0_u64..length], start: position, end: length, deadline: deadline);
+    let written = std::io::write_once(factory: factory, output: output, source: &bytes^.inner[0_u64..length], start: position, end: length, deadline: deadline, cancel: &never);
     match written {
       Ok(value: end) => {
         if end == position {
+          std::time::close_cancel_watch(watch: move never);
           return False();
         }
         set position = end;
       }
       Err(..) => {
+        std::time::close_cancel_watch(watch: move never);
         return False();
       }
     }

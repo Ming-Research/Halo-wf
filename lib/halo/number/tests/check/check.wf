@@ -7,20 +7,25 @@ alias OutputStream = std::io::OutputStream;
 fn read_exact(factory: &HandleFactory, input: &InputStream, bytes: &[u8], count: u64) -> complete: Bool writes(factory), writes(input), writes(bytes) waits contract {
   requires count <= bytes^.len;
 } {
+  doc "Read exactly count bytes, reporting end of input or a failed transfer.";
+  let never = std::time::cancel_never();
   let position = 0_u64;
   loop @read {
     if position >= count {
+      std::time::close_cancel_watch(watch: move never);
       return True();
     }
     let deadline = None<std::time::Instant>();
-    match std::io::read_next(factory: factory, input: input, destination: bytes, start: position, end: count, deadline: deadline) {
+    match std::io::read_next(factory: factory, input: input, destination: bytes, start: position, end: count, deadline: deadline, cancel: &never) {
       Ok(value: next) => {
         if next == position {
+          std::time::close_cancel_watch(watch: move never);
           return False();
         }
         set position = next;
       }
       Err(error: problem) => {
+        std::time::close_cancel_watch(watch: move never);
         return False();
       }
     }
@@ -66,20 +71,25 @@ fn bits_text(value: f64, out: &[u8]) -> count: u64 writes(out) contract {
 fn emit(factory: &HandleFactory, output: &OutputStream, bytes: &[u8], count: u64) -> complete: Bool reads(bytes), writes(factory), writes(output) waits contract {
   requires count <= bytes^.len;
 } {
+  doc "Write count bytes, reporting a failed transfer or lack of progress.";
+  let never = std::time::cancel_never();
   let position = 0_u64;
   loop @write {
     if position >= count {
+      std::time::close_cancel_watch(watch: move never);
       return True();
     }
     let deadline = None<std::time::Instant>();
-    match std::io::write_once(factory: factory, output: output, source: bytes, start: position, end: count, deadline: deadline) {
+    match std::io::write_once(factory: factory, output: output, source: bytes, start: position, end: count, deadline: deadline, cancel: &never) {
       Ok(value: next) => {
         if next == position {
+          std::time::close_cancel_watch(watch: move never);
           return False();
         }
         set position = next;
       }
       Err(error: problem) => {
+        std::time::close_cancel_watch(watch: move never);
         return False();
       }
     }

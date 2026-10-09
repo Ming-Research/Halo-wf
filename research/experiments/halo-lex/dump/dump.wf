@@ -79,10 +79,11 @@ fn hex(out: &Box<Slots<u8>>, bytes: &[u8], start: u64, end: u64) -> result: unit
 
 fn read_source(factory: &HandleFactory, input: &InputStream, source: &Box<Slots<u8>>) -> success: Bool writes(factory), writes(input), writes(source) waits {
   doc "Read stdin in small host operations, preserving all binary bytes.";
+  let never = std::time::cancel_never();
   let scratch = array_filled::<u8, 4096>(value: 0_u8);
   loop {
     let deadline = None<std::time::Instant>();
-    let got = std::io::read_next(factory: factory, input: input, destination: &scratch[0_u64..4096_u64], start: 0_u64, end: 4096_u64, deadline: deadline);
+    let got = std::io::read_next(factory: factory, input: input, destination: &scratch[0_u64..4096_u64], start: 0_u64, end: 4096_u64, deadline: deadline, cancel: &never);
     match got {
       Ok(value: count) => {
         for (i in 0_u64..count) {
@@ -95,9 +96,11 @@ fn read_source(factory: &HandleFactory, input: &InputStream, source: &Box<Slots<
       Err(error: stop) => {
         match stop {
           ReadEnd() => {
+            std::time::close_cancel_watch(watch: move never);
             return True();
           }
           ReadFailed(error: problem) => {
+            std::time::close_cancel_watch(watch: move never);
             return False();
           }
         }
@@ -153,6 +156,7 @@ fn dump_source(bytes: &[u8], name: &[u8], initial_line: u64, out: &Box<Slots<u8>
 
 fn main(inputs: Inputs) -> status: ExitStatus pure waits {
   doc "Compare the public lexer interface through a native Whitefoot entry.";
+  let never = std::time::cancel_never();
   let Inputs(args: args, cwd: cwd, stdout: output, stderr: stderr, handles: factory, stdin: input, clock: clock, wall_clock: wall_clock, ..) = move inputs;
   let std::fs::Directory(read: cwd_read, write: cwd_write) = move cwd;
   std::fs::close_directory(factory: &factory, directory: move cwd_read);
@@ -161,6 +165,7 @@ fn main(inputs: Inputs) -> status: ExitStatus pure waits {
   let read = read_source(factory: &factory, input: &input, source: &source);
   if read {
   } else {
+    std::time::close_cancel_watch(watch: move never);
     return std::process::exit_status(code: 2_u8);
   }
   let out = box_slots_new::<u8>(capacity: 0_u64);
@@ -180,6 +185,7 @@ fn main(inputs: Inputs) -> status: ExitStatus pure waits {
         set initial_line = shifted +wrap wide;
         set cursor = cursor + 1_u64;
       } else {
+        std::time::close_cancel_watch(watch: move never);
         return std::process::exit_status(code: 2_u8);
       }
     }
@@ -192,6 +198,7 @@ fn main(inputs: Inputs) -> status: ExitStatus pure waits {
         set chunk_length = shifted +wrap wide;
         set cursor = cursor + 1_u64;
       } else {
+        std::time::close_cancel_watch(watch: move never);
         return std::process::exit_status(code: 2_u8);
       }
     }
@@ -203,6 +210,7 @@ fn main(inputs: Inputs) -> status: ExitStatus pure waits {
         set name_end = cursor + chunk_length;
         set cursor = name_end;
       } else {
+        std::time::close_cancel_watch(watch: move never);
         return std::process::exit_status(code: 2_u8);
       }
     }
@@ -215,6 +223,7 @@ fn main(inputs: Inputs) -> status: ExitStatus pure waits {
         set payload_length = shifted +wrap wide;
         set cursor = cursor + 1_u64;
       } else {
+        std::time::close_cancel_watch(watch: move never);
         return std::process::exit_status(code: 2_u8);
       }
     }
@@ -229,6 +238,7 @@ fn main(inputs: Inputs) -> status: ExitStatus pure waits {
         }
         set cursor = end;
       } else {
+        std::time::close_cancel_watch(watch: move never);
         return std::process::exit_status(code: 2_u8);
       }
     }
@@ -240,18 +250,21 @@ fn main(inputs: Inputs) -> status: ExitStatus pure waits {
       break;
     }
     let deadline = None<std::time::Instant>();
-    let written = std::io::write_once(factory: &factory, output: &output, source: &out.inner[0_u64..length], start: position, end: length, deadline: deadline);
+    let written = std::io::write_once(factory: &factory, output: &output, source: &out.inner[0_u64..length], start: position, end: length, deadline: deadline, cancel: &never);
     match written {
       Ok(value: end) => {
         if end == position {
+          std::time::close_cancel_watch(watch: move never);
           return std::process::exit_status(code: 2_u8);
         }
         set position = end;
       }
       Err(error: problem) => {
+        std::time::close_cancel_watch(watch: move never);
         return std::process::exit_status(code: 2_u8);
       }
     }
   }
+  std::time::close_cancel_watch(watch: move never);
   return std::process::exit_status(code: 0_u8);
 }
