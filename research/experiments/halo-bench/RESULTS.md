@@ -4743,3 +4743,33 @@ the 14900K with a twin of the old build, and two `--check-module pkg::vm`
 samples each. Expected: no kernel slower beyond its bounds; whether fewer copies make fib or another kernel
 faster is not predicted, so any speedup is reported as exploratory. A
 kernel slower beyond its bounds would stop the upgrade for an attribution.
+
+### Result
+
+[Run 37990892280](https://github.com/Ming-Research/Halo-wf/actions/runs/37990892280),
+artifact `halo-bench-upgrade-5268f51`: the base (`638acad`) built by
+`wf-404f301c35c3` and this branch built by `wf-5268f516c3f8`, six
+interleaved full-LTO pairs with a twin of the old build:
+
+| Kernel | `wf-404f301c35c3` | `wf-5268f516c3f8` | Ratio | Old range | New range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1028 | 0.0992 | 0.965 | 0.89% | 0.75% | 1.004 |
+| loop | 0.4317 | 0.4322 | 1.001 | 0.57% | 0.42% | 0.998 |
+| integer-table | 0.4179 | 0.3532 | 0.845 | 1.22% | 0.76% | 0.999 |
+| string-key | 0.0260 | 0.0194 | 0.746 | 0.53% | 1.00% | 1.000 |
+| concat | 0.0731 | 0.0633 | 0.866 | 0.99% | 0.82% | 0.997 |
+| sort | 0.1745 | 0.1666 | 0.955 | 2.20% | 2.47% | 1.000 |
+| binary-trees | 1.5451 | 1.5115 | 0.978 | 2.49% | 0.77% | 1.006 |
+
+`--check-module pkg::vm`: old 8.645 and 8.633 s, new 8.125 and 8.172 s; the
+ratio of the two medians is 0.943.
+
+**No kernel is slower beyond its bounds; the upgrade stands.** Six kernels
+are faster with the two sides' ranges apart (the 1- and 3-pair runs give
+the same ratios within 0.03): string-key by 25.4%, integer-table by 15.5%,
+concat by 13.4%, sort by 4.5%, fib by 3.5% and binary-trees by 2.2%. These
+speedups are exploratory: the question predicted none, and this comparison
+does not attribute them among the adopted changes. #292's smaller frames
+and fewer copies on the call path are a candidate, not an established
+cause. The timed process includes the bench driver, whose stdin and stdout
+calls differ between the sides only by the never-firing cancel watch.
