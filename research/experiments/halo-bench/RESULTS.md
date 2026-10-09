@@ -3418,7 +3418,7 @@ would save time is untested; both are a Whitefoot question (`docs/todo.md`,
 
 ### Criterion, recorded before measuring
 
-[The entry copy of a by-value parameter](https://github.com/Ming-Research/Halo-wf/blob/claude/halo-call/research/experiments/halo-bench/RESULTS.md#the-entry-copy-of-a-by-value-parameter-measured)
+[The entry copy of a by-value parameter](#the-entry-copy-of-a-by-value-parameter-measured)
 (on the call-path branch, pull request 12)
 could not be timed because Whitefoot's in-place rule then applied only to
 functions without a branch. The loopmatch session widened the rule to
@@ -4192,7 +4192,7 @@ supported explanation of the seventh run's 25%, not a separately measured
 one: the split also changed the frame size, the saved registers and the
 spills, and this run times nothing. It is the same kind as `prepare`'s
 whole-`Value` read and the `Call` arm's whole-`Step` copy in pull request
-12's [call-path profile on the 14900K](https://github.com/Ming-Research/Halo-wf/blob/claude/halo-call/research/experiments/halo-bench/RESULTS.md#the-call-path-on-the-14900k).
+12's [call-path profile on the 14900K](#the-call-path-on-the-14900k).
 
 Not established: which property of the inline form made the compiler keep
 the copy (the binding is not read after the slow call in either form),
