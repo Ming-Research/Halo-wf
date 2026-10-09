@@ -4826,8 +4826,9 @@ ratio of the two medians is 1.005.
 **The prediction holds: fib takes 0.787 times as long, beyond its bounds**
 (0.0989-0.1003 s before, 0.0780-0.0812 s after; 0.808 and 0.789 at one and
 three pairs), as #310's experiment release measured (0.779). Loop is 2.6%
-slower beyond its bounds, the register-allocation side effect #310's
-measurement found (1.024; lm-bl-forloop-spill), and binary-trees is 7.7%
+slower beyond its bounds (1.020 and 1.022 at one and three pairs), slightly
+more than the about 2.5% the question allowed; it is the register-allocation
+side effect #310's measurement found (1.024; lm-bl-forloop-spill), and binary-trees is 7.7%
 faster beyond its bounds (#310's release: 0.913). The other four kernels'
 ranges overlap. The upgrade stands; loop's recovery belongs to the
 loopmatch session's follow-up.
