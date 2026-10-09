@@ -458,7 +458,7 @@ fn read_source(factory: &HandleFactory, input: &InputStream, source: &Box<Slots<
 }
 
 fn main(inputs: Inputs) -> status: ExitStatus pure waits {
-  let Inputs(args: args_v99, cwd: cwd_v100, stdout: output_v101, stderr: stderr_v102, handles: factory_v103, stdin: input_v104, clock: clock_v105, wall_clock: wall_clock_v106, stops: unused_stops, memory_meter: unused_memory_meter) = move inputs;
+  let Inputs(args: args_v99, cwd: cwd_v100, stdout: output_v101, stderr: stderr_v102, handles: factory_v103, stdin: input_v104, clock: clock_v105, wall_clock: wall_clock_v106, ..) = move inputs;
   let std::fs::Directory(read: cwd_read_v107, write: cwd_write_v108) = move cwd_v100;
   std::fs::close_directory(factory: &factory_v103, directory: move cwd_read_v107);
   std::fs::close_directory_write(factory: &factory_v103, directory: move cwd_write_v108);
