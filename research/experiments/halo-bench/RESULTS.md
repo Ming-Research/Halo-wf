@@ -4735,9 +4735,11 @@ release, whose tree is #292's merge, the call path's helpers shrink
 (`enter_lua` from 44 to 15 16-byte moves and from a 376- to a 216-byte frame,
 `prepare` from a 1336- to a 728-byte frame; 1062 to 952 16-byte moves over
 the 78 call-path functions; Halo-wf runs 37915843474 and 37918271155).
-Comparison: this branch's source built with both releases, six interleaved
-full-LTO pairs over the seven kernels on the 14900K with a twin of the old
-build, and two `--check-module pkg::vm` samples each. Expected: no kernel
-slower beyond its bounds; whether fewer copies make fib or another kernel
+Comparison: the old release builds this branch's base (`638acad`) and the
+new release this branch, whose Halo library is identical (the old release
+cannot compile the drivers' v0.110 cancel watch; only the bench driver's
+I/O calls differ), six interleaved full-LTO pairs over the seven kernels on
+the 14900K with a twin of the old build, and two `--check-module pkg::vm`
+samples each. Expected: no kernel slower beyond its bounds; whether fewer copies make fib or another kernel
 faster is not predicted, so any speedup is reported as exploratory. A
 kernel slower beyond its bounds would stop the upgrade for an attribution.

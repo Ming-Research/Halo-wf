@@ -8,11 +8,14 @@ name: bench-upgrade
 on:
   push:
     branches: [claude/halo-whitefoot-5268f51]
-    paths: [.github/workflows/bench-upgrade.yml, research/experiments/halo-bench/RESULTS.md]
 
 env:
   CONTROL: wf-404f301c35c3
   EXPERIMENT: wf-5268f516c3f8
+  # The old release cannot compile this branch's drivers (they pass v0.110's
+  # cancel watch), so it builds the branch's base, whose Halo library is
+  # identical; only the bench driver's I/O calls differ.
+  BASE_SOURCE: 638acad8694f9696fbfbbc1636cb38d2f3b5cee4
 
 defaults:
   run:
@@ -26,16 +29,19 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: true
+          fetch-depth: 0
       - name: Build the bench program with both releases
         run: |
           set -euo pipefail
           make toolchain
+          git worktree add -q build/base-src "$BASE_SOURCE"
           for release in "$CONTROL" "$EXPERIMENT"; do
             echo "release = $release" > whitefoot.pin
             make compiler
             make toolchain-check
-            build/whitefoot/$release/whitefootc --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "build/halo-$release"
-            echo "built with $release"
+            src=.; [ "$release" = "$CONTROL" ] && src=build/base-src
+            build/whitefoot/$release/whitefootc --graph $src/research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "build/halo-$release"
+            echo "built with $release from $src"
           done
 
   bench:
@@ -64,11 +70,12 @@ jobs:
           wfc_exp="$PWD/build/whitefoot/$EXPERIMENT/whitefootc"
           sh research/experiments/halo-oracle/fetch-redis.sh "$PWD/build/redis"
           lua="$PWD/build/redis/redis-7.0.15/deps/lua/src/lua"
-          "$wfc_ctl" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-ctl"
+          git worktree add -q build/base-src "$BASE_SOURCE"
+          "$wfc_ctl" --graph build/base-src/research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-ctl"
           cp "$out/halo-ctl" "$out/halo-ctl-twin"
           "$wfc_exp" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-exp"
           {
-            echo "branch $(git rev-parse HEAD), control $CONTROL, experiment $EXPERIMENT"
+            echo "branch $(git rev-parse HEAD) with $EXPERIMENT, base $BASE_SOURCE with $CONTROL"
             sha256sum "$wfc_ctl" "$wfc_exp" "$out"/halo-*
             /usr/bin/clang --version | head -n 1
           } | tee "$out/manifest.txt"
@@ -100,8 +107,9 @@ jobs:
           TIMEFORMAT=%R
           for sample in 1 2; do
             for side in ctl exp; do
-              wfc="$wfc_ctl"; [ "$side" = exp ] && wfc="$wfc_exp"
-              seconds=$( { time ("$wfc" --graph lib/halo/modules.wfg --check-module pkg::vm > "$out/check-$side-$sample.log" 2>&1); } 2>&1 )
+              wfc="$wfc_ctl"; graph=build/base-src/lib/halo/modules.wfg
+              [ "$side" = exp ] && { wfc="$wfc_exp"; graph=lib/halo/modules.wfg; }
+              seconds=$( { time ("$wfc" --graph "$graph" --check-module pkg::vm > "$out/check-$side-$sample.log" 2>&1); } 2>&1 )
               echo "check-module pkg::vm $side sample $sample: $seconds s" | tee -a "$out/check-times.txt"
             done
           done
