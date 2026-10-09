@@ -4717,3 +4717,63 @@ stands. Both releases built byte-identical benchmark binaries (the
 manifest's digests): the two fixes change only the checker, and the other
 change in between (conditional calls in parallel lowering, Whitefoot#289)
 does not reach Halo's code.
+
+## Whitefoot wf-5268f516c3f8 upgrade
+
+### Question, recorded before it runs
+
+The pin moves from `wf-404f301c35c3` (Whitefoot main `404f301c3`,
+specification v0.108) to `wf-5268f516c3f8` (main `5268f516c`, v0.110). In
+between: checker completion with offset disequalities and invariant facts
+(Whitefoot#286, v0.109), separate stack slots for each allocation
+(Whitefoot#292), inline range lengths (Whitefoot#302), cross-context
+cancellation of host waits (Whitefoot#296, v0.110), and changes to the
+concurrent map that Halo does not use (Whitefoot#293, Whitefoot#298). Halo's
+own source needs no change; the drivers pass a never-firing cancel watch to
+their deadline I/O. #292 changes Halo's generated code: on its experiment
+release, whose tree is #292's merge, the call path's helpers shrink
+(`enter_lua` from 44 to 15 16-byte moves and from a 376- to a 216-byte frame,
+`prepare` from a 1336- to a 728-byte frame; 1062 to 952 16-byte moves over
+the 78 call-path functions; Halo-wf runs 37915843474 and 37918271155).
+Comparison: the old release builds this branch's base (`638acad`) and the
+new release this branch, whose Halo library is identical (the old release
+cannot compile the drivers' v0.110 cancel watch; only the bench driver's
+I/O calls differ), six interleaved full-LTO pairs over the seven kernels on
+the 14900K with a twin of the old build, and two `--check-module pkg::vm`
+samples each. Expected: no kernel slower beyond its bounds; whether fewer copies make fib or another kernel
+faster is not predicted, so any speedup is reported as exploratory. A
+kernel slower beyond its bounds would stop the upgrade for an attribution.
+
+### Result
+
+[Run 37990892280](https://github.com/Ming-Research/Halo-wf/actions/runs/37990892280),
+artifact `halo-bench-upgrade-5268f51`: the base (`638acad`) built by
+`wf-404f301c35c3` and this branch built by `wf-5268f516c3f8`, six
+interleaved full-LTO pairs with a twin of the old build. The artifact's
+`upgrade-*.json` files record the old compiler's digest as `compiler_sha256`
+because the workflow passed the old compiler for both comparisons; the
+manifest gives each binary's compiler (`halo-exp` was built by
+`wf-5268f516c3f8`, digest `38389e5a…`).
+
+| Kernel | `wf-404f301c35c3` | `wf-5268f516c3f8` | Ratio | Old range | New range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1028 | 0.0992 | 0.965 | 0.89% | 0.75% | 1.004 |
+| loop | 0.4317 | 0.4322 | 1.001 | 0.57% | 0.42% | 0.998 |
+| integer-table | 0.4179 | 0.3532 | 0.845 | 1.22% | 0.76% | 0.999 |
+| string-key | 0.0260 | 0.0194 | 0.746 | 0.53% | 1.00% | 1.000 |
+| concat | 0.0731 | 0.0633 | 0.866 | 0.99% | 0.82% | 0.997 |
+| sort | 0.1745 | 0.1666 | 0.955 | 2.20% | 2.47% | 1.000 |
+| binary-trees | 1.5451 | 1.5115 | 0.978 | 2.49% | 0.77% | 1.006 |
+
+`--check-module pkg::vm`: old 8.645 and 8.633 s, new 8.125 and 8.172 s; the
+ratio of the two medians is 0.943.
+
+**No kernel is slower beyond its bounds; the upgrade stands.** Six kernels
+are faster with the two sides' ranges apart (the 1- and 3-pair runs give
+the same ratios within 0.03): string-key by 25.4%, integer-table by 15.5%,
+concat by 13.4%, sort by 4.5%, fib by 3.5% and binary-trees by 2.2%. These
+speedups are exploratory: the question predicted none, and this comparison
+does not attribute them among the adopted changes. #292's smaller frames
+and fewer copies on the call path are a candidate, not an established
+cause. The timed process includes the bench driver, whose stdin and stdout
+calls differ between the sides only by the never-firing cancel watch.

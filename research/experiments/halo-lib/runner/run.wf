@@ -118,20 +118,25 @@ binding PrintHost : Host<Env> {
 fn read_exact(factory: &HandleFactory, input: &InputStream, bytes: &[u8], count: u64) -> complete: Bool writes(factory), writes(input), writes(bytes) waits contract {
   requires count <= bytes^.len;
 } {
+  doc "Read exactly count bytes, reporting end of input or a failed transfer.";
+  let never = std::time::cancel_never();
   let local_position_11 = 0_u64;
   loop @read {
     if local_position_11 >= count {
+      std::time::close_cancel_watch(watch: move never);
       return True();
     }
     let local_deadline_12 = None<std::time::Instant>();
-    match std::io::read_next(factory: factory, input: input, destination: bytes, start: local_position_11, end: count, deadline: local_deadline_12) {
+    match std::io::read_next(factory: factory, input: input, destination: bytes, start: local_position_11, end: count, deadline: local_deadline_12, cancel: &never) {
       Ok(value: next) => {
         if next == local_position_11 {
+          std::time::close_cancel_watch(watch: move never);
           return False();
         }
         set local_position_11 = next;
       }
       Err(error: problem) => {
+        std::time::close_cancel_watch(watch: move never);
         return False();
       }
     }
@@ -141,20 +146,25 @@ fn read_exact(factory: &HandleFactory, input: &InputStream, bytes: &[u8], count:
 fn emit(factory: &HandleFactory, output: &OutputStream, bytes: &[u8], count: u64) -> complete: Bool reads(bytes), writes(factory), writes(output) waits contract {
   requires count <= bytes^.len;
 } {
+  doc "Write count bytes, reporting a failed transfer or lack of progress.";
+  let never = std::time::cancel_never();
   let local_position_13 = 0_u64;
   loop @write {
     if local_position_13 >= count {
+      std::time::close_cancel_watch(watch: move never);
       return True();
     }
     let local_deadline_14 = None<std::time::Instant>();
-    match std::io::write_once(factory: factory, output: output, source: bytes, start: local_position_13, end: count, deadline: local_deadline_14) {
+    match std::io::write_once(factory: factory, output: output, source: bytes, start: local_position_13, end: count, deadline: local_deadline_14, cancel: &never) {
       Ok(value: next) => {
         if next == local_position_13 {
+          std::time::close_cancel_watch(watch: move never);
           return False();
         }
         set local_position_13 = next;
       }
       Err(error: problem) => {
+        std::time::close_cancel_watch(watch: move never);
         return False();
       }
     }
@@ -162,6 +172,8 @@ fn emit(factory: &HandleFactory, output: &OutputStream, bytes: &[u8], count: u64
 }
 
 fn main(inputs: Inputs) -> r: ExitStatus pure waits {
+  doc "Run stdin with the requested budget and write captured output.";
+  let never = std::time::cancel_never();
   let Inputs(args: args, cwd: cwd, stdout: output, stderr: stderr, handles: factory, stdin: input, clock: clock, wall_clock: wall_clock, ..) = move inputs;
   let std::fs::Directory(read: cwd_read, write: cwd_write) = move cwd;
   std::fs::close_directory(factory: &factory, directory: move cwd_read);
@@ -169,6 +181,7 @@ fn main(inputs: Inputs) -> r: ExitStatus pure waits {
   let local_header_17 = array_filled::<u8, 8>(value: 0_u8);
   let local_complete_18 = read_exact(factory: &factory, input: &input, bytes: &local_header_17[0_u64..8_u64], count: 8_u64);
   if bnot(local_complete_18) {
+    std::time::close_cancel_watch(watch: move never);
     return std::process::exit_status(code: 2_u8);
   }
   let local_budget_19 = 0_u64;
@@ -184,7 +197,7 @@ fn main(inputs: Inputs) -> r: ExitStatus pure waits {
   let local_buffer_26 = array_filled::<u8, 4096>(value: 0_u8);
   loop {
     let local_deadline_27 = None<std::time::Instant>();
-    match std::io::read_next(factory: &factory, input: &input, destination: &local_buffer_26[0_u64..4096_u64], start: 0_u64, end: 4096_u64, deadline: local_deadline_27) {
+    match std::io::read_next(factory: &factory, input: &input, destination: &local_buffer_26[0_u64..4096_u64], start: 0_u64, end: 4096_u64, deadline: local_deadline_27, cancel: &never) {
       Ok(value: n) => {
         if n == 0_u64 {
           break;
@@ -199,6 +212,7 @@ fn main(inputs: Inputs) -> r: ExitStatus pure waits {
             break;
           }
           ReadFailed(..) => {
+            std::time::close_cancel_watch(watch: move never);
             return std::process::exit_status(code: 2_u8);
           }
         }
@@ -219,6 +233,7 @@ fn main(inputs: Inputs) -> r: ExitStatus pure waits {
     Err(error: problem) => {
       let local_n_37 = problem.message.inner.len;
       let local_complete_38 = emit(factory: &factory, output: &stderr, bytes: &problem.message.inner[0_u64..local_n_37], count: local_n_37);
+      std::time::close_cancel_watch(watch: move never);
       return std::process::exit_status(code: 3_u8);
     }
     Ok(value: script) => {
@@ -239,9 +254,11 @@ fn main(inputs: Inputs) -> r: ExitStatus pure waits {
             break;
           }
           HostStopped() => {
+            std::time::close_cancel_watch(watch: move never);
             return std::process::exit_status(code: 4_u8);
           }
           HostCall() => {
+            std::time::close_cancel_watch(watch: move never);
             return std::process::exit_status(code: 4_u8);
           }
         }
@@ -251,7 +268,9 @@ fn main(inputs: Inputs) -> r: ExitStatus pure waits {
   let local_n_41 = local_env_34.bytes.inner.len;
   let local_sent_42 = emit(factory: &factory, output: &output, bytes: &local_env_34.bytes.inner[0_u64..local_n_41], count: local_n_41);
   if bnot(local_sent_42) {
+    std::time::close_cancel_watch(watch: move never);
     return std::process::exit_status(code: 2_u8);
   }
+  std::time::close_cancel_watch(watch: move never);
   return std::process::exit_status(code: 0_u8);
 }

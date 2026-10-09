@@ -240,6 +240,8 @@ fn text(buffer: &Slots<u8, 128>, value: &[u8]) -> result: unit reads(value), wri
 }
 
 fn line(factory: &HandleFactory, output: &OutputStream, kind: u64, depth: u64, iterations: u64, count: u64) -> result: Bool writes(factory), writes(output) waits {
+  doc "Write one tree benchmark result.";
+  let never = std::time::cancel_never();
   let buffer = slots_new::<u8, 128>();
   if kind == 0_u64 {
     text(buffer: &buffer, value: &stretch_text[0_u64..22_u64]);
@@ -257,8 +259,9 @@ fn line(factory: &HandleFactory, output: &OutputStream, kind: u64, depth: u64, i
   loop @write {
     if sent < buffer.len {
       let deadline = None<std::time::Instant>();
-      match std::io::write_once(factory: factory, output: output, source: &buffer[0_u64..buffer.len], start: sent, end: buffer.len, deadline: deadline) {
+      match std::io::write_once(factory: factory, output: output, source: &buffer[0_u64..buffer.len], start: sent, end: buffer.len, deadline: deadline, cancel: &never) {
         Err(error: problem) => {
+          std::time::close_cancel_watch(watch: move never);
           return False();
         }
         Ok(value: next) => {
@@ -269,6 +272,7 @@ fn line(factory: &HandleFactory, output: &OutputStream, kind: u64, depth: u64, i
       break @write;
     }
   }
+  std::time::close_cancel_watch(watch: move never);
   return True();
 }
 
