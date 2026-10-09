@@ -25,7 +25,6 @@ fn read_exact(factory: &HandleFactory, input: &InputStream, bytes: &[u8], count:
       }
     }
   }
-  return False();
 }
 
 fn word(bytes: &[u8], start: u64) -> value: u64 reads(bytes) {
@@ -85,7 +84,6 @@ fn emit(factory: &HandleFactory, output: &OutputStream, bytes: &[u8], count: u64
       }
     }
   }
-  return False();
 }
 
 fn main(inputs: Inputs) -> status: ExitStatus pure waits {
@@ -160,5 +158,4 @@ fn main(inputs: Inputs) -> status: ExitStatus pure waits {
       return std::process::exit_status(code: 2_u8);
     }
   }
-  return std::process::exit_status(code: 1_u8);
 }

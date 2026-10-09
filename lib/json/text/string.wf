@@ -133,6 +133,4 @@ fn string(source: &[u8], start: u64, decoded: &Box<Slots<u8>>) -> result: Result
       set p = p +sat width;
     }
   }
-  let e = error(code: 7_u8, offset: source^.len);
-  return Err<u64, Error>(error: move e);
 }

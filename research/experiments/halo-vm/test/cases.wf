@@ -189,7 +189,6 @@ fn fixture_smoke(budget: u64) -> r: Bool pure {
       }
     }
   }
-  return False();
 }
 
 fn fixture_fib(budget: u64) -> r: Bool pure {
@@ -281,7 +280,6 @@ fn fixture_fib(budget: u64) -> r: Bool pure {
       }
     }
   }
-  return False();
 }
 
 fn fixture_numeric_for(budget: u64) -> r: Bool pure {
@@ -352,7 +350,6 @@ fn fixture_numeric_for(budget: u64) -> r: Bool pure {
       }
     }
   }
-  return False();
 }
 
 fn fixture_counter(budget: u64) -> r: Bool pure {
@@ -441,7 +438,6 @@ fn fixture_counter(budget: u64) -> r: Bool pure {
       }
     }
   }
-  return False();
 }
 
 fn fixture_tables(budget: u64) -> r: Bool pure {
@@ -513,7 +509,6 @@ fn fixture_tables(budget: u64) -> r: Bool pure {
       }
     }
   }
-  return False();
 }
 
 fn fixture_meta(budget: u64) -> r: Bool pure {
@@ -635,7 +630,6 @@ fn fixture_meta(budget: u64) -> r: Bool pure {
       }
     }
   }
-  return False();
 }
 
 fn fixture_protected_error(budget: u64) -> r: Bool pure {
@@ -782,7 +776,6 @@ fn fixture_protected_error(budget: u64) -> r: Bool pure {
       }
     }
   }
-  return False();
 }
 
 fn fixture_vararg(budget: u64) -> r: Bool pure {
@@ -852,7 +845,6 @@ fn fixture_vararg(budget: u64) -> r: Bool pure {
       }
     }
   }
-  return False();
 }
 
 fn fixture_tail(budget: u64) -> r: Bool pure {
@@ -943,7 +935,6 @@ fn fixture_tail(budget: u64) -> r: Bool pure {
       }
     }
   }
-  return False();
 }
 
 fn smoke() -> r: ExitStatus pure {

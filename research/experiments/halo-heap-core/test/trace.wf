@@ -89,7 +89,6 @@ fn trace(factory: &HandleFactory, output: &OutputStream, tag: u64, step: u64, ke
       return True();
     }
   }
-  return True();
 }
 
 fn numeric(n: u64) -> r: Value pure {

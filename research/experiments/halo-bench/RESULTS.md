@@ -4538,3 +4538,66 @@ branch (the run's `git diff --stat`: `lib/halo/heap/tables.wf` only),
 times as long, beyond both ranges and the twin's difference, close to the
 experiment release's 14.0%; no kernel is slower beyond its bounds. The
 change is kept if `make check` passes on the final revision.
+
+## Whitefoot wf-23719e608125 upgrade
+
+### Question, recorded before it runs
+
+The pin moves from `wf-b2209fd31035` (Whitefoot main `b2209fd31`, specification
+v0.105) to `wf-23719e608125` (main `23719e608`, v0.106). Version 0.106
+(Whitefoot#284) gives a `loop` with no `break` leaving it no normal exit,
+so the statements Halo kept after such loops only for the older rule are
+unreachable and refused; this branch deletes all of them, 66 statements at
+61 sites, which changes
+no behavior. The two releases therefore cannot build the same source: the
+comparison builds main (`9f3a842b0`) with the old release and this branch
+with the new one, the sources differing only in those deleted statements
+and the pin. Between the two commits Whitefoot also merged the handler word
+(Whitefoot#283), which widens each instruction `Cell` from 12 to 20 bytes
+and on an experiment release made fib 1.5% slower and loop 2.2% faster
+([the handler word in Halo's dispatch](#the-handler-word-in-halos-dispatch)),
+and on-demand indexing (Whitefoot#288), which made the vm module check of
+one Halo source 1.12 times as long on the 14900K in the loopmatch session's
+release panels (Halo-wf runs 37880685345 and 37882393995: `wf-b2209fd31035`
+9.18-9.19 s, a release with #283 but not #288 9.16 s, with #288 10.29-10.30 s),
+a regression that session is fixing.
+
+Comparison: six interleaved full-LTO pairs over the seven kernels on the
+14900K with a twin of the old build, and two `--check-module pkg::vm`
+samples each. Expected: fib and loop move as on the experiment release, no
+other kernel slower beyond its bounds, the module check about 12% slower.
+The upgrade proceeds either way, since Firn needs v0.106; a kernel slower
+beyond its bounds is reported with it and handed to the loopmatch session.
+
+### Result
+
+[Run 37883536938](https://github.com/Ming-Research/Halo-wf/actions/runs/37883536938),
+artifact `halo-bench-upgrade-v0106`: main `9f3a842b0` built by
+`wf-b2209fd31035` against this branch built by `wf-23719e608125` (the
+run's `git diff --stat` over the library and bench host: 31 deleted lines
+in 16 files, all unreachable statements), six interleaved full-LTO pairs
+with a twin of the old build:
+
+| Kernel | Old | New | Ratio | Old range | New range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1041 | 0.1029 | 0.988 | 1.67% | 3.38% | 1.011 |
+| loop | 0.4335 | 0.4347 | 1.003 | 1.03% | 1.17% | 0.996 |
+| integer-table | 0.4195 | 0.4198 | 1.001 | 1.15% | 2.84% | 0.999 |
+| string-key | 0.0260 | 0.0270 | 1.036 | 6.91% | 22.49% | 0.999 |
+| concat | 0.0752 | 0.0733 | 0.975 | 6.45% | 4.13% | 1.001 |
+| sort | 0.1737 | 0.1729 | 0.995 | 2.13% | 1.78% | 0.992 |
+| binary-trees | 1.8925 | 1.8744 | 0.990 | 2.16% | 2.40% | 1.005 |
+
+`--check-module pkg::vm`: old 9.110 and 9.164 s, new 10.307 and 10.280 s;
+the ratio of the two medians is 1.13. The run passed the new compiler's path
+to `run.py --compiler` for the twin as well, so `twin-6.json` names the new
+compiler although both twin binaries were built by the old one, as the
+manifest's identical digests show.
+
+**No kernel is slower beyond its bounds; the upgrade stands.** String-key's
+1.036 lies inside its 22.49% range (one and three pairs gave 0.956 and
+0.998). Fib is 1.2% faster, inside its ranges; the 1.5% slowdown the
+handler word showed on its experiment release is not seen here. The module
+check takes 1.13 times as long over the whole upgrade, about the 1.12 the
+release panels above attribute to on-demand indexing (Whitefoot#288) on
+identical source.

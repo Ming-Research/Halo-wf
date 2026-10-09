@@ -30,7 +30,6 @@ fn validate(bytes: &[u8]) -> result: Result<unit, Error> reads(bytes) {
     }
     set p = p +sat width;
   }
-  return Ok<unit, Error>(value: unit);
 }
 
 fn prefix(writer: &Writer, output: &Box<Slots<u8>>) -> result: Result<unit, Error> writes(writer), writes(output) {

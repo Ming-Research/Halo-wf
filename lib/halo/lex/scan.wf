@@ -93,7 +93,6 @@ fn long_body(source: &[u8], state: &State, decoded: &Box<Slots<u8>>, level: u64,
       return LongEnd::LineLimit();
     }
   }
-  return LongEnd::Unfinished();
 }
 
 fn short_string(source: &[u8], state: &State, decoded: &Box<Slots<u8>>, start: u64, line: u64) -> result: Result<Token, Error> reads(source), writes(state), writes(decoded) {
@@ -188,8 +187,6 @@ fn short_string(source: &[u8], state: &State, decoded: &Box<Slots<u8>>, start: u
       return Err<Token, Error>(error: move error);
     }
   }
-  let error = failure(code: 0_u8, line: state^.line, near_kind: tk_eof, start: start, end: state^.offset);
-  return Err<Token, Error>(error: move error);
 }
 
 fn hex_digit(c: u16) -> yes: Bool pure {

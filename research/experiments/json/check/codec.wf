@@ -226,6 +226,4 @@ fn roundtrip(source: &[u8], output: &Box<Slots<u8>>, events: &Box<Slots<u8>>, de
       }
     }
   }
-  let e = json::text::error(code: 19_u8, offset: 0_u64);
-  return Err<unit, Error>(error: move e);
 }

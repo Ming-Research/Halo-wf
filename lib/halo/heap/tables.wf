@@ -311,7 +311,6 @@ fn node_find(heap: &Heap, nodes: &Box<Slots<Node>>, key: Value) -> r: Option<u64
       return None<u64>();
     }
   }
-  return None<u64>();
 }
 
 fn power_capacity(n: u64) -> r: u64 pure {
@@ -329,7 +328,6 @@ fn power_capacity(n: u64) -> r: u64 pure {
       return 0_u64;
     }
   }
-  return 0_u64;
 }
 
 fn values_new(n: u64) -> r: Box<Slots<Value>> pure {
@@ -441,7 +439,6 @@ fn node_get_str(nodes: &Box<Slots<Node>>, h: u32, hash: u64, mask: u64) -> r: Va
       return Value::Nil();
     }
   }
-  return Value::Nil();
 }
 
 fn table_get_str(heap: &Heap, t: Value, h: u32) -> r: Value reads(heap) {

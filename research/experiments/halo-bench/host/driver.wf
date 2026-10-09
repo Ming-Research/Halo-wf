@@ -107,7 +107,6 @@ fn read_source(factory: &HandleFactory, input: &InputStream, source: &Box<Slots<
       }
     }
   }
-  return False();
 }
 
 fn write_bytes(factory: &HandleFactory, output: &OutputStream, bytes: &Box<Slots<u8>>) -> r: Bool reads(bytes), writes(factory), writes(output) waits {
@@ -131,7 +130,6 @@ fn write_bytes(factory: &HandleFactory, output: &OutputStream, bytes: &Box<Slots
       }
     }
   }
-  return False();
 }
 
 const print_name: Array<u8, 5> = "print";

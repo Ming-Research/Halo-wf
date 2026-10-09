@@ -172,7 +172,6 @@ fn pattern_set(c: u8, pattern: &[u8], p: u64, end: u64) -> r: Bool reads(pattern
       }
     }
   }
-  return False();
 }
 
 fn pattern_single(c: u8, pattern: &[u8], p: u64, end: u64) -> r: Bool reads(pattern) {
@@ -481,5 +480,4 @@ fn pattern_match(source: &[u8], pattern: &[u8], start: u64, pat: u64, state: &Pa
       }
     }
   }
-  return None<u64>();
 }

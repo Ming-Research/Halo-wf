@@ -10,16 +10,6 @@ Gaps Halo needs Whitefoot to close, each stated as its minimal semantic
 example apart from the engine code that exposed it
 ([Whitefoot-kit](../whitefoot-kit/downstream.md#trying-an-unmerged-whitefoot-change)).
 
-- **A loop without `break` still needs an unreachable return after it.**
-  FN-1 treats every `loop` as able to exit, so `run`'s `loop { match }`,
-  whose arms only `continue` or `return`, must end with a `return
-  Outcome::Error();` that never runs, a value the writer has to invent.
-  Minimal example: `fn f() -> r: u64 pure { loop { } return 0_u64; }` is
-  refused without the final `return`. The loopmatch session opened the
-  board card `lm-loop-diverge` (a `loop` with no `break` has no normal exit).
-  Reopen when Whitefoot decides it; if adopted, delete the dead returns
-  after `run`'s loop and `drive`'s.
-
 - **Checking Halo's vm package is on the build's critical path.** Whitefoot's
   [compile-speed investigation](https://github.com/Ming-Research/Whitefoot/blob/main/research/investigations/compile-speed/DESIGN.md#remaining-costs)
   brought `pkg::vm`'s module check to 16.6–17.2 s and records the remaining
@@ -33,7 +23,8 @@ example apart from the engine code that exposed it
   display paths (its `docs/todo.md`, Ming-Research/Whitefoot#246).
 
 - **Halo's instruction cells and one handler copy more than needed.** The
-  12-byte `Cell` (an `i32` enum tag) and an unattributed operand copy in
+  `Cell` (an `i32` enum tag, 12 bytes; 20 bytes with the handler word that
+  `wf-23719e608125` adds) and an unattributed operand copy in
   `run`'s `AddRR` arm are lowering findings handed to Whitefoot's
   match-dispatch work (Ming-Research/Whitefoot#237). The Halo-side layout
   question is the Cell stride entry under *Engine*.
@@ -243,7 +234,8 @@ example apart from the engine code that exposed it
 
 - **Halo's instruction Cell stride differs from the proposed eight bytes.**
   The [P1 native inspection](../research/experiments/halo-bench/RESULTS.md#value-width-handles-and-native-dispatch-inspected-first)
-  observes a 12-byte Cell stride and operand offsets 4/5/6/8, while VM.md
+  observed a 12-byte Cell stride and operand offsets 4/5/6/8 with the
+  compilers before the handler word (20 bytes since `wf-23719e608125`), while VM.md
   section 4 proposes eight bytes. Both Halo and PUC value slots are 16 bytes;
   PUC's instruction fetch is four bytes. Impact: the proposed instruction
   density is not implemented, and its throughput effect remains unmeasured.

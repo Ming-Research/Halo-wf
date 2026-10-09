@@ -108,7 +108,6 @@ fn read_source(factory: &HandleFactory, input: &InputStream, source: &Box<Slots<
       }
     }
   }
-  return False();
 }
 
 const chunk_name: Array<u8, 6> = "=stdin";

@@ -18,7 +18,6 @@ fn walk(room: u64, t0: u64, c: u64) -> r: u64 pure {
       return j;
     }
   }
-  return j;
 }
 
 fn main() -> status: ExitStatus pure {
