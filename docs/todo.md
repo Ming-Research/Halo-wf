@@ -116,7 +116,7 @@ example apart from the engine code that exposed it
   embedding clients force and observe collection through the embedding API.
   The API offers stress and a collection pause setting: stress bypasses the
   due check those runs exercise, while pause applies after a collection and
-  retains the 1 MiB floor, so neither simply replaces immediate trigger
+  retains the 64 KiB floor, so neither simply replaces immediate trigger
   arming. The statistics and pause observations control and observe collection
   through the embedding API; their statistics oracle uses controlled allocations
   and conservation between completed collections without reading heap fields.

@@ -3853,3 +3853,9 @@ previous run therefore came with the added field and setter, not with the
 floor; this run's 1 MiB build, which has them, also ran string-key at
 0.0260 s against main's 0.0253 s there, a comparison across runs that this
 run does not test.
+
+### Outcome
+
+The owner chose a 64 KiB default floor and initial threshold without the
+`set_gc_floor` setting, which this branch then removed; the floor is the
+heap's `collection_floor` constant.

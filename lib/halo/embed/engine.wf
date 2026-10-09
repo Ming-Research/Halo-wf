@@ -381,12 +381,6 @@ fn set_gc_pause(engine: &Engine, percent: u64) -> r: unit writes(engine.vm.heap.
   return unit;
 }
 
-fn set_gc_floor(engine: &Engine, bytes: u64) -> r: unit writes(engine.vm.heap.gc_floor) {
-  doc "The next completed collection applies the floor without changing stress or limit behavior.";
-  set engine^.vm.heap.gc_floor = bytes;
-  return unit;
-}
-
 fn last_collection(engine: &Engine) -> r: CollectionStats reads(engine.vm.heap.last_collection) {
   doc "Copies the most recent completed collection snapshot without exposing mutable collector storage.";
   return engine^.vm.heap.last_collection;
