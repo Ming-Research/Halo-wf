@@ -1,5 +1,5 @@
 # Temporary, measurement-only branch for the loopmatch session
-# (coord-wfbl-06-00): Halo's `run` under release wf-exp-196bdb954b6d (Whitefoot #292), its generated LLVM
+# (coord-wfbl-06-00): Halo's `run` under release wf-exp-ac3875900a91 (Whitefoot #310), its generated LLVM
 # IR, the IR after the optimization whitefootc applies, and the full-LTO
 # binary's disassembly of the Call and Return arms and the call-path helpers.
 # Hosted runner: nothing is timed. The branch is deleted after the run.
@@ -28,7 +28,7 @@ jobs:
           set -euo pipefail
           out="$PWD/build/run-ir"
           rm -rf "$out"; mkdir -p "$out"
-          release=wf-exp-196bdb954b6d
+          release=wf-exp-ac3875900a91
           echo "release = $release" > whitefoot.pin
           make compiler
           wfc="$PWD/build/whitefoot/$release/whitefootc"
