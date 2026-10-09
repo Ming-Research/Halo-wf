@@ -177,95 +177,107 @@ fn unwind(vm: &Vm, stack: &Box<Slots<Value>>) -> r: Step writes(vm), writes(stac
   }
 }
 
-fn enter_lua(vm: &Vm, stack: &Box<Slots<Value>>, h: u32, pi: u64, func: u64, argc: u64, wanted: i64, return_pc: u64, tail: Bool) -> r: Step writes(vm), writes(stack) {
-  doc "Enters a resolved Lua closure, reading the needed prototype fields before changing the frames.";
-  if pi < vm^.protos.inner.len {
-    let fixed = cvt::<u8, u64>(vm^.protos.inner[pi].numparams);
-    let is_vararg = vm^.protos.inner[pi].is_vararg;
-    let maxstack = cvt::<u8, u64>(vm^.protos.inner[pi].maxstack);
-    let kb = cvt::<u32, u64>(vm^.protos.inner[pi].kbase);
-    let start = cvt::<u32, u64>(vm^.protos.inner[pi].start);
-    let dest = func;
-    let results = wanted;
-    let rp = return_pc;
-    let flags = 0_u8;
-    if tail {
-      if vm^.frames.inner.len > 0_u64 {
-        let old = take_back(window: &vm^.frames.inner);
-        let ob = old.base;
-        close_upvalues(vm: vm, stack: stack, level: ob);
-        set dest = old.func;
-        set results = old.nresults;
-        set rp = old.return_pc;
-        set flags = tail_flag;
-      }
-    }
-    let args = dest +sat 1_u64;
-    let actual = argc;
-    if actual < fixed {
-      set actual = fixed;
-    }
-    let b = args;
-    if is_vararg {
-      set b = args +sat actual;
-    }
-    let room = b +sat 256_u64;
-    if room == unlimited {
-      let ignored = raise_text(vm: vm, text: &calls_text_0[0_u64..14_u64]);
-      return Step::Error();
-    }
-    ensure_stack(stack: stack, size: room);
-    if tail {
-      let total = argc +sat 1_u64;
-      for (i in 0_u64..total) {
-        let s = func +sat i;
-        let d = dest +sat i;
-        if s < stack^.inner.len {
-          if d < stack^.inner.len {
-            let v = stack^.inner[s];
-            set stack^.inner[d] = v;
-          }
+fn enter_lua(vm: &Vm, stack: &Box<Slots<Value>>, h: u32, func: u64, argc: u64, wanted: i64, return_pc: u64, tail: Bool) -> r: Step writes(vm), writes(stack) {
+  let hi = cvt::<u32, u64>(h);
+  if hi < vm^.heap.closures.inner.len {
+    if vm^.heap.closures.inner[hi].live {
+      let callee = vm^.heap.closures.inner[hi].payload.callee;
+      let pi = vm^.protos.inner.len;
+      match callee {
+        Lua(proto: lua_proto) => {
+          set pi = cvt::<u32, u64>(lua_proto);
+        }
+        Native(..) => {
         }
       }
-    }
-    for (i in argc..actual) {
-      let j = args +sat i;
-      if j < stack^.inner.len {
-        set stack^.inner[j] = Value::Nil();
-      }
-    }
-    if is_vararg {
-      for (i in 0_u64..fixed) {
-        let s = args +sat i;
-        let d = b +sat i;
-        if s < stack^.inner.len {
-          if d < stack^.inner.len {
-            let v = stack^.inner[s];
-            set stack^.inner[d] = v;
-            set stack^.inner[s] = Value::Nil();
+      if pi < vm^.protos.inner.len {
+        let p = vm^.protos.inner[pi];
+        let fixed = cvt::<u8, u64>(p.numparams);
+        let dest = func;
+        let results = wanted;
+        let rp = return_pc;
+        let flags = 0_u8;
+        if tail {
+          if vm^.frames.inner.len > 0_u64 {
+            let old = take_back(window: &vm^.frames.inner);
+            let ob = old.base;
+            close_upvalues(vm: vm, stack: stack, level: ob);
+            set dest = old.func;
+            set results = old.nresults;
+            set rp = old.return_pc;
+            set flags = tail_flag;
           }
         }
+        let args = dest +sat 1_u64;
+        let actual = argc;
+        if actual < fixed {
+          set actual = fixed;
+        }
+        let b = args;
+        if p.is_vararg {
+          set b = args +sat actual;
+        }
+        let room = b +sat 256_u64;
+        if room == unlimited {
+          let ignored = raise_text(vm: vm, text: &calls_text_0[0_u64..14_u64]);
+          return Step::Error();
+        }
+        ensure_stack(stack: stack, size: room);
+        if tail {
+          let total = argc +sat 1_u64;
+          for (i in 0_u64..total) {
+            let s = func +sat i;
+            let d = dest +sat i;
+            if s < stack^.inner.len {
+              if d < stack^.inner.len {
+                let v = stack^.inner[s];
+                set stack^.inner[d] = v;
+              }
+            }
+          }
+        }
+        for (i in argc..actual) {
+          let j = args +sat i;
+          if j < stack^.inner.len {
+            set stack^.inner[j] = Value::Nil();
+          }
+        }
+        if p.is_vararg {
+          for (i in 0_u64..fixed) {
+            let s = args +sat i;
+            let d = b +sat i;
+            if s < stack^.inner.len {
+              if d < stack^.inner.len {
+                let v = stack^.inner[s];
+                set stack^.inner[d] = v;
+                set stack^.inner[s] = Value::Nil();
+              }
+            }
+          }
+        }
+        let maxstack = cvt::<u8, u64>(p.maxstack);
+        for (i in fixed..maxstack) {
+          let j = b +sat i;
+          if j < stack^.inner.len {
+            set stack^.inner[j] = Value::Nil();
+          }
+        }
+        let top = b +sat maxstack;
+        let vb = args +sat fixed;
+        let vc = 0_u64;
+        if p.is_vararg {
+          set vc = actual -sat fixed;
+        }
+        let kb = cvt::<u32, u64>(p.kbase);
+        let start = cvt::<u32, u64>(p.start);
+        let f = Frame(func: dest, base: b, return_pc: rp, kbase: kb, closure: h, nresults: results, activation: vm^.activation, flags: flags, varbase: vb, varcount: vc, frame_top: top);
+        if push_frame(vm: vm, frame: f) {
+          set vm^.top = top;
+          return Step::Jump(pc: start, base: b, kbase: kb);
+        }
+        return Step::Error();
       }
     }
-    for (i in fixed..maxstack) {
-      let j = b +sat i;
-      if j < stack^.inner.len {
-        set stack^.inner[j] = Value::Nil();
-      }
-    }
-    let top = b +sat maxstack;
-    let vb = args +sat fixed;
-    let vc = 0_u64;
-    if is_vararg {
-      set vc = actual -sat fixed;
-    }
-    let f = Frame(func: dest, base: b, return_pc: rp, kbase: kb, closure: h, nresults: results, activation: vm^.activation, flags: flags, varbase: vb, varcount: vc, frame_top: top);
-    let pushed = push_frame(vm: vm, frame: f);
-    if pushed {
-      set vm^.top = top;
-      return Step::Jump(pc: start, base: b, kbase: kb);
-    }
-    return Step::Error();
   }
   let ignored = raise_text(vm: vm, text: &calls_text_1[0_u64..19_u64]);
   return Step::Error();
@@ -287,26 +299,12 @@ fn prepare<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
     let codec_config = 0_u64;
     match view {
       Lua(h: closure_handle) => {
-        let hi = cvt::<u32, u64>(closure_handle);
-        if hi < vm^.heap.closures.inner.len {
-          if vm^.heap.closures.inner[hi].live {
-            let callee = vm^.heap.closures.inner[hi].payload.callee;
-            match callee {
-              Lua(proto: lua_proto) => {
-                let pi = cvt::<u32, u64>(lua_proto);
-                return enter_lua(vm: vm, stack: stack, h: closure_handle, pi: pi, func: fslot, argc: nargs, wanted: nr, return_pc: return_pc, tail: tailing);
-              }
-              Native(..) => {
-                match native_binding(vm: vm, handle: closure_handle) {
-                  Some(value: native_record) => {
-                    set view = FuncView::Native(id: native_record.id);
-                    set codec_config = native_record.config;
-                  }
-                  None() => {
-                  }
-                }
-              }
-            }
+        match native_binding(vm: vm, handle: closure_handle) {
+          Some(value: native_record) => {
+            set view = FuncView::Native(id: native_record.id);
+            set codec_config = native_record.config;
+          }
+          None() => {
           }
         }
       }
@@ -316,9 +314,8 @@ fn prepare<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
       }
     }
     match view {
-      Lua(..) => {
-        let ignored = raise_text(vm: vm, text: &calls_text_1[0_u64..19_u64]);
-        return Step::Error();
+      Lua(h: bound_h_2) => {
+        return enter_lua(vm: vm, stack: stack, h: bound_h_2, func: fslot, argc: nargs, wanted: nr, return_pc: return_pc, tail: tailing);
       }
       Native(id: bound_id_1) => {
         set vm^.cjson_active_config = codec_config;
