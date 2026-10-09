@@ -4601,3 +4601,74 @@ handler word showed on its experiment release is not seen here. The module
 check takes 1.13 times as long over the whole upgrade, about the 1.12 the
 release panels above attribute to on-demand indexing (Whitefoot#288) on
 identical source.
+
+## Per-script memory growth in the embedding
+
+Firn found its process heap growing on every script, about 160 bytes for
+EVAL "return 1" and about 380 bytes for its rate-limiter script, while
+Halo's collection statistics showed a constant live Lua heap of about 10 KB.
+A temporary diagnostic (Halo-wf pull request 28, branch `claude/halo-leak`)
+measured Whitefoot's `heap_in_use` per call after forcing a complete
+collection before every sample, so uncollected garbage could not pass for a
+leak. [Run 37874424426](https://github.com/Ming-Research/Halo-wf/actions/runs/37874424426)
+(`wf-b2209fd31035`): with the live Lua heap constant, a cached `return 1`
+grew 32 bytes a call, empty KEYS and ARGV tables 160, and each created table
+64; each collected object left its payload's storage behind. Pure-Whitefoot
+witnesses located the form: assigning a whole struct that owns a `Box` into
+a `Slots` element (`set heap^.closures.inner[i].payload = move empty;`, the
+form Halo's slab frees use, or replacing the whole cell) never released the
+old value's box, 80 bytes a time with a 16-element box and 16 with an empty
+one, while replacing the `Box` field itself, a struct field, a local or a
+slot field released it. This was a Whitefoot code-generation defect,
+handed to the paged session; Halo did not change its frees.
+
+Whitefoot#294 releases the old value on such assignments, in the main
+release `wf-f887e82c4611`.
+[Run 37892006382](https://github.com/Ming-Research/Halo-wf/actions/runs/37892006382)
+repeats the diagnostic on Halo main with that pin: every variant's second
+interval of 10,000 calls grows 0 bytes a call and every witness 0; the
+first interval's growth stops there, consistent with storage reaching its
+working size, which the run does not separate further.
+
+## Whitefoot wf-f887e82c4611 upgrade
+
+### Question, recorded before it runs
+
+The pin moves from `wf-23719e608125` (Whitefoot main `23719e608`,
+specification v0.106) to `wf-f887e82c4611` (main `f887e82c4`, v0.108). It
+brings the leak fix above (Whitefoot#294), the specification's indexed
+reductions (v0.107) and `Paged<T>` storage (v0.108), neither of which Halo
+uses; Halo's source needed no change. It does not yet contain the
+on-demand indexing fix (Whitefoot#297), merged after it. Comparison: this branch's source built with both
+releases, six interleaved full-LTO pairs over the seven kernels on the
+14900K with a twin of the old build, and two `--check-module pkg::vm`
+samples each. Expected: no kernel slower beyond its bounds and the module
+check about as long as before; a kernel slower beyond its bounds is
+reported with the upgrade.
+
+### Result
+
+[Run 37897480082](https://github.com/Ming-Research/Halo-wf/actions/runs/37897480082),
+artifact `halo-bench-upgrade-v0108`: this branch's source built by both
+releases, six interleaved full-LTO pairs with a twin of the old build:
+
+| Kernel | `wf-23719e608125` | `wf-f887e82c4611` | Ratio | Old range | New range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1025 | 0.1027 | 1.001 | 0.30% | 0.54% | 1.000 |
+| loop | 0.4322 | 0.4332 | 1.002 | 1.00% | 0.57% | 0.999 |
+| integer-table | 0.4177 | 0.4145 | 0.992 | 0.49% | 1.05% | 1.003 |
+| string-key | 0.0258 | 0.0259 | 1.001 | 0.70% | 0.76% | 0.999 |
+| concat | 0.0729 | 0.0732 | 1.004 | 0.82% | 0.57% | 0.999 |
+| sort | 0.1716 | 0.1718 | 1.001 | 1.09% | 1.99% | 0.997 |
+| binary-trees | 1.8729 | 1.4843 | 0.793 | 3.12% | 1.44% | 0.997 |
+
+`--check-module pkg::vm`: old 10.258 and 10.220 s, new 11.157 and 11.158 s;
+the ratio of the two medians is 1.09.
+
+**No kernel is slower beyond its bounds; the upgrade stands.** Binary-trees,
+which collects 182 times a run, takes 0.793 times as long, far beyond its
+ranges and the twin; with Whitefoot#294 each collection now releases the
+freed objects' payloads, the leak above, which this run does not separate
+from the release's other changes. The vm module check takes 1.09 times as
+long; the cause lies between the two Whitefoot commits and is reported to
+the paged session, whose storage changes (v0.108) are among them.
