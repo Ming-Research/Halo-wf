@@ -4635,13 +4635,12 @@ first interval's growth being slab capacity reaching its working size.
 
 The pin moves from `wf-23719e608125` (Whitefoot main `23719e608`,
 specification v0.106) to `wf-f887e82c4611` (main `f887e82c4`, v0.108). It
-brings the leak fix above (Whitefoot#294), the on-demand indexing fix that
-made Halo's vm module check 0.835 times as long on an experiment release
-(Whitefoot#297), the specification's indexed reductions (v0.107) and
-`Paged<T>` storage (v0.108), neither of which Halo uses; Halo's source
-needed no change. Comparison: this branch's source built with both
+brings the leak fix above (Whitefoot#294), the specification's indexed
+reductions (v0.107) and `Paged<T>` storage (v0.108), neither of which Halo
+uses; Halo's source needed no change. It does not yet contain the
+on-demand indexing fix (Whitefoot#297), merged after it. Comparison: this branch's source built with both
 releases, six interleaved full-LTO pairs over the seven kernels on the
 14900K with a twin of the old build, and two `--check-module pkg::vm`
 samples each. Expected: no kernel slower beyond its bounds and the module
-check faster; a kernel slower beyond its bounds is reported with the
-upgrade.
+check about as long as before; a kernel slower beyond its bounds is
+reported with the upgrade.
