@@ -4714,4 +4714,6 @@ the ratio of the two medians is 0.770.
 **No kernel moves beyond its bounds, and the vm module check takes 0.77
 times as long,** as the paged session's panel predicted; the upgrade
 stands. Both releases built byte-identical benchmark binaries (the
-manifest's digests), consistent with two checker-only changes.
+manifest's digests): the two fixes change only the checker, and the other
+change in between (conditional calls in parallel lowering, Whitefoot#289)
+does not reach Halo's code.
