@@ -1,7 +1,7 @@
 package halo = "../../../lib/halo";
 
 pkg::output: [std::io, std::time];
-pkg::probe: [pkg::output, halo::embed, halo::vm, halo::value, std::process, std::fs];
+pkg::probe: [pkg::output, halo::embed, halo::heap, halo::vm, halo::value, std::process, std::fs];
 pkg::witness: [pkg::output, std::process, std::fs];
 
 entry a = pkg::probe::a;
