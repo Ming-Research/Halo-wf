@@ -4116,7 +4116,7 @@ while `prepare` gains 15 instructions for the one lookup it now does.
 
 **The criterion fails and the change is reverted.** Fib is 1.2% faster,
 below the 3% required and inside its ranges; no kernel is slower beyond its
-bounds. The second closure lookup and the prototype copy cost fib at most
-about 1% on this host: the call path's remaining cost lies elsewhere, in the
-compiler-side copies of `Step` and `Value` and the frame's own checks and
-transport.
+bounds. Removing the second closure lookup and the prototype copy did not
+speed fib up beyond this run's noise, so the call path's measurable cost
+lies elsewhere: in the compiler-side copies of `Step` and `Value`, handed
+to the Whitefoot session, and in the frame's own checks and transport.
