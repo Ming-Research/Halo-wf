@@ -1,0 +1,65 @@
+# Temporary, measurement-only branch for the loopmatch session
+# (coord-wfbl-06-00): Halo's `run` under release wf-404f301c35c3, its generated LLVM
+# IR, the IR after the optimization whitefootc applies, and the full-LTO
+# binary's disassembly of the Call and Return arms and the call-path helpers.
+# Hosted runner: nothing is timed. The branch is deleted after the run.
+name: run-ir
+
+on:
+  push:
+    branches: [claude/halo-run-ir]
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  ir:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Install the host toolchain
+        run: make toolchain
+      - name: Emit IR, optimize it and disassemble
+        run: |
+          set -euo pipefail
+          out="$PWD/build/run-ir"
+          rm -rf "$out"; mkdir -p "$out"
+          release=wf-404f301c35c3
+          echo "release = $release" > whitefoot.pin
+          make compiler
+          wfc="$PWD/build/whitefoot/$release/whitefootc"
+          "$wfc" --help > "$out/whitefootc-help.txt" 2>&1 || true
+          {
+            echo "source $(git rev-parse HEAD), compiler $release"
+            sha256sum "$wfc"
+            /usr/bin/clang --version | head -n 1
+          } | tee "$out/manifest.txt"
+          if "$wfc" --graph research/experiments/halo-bench/modules.wfg --entry bench --emit-llvm -o "$out/bench.ll" > "$out/emit.log" 2>&1; then
+            echo "generated IR: bench.ll $(wc -c < "$out/bench.ll") bytes" | tee -a "$out/manifest.txt"
+            /usr/bin/clang -O2 -falign-functions=64 -S -emit-llvm "$out/bench.ll" -o "$out/bench.opt.ll" > "$out/opt.log" 2>&1 \
+              && echo "optimized IR: bench.opt.ll (clang -O2 -falign-functions=64, whitefootc's host optimization arguments; no cross-module LTO)" | tee -a "$out/manifest.txt" \
+              || { echo "optimization failed"; cat "$out/opt.log"; }
+          else
+            echo "--emit-llvm with --graph failed:"; cat "$out/emit.log"
+          fi
+          "$wfc" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo" > "$out/build.log" 2>&1
+          sha256sum "$out/halo" | tee -a "$out/manifest.txt"
+          nm "$out/halo" | awk '$2 ~ /[tT]/ {print $3}' > "$out/symbols.txt"
+          for pat in 'run$instance$2ead40aebe81bc32.body.arm.63' 'run$instance$2ead40aebe81bc32.body.arm.65' 'run$instance$2ead40aebe81bc32.body.dispatch' 'prepare$instance' 'wf_package.halo.vm.enter_lua' 'wf_package.halo.vm.push_frame' 'wf_package.halo.vm.finish'; do
+            grep -F "$pat" "$out/symbols.txt" | head -n 3 | while read -r name; do
+              file="$out/disasm-$(echo "$name" | tr '$/' '__').txt"
+              objdump -d --no-show-raw-insn -M intel --disassemble="$name" "$out/halo" > "$file"
+              echo "$name: $(grep -c -E '^ +[0-9a-f]+:' "$file") instructions, $(grep -c -E 'movups|movdqu|movaps|movdqa' "$file") 16-byte moves, $(grep -m1 -oE 'sub +rsp,0x[0-9a-f]+' "$file" || true)" | tee -a "$out/disasm-summary.txt"
+            done
+          done
+          for f in "$out"/*.ll; do [ -f "$f" ] && gzip -k "$f"; done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: halo-run-ir
+          path: build/run-ir/
+          retention-days: 30
