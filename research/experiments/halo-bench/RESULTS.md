@@ -4791,8 +4791,9 @@ match and of a subscripted `Value` read only for its tag and payload
 v0.112). Halo's source needs no change; the gate passes unchanged. #310's
 experiment release measured fib 0.779 times as long as #292's release on
 the same source and loop 1.024 times, beyond the bounds (Halo-wf run
-37986461719); loop's slowdown is a register-allocation side effect tracked
-by the loopmatch session as lm-bl-forloop-spill. Comparison: this branch's
+37986461719); the loopmatch session's reading of the disassembly suspects a
+register-allocation side effect in the ForLoop arm (its next-instruction
+position kept on the stack), unmeasured, tracked as lm-bl-forloop-spill. Comparison: this branch's
 source built with both releases, six interleaved full-LTO pairs over the
 seven kernels on the 14900K with a twin of the old build, and two
 `--check-module pkg::vm` samples each. Expected: fib faster beyond its
@@ -4827,8 +4828,9 @@ ratio of the two medians is 1.005.
 (0.0989-0.1003 s before, 0.0780-0.0812 s after; 0.808 and 0.789 at one and
 three pairs), as #310's experiment release measured (0.779). Loop is 2.6%
 slower beyond its bounds (1.020 and 1.022 at one and three pairs), slightly
-more than the about 2.5% the question allowed; it is the register-allocation
-side effect #310's measurement found (1.024; lm-bl-forloop-spill), and binary-trees is 7.7%
+more than the about 2.5% the question allowed and close to #310's own
+measurement (1.024); its suspected cause, from the disassembly only, is the
+register-allocation change tracked as lm-bl-forloop-spill, and binary-trees is 7.7%
 faster beyond its bounds (#310's release: 0.913). The other four kernels'
 ranges overlap. The upgrade stands; loop's recovery belongs to the
 loopmatch session's follow-up.
