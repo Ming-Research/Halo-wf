@@ -108,6 +108,22 @@ example apart from the engine code that exposed it
   script's closure. Reopen when a host needs to keep or call a closure
   across scripts.
 
+- **Every collection's sweep visits each slab's whole length.** The sweep
+  walks every slot a slab ever grew to, live, freed or never reused, and
+  slabs never shrink. On Firn's rate-limiter script each collection visited
+  about 16,000 slots while freeing about 1,050 at the 64 KiB floor
+  ([result](../research/experiments/halo-bench/RESULTS.md#the-collection-floor-on-firns-long-lived-vm));
+  there the slabs grew before the first collection, at the then 1 MiB
+  initial threshold. Impact: a fixed cost per collection that a lower floor
+  multiplies, of unknown size (the measurement did not separate visiting
+  from freeing). Uncertainty: with the floor now also the initial threshold,
+  slabs may stay near the garbage between collections and the cost may be
+  small. Change, if it is not: sweep only the slots used since the last
+  collection, or shrink a slab's tail. Validate with Firn's statistics
+  (`slots_visited` against freed objects) and the halo-bench kernels. Reopen
+  when Firn measures the 64 KiB default and `slots_visited` stays far above
+  the objects freed.
+
 - **The embedding probe arms the allocation trigger through heap fields.**
   `research/experiments/halo-e2e/test/probe.wf` sets
   `engine.vm.heap.threshold` and `bytes_since_gc` directly before two runs to

@@ -3849,10 +3849,11 @@ and initial threshold at 64 KiB (the run's `git diff --stat`: one line of
 
 **The 64 KiB default meets the criterion:** no kernel is slower beyond its
 bounds, the three that collect more included. String-key's 1.8% in the
-previous run therefore came with the added field and setter, not with the
-floor; this run's 1 MiB build, which has them, also ran string-key at
-0.0260 s against main's 0.0253 s there, a comparison across runs that this
-run does not test.
+previous run therefore did not come from the floor; that it came from the
+added field and setter, through code layout or otherwise, is a hypothesis:
+both sides of this run have them, so this run does not measure their cost.
+This run's 1 MiB build ran string-key at 0.0260 s against main's 0.0253 s
+in the previous run, a comparison across runs that neither run tests.
 
 ### Outcome
 
