@@ -4484,8 +4484,13 @@ six interleaved full-LTO pairs with a twin of the old build:
 `push_frame` loses its entry copy: the old build copies the 80-byte `Frame`
 into a 0x60-byte frame with five 16-byte loads and stores before its first
 test, the new one starts with the frame-limit test in a 0x10-byte frame
-(96 instructions against 91, the rest being the copy into the frames
-vector and the error path). `--check-module pkg::vm`: old 9.136 and 9.044 s,
+(96 instructions against 91). Its growth of the frames vector, a `grow`
+taken only when the depth reaches the vector's capacity, changes too: the
+old build allocates, copies and frees (`malloc`, `memmove`, `free`), the new
+one calls `realloc` and updates the heap counter; Halo's stack and slab
+growth go through `grow` the same way. These growth paths run rarely in the
+kernels; table growth, which runs often in integer-table, does not call
+`grow` in this source. `--check-module pkg::vm`: old 9.136 and 9.044 s,
 new 9.185 and 9.151 s.
 
 **No kernel is slower beyond its bounds; the upgrade stands.** Fib is 0.6%

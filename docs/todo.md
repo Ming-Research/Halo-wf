@@ -10,24 +10,6 @@ Gaps Halo needs Whitefoot to close, each stated as its minimal semantic
 example apart from the engine code that exposed it
 ([Whitefoot-kit](../whitefoot-kit/downstream.md#trying-an-unmerged-whitefoot-change)).
 
-- **`grow` never reallocates in place.** Whitefoot lowers
-  `grow(cell: &b, capacity: n)` on a `Box<Slots<T>>` as a fresh allocation,
-  a copy of the filled slots and a free of the old block, never `realloc`
-  (Whitefoot's `design/compiler/storage-representation.md` keeps that
-  provisionally until performance grounds appear). Halo's table growth takes
-  about 30% of integer-table's samples on the 14900K, and rewriting `rehash`
-  to grow the array in place (`6f49ca6`) left the kernel's time unchanged;
-  the branch still allocated, copied and freed at each growth through `grow`,
-  the leading but unmeasured explanation
-  ([result](../research/experiments/halo-bench/RESULTS.md#growing-the-array-in-place-result)).
-  Minimal semantic example: a `Box<Slots<u64>>` filled to capacity and grown
-  by doubling copies every filled slot at each step. With the paged
-  session's experiment release `wf-exp-4f6a0c240d2c`, which lowers `grow`
-  as `realloc`, the change made integer-table 14.0% faster on the 14900K with
-  no kernel slower beyond its noise bounds ([result](../research/experiments/halo-bench/RESULTS.md#growing-the-array-in-place-with-a-reallocating-grow)).
-  Reopen when a Whitefoot main release lowers `grow` through `realloc`:
-  move the pin, reapply `6f49ca6` and repeat the recorded comparison.
-
 - **A loop without `break` still needs an unreachable return after it.**
   FN-1 treats every `loop` as able to exit, so `run`'s `loop { match }`,
   whose arms only `continue` or `return`, must end with a `return
