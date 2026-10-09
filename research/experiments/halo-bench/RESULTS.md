@@ -4565,3 +4565,32 @@ samples each. Expected: fib and loop move as on the experiment release, no
 other kernel slower beyond its bounds, the module check about 12% slower.
 The upgrade proceeds either way, since Firn needs v0.106; a kernel slower
 beyond its bounds is reported with it and handed to the loopmatch session.
+
+### Result
+
+[Run 37883536938](https://github.com/Ming-Research/Halo-wf/actions/runs/37883536938),
+artifact `halo-bench-upgrade-v0106`: main `9f3a842b0` built by
+`wf-b2209fd31035` against this branch built by `wf-23719e608125` (the
+run's `git diff --stat` over the library and bench host: 31 deleted lines
+in 16 files, all unreachable statements), six interleaved full-LTO pairs
+with a twin of the old build:
+
+| Kernel | Old | New | Ratio | Old range | New range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1041 | 0.1029 | 0.988 | 1.67% | 3.38% | 1.011 |
+| loop | 0.4335 | 0.4347 | 1.003 | 1.03% | 1.17% | 0.996 |
+| integer-table | 0.4195 | 0.4198 | 1.001 | 1.15% | 2.84% | 0.999 |
+| string-key | 0.0260 | 0.0270 | 1.036 | 6.91% | 22.49% | 0.999 |
+| concat | 0.0752 | 0.0733 | 0.975 | 6.45% | 4.13% | 1.001 |
+| sort | 0.1737 | 0.1729 | 0.995 | 2.13% | 1.78% | 0.992 |
+| binary-trees | 1.8925 | 1.8744 | 0.990 | 2.16% | 2.40% | 1.005 |
+
+`--check-module pkg::vm`: old 9.110 and 9.164 s, new 10.307 and 10.280 s,
+1.12 times.
+
+**No kernel is slower beyond its bounds; the upgrade stands.** String-key's
+1.036 lies inside its 22.49% range (one and three pairs gave 0.956 and
+0.998). Fib is 1.2% faster, inside its ranges; the 1.5% slowdown the
+handler word showed on its experiment release is not seen here. The module
+check is 1.12 times as long, the regression from on-demand indexing
+(Whitefoot#288) that the loopmatch session located and is fixing.
