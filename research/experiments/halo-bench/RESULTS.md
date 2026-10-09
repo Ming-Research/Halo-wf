@@ -4626,8 +4626,9 @@ Whitefoot#294 releases the old value on such assignments, in the main
 release `wf-f887e82c4611`.
 [Run 37892006382](https://github.com/Ming-Research/Halo-wf/actions/runs/37892006382)
 repeats the diagnostic on Halo main with that pin: every variant's second
-interval of 10,000 calls grows 0 bytes a call and every witness 0, the
-first interval's growth being slab capacity reaching its working size.
+interval of 10,000 calls grows 0 bytes a call and every witness 0; the
+first interval's growth stops there, consistent with storage reaching its
+working size, which the run does not separate further.
 
 ## Whitefoot wf-f887e82c4611 upgrade
 
