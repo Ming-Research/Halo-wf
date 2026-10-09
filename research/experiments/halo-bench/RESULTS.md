@@ -2677,6 +2677,253 @@ final engine (`380b624f0`), main `bc4e2db17` against it with a twin:
 (1.000 times). The criterion still passes: integer-table takes 0.881 times
 as long, and no kernel is slower beyond its bounds.
 
+## The call path
+
+### Call-path attribution, recorded before it runs
+
+Fib spends 42% of its samples in the call path's four functions, `prepare`,
+`enter_lua`, `push_frame` and the return's `finish`
+([profile](#profile-result)), and is 2.56 times PUC. Where does that time go,
+instruction by instruction, against PUC's `luaD_precall` and `luaD_poscall`?
+This run tests no proposal: it chooses the call-path change and the criterion
+recorded before it. Each cost it finds is one of two kinds. Work that Halo's
+source asks for and PUC does not do, such as a second closure lookup, a
+frame-limit test or a copied prototype, is a candidate change in Halo. Code
+the compiler emits beyond what the source asks for is a Whitefoot gap: it is
+stated as a minimal witness and brought to the owner, not worked around in
+Halo's source.
+
+Run: on a GitHub-hosted ubuntu-24.04 x86-64 runner, since the 14900K's
+runner was offline and this run reads shares of samples, not times; Halo at
+main `99936d6e6` built with full LTO as `run.py` builds it, and Redis 7.0.15's bundled PUC Lua built from source, each running
+the fib kernel at N = 30; `perf record` of each, three launches, reported by
+symbol; `perf annotate` of Halo's sampled symbols; and the disassembly of the
+call-path functions with their instruction counts.
+
+### Call-path attribution result
+
+[Run 37601651300](https://github.com/Ming-Research/Halo-wf/actions/runs/37601651300),
+artifact `halo-call-profile`: an AMD EPYC 7763 guest with 4 vCPUs, Linux
+6.17, perf 6.17.13 sampling `task-clock` (the guest has no hardware
+counters), `wf-8b647edbbc95` with clang 22.1.8; both engines print
+832040 in every launch. Shares of samples, three launches:
+
+| Halo symbol | Share | PUC symbol | Share |
+|---|---:|---|---:|
+| `enter_lua` | 14.5–25.4% | `luaV_execute` | 58.0–62.0% |
+| arm 63 (`Call`, calls `prepare`) | 13.1–20.3% | `luaD_precall` | 19.4–23.7% |
+| `push_frame` | 12.1–19.9% | `luaV_lessthan` | 7.1–9.4% |
+| arm 65 (`Return`, calls `finish`) | 9.5–13.5% | `luaD_poscall` | 5.1–7.1% |
+| arm 5 | 10.5–13.2% | `luaF_close` | 3.1–3.8% |
+| `prepare` | 6.7–8.0% | | |
+| arm 54 | 5.6–8.0% | | |
+| `finish` | 4.5–5.8% | | |
+
+Sizes: `enter_lua` 452 instructions, `prepare` 1382, `finish` 149,
+`push_frame` 91; `luaD_precall` 437, `luaD_poscall` 95.
+
+The hottest instructions, from launch 1's annotation (a `task-clock` sample
+lands on or just after the instruction that waited), are each a 16-byte
+load of memory that narrower stores wrote just before, which x86 cannot
+forward from store to load:
+
+- `push_frame`: 47.9% of its samples follow the first 16-byte load of its
+  by-value `Frame` (80 bytes, passed as a pointer to the caller's copy),
+  which `enter_lua` built field by field. That load starts the entry copy
+  every definition makes of a by-value aggregate parameter; the frame is
+  then copied a second time into the frames vector.
+- Arm 63: 23.5% of its samples follow the second of two 16-byte loads that
+  copy the 32-byte `Step` result from the call's destination into a slot of
+  the dispatch loop's frame, where `enter_lua` had stored it as four 8-byte
+  words (tag, `pc`, `base`, `kbase`); the slot is then reloaded field by
+  field and its tag dispatched a second time.
+- `prepare`: 29.6% of its samples follow the 4-byte reload of the called
+  value's handle, which the code had read from the Lua stack as one 16-byte
+  load and stored to its own frame, and 26.1% fall on the closure-slab test
+  that depends on it.
+- `enter_lua`'s samples spread more evenly; its largest points copy the
+  40-byte prototype into its frame (8.3%, 4.7% and 3.6%) and reload a byte
+  of it (11.2%).
+
+The costs fall into three kinds:
+
+- Code the compiler emits beyond the source: the entry copy of a by-value
+  aggregate parameter, a result returned through memory and copied whole
+  into another slot before its fields are read, and a matched value copied
+  into a slot before its fields are read. The source asks for none of these
+  copies, and each turns field-sized stores followed by a field read into a
+  16-byte reload. These are a Whitefoot question for the owner. Whitefoot's
+  `compiler/storage-placement` keeps the entry copy and reopens it "when a
+  measured program shows the entry copy surviving inlining at a cost".
+- Halo-side work PUC does not do: the closure slab is looked up twice per
+  call (`prepare`'s `native_binding` and `enter_lua`), the prototype is
+  copied whole, `push_frame` tests the frame limit and the capacity
+  separately, and the nil fill tests each slot's bound.
+- The dispatch form: the `Step` result crosses from each arm into the
+  shared epilogue through the loop's frame, part of the self-tail-call form
+  that `loop { match }` dispatch replaces.
+
+Not established: what each kind costs in time (the guest has no counters
+and the 14900K was offline), and that the loads stall (inferred from the
+store and load widths in the disassembly, not counted). The call-path change
+waits for `loop { match }` dispatch, since the arms and the epilogue it would
+change are being rewritten, and the compiler-side copies go to the owner.
+
+### The entry copy of a by-value parameter, measured
+
+The owner chose (Q90) to measure each compiler-side copy before bringing it
+to Whitefoot. The first is the entry copy: every Whitefoot definition copies
+a by-value aggregate parameter into a slot of its own at entry, which
+`push_frame`'s 80-byte `Frame` shows above. Whitefoot's
+`compiler/storage-placement` keeps that copy and reopens the question "when
+a measured program shows the entry copy surviving inlining at a cost"; the
+implementation that reads such a parameter in place is on Whitefoot's branch
+`research/in-place-parameters`.
+
+Question: what does the entry copy cost Halo? Comparison: this branch's
+source built twice with full LTO, once with `wf-8b647edbbc95` (the pin) and
+once with `wf-exp-5a3c70fc3351`, which is Whitefoot `8b647edbb` with that
+branch's two commits (`0db7321fc` and `e35cc5f95`) cherry-picked onto it,
+its gate passed; six interleaved pairs over the seven kernels on the 14900K
+with a twin of the pinned build, and both builds' disassembly of
+`push_frame`. The comparison tests the hypothesis only if `push_frame` loses
+its entry copy in the experiment build; the stall may remain without it,
+since the frames vector is still filled by wide loads of the caller's
+field-by-field stores. A fib median below the pinned build's by more than
+both ranges and the twin's difference is a measured cost of the entry copy;
+anything else is no evidence of one. The result goes to the owner either
+way; no Halo source changes.
+
+The 14900K went out of service before this ran. By the owner's direction
+(Q93 and the rule that the M5 Air only times), the two binaries are built by
+a hosted arm64 macOS runner and timed on the M5 Air under Whitefoot's
+`run-check.pl` lock, with the same pairs, twin and reading, recorded here
+before it runs; its result is an M5 result.
+
+Result: [run 37709134977](https://github.com/Ming-Research/Halo-wf/actions/runs/37709134977)
+built both binaries on a hosted arm64 macOS runner (macOS 15.7.9, Apple
+clang 17.0.0; artifact `halo-inplace-binaries`). The experiment build keeps
+`push_frame`'s entry copy: its 81 instructions equal the pinned build's
+apart from addresses, both starting by loading the 80-byte `Frame` through
+the incoming pointer and storing it to the stack with 128-bit pairs. Across
+the whole binary the two builds differ by one 128-bit load or store pair
+(1,315 against 1,314). The research branch's rule therefore does not reach
+`push_frame`'s parameter, and as recorded above, the comparison cannot test
+the hypothesis; it was not timed. Which of that rule's conditions
+`push_frame` fails (no result destination, no wait, no overlap group or
+split part, and a parameter slot that is a complete allocation nothing else
+writes) is not determined here. Measuring the entry copy needs either that
+rule widened to this case in Whitefoot or a Halo experiment that keeps the
+`Frame` from crossing the call as an aggregate.
+
+### Which condition the in-place rule refuses (Q94)
+
+The owner chose (Q94) to find which of the rule's conditions `push_frame`
+fails before deciding anything. Both compilers emitted the IR of Halo's
+bench program and of a minimal witness on a hosted runner
+([run 37711158274](https://github.com/Ming-Research/Halo-wf/actions/runs/37711158274),
+artifact `halo-inplace-ir`). `push_frame`'s IR is the same under both: at
+entry it copies the incoming `Frame` with `llvm.memmove` into a slot of its
+own, and that slot's only use is the pointer it hands to `place_back`, so
+its address is not exposed (the storage plan exposes a slot only through
+`AddressOf` and `SliceFromRun`).
+
+The witness takes one 80-byte struct by value in six functions, counting
+each definition's `llvm.memmove` and `llvm.memcpy`:
+
+| Function | Use of the parameter | Branch | Pinned | Experiment |
+|---|---|---|---:|---:|
+| `rec_first` | reads a field | no | 1 | 0 |
+| `rec_forward` | passes it to `rec_first` | no | 1 | 0 |
+| `rec_push_via` | passes it to `rec_push` | no | 1 | 0 |
+| `rec_pick` | reads one of two fields | yes | 1 | 1 |
+| `rec_push` | hands it to `place_back` | yes | 1 | 1 |
+| `rec_set` | assigns it into a container slot | yes | 2 | 2 |
+
+`rec_set`'s second copy is the assignment's own. The experiment's rule
+reads the parameter in place in every function without a branch and in no
+function with one, whatever the parameter's use, so the branch decides it:
+of the rule's conditions only `holds_only` can depend on a branch, and the
+likely cause is that a value carried across blocks becomes a block
+parameter sharing the parameter's slot, so the slot holds more than one
+value. That last step is an inference from the rule's code, not observed in
+Whitefoot's IR. Halo's functions nearly all branch, which is why the
+experiment build differed by one copy in the whole binary.
+
+```wf
+alias ExitStatus = std::process::ExitStatus;
+alias exit_status = std::process::exit_status;
+
+struct Rec {
+  a: u64;
+  b: u64;
+  c: u64;
+  d: u64;
+  e: u64;
+  f: u64;
+  g: u64;
+  h: u64;
+  i: u64;
+  j: u64;
+}
+
+fn rec_first(r: Rec) -> s: u64 pure {
+  return r.a;
+}
+
+fn rec_forward(r: Rec) -> s: u64 pure {
+  return rec_first(r: r);
+}
+
+fn rec_push(v: &Box<Slots<Rec>>, r: Rec) -> ok: Bool writes(v) {
+  if v^.inner.len < v^.inner.cap {
+    place_back(window: &v^.inner, value: r);
+    return True();
+  }
+  return False();
+}
+
+fn rec_push_via(v: &Box<Slots<Rec>>, r: Rec) -> ok: Bool writes(v) {
+  return rec_push(v: v, r: r);
+}
+
+fn rec_set(v: &Box<Slots<Rec>>, r: Rec) -> ok: Bool writes(v) {
+  if 0_u64 < v^.inner.len {
+    set v^.inner[0_u64] = r;
+    return True();
+  }
+  return False();
+}
+
+fn rec_pick(r: Rec, c: Bool) -> s: u64 pure {
+  if c {
+    return r.a;
+  }
+  return r.b;
+}
+
+fn main() -> status: ExitStatus pure {
+  let v = box_slots_new::<Rec>(capacity: 4_u64);
+  let r = Rec(a: 1_u64, b: 2_u64, c: 3_u64, d: 4_u64, e: 5_u64, f: 6_u64, g: 7_u64, h: 8_u64, i: 9_u64, j: 10_u64);
+  let first = rec_first(r: r);
+  let forwarded = rec_forward(r: r);
+  let pushed = rec_push(v: &v, r: r);
+  let via = rec_push_via(v: &v, r: r);
+  let stored = rec_set(v: &v, r: r);
+  let picked = rec_pick(r: r, c: via);
+  if pushed {
+    if stored {
+      if first == forwarded {
+        if picked == 1_u64 {
+          return exit_status(code: 0_u8);
+        }
+      }
+    }
+  }
+  return exit_status(code: 1_u8);
+}
+```
+
 ## String-key lookup
 
 ### Criterion, recorded before the change
@@ -3171,7 +3418,7 @@ would save time is untested; both are a Whitefoot question (`docs/todo.md`,
 
 ### Criterion, recorded before measuring
 
-[The entry copy of a by-value parameter](https://github.com/Ming-Research/Halo-wf/blob/claude/halo-call/research/experiments/halo-bench/RESULTS.md#the-entry-copy-of-a-by-value-parameter-measured)
+[The entry copy of a by-value parameter](#the-entry-copy-of-a-by-value-parameter-measured)
 (on the call-path branch, pull request 12)
 could not be timed because Whitefoot's in-place rule then applied only to
 functions without a branch. The loopmatch session widened the rule to
@@ -3571,6 +3818,310 @@ twin's difference. The two kernels that collect most lean the same way,
 binary-trees 1.7% and integer-table 1.3% slower, each within its bounds; a
 cost of that size from the counters is possible and unresolved by six pairs.
 
+## The call path on the 14900K
+
+### Question, recorded before it runs
+
+[The call path](#the-call-path)'s attribution ran on a hosted EPYC guest
+sampling `task-clock`, before `run` became `loop { match }` and with
+`wf-8b647edbbc95`. Since then the dispatch is a plain loop compiling to the
+same machine code as the self-tail call ([the dispatch as loop { match }](#the-dispatch-as-loop--match-)),
+the pin is `wf-691ea8106920`, and Whitefoot's broadened in-place rule, not
+yet in a release Halo pins, removed `push_frame`'s entry copy and made fib
+3.8% faster ([reading by-value parameters in place, measured](#reading-by-value-parameters-in-place-measured)).
+
+Question: on the 14900K, sampling hardware cycles, what share of fib's
+cycles falls in each call-path function (`prepare`, `enter_lua`,
+`push_frame`, `finish` and the `Call` and `Return` arms), against PUC's
+`luaD_precall` and `luaD_poscall`, and which instructions hold those
+cycles? This run tests no proposal; it chooses the next call-path change,
+whose criterion is recorded before that change is timed. Each cost found is
+classed as before: work Halo's source asks for and PUC does not do is a
+candidate change in Halo; code the compiler emits beyond the source is a
+Whitefoot gap, stated as a minimal witness and handed to the Whitefoot
+session that owns it.
+
+Run: Halo main at this branch's merge of `10a9b02e4`, built with full LTO by
+`wf-691ea8106920` as `run.py` builds it, and Redis 7.0.15's bundled PUC Lua
+built from source, each running the fib kernel at N = 34 (N = 30 runs about
+0.1 s on this host, too few samples per instruction); three launches each
+under `perf record -e cycles` (`cpu-clock` if the runner refuses hardware
+events), reported by symbol; `perf annotate` of the
+first launch; and the instruction counts of the call-path functions.
+
+### Result
+
+[Run 37854794981](https://github.com/Ming-Research/Halo-wf/actions/runs/37854794981),
+artifact `halo-call-profile-14900k`: branch `dbfb6fc9c` (main `10a9b02e4`
+merged), `wf-691ea8106920`, clang 22.1.8, full LTO, Linux 6.8.0-142,
+perf 6.8.12, an i9-14900K under a Microsoft hypervisor. The manifest and the
+profiles' recorded command line request `cycles`, but both supplied annotation
+files name `task-clock`, and all six supplied `.data` files, as well as the
+probe, have one software task-clock event (type 1, config 1). A successful
+probe therefore did not establish hardware-cycle recording; why the recorded
+event differs is unverified. The shares below are the supplied reports'
+self shares, not hardware-cycle shares. Both engines print 5702887 in all
+three launches of fib(34). The workflow's elapsed values include `perf record`'s overhead and
+are not engine timings.
+
+Shares from `report-{halo,puc}-{1,2,3}.txt`, minimum–maximum over the three
+launches, including every listed symbol above 1.5%:
+
+| Halo symbol | Share | PUC symbol | Share |
+|---|---:|---|---:|
+| arm 63 (`Call`) | 18.73–19.82% | `luaV_execute` | 62.23–64.74% |
+| `enter_lua` | 15.33–16.66% | `luaD_precall` | 17.64–20.23% |
+| `push_frame` | 14.77–15.62% | `luaV_lessthan` | 7.41–8.20% |
+| arm 54 (`LtJmpRK`) | 11.88–12.29% | `luaD_poscall` | 6.69–7.14% |
+| arm 5 (`GetUpval`) | 9.93–11.10% | `luaF_close` | 2.71–3.70% |
+| arm 65 (`Return`) | 8.23–8.63% | | |
+| `finish` | 5.60–6.43% | | |
+| arm 20 (`AddRR`) | 3.43–4.51% | | |
+| `prepare` | 3.04–4.13% | | |
+| arm 25 (`SubRK`) | 2.94–3.81% | | |
+| `native_binding` | 1.75–1.89% | | |
+
+The six call-path symbols named in the question sum to 67.68–68.88% per
+launch; this includes the arms' dispatch work. Arm numbers are zero-based
+positions in `lib/halo/vm/dispatch.wf`'s outer instruction match, not Lua
+opcode numbers. Counting those arms gives the names above. The corresponding
+`disasm-*.txt` confirms them: arm 5 follows the current frame's closure to
+its upvalue and reads the open stack slot or closed value; arm 20 adds two
+stack numbers (`addsd`), arm 25 subtracts a constant from a stack number
+(`subsd`), and arm 54 compares a stack number with a constant (`ucomisd`)
+and selects the jump target. Arm 63 calls `prepare`, and arm 65 calls
+`finish`. `R` denotes a register and `K` a constant.
+
+Sizes from `call-sizes.txt` are disassembled instruction counts, including
+cold paths and alignment instructions, not instructions executed per call:
+
+| Halo function or arm | Instructions | PUC function | Instructions |
+|---|---:|---|---:|
+| `enter_lua` | 452 | `luaD_precall` | 437 |
+| `prepare` | 1465 | `luaD_poscall` | 95 |
+| `push_frame` | 91 | | |
+| `finish` | 149 | | |
+| `Call` arm | 269 | | |
+| `Return` arm | 213 | | |
+| `native_binding` | 116 | | |
+
+`enter_lua`, `push_frame`, `finish` and the two PUC functions have the same
+counts as the EPYC attribution; `prepare` was 1382 there. A larger function
+alone establishes no runtime cost.
+
+Launch 1's `annotate-halo.txt` gives the following points. Percentages here
+are local to each symbol, not shares of the whole program. Read each sampled
+instruction with its predecessor: a sample can land after the instruction
+that waited. With the supplied task-clock event, this is an attribution
+hypothesis, not a hardware stall measurement.
+
+- `push_frame`: 64.07% is on the store immediately after the first 16-byte
+  load of the incoming `Frame`, at offset 64; another 8.27% is on the next
+  load, after that store. The first load reads `varcount` and `frame_top`,
+  which `enter_lua` has just stored separately as 8-byte fields. All five
+  16-byte loads and five stores of the 80-byte entry copy remain, followed
+  by the second copy into the frames vector. The EPYC finding is still
+  present, with a different first block and a larger local concentration;
+  those percentages are not a before/after cost. This pin predates the
+  broadened in-place rule. Its removal and the 3.8% fib gain in
+  [reading by-value parameters in place](#reading-by-value-parameters-in-place-measured)
+  were a different compiler comparison, affecting more than this function.
+- `Call`: 31.40% is on the second 16-byte load of the returned `Step`,
+  immediately after the first load (`6c5ac`). The two loads still copy the
+  whole 32-byte result to the loop's slot. `enter_lua` writes the successful
+  result as four 8-byte words; `instruction_call` matches it to handle
+  `Error`, then returns `final_step`, and the shared epilogue matches it
+  again. After the copy, 8.04% is on the `pc` reload following the tag
+  reload, and another 8.04% follows the second tag-dispatch table load.
+  The whole-result copy and repeated tag dispatch found on EPYC remain.
+- `enter_lua`: its largest point, 5.46%, follows a 16-byte nil store in the
+  `fixed..maxstack` fill; 4.83% follows another such store in the unrolled
+  part. Each slot still has its own saturated index calculation and bound
+  comparison, even after `ensure_stack` has ensured `base + 256` slots.
+  The 40-byte prototype copy also remains: two 16-byte loads and one 8-byte
+  load fill the local `p`. A 4.83% point follows the byte reload of
+  `p.numparams`; another 4.83% is on the following tail-argument test, after
+  storing the widened parameter count. Thus neither the prototype copy nor
+  the per-slot tests is gone, but the EPYC prototype-copy concentration is
+  not the largest point here. `native_binding` and `enter_lua` still each
+  check the closure-slab bound, live bit and callee kind on an ordinary Lua
+  call. That double lookup remains in both source and disassembly.
+- `Return`: samples are spread across the arm. Its largest points are at
+  entry (4.68%) and the stack adjustment immediately after the entry push
+  (5.53%); these do not identify a source operation's cost. A 2.98% point
+  follows the open-upvalue tag test in the inlined `close_upvalues`, another
+  2.98% follows a store in the popped 80-byte frame's copy, and 3.40%
+  follows the returned `base` load before the overflow/window checks.
+  The source closes upvalues, takes the last frame and calls `finish`;
+  the epilogue then checks the new code, stack and constant windows. PUC
+  also closes upvalues and moves results; these operations alone are not
+  Halo-only costs. The annotation identifies no single return-side copy
+  concentration comparable to the call's.
+- `finish`: 11.30% is at entry, which cannot be assigned to a preceding
+  instruction within this symbol. The largest interior point, 9.60%,
+  follows the sign test of `f.nresults`, selecting the wanted result count
+  in the inlined `adjust_results`; 7.34% follows the load of `f.func`, the
+  result destination. A 6.78% point follows the saturated destination-index
+  addition before its slot-bound test. The remaining path tests for a
+  protected caller, checks activation, restores the caller's top and emits
+  `Step::Jump`. PUC's `luaD_poscall` also selects and copies results, but
+  directly restores its caller and has no Halo stack-index or activation
+  tests and no `Step` return.
+- `prepare`: 18.68% is on the called value's 4-byte handle reload, after
+  its 4-byte tag reload. The preceding code still loads the whole 16-byte
+  stack `Value` into a temporary before `func_of` reads these fields.
+  Entry and the tail-argument load each have 14.29%; argument pushes before
+  `enter_lua` have a 12.09% point. The EPYC matched-value materialization
+  remains. Its closure-slab test is now in the separately called
+  `native_binding`, rather than a hot inlined test in `prepare`; its share
+  must be read separately. This annotation has only 91 samples in
+  `prepare`, so the individual percentages have little resolution.
+
+The EPYC source findings also remain outside the largest points:
+`push_frame` compares depth with 20000, compares depth with capacity to
+decide growth, then tests space again before `place_back`. PUC's ordinary
+Lua entry checks frame capacity and grows on a miss, without a separate
+depth-limit comparison on that path. PUC reads its prototype through a
+pointer, and its nil fill tests the loop endpoint, without Halo's separate
+per-slot stack-bound tests. None of these findings is removed by writing
+`run` as `loop { match }`; the earlier comparison found the loop and
+self-tail forms byte-identical.
+
+The classification is unchanged, with the closure-test placement qualified:
+
+- **Halo source work PUC does not do:** two closure-slab lookups, the local
+  whole-prototype snapshot, the separate frame-limit and capacity tests,
+  per-slot bounds with saturated arithmetic in nil filling and result
+  adjustment, and the activation test in `finish`. These are Halo candidates
+  only if their required behavior and safety conditions are preserved.
+  Nil initialization, closing upvalues and result movement
+  themselves are shared work, not reasons to remove them or their safety
+  conditions.
+- **Compiler work beyond the required value semantics:** the physical entry
+  copy and the result and matched-value temporaries. Minimal semantic
+  examples are an unchanged copy-struct parameter forwarded to a sink after
+  a branch; a producer returning a tagged record whose caller matches its
+  tag and reads its scalar fields; and an immutable tagged value matched
+  only to read its scalar handle. These require value semantics, not an
+  additional whole-value memory slot before the read. `Frame`, `Step` and
+  `Value` instantiate those examples. The first has the broadened-rule
+  evidence above; the latter two remain Whitefoot lowering questions for
+  their owning session, not a reason to replace natural Halo value syntax.
+- **Dispatch form:** `Call` and `Return` still use the shared `Step` epilogue,
+  its tag dispatch and window tests, while selected hot arms continue
+  directly. The source asks for this join; the compiler chooses its memory
+  transport. The loop spelling has not made that join disappear. Changing
+  the join's interface is a Halo design choice; eliminating unnecessary
+  transport while preserving the interface is a compiler question.
+
+Not established: time per copy, lookup or check, a Halo/PUC timing ratio,
+or a counted store-forwarding stall. The wide reloads after narrower stores
+remain consistent with the earlier attribution, but samples can skid and
+the sampled address need not be the cause. The supplied event discrepancy
+leaves the hardware-cycle question unverified. Shares have different
+denominators in the two engines and change when other work changes; they
+cannot be subtracted to predict a gain. This is one kernel on one host under
+a hypervisor, without a timing twin or a change that isolates any cost.
+
+Candidates for the owner's choice, ranked by the evidence available here,
+not selected by this run:
+
+1. **Broadened in-place parameters in Whitefoot.** The hottest `push_frame`
+   point still follows its entry load, and the prior same-source compiler
+   comparison removed that copy and improved fib by 3.8%. Repeat against
+   the current Halo source with control and broadened-rule compilers based
+   on the same Whitefoot revision; require the entry copy to disappear.
+   This tests whether the prior gain carries to this engine, without
+   attributing the whole gain to `push_frame`.
+2. **Scalar use of returned and matched values in Whitefoot.** `Call`'s
+   31.40% point follows the result's wide load, and `prepare` still
+   materializes `Value` before reading its tag and handle. Measure the two
+   minimal semantic examples separately, then identical Halo source with
+   one lowering change at a time; inspect that the respective temporary
+   disappears. A retained temporary fails to test the proposed explanation.
+3. **One closure lookup and only the needed prototype fields in Halo.**
+   The duplicate validation and the 40-byte snapshot survive, whereas PUC
+   reads through its closure and prototype pointers. Measure each change
+   separately with one compiler, preserving native, invalid-callee, tail
+   and vararg behavior; inspect that the intended lookup or copy is gone.
+4. **Prove call-frame bounds once in Halo.** The separate depth/capacity
+   checks and every nil slot's bound test remain. Measure frame-growth
+   qualification and nil-fill qualification separately, retaining the
+   frame limit, growth errors and all required Whitefoot safety facts;
+   inspect that only the redundant hot tests disappear. This has less
+   isolated evidence than the copies and no measured gain here.
+
+For each candidate, a proposed runtime criterion for the owner is a
+**fib(34) median at least 3% below its control**, also beyond the larger
+control/candidate relative min–max range and the control twin's median
+difference from 1. Use six interleaved full-LTO pairs of the same benchmark
+source on the 14900K, with a twin of the control; compiler trials keep Halo
+source identical and Halo trials change only the candidate under study.
+No other kernel may regress beyond its larger range and twin difference,
+and ordinary and collector-stress oracle comparisons and root controls
+must pass on the measured revision. A gain inside those bounds rejects the
+runtime case for that candidate on this workload. These are proposed
+criteria for a future experiment, not results or an owner choice.
+
+## One closure lookup and the prototype fields a call reads
+
+### Criterion, recorded before the change
+
+The owner chose (status board, card on the call path's next step, option A)
+the Halo-side change first: an ordinary Lua call looks its closure up once
+and reads only the prototype fields it needs. Today `prepare` checks the
+closure slab's bound, live bit and callee kind in `native_binding`, and
+`enter_lua` checks them again before copying the whole 40-byte prototype
+into a local ([the call path on the 14900K](#the-call-path-on-the-14900k)).
+Change: `prepare` resolves the closure once and hands `enter_lua` what that
+lookup established; `enter_lua` reads `numparams`, `is_vararg`, `maxstack`
+and whatever else it uses through the prototype's slot instead of a local
+copy. Native calls, invalid callees, tail calls, varargs and every error
+keep their behavior, and the oracle comparisons must not change.
+
+Kept only if, on the 14900K, in six interleaved full-LTO pairs of this
+branch's base against the branch with the change, same compiler, with a
+twin of the base: fib's median falls at least 3%, by more than both ranges
+and the twin's difference; no other kernel is slower beyond its larger range
+and the twin's difference; `--check-module pkg::vm` takes at most 1.25 times
+as long; and `make check` passes. Otherwise the change is reverted with its
+measurements kept. The binaries' disassembly must show the second closure
+check and the prototype copy gone; if either remains, the run does not test
+the change and is reported as such.
+
+### Result
+
+[Run 37872258846](https://github.com/Ming-Research/Halo-wf/actions/runs/37872258846),
+artifact `halo-bench-onelookup`: the criterion's commit `5f8ba808c` against
+the change `0b9dc62` (the run's `git diff --stat`: `lib/halo/vm/calls.wf`
+only), `wf-691ea8106920`, six interleaved full-LTO pairs with a twin of the
+base:
+
+| Kernel | Before | After | Ratio | Before range | After range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1042 | 0.1030 | 0.988 | 2.02% | 5.84% | 0.995 |
+| loop | 0.4327 | 0.4341 | 1.003 | 0.99% | 0.77% | 1.001 |
+| integer-table | 0.4925 | 0.4903 | 0.996 | 1.11% | 2.91% | 0.988 |
+| string-key | 0.0255 | 0.0254 | 0.998 | 2.63% | 4.79% | 0.999 |
+| concat | 0.0725 | 0.0726 | 1.001 | 1.45% | 1.49% | 1.001 |
+| sort | 0.1746 | 0.1757 | 1.006 | 2.39% | 2.41% | 0.989 |
+| binary-trees | 1.8874 | 1.8717 | 0.992 | 1.48% | 1.79% | 1.004 |
+
+The run tests the change: in the after build `enter_lua` no longer checks
+the closure slab and reads the prototype's fields in place with byte and
+word loads (452 to 409 instructions, stack frame 0x178 to 0xd8 bytes),
+while `prepare` gains 15 instructions for the one lookup it now does.
+`--check-module pkg::vm`: before 9.079 and 9.169 s, after 9.045 and
+9.132 s.
+
+**The criterion fails and the change is reverted.** Fib is 1.2% faster,
+below the 3% required and inside its ranges; no kernel is slower beyond its
+bounds. Removing the second closure lookup and the prototype copy did not
+speed fib up beyond this run's noise. Where the rest of the call path's
+cost lies is not established by this run: the compiler-side copies of
+`Step` and `Value`, handed to the Whitefoot session, and the frame's own
+checks and transport remain candidates, each to be measured on its own.
+
 ## Why moving the slow call out made sort faster
 
 ### Question, recorded before it runs
@@ -3641,7 +4192,7 @@ supported explanation of the seventh run's 25%, not a separately measured
 one: the split also changed the frame size, the saved registers and the
 spills, and this run times nothing. It is the same kind as `prepare`'s
 whole-`Value` read and the `Call` arm's whole-`Step` copy in pull request
-12's [call-path profile on the 14900K](https://github.com/Ming-Research/Halo-wf/blob/claude/halo-call/research/experiments/halo-bench/RESULTS.md#the-call-path-on-the-14900k).
+12's [call-path profile on the 14900K](#the-call-path-on-the-14900k).
 
 Not established: which property of the inline form made the compiler keep
 the copy (the binding is not read after the slow call in either form),
@@ -3913,6 +4464,36 @@ build, `push_frame`'s disassembly from both, and two `--check-module pkg::vm`
 samples each. Expected: `push_frame` loses its entry copy, fib is faster by
 more than both ranges and the twin's difference, and no kernel is slower
 beyond its bounds; a kernel that is slower is reported with the upgrade.
+
+### Result
+
+[Run 37877260152](https://github.com/Ming-Research/Halo-wf/actions/runs/37877260152),
+artifact `halo-bench-upgrade`: this branch's source built by both releases,
+six interleaved full-LTO pairs with a twin of the old build:
+
+| Kernel | `wf-691ea8106920` | `wf-b2209fd31035` | Ratio | Old range | New range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1040 | 0.1034 | 0.994 | 1.19% | 1.66% | 0.993 |
+| loop | 0.4328 | 0.4334 | 1.001 | 0.62% | 0.90% | 1.002 |
+| integer-table | 0.4896 | 0.4773 | 0.975 | 2.55% | 2.17% | 1.005 |
+| string-key | 0.0264 | 0.0263 | 0.998 | 6.65% | 5.25% | 1.000 |
+| concat | 0.0727 | 0.0731 | 1.005 | 2.43% | 1.53% | 1.002 |
+| sort | 0.1753 | 0.1768 | 1.008 | 2.22% | 1.37% | 1.001 |
+| binary-trees | 1.8992 | 1.9008 | 1.001 | 7.89% | 2.08% | 1.000 |
+
+`push_frame` loses its entry copy: the old build copies the 80-byte `Frame`
+into a 0x60-byte frame with five 16-byte loads and stores before its first
+test, the new one starts with the frame-limit test in a 0x10-byte frame
+(96 instructions against 91, the rest being the copy into the frames
+vector and the error path). `--check-module pkg::vm`: old 9.136 and 9.044 s,
+new 9.185 and 9.151 s.
+
+**No kernel is slower beyond its bounds; the upgrade stands.** Fib is 0.6%
+faster, within its ranges, not the 3.8% the experiment release gave in
+[reading by-value parameters in place, measured](#reading-by-value-parameters-in-place-measured);
+that comparison differed from this one in base compiler and Halo source
+(before `loop { match }`), and this run does not explain the difference.
+Integer-table's 2.5% is also within its ranges.
 
 ## Growing the array in place on the main release
 
