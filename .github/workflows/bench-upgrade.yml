@@ -2,7 +2,7 @@
 # the old and the new pinned release (research/experiments/halo-bench/RESULTS.md,
 # "Whitefoot wf-b2209fd31035 upgrade"). The 14900K job runs only for a commit
 # whose message contains [bench], pushed once the runner is confirmed idle.
-# Removed before the pull request is marked ready.
+# Removed before the pull request is marked ready. Run on the 14900K: 2026-10-09.
 name: bench-upgrade
 
 on:
