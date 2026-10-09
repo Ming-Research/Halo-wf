@@ -4062,3 +4062,29 @@ and ordinary and collector-stress oracle comparisons and root controls
 must pass on the measured revision. A gain inside those bounds rejects the
 runtime case for that candidate on this workload. These are proposed
 criteria for a future experiment, not results or an owner choice.
+
+## One closure lookup and the prototype fields a call reads
+
+### Criterion, recorded before the change
+
+The owner chose (status board, card on the call path's next step, option A)
+the Halo-side change first: an ordinary Lua call looks its closure up once
+and reads only the prototype fields it needs. Today `prepare` checks the
+closure slab's bound, live bit and callee kind in `native_binding`, and
+`enter_lua` checks them again before copying the whole 40-byte prototype
+into a local ([the call path on the 14900K](#the-call-path-on-the-14900k)).
+Change: `prepare` resolves the closure once and hands `enter_lua` what that
+lookup established; `enter_lua` reads `numparams`, `is_vararg`, `maxstack`
+and whatever else it uses through the prototype's slot instead of a local
+copy. Native calls, invalid callees, tail calls, varargs and every error
+keep their behavior, and the oracle comparisons must not change.
+
+Kept only if, on the 14900K, in six interleaved full-LTO pairs of this
+branch's base against the branch with the change, same compiler, with a
+twin of the base: fib's median falls at least 3%, by more than both ranges
+and the twin's difference; no other kernel is slower beyond its larger range
+and the twin's difference; `--check-module pkg::vm` takes at most 1.25 times
+as long; and `make check` passes. Otherwise the change is reverted with its
+measurements kept. The binaries' disassembly must show the second closure
+check and the prototype copy gone; if either remains, the run does not test
+the change and is reported as such.
