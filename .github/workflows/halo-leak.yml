@@ -1,0 +1,116 @@
+# Temporary counted-memory diagnostic; remove with research/experiments/halo-leak
+# after the embedding leak is fixed. The existing check workflow remains the gate.
+name: halo-leak
+
+on:
+  push:
+    branches: [claude/halo-leak]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: halo-leak-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install the pinned compiler and its host toolchain
+        run: |
+          make toolchain
+          make compiler
+
+      - name: Build and run every entry in a separate process
+        shell: bash
+        run: |
+          set -u
+          experiment="$GITHUB_WORKSPACE/research/experiments/halo-leak"
+          outputs="$GITHUB_WORKSPACE/build/halo-leak"
+          mkdir -p "$outputs"
+          release=$(sed -n 's/^release = //p' whitefoot.pin)
+          compiler="$GITHUB_WORKSPACE/build/whitefoot/$release/whitefootc"
+          cp whitefoot.pin "$outputs/whitefoot.pin"
+          cp "build/whitefoot/$release/whitefoot-release.json" "$outputs/whitefoot-release.json"
+          git rev-parse HEAD > "$outputs/revision.txt"
+          printf '%s\n' 'variant,heap0,heap1,heap2,collections0,collections1,collections2,live_objects0,live_objects1,live_objects2,live_bytes0,live_bytes1,live_bytes2' > "$outputs/samples.csv"
+          cd "$experiment"
+          status=0
+          for entry in a b c d e f compile_only reset_only args_only table_only sample_only metadata_protos metadata_lineinfo metadata_source metadata_debug_names metadata_local_variables metadata_upvalue_names metadata_empty reset_box slot_field slot_field_empty slab_payload slab_payload_empty slab_cell slab_cell_empty scope_boxes stack_reserve frame_cycle budget_only; do
+            if "$compiler" --graph modules.wfg --entry "$entry" -o "$outputs/$entry" > "$outputs/$entry.build.log" 2>&1; then
+              if "$outputs/$entry" < /dev/null > "$outputs/$entry.csv" 2> "$outputs/$entry.run.log"; then
+                cat "$outputs/$entry.csv"
+                cat "$outputs/$entry.csv" >> "$outputs/samples.csv"
+              else
+                code=$?
+                printf '%s: run failed (exit %s)\n' "$entry" "$code"
+                cat "$outputs/$entry.run.log"
+                status=1
+              fi
+            else
+              code=$?
+              printf '%s: build failed (exit %s)\n' "$entry" "$code"
+              cat "$outputs/$entry.build.log"
+              status=1
+            fi
+          done
+          exit "$status"
+
+      - name: Print interval bytes per call and sample validity
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import csv
+          from decimal import Decimal
+          from pathlib import Path
+
+          root = Path("build/halo-leak")
+          expected = "a b c d e f compile_only reset_only args_only table_only sample_only metadata_protos metadata_lineinfo metadata_source metadata_debug_names metadata_local_variables metadata_upvalue_names metadata_empty reset_box slot_field slot_field_empty slab_payload slab_payload_empty slab_cell slab_cell_empty scope_boxes stack_reserve frame_cycle budget_only".split()
+          halo = set("a b c d e f compile_only reset_only args_only table_only sample_only".split())
+          with (root / "samples.csv").open(newline="") as stream:
+              rows = list(csv.DictReader(stream))
+          if [row["variant"] for row in rows] != expected:
+              raise SystemExit("Missing or reordered rows: inspect each entry's build/run log.")
+          with (root / "rates.csv").open("w", newline="") as stream:
+              writer = csv.writer(stream)
+              writer.writerow(["variant", "bytes_per_call_1", "bytes_per_call_2", "logical_live_stable"])
+              for row in rows:
+                  name = row["variant"]
+                  heap = [int(row[f"heap{i}"]) for i in range(3)]
+                  collections = [int(row[f"collections{i}"]) for i in range(3)]
+                  objects = [int(row[f"live_objects{i}"]) for i in range(3)]
+                  live = [int(row[f"live_bytes{i}"]) for i in range(3)]
+                  if name in halo:
+                      if not (0 < collections[0] < collections[1] < collections[2]):
+                          raise SystemExit(f"{name}: collection samples are invalid")
+                      stable = len(set(objects)) == 1 and len(set(live)) == 1
+                  else:
+                      if collections != [0, 0, 0] or objects != [0, 0, 0] or live != [0, 0, 0]:
+                          raise SystemExit(f"{name}: Halo-free witness has collector data")
+                      stable = "not_applicable"
+                  rates = [Decimal(heap[i + 1] - heap[i]) / 10000 for i in range(2)]
+                  writer.writerow([name, *rates, stable])
+                  print(f"{name}: {rates[0]}, {rates[1]} B/call; logical live stable: {stable}")
+          PY
+
+      - name: Upload samples, rates, logs and compiler identity
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: halo-leak-${{ github.sha }}
+          path: |
+            build/halo-leak/*.csv
+            build/halo-leak/*.log
+            build/halo-leak/*.json
+            build/halo-leak/*.pin
+            build/halo-leak/revision.txt
+          if-no-files-found: warn
+          retention-days: 14

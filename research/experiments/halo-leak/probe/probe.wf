@@ -1,0 +1,406 @@
+alias Inputs = std::process::Inputs;
+alias ExitStatus = std::process::ExitStatus;
+alias MemoryMeter = std::process::MemoryMeter;
+alias Engine = halo::embed::Engine;
+alias ScriptId = halo::embed::ScriptId;
+alias Host = halo::vm::Host;
+alias HostOutcome = halo::vm::HostOutcome;
+alias Vm = halo::vm::Vm;
+alias Value = halo::value::Value;
+alias Sample = pkg::output::Sample;
+alias host_base = halo::value::builtin_host_base;
+
+const leak_idle: Array<u8, 8> = "return 1";
+
+const leak_table: Array<u8, 26> = "local t = {1,2,3} return t";
+
+const leak_host: Array<u8, 30> = "local n = host_call() return n";
+
+const leak_chunk: Array<u8, 12> = "@user_script";
+
+const leak_keys: Array<u8, 4> = "KEYS";
+
+const leak_argv: Array<u8, 4> = "ARGV";
+
+const leak_host_name: Array<u8, 9> = "host_call";
+
+struct Calls {
+  count: u64;
+  valid: Bool;
+}
+
+struct Scripts {
+  idle: ScriptId;
+  work: ScriptId;
+}
+
+fn leak_host_call(env: &Calls, vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: u32) -> r: HostOutcome writes(env), writes(vm), writes(stack) contract {
+  ensures stack^.inner.len == entry(stack)^.inner.len;
+} {
+  doc "Counts a zero-argument host call and returns one through the ordinary host-result path.";
+  set env^.count = env^.count +sat 1_u64;
+  if id != host_base {
+    set env^.valid = False();
+  }
+  if argc != 0_u64 {
+    set env^.valid = False();
+  }
+  if func < stack^.inner.len {
+    set stack^.inner[func] = Value::Num(n: 1.0_f64);
+  } else {
+    set env^.valid = False();
+  }
+  set vm^.error = Value::Nil();
+  return HostOutcome::Returned(count: 1_u64);
+}
+
+binding LeakHost : Host<Calls> {
+  call = leak_host_call;
+}
+
+fn leak_arguments(engine: &Engine) -> ok: Bool writes(engine) {
+  doc "Creates and installs empty KEYS and ARGV, with each previous global value replaced.";
+  let keys = halo::embed::new_table(engine: engine, asize: 0_u32, hsize: 0_u32);
+  let argv = halo::embed::new_table(engine: engine, asize: 0_u32, hsize: 0_u32);
+  let keys_result = halo::embed::set_global(engine: engine, name: &leak_keys[0_u64..4_u64], value: keys);
+  let argv_result = halo::embed::set_global(engine: engine, name: &leak_argv[0_u64..4_u64], value: argv);
+  match keys_result {
+    Err(..) => {
+      return False();
+    }
+    Ok(..) => {
+    }
+  }
+  match argv_result {
+    Err(..) => {
+      return False();
+    }
+    Ok(..) => {
+      return True();
+    }
+  }
+}
+
+fn leak_result(engine: &Engine, table: Bool) -> ok: Bool reads(engine) {
+  doc "Reads and discards the single result, checking one or the three-element table independently of memory readings.";
+  let result = halo::embed::result(engine: engine, index: 0_u64);
+  match result {
+    None() => {
+      return False();
+    }
+    Some(value: returned_value) => {
+      if table {
+        let kind = halo::embed::kind(value: returned_value);
+        if kind != 4_u8 {
+          return False();
+        }
+        let border = halo::embed::table_border(engine: engine, table: returned_value);
+        return border == 3_u64;
+      }
+      let number = halo::embed::number_of(value: returned_value);
+      match number {
+        Not() => {
+          return False();
+        }
+        Is(x: returned_number) => {
+          return feq(returned_number, 1.0_f64);
+        }
+      }
+    }
+  }
+}
+
+fn leak_run(engine: &Engine, env: &Calls, script: ScriptId, table: Bool) -> ok: Bool writes(engine), writes(env) {
+  doc "Starts a cached script, resumes any budget checkpoint and checks the completed result.";
+  let outcome = halo::embed::start::<LeakHost>(engine: engine, env: env, script: script, budget: 1000_u64);
+  loop {
+    match outcome {
+      Budget() => {
+        set outcome = halo::embed::resume::<LeakHost>(engine: engine, env: env, budget: 18446744073709551615_u64);
+      }
+      Done(count: returned_count) => {
+        if returned_count != 1_u64 {
+          return False();
+        }
+        return leak_result(engine: engine, table: table);
+      }
+      Error() => {
+        return False();
+      }
+      HostStopped() => {
+        return False();
+      }
+      HostCall() => {
+        return False();
+      }
+    }
+  }
+  return False();
+}
+
+fn leak_sample(engine: &Engine, env: &Calls, idle: ScriptId, meter: &MemoryMeter) -> r: Option<Sample> writes(engine), writes(env), writes(meter) {
+  doc "Forces exactly one complete collection at a cached idle chunk's entry, restores stress off and immediately samples counted process memory.";
+  let before = halo::embed::collection_count(engine: engine);
+  let yes = True();
+  let no = False();
+  halo::embed::set_gc_stress(engine: engine, enabled: yes);
+  let ran = leak_run(engine: engine, env: env, script: idle, table: no);
+  halo::embed::set_gc_stress(engine: engine, enabled: no);
+  let failed_ran = bnot(ran);
+  if failed_ran {
+    return None<Sample>();
+  }
+  let after = halo::embed::collection_count(engine: engine);
+  let expected = before +sat 1_u64;
+  if after != expected {
+    return None<Sample>();
+  }
+  let stats = halo::embed::last_collection(engine: engine);
+  let objects_a = stats.strings.live_objects +sat stats.tables.live_objects;
+  let objects_b = stats.closures.live_objects +sat stats.upvalues.live_objects;
+  let objects = objects_a +sat objects_b;
+  let bytes_a = stats.strings.live_bytes +sat stats.tables.live_bytes;
+  let bytes_b = stats.closures.live_bytes +sat stats.upvalues.live_bytes;
+  let bytes = bytes_a +sat bytes_b;
+  let heap = std::process::heap_in_use(meter: meter);
+  let sample = Sample(heap: heap, collections: after, live_objects: objects, live_bytes: bytes);
+  return Some<Sample>(value: sample);
+}
+
+fn leak_batch(engine: &Engine, env: &Calls, scripts: &Scripts, mode: u8, count: u64) -> ok: Bool writes(engine), writes(env), writes(scripts) {
+  doc "Runs one workload interval; fresh compilation flushes the cache first so deliberate script retention cannot masquerade as a leak.";
+  for (i in 0_u64..count) {
+    if mode == 1_u8 {
+      let prepared_b = leak_arguments(engine: engine);
+      let failed_prepared_b = bnot(prepared_b);
+      if failed_prepared_b {
+        return False();
+      }
+    } else if mode == 2_u8 {
+      let prepared_c = leak_arguments(engine: engine);
+      let failed_prepared_c = bnot(prepared_c);
+      if failed_prepared_c {
+        return False();
+      }
+    } else if mode == 8_u8 {
+      let prepared_only = leak_arguments(engine: engine);
+      let failed_prepared_only = bnot(prepared_only);
+      if failed_prepared_only {
+        return False();
+      }
+    }
+    let fresh_run = mode == 3_u8;
+    let fresh_compile = mode == 6_u8;
+    let compiling = bor(fresh_run, fresh_compile);
+    if compiling {
+      halo::embed::forget_all(engine: engine);
+      let compiled_fresh = halo::embed::compile(engine: engine, chunk_name: &leak_chunk[0_u64..12_u64], source: &leak_idle[0_u64..8_u64]);
+      match move compiled_fresh {
+        Err(..) => {
+          return False();
+        }
+        Ok(value: fresh_id) => {
+          set scripts^.work = fresh_id;
+          set scripts^.idle = fresh_id;
+        }
+      }
+    }
+    if mode <= 5_u8 {
+      let table = mode == 4_u8;
+      let before_calls = env^.count;
+      let ran = leak_run(engine: engine, env: env, script: scripts^.work, table: table);
+      let failed_ran = bnot(ran);
+      if failed_ran {
+        return False();
+      }
+      let expected_calls = before_calls;
+      if mode == 5_u8 {
+        set expected_calls = before_calls +sat 1_u64;
+      }
+      if env^.count != expected_calls {
+        return False();
+      }
+      let invalid_host = bnot(env^.valid);
+      if invalid_host {
+        return False();
+      }
+    }
+    if mode == 2_u8 {
+      halo::embed::reset(engine: engine);
+    } else if mode == 7_u8 {
+      halo::embed::reset(engine: engine);
+    } else if mode == 9_u8 {
+      let discarded_table = halo::embed::new_table(engine: engine, asize: 0_u32, hsize: 0_u32);
+      let kind = halo::embed::kind(value: discarded_table);
+      if kind != 4_u8 {
+        return False();
+      }
+    }
+  }
+  return True();
+}
+
+fn leak_measure(engine: &Engine, env: &Calls, scripts: &Scripts, meter: &MemoryMeter, mode: u8) -> r: Option<Array<Sample, 3>> writes(engine), writes(env), writes(scripts), writes(meter) {
+  doc "Warms up 1000 calls and captures three forced-collection samples separated by exactly 10000 workload calls.";
+  let warmed = leak_batch(engine: engine, env: env, scripts: scripts, mode: mode, count: 1000_u64);
+  let failed_warmed = bnot(warmed);
+  if failed_warmed {
+    return None<Array<Sample, 3>>();
+  }
+  let zero = Sample(heap: 0_u64, collections: 0_u64, live_objects: 0_u64, live_bytes: 0_u64);
+  let samples = array_filled::<Sample, 3>(value: zero);
+  for (i in 0_u64..3_u64) {
+    let observed = leak_sample(engine: engine, env: env, idle: scripts^.idle, meter: meter);
+    match observed {
+      None() => {
+        return None<Array<Sample, 3>>();
+      }
+      Some(value: measured_sample) => {
+        set samples[i] = measured_sample;
+      }
+    }
+    if i < 2_u64 {
+      let completed = leak_batch(engine: engine, env: env, scripts: scripts, mode: mode, count: 10000_u64);
+      let failed_completed = bnot(completed);
+      if failed_completed {
+        return None<Array<Sample, 3>>();
+      }
+    }
+  }
+  return Some<Array<Sample, 3>>(value: samples);
+}
+
+fn leak_main(inputs: Inputs, name: &[u8], mode: u8) -> status: ExitStatus reads(name) waits {
+  doc "Creates a fresh engine in each entry process and prints only after the complete measurement.";
+  let Inputs(cwd: directory, stdout: output, handles: factory, memory_meter: meter, ..) = move inputs;
+  let std::fs::Directory(read: directory_read, write: directory_write) = move directory;
+  std::fs::close_directory_write(factory: &factory, directory: move directory_write);
+  std::fs::close_directory(factory: &factory, directory: move directory_read);
+  let engine = halo::embed::new_engine(limit: 0_u64);
+  let valid = True();
+  let env = Calls(count: 0_u64, valid: valid);
+  if mode == 5_u8 {
+    let builtin = Value::Builtin(id: host_base);
+    let installed = halo::embed::set_global(engine: &engine, name: &leak_host_name[0_u64..9_u64], value: builtin);
+    match installed {
+      Err(..) => {
+        return std::process::exit_status(code: 1_u8);
+      }
+      Ok(..) => {
+      }
+    }
+  }
+  let compiled_idle = halo::embed::compile(engine: &engine, chunk_name: &leak_chunk[0_u64..12_u64], source: &leak_idle[0_u64..8_u64]);
+  match move compiled_idle {
+    Err(..) => {
+      return std::process::exit_status(code: 2_u8);
+    }
+    Ok(value: idle_id) => {
+      let source = &leak_idle[0_u64..8_u64];
+      if mode == 4_u8 {
+        set source = &leak_table[0_u64..26_u64];
+      } else if mode == 5_u8 {
+        set source = &leak_host[0_u64..30_u64];
+      }
+      let compiled_work = halo::embed::compile(engine: &engine, chunk_name: &leak_chunk[0_u64..12_u64], source: source);
+      match move compiled_work {
+        Err(..) => {
+          return std::process::exit_status(code: 3_u8);
+        }
+        Ok(value: work_id) => {
+          let scripts = Scripts(idle: idle_id, work: work_id);
+          let measured = leak_measure(engine: &engine, env: &env, scripts: &scripts, meter: &meter, mode: mode);
+          match measured {
+            None() => {
+              return std::process::exit_status(code: 4_u8);
+            }
+            Some(value: measured_samples) => {
+              let printed = pkg::output::row(factory: &factory, output: &output, name: name, samples: measured_samples);
+              if printed {
+                return std::process::exit_status(code: 0_u8);
+              }
+              return std::process::exit_status(code: 5_u8);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+const leak_name_a: Array<u8, 1> = "a";
+
+fn a(inputs: Inputs) -> status: ExitStatus pure waits {
+  doc "Measures the a embedding variant in a fresh process.";
+  return leak_main(inputs: move inputs, name: &leak_name_a[0_u64..1_u64], mode: 0_u8);
+}
+
+const leak_name_b: Array<u8, 1> = "b";
+
+fn b(inputs: Inputs) -> status: ExitStatus pure waits {
+  doc "Measures the b embedding variant in a fresh process.";
+  return leak_main(inputs: move inputs, name: &leak_name_b[0_u64..1_u64], mode: 1_u8);
+}
+
+const leak_name_c: Array<u8, 1> = "c";
+
+fn c(inputs: Inputs) -> status: ExitStatus pure waits {
+  doc "Measures the c embedding variant in a fresh process.";
+  return leak_main(inputs: move inputs, name: &leak_name_c[0_u64..1_u64], mode: 2_u8);
+}
+
+const leak_name_d: Array<u8, 1> = "d";
+
+fn d(inputs: Inputs) -> status: ExitStatus pure waits {
+  doc "Measures the d embedding variant in a fresh process.";
+  return leak_main(inputs: move inputs, name: &leak_name_d[0_u64..1_u64], mode: 3_u8);
+}
+
+const leak_name_e: Array<u8, 1> = "e";
+
+fn e(inputs: Inputs) -> status: ExitStatus pure waits {
+  doc "Measures the e embedding variant in a fresh process.";
+  return leak_main(inputs: move inputs, name: &leak_name_e[0_u64..1_u64], mode: 4_u8);
+}
+
+const leak_name_f: Array<u8, 1> = "f";
+
+fn f(inputs: Inputs) -> status: ExitStatus pure waits {
+  doc "Measures the f embedding variant in a fresh process.";
+  return leak_main(inputs: move inputs, name: &leak_name_f[0_u64..1_u64], mode: 5_u8);
+}
+
+const leak_name_compile_only: Array<u8, 12> = "compile_only";
+
+fn compile_only(inputs: Inputs) -> status: ExitStatus pure waits {
+  doc "Measures the compile_only embedding variant in a fresh process.";
+  return leak_main(inputs: move inputs, name: &leak_name_compile_only[0_u64..12_u64], mode: 6_u8);
+}
+
+const leak_name_reset_only: Array<u8, 10> = "reset_only";
+
+fn reset_only(inputs: Inputs) -> status: ExitStatus pure waits {
+  doc "Measures the reset_only embedding variant in a fresh process.";
+  return leak_main(inputs: move inputs, name: &leak_name_reset_only[0_u64..10_u64], mode: 7_u8);
+}
+
+const leak_name_args_only: Array<u8, 9> = "args_only";
+
+fn args_only(inputs: Inputs) -> status: ExitStatus pure waits {
+  doc "Measures the args_only embedding variant in a fresh process.";
+  return leak_main(inputs: move inputs, name: &leak_name_args_only[0_u64..9_u64], mode: 8_u8);
+}
+
+const leak_name_table_only: Array<u8, 10> = "table_only";
+
+fn table_only(inputs: Inputs) -> status: ExitStatus pure waits {
+  doc "Measures the table_only embedding variant in a fresh process.";
+  return leak_main(inputs: move inputs, name: &leak_name_table_only[0_u64..10_u64], mode: 9_u8);
+}
+
+const leak_name_sample_only: Array<u8, 11> = "sample_only";
+
+fn sample_only(inputs: Inputs) -> status: ExitStatus pure waits {
+  doc "Measures the sample_only embedding variant in a fresh process.";
+  return leak_main(inputs: move inputs, name: &leak_name_sample_only[0_u64..11_u64], mode: 10_u8);
+}

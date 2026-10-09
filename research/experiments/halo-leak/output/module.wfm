@@ -1,0 +1,11 @@
+alias HandleFactory = std::io::HandleFactory;
+alias OutputStream = std::io::OutputStream;
+
+public struct Sample {
+  public heap: u64;
+  public collections: u64;
+  public live_objects: u64;
+  public live_bytes: u64;
+}
+
+public fn row(factory: &HandleFactory, output: &OutputStream, name: &[u8], samples: Array<Sample, 3>) -> ok: Bool reads(name), writes(factory), writes(output) waits doc "Prints one diagnostic row after all samples have been taken.";

@@ -1,0 +1,24 @@
+alias Inputs = std::process::Inputs;
+alias ExitStatus = std::process::ExitStatus;
+
+public fn a(inputs: Inputs) -> status: ExitStatus pure waits doc "Prints forced-collection memory samples for a.";
+
+public fn b(inputs: Inputs) -> status: ExitStatus pure waits doc "Prints forced-collection memory samples for b.";
+
+public fn c(inputs: Inputs) -> status: ExitStatus pure waits doc "Prints forced-collection memory samples for c.";
+
+public fn d(inputs: Inputs) -> status: ExitStatus pure waits doc "Prints forced-collection memory samples for d.";
+
+public fn e(inputs: Inputs) -> status: ExitStatus pure waits doc "Prints forced-collection memory samples for e.";
+
+public fn f(inputs: Inputs) -> status: ExitStatus pure waits doc "Prints forced-collection memory samples for f.";
+
+public fn compile_only(inputs: Inputs) -> status: ExitStatus pure waits doc "Prints forced-collection memory samples for compile_only.";
+
+public fn reset_only(inputs: Inputs) -> status: ExitStatus pure waits doc "Prints forced-collection memory samples for reset_only.";
+
+public fn args_only(inputs: Inputs) -> status: ExitStatus pure waits doc "Prints forced-collection memory samples for args_only.";
+
+public fn table_only(inputs: Inputs) -> status: ExitStatus pure waits doc "Prints forced-collection memory samples for table_only.";
+
+public fn sample_only(inputs: Inputs) -> status: ExitStatus pure waits doc "Prints forced-collection memory samples for sample_only.";

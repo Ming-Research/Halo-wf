@@ -1,0 +1,89 @@
+alias HandleFactory = std::io::HandleFactory;
+alias OutputStream = std::io::OutputStream;
+
+const output_comma: Array<u8, 1> = ",";
+
+const output_newline: Array<u8, 1> = "\n";
+
+fn output_bytes(factory: &HandleFactory, output: &OutputStream, bytes: &[u8]) -> ok: Bool reads(bytes), writes(factory), writes(output) waits {
+  doc "Writes a complete byte range, refusing an output error or a zero-progress write.";
+  let sent = 0_u64;
+  let end = bytes^.len;
+  let deadline = None<std::time::Instant>();
+  loop {
+    if sent >= end {
+      break;
+    }
+    match std::io::write_once(factory: factory, output: output, source: bytes, start: sent, end: end, deadline: deadline) {
+      Ok(value: next) => {
+        if next == sent {
+          return False();
+        }
+        set sent = next;
+      }
+      Err(..) => {
+        return False();
+      }
+    }
+  }
+  return True();
+}
+
+fn output_number(factory: &HandleFactory, output: &OutputStream, value: u64) -> ok: Bool writes(factory), writes(output) waits {
+  doc "Prints an unsigned integer using a stack-resident decimal buffer.";
+  let digits = array_filled::<u8, 20>(value: 0_u8);
+  let start = 20_u64;
+  let remaining = value;
+  loop {
+    if start == 0_u64 {
+      return False();
+    }
+    set start = start - 1_u64;
+    let remainder = remaining % 10_u64;
+    let digit = cvt::<u64, u8>(remainder);
+    let byte = digit + 48_u8;
+    if start < 20_u64 {
+      set digits[start] = byte;
+    }
+    set remaining = remaining / 10_u64;
+    if remaining == 0_u64 {
+      break;
+    }
+  }
+  if start <= 20_u64 {
+    return output_bytes(factory: factory, output: output, bytes: &digits[start..20_u64]);
+  }
+  return False();
+}
+
+fn row(factory: &HandleFactory, output: &OutputStream, name: &[u8], samples: Array<Sample, 3>) -> ok: Bool reads(name), writes(factory), writes(output) waits {
+  doc "Groups the three heap readings, collection counts, live object counts and logical byte counts in that order.";
+  let named = output_bytes(factory: factory, output: output, bytes: name);
+  let failed_named = bnot(named);
+  if failed_named {
+    return False();
+  }
+  let columns = array_filled::<u64, 12>(value: 0_u64);
+  for (i in 0_u64..3_u64) {
+    set columns[i] = samples[i].heap;
+    let collection_column = i + 3_u64;
+    let object_column = i + 6_u64;
+    let byte_column = i + 9_u64;
+    set columns[collection_column] = samples[i].collections;
+    set columns[object_column] = samples[i].live_objects;
+    set columns[byte_column] = samples[i].live_bytes;
+  }
+  for (column in 0_u64..12_u64) {
+    let separated = output_bytes(factory: factory, output: output, bytes: &output_comma[0_u64..1_u64]);
+    let failed_separated = bnot(separated);
+    if failed_separated {
+      return False();
+    }
+    let printed = output_number(factory: factory, output: output, value: columns[column]);
+    let failed_printed = bnot(printed);
+    if failed_printed {
+      return False();
+    }
+  }
+  return output_bytes(factory: factory, output: output, bytes: &output_newline[0_u64..1_u64]);
+}

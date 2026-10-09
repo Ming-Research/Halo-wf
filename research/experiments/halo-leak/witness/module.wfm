@@ -1,0 +1,38 @@
+alias Inputs = std::process::Inputs;
+alias ExitStatus = std::process::ExitStatus;
+
+public fn metadata_protos(inputs: Inputs) -> status: ExitStatus pure waits doc "Prints counted memory samples for metadata_protos without Halo.";
+
+public fn metadata_lineinfo(inputs: Inputs) -> status: ExitStatus pure waits doc "Prints counted memory samples for metadata_lineinfo without Halo.";
+
+public fn metadata_source(inputs: Inputs) -> status: ExitStatus pure waits doc "Prints counted memory samples for metadata_source without Halo.";
+
+public fn metadata_debug_names(inputs: Inputs) -> status: ExitStatus pure waits doc "Prints counted memory samples for metadata_debug_names without Halo.";
+
+public fn metadata_local_variables(inputs: Inputs) -> status: ExitStatus pure waits doc "Prints counted memory samples for metadata_local_variables without Halo.";
+
+public fn metadata_upvalue_names(inputs: Inputs) -> status: ExitStatus pure waits doc "Prints counted memory samples for metadata_upvalue_names without Halo.";
+
+public fn metadata_empty(inputs: Inputs) -> status: ExitStatus pure waits doc "Prints counted memory samples for metadata_empty without Halo.";
+
+public fn reset_box(inputs: Inputs) -> status: ExitStatus pure waits doc "Prints counted memory samples for reset_box without Halo.";
+
+public fn slot_field(inputs: Inputs) -> status: ExitStatus pure waits doc "Prints counted memory samples for slot_field without Halo.";
+
+public fn slot_field_empty(inputs: Inputs) -> status: ExitStatus pure waits doc "Prints counted memory samples for slot_field_empty without Halo.";
+
+public fn slab_payload(inputs: Inputs) -> status: ExitStatus pure waits doc "Prints counted memory samples for slab_payload without Halo.";
+
+public fn slab_payload_empty(inputs: Inputs) -> status: ExitStatus pure waits doc "Prints counted memory samples for slab_payload_empty without Halo.";
+
+public fn slab_cell(inputs: Inputs) -> status: ExitStatus pure waits doc "Prints counted memory samples for slab_cell without Halo.";
+
+public fn slab_cell_empty(inputs: Inputs) -> status: ExitStatus pure waits doc "Prints counted memory samples for slab_cell_empty without Halo.";
+
+public fn scope_boxes(inputs: Inputs) -> status: ExitStatus pure waits doc "Prints counted memory samples for scope_boxes without Halo.";
+
+public fn stack_reserve(inputs: Inputs) -> status: ExitStatus pure waits doc "Prints counted memory samples for stack_reserve without Halo.";
+
+public fn frame_cycle(inputs: Inputs) -> status: ExitStatus pure waits doc "Prints counted memory samples for frame_cycle without Halo.";
+
+public fn budget_only(inputs: Inputs) -> status: ExitStatus pure waits doc "Prints counted memory samples for budget_only without Halo.";

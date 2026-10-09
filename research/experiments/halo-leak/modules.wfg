@@ -1,0 +1,63 @@
+package halo = "../../../lib/halo";
+
+pkg::output: [std::io, std::time];
+pkg::probe: [pkg::output, halo::embed, halo::vm, halo::value, std::process, std::fs];
+pkg::witness: [pkg::output, std::process, std::fs];
+
+entry a = pkg::probe::a;
+
+entry b = pkg::probe::b;
+
+entry c = pkg::probe::c;
+
+entry d = pkg::probe::d;
+
+entry e = pkg::probe::e;
+
+entry f = pkg::probe::f;
+
+entry compile_only = pkg::probe::compile_only;
+
+entry reset_only = pkg::probe::reset_only;
+
+entry args_only = pkg::probe::args_only;
+
+entry table_only = pkg::probe::table_only;
+
+entry sample_only = pkg::probe::sample_only;
+
+entry metadata_protos = pkg::witness::metadata_protos;
+
+entry metadata_lineinfo = pkg::witness::metadata_lineinfo;
+
+entry metadata_source = pkg::witness::metadata_source;
+
+entry metadata_debug_names = pkg::witness::metadata_debug_names;
+
+entry metadata_local_variables = pkg::witness::metadata_local_variables;
+
+entry metadata_upvalue_names = pkg::witness::metadata_upvalue_names;
+
+entry metadata_empty = pkg::witness::metadata_empty;
+
+entry reset_box = pkg::witness::reset_box;
+
+entry slot_field = pkg::witness::slot_field;
+
+entry slot_field_empty = pkg::witness::slot_field_empty;
+
+entry slab_payload = pkg::witness::slab_payload;
+
+entry slab_payload_empty = pkg::witness::slab_payload_empty;
+
+entry slab_cell = pkg::witness::slab_cell;
+
+entry slab_cell_empty = pkg::witness::slab_cell_empty;
+
+entry scope_boxes = pkg::witness::scope_boxes;
+
+entry stack_reserve = pkg::witness::stack_reserve;
+
+entry frame_cycle = pkg::witness::frame_cycle;
+
+entry budget_only = pkg::witness::budget_only;

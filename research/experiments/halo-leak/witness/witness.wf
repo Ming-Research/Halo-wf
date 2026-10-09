@@ -1,0 +1,579 @@
+alias Inputs = std::process::Inputs;
+alias ExitStatus = std::process::ExitStatus;
+alias MemoryMeter = std::process::MemoryMeter;
+alias Sample = pkg::output::Sample;
+
+struct WitnessProto {
+  start: u32;
+  kbase: u32;
+  nk: u32;
+  numparams: u8;
+  is_vararg: Bool;
+  maxstack: u8;
+  nups: u8;
+  local_base: u64;
+  local_count: u64;
+  upvalue_name_base: u64;
+}
+
+struct WitnessDebugName {
+  offset: u64;
+  length: u64;
+}
+
+struct WitnessLocal {
+  name: WitnessDebugName;
+  startcell: u32;
+  endcell: u32;
+}
+
+enum WitnessValue {
+  Nil();
+  Num(n: f64);
+  Handle(h: u32);
+}
+
+enum WitnessCallee {
+  Lua(proto: u32);
+  Native(id: u32);
+}
+
+struct WitnessPayload {
+  callee: WitnessCallee;
+  upvals: Box<Slots<u32>>;
+}
+
+struct WitnessCell {
+  live: Bool;
+  mark: u32;
+  next_free: u32;
+  payload: WitnessPayload;
+}
+
+struct WitnessHeap {
+  closures: Box<Slots<WitnessCell>>;
+  free: u32;
+}
+
+struct WitnessFrame {
+  func: u64;
+  base: u64;
+  return_pc: u64;
+  kbase: u64;
+  closure: u32;
+  nresults: i64;
+  activation: u32;
+  flags: u8;
+  varbase: u64;
+  varcount: u64;
+  frame_top: u64;
+}
+
+struct WitnessVm {
+  protos: Box<Slots<WitnessProto>>;
+  lineinfo: Box<Slots<u32>>;
+  source: Box<Slots<u8>>;
+  debug_names: Box<Slots<u8>>;
+  local_variables: Box<Slots<WitnessLocal>>;
+  upvalue_names: Box<Slots<WitnessDebugName>>;
+  stopped_stack: Box<Slots<WitnessValue>>;
+  heap: WitnessHeap;
+  stack: Box<Slots<WitnessValue>>;
+  frames: Box<Slots<WitnessFrame>>;
+  budget: u64;
+}
+
+struct WitnessScript {
+  protos: Box<Slots<WitnessProto>>;
+  lineinfo: Box<Slots<u32>>;
+  source: Box<Slots<u8>>;
+  debug_names: Box<Slots<u8>>;
+  local_variables: Box<Slots<WitnessLocal>>;
+  upvalue_names: Box<Slots<WitnessDebugName>>;
+}
+
+struct WitnessCalls {
+  count: u64;
+}
+
+interface WitnessHost<E> {
+  fn call(env: &E) -> r: unit writes(env);
+}
+
+fn witness_call(env: &WitnessCalls) -> r: unit writes(env) {
+  doc "Keeps a concrete environment and function-kind binding in the generic replacement path.";
+  set env^.count = env^.count +sat 1_u64;
+  return unit;
+}
+
+binding WitnessCounter : WitnessHost<WitnessCalls> {
+  call = witness_call;
+}
+
+fn witness_buffer<T: copy>(capacity: u64, value: T) -> r: Box<Slots<T>> pure {
+  doc "Builds a fixed-capacity filled source buffer, used only before warm-up or as a replacement payload.";
+  let buffer = box_slots_new::<T>(capacity: capacity);
+  for (i in 0_u64..capacity) {
+    if buffer.inner.len < buffer.inner.cap {
+      place_back(window: &buffer.inner, value: value);
+    }
+  }
+  return move buffer;
+}
+
+fn witness_script(empty: Bool) -> r: WitnessScript pure {
+  doc "Mirrors the copyable metadata records in Halo's Script without importing Halo.";
+  let no = False();
+  let proto = WitnessProto(start: 0_u32, kbase: 0_u32, nk: 1_u32, numparams: 0_u8, is_vararg: no, maxstack: 3_u8, nups: 0_u8, local_base: 0_u64, local_count: 0_u64, upvalue_name_base: 0_u64);
+  let debug_name = WitnessDebugName(offset: 0_u64, length: 1_u64);
+  let local = WitnessLocal(name: debug_name, startcell: 0_u32, endcell: 1_u32);
+  let protos = 1_u64;
+  let lines = 16_u64;
+  let bytes = 64_u64;
+  let locals = 2_u64;
+  let names = 4_u64;
+  if empty {
+    set protos = 0_u64;
+    set lines = 0_u64;
+    set bytes = 0_u64;
+    set locals = 0_u64;
+    set names = 0_u64;
+  }
+  let p = witness_buffer::<WitnessProto>(capacity: protos, value: proto);
+  let l = witness_buffer::<u32>(capacity: lines, value: 1_u32);
+  let s = witness_buffer::<u8>(capacity: bytes, value: 65_u8);
+  let d = witness_buffer::<u8>(capacity: bytes, value: 66_u8);
+  let v = witness_buffer::<WitnessLocal>(capacity: locals, value: local);
+  let u = witness_buffer::<WitnessDebugName>(capacity: names, value: debug_name);
+  return WitnessScript(protos: move p, lineinfo: move l, source: move s, debug_names: move d, local_variables: move v, upvalue_names: move u);
+}
+
+fn witness_vm() -> r: WitnessVm pure {
+  doc "Constructs empty metadata fields and one reusable slab cell before any samples.";
+  let p = box_slots_new::<WitnessProto>(capacity: 0_u64);
+  let l = box_slots_new::<u32>(capacity: 0_u64);
+  let s = box_slots_new::<u8>(capacity: 0_u64);
+  let d = box_slots_new::<u8>(capacity: 0_u64);
+  let v = box_slots_new::<WitnessLocal>(capacity: 0_u64);
+  let u = box_slots_new::<WitnessDebugName>(capacity: 0_u64);
+  let stopped = box_slots_new::<WitnessValue>(capacity: 0_u64);
+  let upvals = box_slots_new::<u32>(capacity: 0_u64);
+  let callee = WitnessCallee::Lua(proto: 0_u32);
+  let payload = WitnessPayload(callee: callee, upvals: move upvals);
+  let live = True();
+  let cell = WitnessCell(live: live, mark: 0_u32, next_free: 4294967295_u32, payload: move payload);
+  let cells = box_slots_new::<WitnessCell>(capacity: 1_u64);
+  place_back(window: &cells.inner, value: move cell);
+  let heap = WitnessHeap(closures: move cells, free: 0_u32);
+  let stack = box_slots_new::<WitnessValue>(capacity: 0_u64);
+  let frames = box_slots_new::<WitnessFrame>(capacity: 0_u64);
+  return WitnessVm(protos: move p, lineinfo: move l, source: move s, debug_names: move d, local_variables: move v, upvalue_names: move u, stopped_stack: move stopped, heap: move heap, stack: move stack, frames: move frames, budget: 0_u64);
+}
+
+fn witness_start<interface WitnessHost<E>>(script: &WitnessScript, vm: &WitnessVm, env: &E, mode: u8) -> r: unit reads(script), writes(vm), writes(env) {
+  doc "Copies and replaces one metadata field through a reference in an interface-generic function, or all six empty fields.";
+  let selected_protos = mode == 0_u8;
+  let all_empty_protos = mode == 6_u8;
+  let replace_protos = bor(selected_protos, all_empty_protos);
+  if replace_protos {
+    let copied_protos = box_slots_new::<WitnessProto>(capacity: script^.protos.inner.len);
+    for (i_protos in 0_u64..script^.protos.inner.len) {
+      if copied_protos.inner.len < copied_protos.inner.cap {
+        let record_protos = script^.protos.inner[i_protos];
+        place_back(window: &copied_protos.inner, value: record_protos);
+      }
+    }
+    set vm^.protos = move copied_protos;
+  }
+  let selected_lineinfo = mode == 1_u8;
+  let all_empty_lineinfo = mode == 6_u8;
+  let replace_lineinfo = bor(selected_lineinfo, all_empty_lineinfo);
+  if replace_lineinfo {
+    let copied_lineinfo = box_slots_new::<u32>(capacity: script^.lineinfo.inner.len);
+    for (i_lineinfo in 0_u64..script^.lineinfo.inner.len) {
+      if copied_lineinfo.inner.len < copied_lineinfo.inner.cap {
+        let record_lineinfo = script^.lineinfo.inner[i_lineinfo];
+        place_back(window: &copied_lineinfo.inner, value: record_lineinfo);
+      }
+    }
+    set vm^.lineinfo = move copied_lineinfo;
+  }
+  let selected_source = mode == 2_u8;
+  let all_empty_source = mode == 6_u8;
+  let replace_source = bor(selected_source, all_empty_source);
+  if replace_source {
+    let copied_source = box_slots_new::<u8>(capacity: script^.source.inner.len);
+    for (i_source in 0_u64..script^.source.inner.len) {
+      if copied_source.inner.len < copied_source.inner.cap {
+        let record_source = script^.source.inner[i_source];
+        place_back(window: &copied_source.inner, value: record_source);
+      }
+    }
+    set vm^.source = move copied_source;
+  }
+  let selected_debug_names = mode == 3_u8;
+  let all_empty_debug_names = mode == 6_u8;
+  let replace_debug_names = bor(selected_debug_names, all_empty_debug_names);
+  if replace_debug_names {
+    let copied_debug_names = box_slots_new::<u8>(capacity: script^.debug_names.inner.len);
+    for (i_debug_names in 0_u64..script^.debug_names.inner.len) {
+      if copied_debug_names.inner.len < copied_debug_names.inner.cap {
+        let record_debug_names = script^.debug_names.inner[i_debug_names];
+        place_back(window: &copied_debug_names.inner, value: record_debug_names);
+      }
+    }
+    set vm^.debug_names = move copied_debug_names;
+  }
+  let selected_local_variables = mode == 4_u8;
+  let all_empty_local_variables = mode == 6_u8;
+  let replace_local_variables = bor(selected_local_variables, all_empty_local_variables);
+  if replace_local_variables {
+    let copied_local_variables = box_slots_new::<WitnessLocal>(capacity: script^.local_variables.inner.len);
+    for (i_local_variables in 0_u64..script^.local_variables.inner.len) {
+      if copied_local_variables.inner.len < copied_local_variables.inner.cap {
+        let record_local_variables = script^.local_variables.inner[i_local_variables];
+        place_back(window: &copied_local_variables.inner, value: record_local_variables);
+      }
+    }
+    set vm^.local_variables = move copied_local_variables;
+  }
+  let selected_upvalue_names = mode == 5_u8;
+  let all_empty_upvalue_names = mode == 6_u8;
+  let replace_upvalue_names = bor(selected_upvalue_names, all_empty_upvalue_names);
+  if replace_upvalue_names {
+    let copied_upvalue_names = box_slots_new::<WitnessDebugName>(capacity: script^.upvalue_names.inner.len);
+    for (i_upvalue_names in 0_u64..script^.upvalue_names.inner.len) {
+      if copied_upvalue_names.inner.len < copied_upvalue_names.inner.cap {
+        let record_upvalue_names = script^.upvalue_names.inner[i_upvalue_names];
+        place_back(window: &copied_upvalue_names.inner, value: record_upvalue_names);
+      }
+    }
+    set vm^.upvalue_names = move copied_upvalue_names;
+  }
+  if mode == 7_u8 {
+    let stopped = box_slots_new::<WitnessValue>(capacity: 0_u64);
+    set vm^.stopped_stack = move stopped;
+  }
+  WitnessHost::call(env: env);
+  return unit;
+}
+
+fn witness_slab<interface WitnessHost<E>>(vm: &WitnessVm, env: &E, mode: u8) -> ok: Bool writes(vm), writes(env) {
+  doc "Separates nested box-field, payload and whole-cell replacement, with nonempty and zero-capacity upvalue buffers.";
+  let capacity = 16_u64;
+  if mode == 9_u8 {
+    set capacity = 0_u64;
+  } else if mode == 11_u8 {
+    set capacity = 0_u64;
+  } else if mode == 13_u8 {
+    set capacity = 0_u64;
+  }
+  let buffer = witness_buffer::<u32>(capacity: capacity, value: 1_u32);
+  if vm^.heap.closures.inner.len == 0_u64 {
+    return False();
+  }
+  if mode == 8_u8 {
+    set vm^.heap.closures.inner[0_u64].payload.upvals = move buffer;
+  } else if mode == 9_u8 {
+    set vm^.heap.closures.inner[0_u64].payload.upvals = move buffer;
+  } else {
+    let callee = WitnessCallee::Lua(proto: 0_u32);
+    let payload = WitnessPayload(callee: callee, upvals: move buffer);
+    if mode == 10_u8 {
+      set vm^.heap.closures.inner[0_u64].payload = move payload;
+    } else if mode == 11_u8 {
+      set vm^.heap.closures.inner[0_u64].payload = move payload;
+    } else {
+      let live = True();
+      let cell = WitnessCell(live: live, mark: 0_u32, next_free: 4294967295_u32, payload: move payload);
+      set vm^.heap.closures.inner[0_u64] = move cell;
+    }
+  }
+  WitnessHost::call(env: env);
+  return True();
+}
+
+fn witness_scope(env: &WitnessCalls) -> r: unit writes(env) {
+  doc "Drops one empty and one 64-byte buffer at function exit to distinguish release accounting from replacement.";
+  let empty = box_slots_new::<u32>(capacity: 0_u64);
+  let full = witness_buffer::<u32>(capacity: 16_u64, value: 1_u32);
+  witness_call(env: env);
+  return unit;
+}
+
+fn witness_ensure(stack: &Box<Slots<WitnessValue>>, size: u64) -> ok: Bool writes(stack) {
+  doc "Ensures a retained boxed stack has room and live slots, mirroring the allocating side of stack setup.";
+  if stack^.inner.cap < size {
+    grow(cell: stack, capacity: size);
+  }
+  loop {
+    if stack^.inner.len >= size {
+      break;
+    }
+    if stack^.inner.len < stack^.inner.cap {
+      let nil = WitnessValue::Nil();
+      place_back(window: &stack^.inner, value: nil);
+    } else {
+      return False();
+    }
+  }
+  return True();
+}
+
+fn witness_stack<interface WitnessHost<E>>(vm: &WitnessVm, env: &E) -> ok: Bool writes(vm), writes(env) {
+  doc "Ensures 256 entry slots and 257 callee slots, then reuses that reserve with scalar stack writes.";
+  let entry_room = witness_ensure(stack: &vm^.stack, size: 256_u64);
+  let failed_entry_room = bnot(entry_room);
+  if failed_entry_room {
+    return False();
+  }
+  let callee_room = witness_ensure(stack: &vm^.stack, size: 257_u64);
+  let failed_callee_room = bnot(callee_room);
+  if failed_callee_room {
+    return False();
+  }
+  if vm^.stack.inner.len > 1_u64 {
+    set vm^.stack.inner[1_u64] = WitnessValue::Num(n: 1.0_f64);
+    set vm^.stack.inner[0_u64] = vm^.stack.inner[1_u64];
+    set vm^.stack.inner[1_u64] = WitnessValue::Nil();
+    WitnessHost::call(env: env);
+    return True();
+  }
+  return False();
+}
+
+fn witness_frame<interface WitnessHost<E>>(vm: &WitnessVm, env: &E) -> ok: Bool writes(vm), writes(env) {
+  doc "Appends and removes one Halo-shaped copyable frame while retaining its 32-slot reserve.";
+  if vm^.frames.inner.len != 0_u64 {
+    return False();
+  }
+  if vm^.frames.inner.cap < 32_u64 {
+    grow(cell: &vm^.frames, capacity: 32_u64);
+  }
+  let frame = WitnessFrame(func: 0_u64, base: 1_u64, return_pc: 0_u64, kbase: 0_u64, closure: 0_u32, nresults: -1_i64, activation: 0_u32, flags: 0_u8, varbase: 1_u64, varcount: 0_u64, frame_top: 2_u64);
+  if vm^.frames.inner.len < vm^.frames.inner.cap {
+    place_back(window: &vm^.frames.inner, value: frame);
+  } else {
+    return False();
+  }
+  if vm^.frames.inner.len > 0_u64 {
+    let removed = take_back(window: &vm^.frames.inner);
+    if removed.base != 1_u64 {
+      return False();
+    }
+    if vm^.frames.inner.len != 0_u64 {
+      return False();
+    }
+    WitnessHost::call(env: env);
+    return True();
+  }
+  return False();
+}
+
+fn witness_budget<interface WitnessHost<E>>(vm: &WitnessVm, env: &E) -> r: unit writes(vm), writes(env) {
+  doc "Isolates start's scalar budget assignment without replacing owned storage.";
+  set vm^.budget = 1000_u64;
+  WitnessHost::call(env: env);
+  return unit;
+}
+
+fn witness_batch(script: &WitnessScript, vm: &WitnessVm, env: &WitnessCalls, mode: u8, count: u64) -> ok: Bool reads(script), writes(vm), writes(env) {
+  doc "Performs exactly one selected replacement or scope-release operation per call.";
+  let before = env^.count;
+  for (i in 0_u64..count) {
+    if mode <= 7_u8 {
+      witness_start::<WitnessCounter>(script: script, vm: vm, env: env, mode: mode);
+    } else if mode <= 13_u8 {
+      let replaced = witness_slab::<WitnessCounter>(vm: vm, env: env, mode: mode);
+      let failed_replaced = bnot(replaced);
+      if failed_replaced {
+        return False();
+      }
+    } else if mode == 14_u8 {
+      witness_scope(env: env);
+    } else if mode == 15_u8 {
+      let reserved = witness_stack::<WitnessCounter>(vm: vm, env: env);
+      let failed_reserved = bnot(reserved);
+      if failed_reserved {
+        return False();
+      }
+    } else if mode == 16_u8 {
+      let cycled = witness_frame::<WitnessCounter>(vm: vm, env: env);
+      let failed_cycled = bnot(cycled);
+      if failed_cycled {
+        return False();
+      }
+    } else {
+      witness_budget::<WitnessCounter>(vm: vm, env: env);
+    }
+  }
+  let expected = before +sat count;
+  return env^.count == expected;
+}
+
+fn witness_sample(meter: &MemoryMeter) -> r: Sample writes(meter) {
+  doc "Samples counted memory; zero collector columns mean not applicable because this entry has no Halo dependency.";
+  let heap = std::process::heap_in_use(meter: meter);
+  return Sample(heap: heap, collections: 0_u64, live_objects: 0_u64, live_bytes: 0_u64);
+}
+
+fn witness_main(inputs: Inputs, name: &[u8], mode: u8) -> status: ExitStatus reads(name) waits {
+  doc "Warms up 1000 operations and samples two 10000-operation intervals, printing only afterwards.";
+  let Inputs(cwd: directory, stdout: output, handles: factory, memory_meter: meter, ..) = move inputs;
+  let std::fs::Directory(read: directory_read, write: directory_write) = move directory;
+  std::fs::close_directory_write(factory: &factory, directory: move directory_write);
+  std::fs::close_directory(factory: &factory, directory: move directory_read);
+  let empty = mode == 6_u8;
+  let script = witness_script(empty: empty);
+  let vm = witness_vm();
+  let env = WitnessCalls(count: 0_u64);
+  let warmed = witness_batch(script: &script, vm: &vm, env: &env, mode: mode, count: 1000_u64);
+  let failed_warmed = bnot(warmed);
+  if failed_warmed {
+    return std::process::exit_status(code: 1_u8);
+  }
+  let zero = Sample(heap: 0_u64, collections: 0_u64, live_objects: 0_u64, live_bytes: 0_u64);
+  let samples = array_filled::<Sample, 3>(value: zero);
+  for (i in 0_u64..3_u64) {
+    let observed = witness_sample(meter: &meter);
+    set samples[i] = observed;
+    if i < 2_u64 {
+      let completed = witness_batch(script: &script, vm: &vm, env: &env, mode: mode, count: 10000_u64);
+      let failed_completed = bnot(completed);
+      if failed_completed {
+        return std::process::exit_status(code: 2_u8);
+      }
+    }
+  }
+  let printed = pkg::output::row(factory: &factory, output: &output, name: name, samples: samples);
+  if printed {
+    return std::process::exit_status(code: 0_u8);
+  }
+  return std::process::exit_status(code: 3_u8);
+}
+
+const witness_name_metadata_protos: Array<u8, 15> = "metadata_protos";
+
+fn metadata_protos(inputs: Inputs) -> status: ExitStatus pure waits {
+  doc "Measures metadata_protos without linking Halo.";
+  return witness_main(inputs: move inputs, name: &witness_name_metadata_protos[0_u64..15_u64], mode: 0_u8);
+}
+
+const witness_name_metadata_lineinfo: Array<u8, 17> = "metadata_lineinfo";
+
+fn metadata_lineinfo(inputs: Inputs) -> status: ExitStatus pure waits {
+  doc "Measures metadata_lineinfo without linking Halo.";
+  return witness_main(inputs: move inputs, name: &witness_name_metadata_lineinfo[0_u64..17_u64], mode: 1_u8);
+}
+
+const witness_name_metadata_source: Array<u8, 15> = "metadata_source";
+
+fn metadata_source(inputs: Inputs) -> status: ExitStatus pure waits {
+  doc "Measures metadata_source without linking Halo.";
+  return witness_main(inputs: move inputs, name: &witness_name_metadata_source[0_u64..15_u64], mode: 2_u8);
+}
+
+const witness_name_metadata_debug_names: Array<u8, 20> = "metadata_debug_names";
+
+fn metadata_debug_names(inputs: Inputs) -> status: ExitStatus pure waits {
+  doc "Measures metadata_debug_names without linking Halo.";
+  return witness_main(inputs: move inputs, name: &witness_name_metadata_debug_names[0_u64..20_u64], mode: 3_u8);
+}
+
+const witness_name_metadata_local_variables: Array<u8, 24> = "metadata_local_variables";
+
+fn metadata_local_variables(inputs: Inputs) -> status: ExitStatus pure waits {
+  doc "Measures metadata_local_variables without linking Halo.";
+  return witness_main(inputs: move inputs, name: &witness_name_metadata_local_variables[0_u64..24_u64], mode: 4_u8);
+}
+
+const witness_name_metadata_upvalue_names: Array<u8, 22> = "metadata_upvalue_names";
+
+fn metadata_upvalue_names(inputs: Inputs) -> status: ExitStatus pure waits {
+  doc "Measures metadata_upvalue_names without linking Halo.";
+  return witness_main(inputs: move inputs, name: &witness_name_metadata_upvalue_names[0_u64..22_u64], mode: 5_u8);
+}
+
+const witness_name_metadata_empty: Array<u8, 14> = "metadata_empty";
+
+fn metadata_empty(inputs: Inputs) -> status: ExitStatus pure waits {
+  doc "Measures metadata_empty without linking Halo.";
+  return witness_main(inputs: move inputs, name: &witness_name_metadata_empty[0_u64..14_u64], mode: 6_u8);
+}
+
+const witness_name_reset_box: Array<u8, 9> = "reset_box";
+
+fn reset_box(inputs: Inputs) -> status: ExitStatus pure waits {
+  doc "Measures reset_box without linking Halo.";
+  return witness_main(inputs: move inputs, name: &witness_name_reset_box[0_u64..9_u64], mode: 7_u8);
+}
+
+const witness_name_slot_field: Array<u8, 10> = "slot_field";
+
+fn slot_field(inputs: Inputs) -> status: ExitStatus pure waits {
+  doc "Measures slot_field without linking Halo.";
+  return witness_main(inputs: move inputs, name: &witness_name_slot_field[0_u64..10_u64], mode: 8_u8);
+}
+
+const witness_name_slot_field_empty: Array<u8, 16> = "slot_field_empty";
+
+fn slot_field_empty(inputs: Inputs) -> status: ExitStatus pure waits {
+  doc "Measures slot_field_empty without linking Halo.";
+  return witness_main(inputs: move inputs, name: &witness_name_slot_field_empty[0_u64..16_u64], mode: 9_u8);
+}
+
+const witness_name_slab_payload: Array<u8, 12> = "slab_payload";
+
+fn slab_payload(inputs: Inputs) -> status: ExitStatus pure waits {
+  doc "Measures slab_payload without linking Halo.";
+  return witness_main(inputs: move inputs, name: &witness_name_slab_payload[0_u64..12_u64], mode: 10_u8);
+}
+
+const witness_name_slab_payload_empty: Array<u8, 18> = "slab_payload_empty";
+
+fn slab_payload_empty(inputs: Inputs) -> status: ExitStatus pure waits {
+  doc "Measures slab_payload_empty without linking Halo.";
+  return witness_main(inputs: move inputs, name: &witness_name_slab_payload_empty[0_u64..18_u64], mode: 11_u8);
+}
+
+const witness_name_slab_cell: Array<u8, 9> = "slab_cell";
+
+fn slab_cell(inputs: Inputs) -> status: ExitStatus pure waits {
+  doc "Measures slab_cell without linking Halo.";
+  return witness_main(inputs: move inputs, name: &witness_name_slab_cell[0_u64..9_u64], mode: 12_u8);
+}
+
+const witness_name_slab_cell_empty: Array<u8, 15> = "slab_cell_empty";
+
+fn slab_cell_empty(inputs: Inputs) -> status: ExitStatus pure waits {
+  doc "Measures slab_cell_empty without linking Halo.";
+  return witness_main(inputs: move inputs, name: &witness_name_slab_cell_empty[0_u64..15_u64], mode: 13_u8);
+}
+
+const witness_name_scope_boxes: Array<u8, 11> = "scope_boxes";
+
+fn scope_boxes(inputs: Inputs) -> status: ExitStatus pure waits {
+  doc "Measures scope_boxes without linking Halo.";
+  return witness_main(inputs: move inputs, name: &witness_name_scope_boxes[0_u64..11_u64], mode: 14_u8);
+}
+
+const witness_name_stack_reserve: Array<u8, 13> = "stack_reserve";
+
+fn stack_reserve(inputs: Inputs) -> status: ExitStatus pure waits {
+  doc "Measures stack_reserve without linking Halo.";
+  return witness_main(inputs: move inputs, name: &witness_name_stack_reserve[0_u64..13_u64], mode: 15_u8);
+}
+
+const witness_name_frame_cycle: Array<u8, 11> = "frame_cycle";
+
+fn frame_cycle(inputs: Inputs) -> status: ExitStatus pure waits {
+  doc "Measures frame_cycle without linking Halo.";
+  return witness_main(inputs: move inputs, name: &witness_name_frame_cycle[0_u64..11_u64], mode: 16_u8);
+}
+
+const witness_name_budget_only: Array<u8, 11> = "budget_only";
+
+fn budget_only(inputs: Inputs) -> status: ExitStatus pure waits {
+  doc "Measures budget_only without linking Halo.";
+  return witness_main(inputs: move inputs, name: &witness_name_budget_only[0_u64..11_u64], mode: 17_u8);
+}
