@@ -72,8 +72,6 @@ LLVM major the pinned release names (`make toolchain` installs it).
   its sources, commands and caveats.
 - `design/`: the decisions Halo is built on, with their reasons and refused
   alternatives, and their approval log.
-- [docs/todo.md](docs/todo.md): known defects, follow-up work and what Halo
-  needs from Whitefoot.
 - [AGENTS.md](AGENTS.md): the rules agents follow in this repository.
 
 ## License
