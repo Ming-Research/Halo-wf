@@ -32,6 +32,6 @@ jobs:
           for d in halo-compile halo-lex; do
             if "$wfc" --graph research/experiments/$d/modules.wfg --entry dump -o build/drivers/$d; then echo "$d: built"; else echo "$d: FAILED"; status=1; fi
           done
-          if "$wfc" --graph research/experiments/halo-heap-core/modules.wfg --function pkg::test::main; then echo "halo-heap-core: built and ran"; else echo "halo-heap-core: FAILED"; status=1; fi
+          if "$wfc" --graph research/experiments/halo-heap-core/modules.wfg --function pkg::test::main -o build/drivers/halo-heap-core; then echo "halo-heap-core: built"; else echo "halo-heap-core: FAILED"; status=1; fi
           if "$wfc" --full-lto research/experiments/halo-heap/heap.wf -o build/drivers/halo-heap; then echo "halo-heap: built"; else echo "halo-heap: FAILED"; status=1; fi
           exit $status
