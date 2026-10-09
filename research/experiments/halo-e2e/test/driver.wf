@@ -327,7 +327,6 @@ fn run_script(engine: &Engine, env: &Env, id: ScriptId, budget: u64, collect_sus
       }
     }
   }
-  return out_v62;
 }
 
 fn serve_call(engine: &Engine, env: &Env, budget: u64) -> r: Outcome writes(engine), writes(env) {
@@ -454,7 +453,6 @@ fn read_source(factory: &HandleFactory, input: &InputStream, source: &Box<Slots<
       }
     }
   }
-  return False();
 }
 
 fn main(inputs: Inputs) -> status: ExitStatus pure waits {
@@ -734,7 +732,6 @@ fn write_bytes(factory: &HandleFactory, output: &OutputStream, bytes: &Box<Slots
       }
     }
   }
-  return False();
 }
 
 fn collect_checkpoint(engine: &Engine, env: &Env, id: ScriptId, omit_root: Bool) -> r: unit writes(engine), writes(env) {

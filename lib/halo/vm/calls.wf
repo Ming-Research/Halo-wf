@@ -118,7 +118,6 @@ fn unwind_frame(vm: &Vm, stack: &Box<Slots<Value>>) -> r: Option<Frame> reads(st
     let discarded = take_back(window: &vm^.frames.inner);
     close_upvalues(vm: vm, stack: stack, level: frame.base);
   }
-  return None<Frame>();
 }
 
 fn unwind_finish(vm: &Vm, stack: &Box<Slots<Value>>, frame: Frame) -> r: Step writes(vm), writes(stack) contract {
@@ -478,7 +477,6 @@ fn prepare<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
       }
     }
   }
-  return Step::Error();
 }
 
 fn start<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, proto: u32, argc: u64, budget: u64) -> r: Outcome reads(script), writes(stack), writes(vm), writes(env) {
@@ -621,7 +619,6 @@ fn drive<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm,
       }
     }
   }
-  return Outcome::Error();
 }
 
 fn note_plan_raise(vm: &Vm, step: Step, plan: CallbackPlan) -> r: unit writes(vm.raise_pc) {
@@ -774,7 +771,6 @@ fn dispatch_step<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<
       }
     }
   }
-  return Outcome::Error();
 }
 
 fn dispatch_run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, step: Step) -> r: Outcome reads(code), reads(consts), writes(stack), writes(vm), writes(env) {

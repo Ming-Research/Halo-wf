@@ -136,7 +136,6 @@ fn read_exact(factory: &HandleFactory, input: &InputStream, bytes: &[u8], count:
       }
     }
   }
-  return False();
 }
 
 fn emit(factory: &HandleFactory, output: &OutputStream, bytes: &[u8], count: u64) -> complete: Bool reads(bytes), writes(factory), writes(output) waits contract {
@@ -160,7 +159,6 @@ fn emit(factory: &HandleFactory, output: &OutputStream, bytes: &[u8], count: u64
       }
     }
   }
-  return False();
 }
 
 fn main(inputs: Inputs) -> r: ExitStatus pure waits {

@@ -10,16 +10,6 @@ Gaps Halo needs Whitefoot to close, each stated as its minimal semantic
 example apart from the engine code that exposed it
 ([Whitefoot-kit](../whitefoot-kit/downstream.md#trying-an-unmerged-whitefoot-change)).
 
-- **A loop without `break` still needs an unreachable return after it.**
-  FN-1 treats every `loop` as able to exit, so `run`'s `loop { match }`,
-  whose arms only `continue` or `return`, must end with a `return
-  Outcome::Error();` that never runs, a value the writer has to invent.
-  Minimal example: `fn f() -> r: u64 pure { loop { } return 0_u64; }` is
-  refused without the final `return`. The loopmatch session opened the
-  board card `lm-loop-diverge` (a `loop` with no `break` has no normal exit).
-  Reopen when Whitefoot decides it; if adopted, delete the dead returns
-  after `run`'s loop and `drive`'s.
-
 - **Checking Halo's vm package is on the build's critical path.** Whitefoot's
   [compile-speed investigation](https://github.com/Ming-Research/Whitefoot/blob/main/research/investigations/compile-speed/DESIGN.md#remaining-costs)
   brought `pkg::vm`'s module check to 16.6–17.2 s and records the remaining

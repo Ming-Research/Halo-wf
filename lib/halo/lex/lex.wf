@@ -211,7 +211,4 @@ fn next(source: &[u8], state: &State, decoded: &Box<Slots<u8>>) -> result: Resul
       return Err<Token, Error>(error: move error);
     }
   }
-  let token = Token(kind: tk_eof, start: state^.offset, end: state^.offset, line: state^.line);
-  set state^.previous = token.kind;
-  return Ok<Token, Error>(value: token);
 }

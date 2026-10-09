@@ -133,7 +133,6 @@ fn cj_string_token(vm: &Vm, source: &[u8], scan: &CjsonScanner, start: u64) -> r
       set scan^.offset = at_v3 +sat 1_u64;
     }
   }
-  return CjsonToken(tag: 12_u8, value: nil_v2, offset: start, reason: 2_u8);
 }
 
 fn cj_word(source: &[u8], offset: u64, word: &[u8]) -> r: Bool reads(source), reads(word) {

@@ -104,7 +104,6 @@ fn read_source(factory: &HandleFactory, input: &InputStream, source: &Box<Slots<
       }
     }
   }
-  return False();
 }
 
 fn dump_source(bytes: &[u8], name: &[u8], initial_line: u64, out: &Box<Slots<u8>>) -> result: unit reads(bytes), reads(name), writes(out) {

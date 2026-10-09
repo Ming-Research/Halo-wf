@@ -344,5 +344,4 @@ fn pattern_gsub_run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slo
       }
     }
   }
-  return HostOutcome::Raised();
 }

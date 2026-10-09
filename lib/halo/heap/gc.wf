@@ -161,7 +161,6 @@ fn mark_closure_contents(heap: &Heap, ci: u64) -> r: unit writes(heap) {
       return unit;
     }
   }
-  return unit;
 }
 
 fn gc_propagate(heap: &Heap) -> r: unit writes(heap) {
@@ -196,7 +195,6 @@ fn gc_propagate(heap: &Heap) -> r: unit writes(heap) {
       return unit;
     }
   }
-  return unit;
 }
 
 fn collection_kind_empty() -> r: CollectionKindStats pure {

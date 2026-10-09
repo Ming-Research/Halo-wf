@@ -342,7 +342,6 @@ fn mp_read(vm: &Vm, source: &[u8], cursor: &MpCursor, top: u64) -> r: Value read
       }
     }
   }
-  return nil_v43;
 }
 
 fn library_cmsgpack(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, pc: u64, vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: u32) -> r: HostOutcome reads(code), reads(consts), writes(vm), writes(stack) {

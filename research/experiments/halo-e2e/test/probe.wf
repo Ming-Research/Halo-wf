@@ -67,7 +67,6 @@ fn probe_settle(engine: &Engine, env: &Probe, outcome: Outcome) -> r: Outcome wr
       }
     }
   }
-  return out;
 }
 
 fn returned(engine: &Engine, expected: f64) -> r: Bool reads(engine) {

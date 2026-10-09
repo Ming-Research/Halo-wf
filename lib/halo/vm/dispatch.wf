@@ -479,5 +479,4 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
       }
     }
   }
-  return Outcome::Error();
 }
