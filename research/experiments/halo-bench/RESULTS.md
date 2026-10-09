@@ -4672,3 +4672,20 @@ freed objects' payloads, the leak above, which this run does not separate
 from the release's other changes. The vm module check takes 1.09 times as
 long; the cause lies between the two Whitefoot commits and is reported to
 the paged session, whose storage changes (v0.108) are among them.
+
+## Whitefoot wf-404f301c35c3 upgrade
+
+### Question, recorded before it runs
+
+The pin moves from `wf-f887e82c4611` (Whitefoot main `f887e82c4`,
+specification v0.108) to `wf-404f301c35c3` (main `404f301c3`, still v0.108).
+It brings two check-time fixes: on-demand indexing built once per final
+family (Whitefoot#297) and measures for paged storage only where it is used
+(Whitefoot#299). The loopmatch and paged sessions' release panels on Halo's
+source measured the vm module check at 8.60 s with this release against
+11.25 s with the current pin (Halo-wf runs 37887766480 and 37901008427).
+Halo's source needs no change. Comparison: this branch's source built with
+both releases, six interleaved full-LTO pairs over the seven kernels on the
+14900K with a twin of the old build, and two `--check-module pkg::vm`
+samples each. Expected: no kernel slower beyond its bounds and the module
+check about 0.76 times as long.
