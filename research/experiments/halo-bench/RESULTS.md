@@ -4538,3 +4538,30 @@ branch (the run's `git diff --stat`: `lib/halo/heap/tables.wf` only),
 times as long, beyond both ranges and the twin's difference, close to the
 experiment release's 14.0%; no kernel is slower beyond its bounds. The
 change is kept if `make check` passes on the final revision.
+
+## Whitefoot wf-23719e608125 upgrade
+
+### Question, recorded before it runs
+
+The pin moves from `wf-b2209fd31035` (Whitefoot main `b2209fd31`, specification
+v0.105) to `wf-23719e608125` (main `23719e608`, v0.106). Version 0.106
+(Whitefoot#284) gives a `loop` with no `break` leaving it no normal exit,
+so the statements Halo kept after such loops only for the older rule are
+unreachable and refused; this branch deletes all 61 of them, which changes
+no behavior. The two releases therefore cannot build the same source: the
+comparison builds main (`9f3a842b0`) with the old release and this branch
+with the new one, the sources differing only in those deleted statements
+and the pin. Between the two commits Whitefoot also merged the handler word
+(Whitefoot#283), which widens each instruction `Cell` from 12 to 20 bytes
+and on an experiment release made fib 1.5% slower and loop 2.2% faster
+([the handler word in Halo's dispatch](#the-handler-word-in-halos-dispatch)),
+and on-demand indexing (Whitefoot#288), which made the vm module check
+about 12% slower on the 14900K, a regression the loopmatch session is
+fixing.
+
+Comparison: six interleaved full-LTO pairs over the seven kernels on the
+14900K with a twin of the old build, and two `--check-module pkg::vm`
+samples each. Expected: fib and loop move as on the experiment release, no
+other kernel slower beyond its bounds, the module check about 12% slower.
+The upgrade proceeds either way, since Firn needs v0.106; a kernel slower
+beyond its bounds is reported with it and handed to the loopmatch session.
