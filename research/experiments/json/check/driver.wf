@@ -88,7 +88,7 @@ fn hex_line(buffer: &Box<Slots<u8>>, bytes: &[u8]) -> result: unit reads(bytes),
 }
 
 fn main(inputs: Inputs) -> status: ExitStatus pure waits {
-  let Inputs(args: args, cwd: cwd, stdout: out, stderr: err, handles: factory, stdin: input, clock: clock, wall_clock: wall_clock) = move inputs;
+  let Inputs(args: args, cwd: cwd, stdout: out, stderr: err, handles: factory, stdin: input, clock: clock, wall_clock: wall_clock, ..) = move inputs;
   let std::fs::Directory(read: directory, write: writable) = move cwd;
   std::fs::close_directory_write(factory: &factory, directory: move writable);
   std::fs::close_directory(factory: &factory, directory: move directory);

@@ -139,7 +139,7 @@ const print_name: Array<u8, 5> = "print";
 const chunk_name: Array<u8, 12> = "@user_script";
 
 fn main(inputs: std::process::Inputs) -> status: std::process::ExitStatus pure waits {
-  let std::process::Inputs(args: args, cwd: cwd, stdout: output, stderr: errors, handles: factory, stdin: input, clock: clock, wall_clock: wall_clock) = move inputs;
+  let std::process::Inputs(args: args, cwd: cwd, stdout: output, stderr: errors, handles: factory, stdin: input, clock: clock, wall_clock: wall_clock, ..) = move inputs;
   let std::fs::Directory(read: cwd_read, write: cwd_write) = move cwd;
   std::fs::close_directory(factory: &factory, directory: move cwd_read);
   std::fs::close_directory_write(factory: &factory, directory: move cwd_write);
