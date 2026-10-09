@@ -3913,3 +3913,33 @@ build, `push_frame`'s disassembly from both, and two `--check-module pkg::vm`
 samples each. Expected: `push_frame` loses its entry copy, fib is faster by
 more than both ranges and the twin's difference, and no kernel is slower
 beyond its bounds; a kernel that is slower is reported with the upgrade.
+
+### Result
+
+[Run 37877260152](https://github.com/Ming-Research/Halo-wf/actions/runs/37877260152),
+artifact `halo-bench-upgrade`: this branch's source built by both releases,
+six interleaved full-LTO pairs with a twin of the old build:
+
+| Kernel | `wf-691ea8106920` | `wf-b2209fd31035` | Ratio | Old range | New range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1040 | 0.1034 | 0.994 | 1.19% | 1.66% | 0.993 |
+| loop | 0.4328 | 0.4334 | 1.001 | 0.62% | 0.90% | 1.002 |
+| integer-table | 0.4896 | 0.4773 | 0.975 | 2.55% | 2.17% | 1.005 |
+| string-key | 0.0264 | 0.0263 | 0.998 | 6.65% | 5.25% | 1.000 |
+| concat | 0.0727 | 0.0731 | 1.005 | 2.43% | 1.53% | 1.002 |
+| sort | 0.1753 | 0.1768 | 1.008 | 2.22% | 1.37% | 1.001 |
+| binary-trees | 1.8992 | 1.9008 | 1.001 | 7.89% | 2.08% | 1.000 |
+
+`push_frame` loses its entry copy: the old build copies the 80-byte `Frame`
+into a 0x60-byte frame with five 16-byte loads and stores before its first
+test, the new one starts with the frame-limit test in a 0x10-byte frame
+(96 instructions against 91, the rest being the copy into the frames
+vector and the error path). `--check-module pkg::vm`: old 9.136 and 9.044 s,
+new 9.185 and 9.151 s.
+
+**No kernel is slower beyond its bounds; the upgrade stands.** Fib is 0.6%
+faster, within its ranges, not the 3.8% the experiment release gave in
+[reading by-value parameters in place, measured](#reading-by-value-parameters-in-place-measured);
+that comparison differed from this one in base compiler and Halo source
+(before `loop { match }`), and this run does not explain the difference.
+Integer-table's 2.5% is also within its ranges.
