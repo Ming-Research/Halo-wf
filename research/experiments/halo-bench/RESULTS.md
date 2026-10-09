@@ -3736,3 +3736,38 @@ than the run's own pass-to-pass spread. If no floor meets this, a lower
 floor is rejected as the remedy and the per-object sweep and free cost is
 the next target. The default stays 1 MiB on this branch; changing it, or
 keeping `set_gc_floor`, is the owner's decision after the result.
+
+### Result
+
+Firn-wf [run 37862972166](https://github.com/Ming-Research/Firn-wf/actions/runs/37862972166)
+(the firn session's experiment branch at `101abee`, Halo `f6b51e4`, pause
+200, 14900K, one core, the rate-limiter script at 50 connections, two
+interleaved five-second passes per floor), as the firn session reported it;
+two values per cell, one per pass:
+
+| Floor | Collections | Mean pause (ms) | Freed per collection | Slots visited | p99 (ms) | p99.9 (ms) | Throughput (k/s) |
+|---|---|---|---:|---:|---|---|---|
+| 1 MiB | 194, 165 | 3.82, 4.34 | ≈16,600 | ≈17,200 | 3.40, 3.45 | 6.61, 6.71 | 125.4, 106.1 |
+| 256 KiB | 750, 720 | 0.68, 0.70 | ≈4,170 | ≈16,000 | 1.51, 1.49 | 2.19, 1.55 | 121.2, 116.2 |
+| 64 KiB | 3,019, 3,089 | 0.18, 0.18 | ≈1,050 | ≈16,000 | 0.84, 0.82 | 2.24, 0.93 | 121.8, 124.8 |
+
+Redis 7.0.15 in the same run: p99 0.77 and 0.91 ms, 148k and 142k calls a
+second.
+
+**Both lower floors meet the criterion.** Against the 1 MiB control, p99
+falls 56% at 256 KiB and 76% at 64 KiB, where it matches Redis's, and
+neither floor's throughput is below the control's by more than the
+control's own pass-to-pass spread (17%), which is too wide to resolve a
+throughput difference of a few percent. Pauses fell in proportion to the
+floor, and the cost per freed object fell from about 240 ns to about
+165 ns; total collection time over a pass fell too (about 0.55 s of 5 s at
+64 KiB against about 0.74 s at 1 MiB, the firn session's figures).
+
+One cost did not scale: every collection visits about 16,000 slots however
+few it frees, since the sweep walks each slab's whole length and slabs never
+shrink. In this run the slabs reached that length before the first
+collection, which happens at the engine's initial 1 MiB threshold in every
+variant; `set_gc_floor` applies only from the next collection on. A default
+floor that also sets the initial threshold would keep the slabs near the
+garbage allocated between collections; a sweep that skips never-used slots,
+or slabs that shrink, would remove the cost for any floor.
