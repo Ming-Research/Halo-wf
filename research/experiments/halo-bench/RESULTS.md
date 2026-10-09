@@ -4644,3 +4644,30 @@ releases, six interleaved full-LTO pairs over the seven kernels on the
 samples each. Expected: no kernel slower beyond its bounds and the module
 check about as long as before; a kernel slower beyond its bounds is
 reported with the upgrade.
+
+### Result
+
+[Run 37897480082](https://github.com/Ming-Research/Halo-wf/actions/runs/37897480082),
+artifact `halo-bench-upgrade-v0108`: this branch's source built by both
+releases, six interleaved full-LTO pairs with a twin of the old build:
+
+| Kernel | `wf-23719e608125` | `wf-f887e82c4611` | Ratio | Old range | New range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1025 | 0.1027 | 1.001 | 0.30% | 0.54% | 1.000 |
+| loop | 0.4322 | 0.4332 | 1.002 | 1.00% | 0.57% | 0.999 |
+| integer-table | 0.4177 | 0.4145 | 0.992 | 0.49% | 1.05% | 1.003 |
+| string-key | 0.0258 | 0.0259 | 1.001 | 0.70% | 0.76% | 0.999 |
+| concat | 0.0729 | 0.0732 | 1.004 | 0.82% | 0.57% | 0.999 |
+| sort | 0.1716 | 0.1718 | 1.001 | 1.09% | 1.99% | 0.997 |
+| binary-trees | 1.8729 | 1.4843 | 0.793 | 3.12% | 1.44% | 0.997 |
+
+`--check-module pkg::vm`: old 10.258 and 10.220 s, new 11.157 and 11.158 s;
+the ratio of the two medians is 1.09.
+
+**No kernel is slower beyond its bounds; the upgrade stands.** Binary-trees,
+which collects 182 times a run, takes 0.793 times as long, far beyond its
+ranges and the twin; with Whitefoot#294 each collection now releases the
+freed objects' payloads, the leak above, which this run does not separate
+from the release's other changes. The vm module check takes 1.09 times as
+long; the cause lies between the two Whitefoot commits and is reported to
+the paged session, whose storage changes (v0.108) are among them.
