@@ -3,7 +3,7 @@
 # release against this branch built by the new one, the sources differing
 # only in statements v0.106 makes unreachable. Runs for a commit whose
 # message contains [bench], pushed once the 14900K is confirmed idle.
-# Removed before the pull request is marked ready.
+# Removed before the pull request is marked ready. Run on the 14900K: 2026-10-09.
 name: bench-upgrade
 
 on:
