@@ -4,6 +4,14 @@ Newest first. One entry per approved change of the tree: a dated title,
 `Nodes:` naming every node changed, `Owner-approved:` and `Summary:`; the
 owner-wide instructions' *Log format* owns the form.
 
+## 2026-10-09 Halo collects after 64 KiB of allocation at least
+
+Nodes: halo/heap
+
+Owner-approved: 2026-10-09 on the WF status board, card "Change Halo's default collection floor?" under item "Collector pauses raise firn's p99": chose option A, "change only the default floor (and the initial threshold) to 64 KiB, without adding set_gc_floor".
+
+Summary: Firn's measurement with the collection statistics showed that its rate-limiter script keeps about 10 KB live, so the threshold max(1 MiB, live * (pause - 100) / 100) always took the 1 MiB floor, each collection freed about 16,600 objects in a 4 ms pause, and a larger pause changed nothing. With the floor at 64 KiB, Firn's p99 at 50 connections fell from 3.4 ms to 0.83 ms, level with Redis's, with throughput within the run's spread, and a comparison changing only the constant left Halo's seven kernels within their noise bounds on the 14900K (`research/experiments/halo-bench/RESULTS.md`, "The collection floor on Firn's long-lived VM"). The experimental floor setting was dropped: no host needs another value yet.
+
 ## 2026-10-08 Halo's embedding exposes collection statistics and a pause
 
 Nodes: halo/heap/collector-validation

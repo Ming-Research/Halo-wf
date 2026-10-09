@@ -56,6 +56,22 @@ example apart from the engine code that exposed it
   match-dispatch work (Ming-Research/Whitefoot#237). The Halo-side layout
   question is the Cell stride entry under *Engine*.
 
+- **A by-value binding of a place is copied whole when a slow call sits
+  beside it.** `sort_compare` binds `let local_call_5 =
+  vm^.library_contexts.inner[context];` and its fast path reads two fields.
+  With the slow-executor call written in the same function, the compiler
+  copies the whole context and both operands on every call (`memcpy`; with
+  `wf-e1708490c384` a 152-byte context and a 0x1e8-byte frame, with
+  `wf-691ea8106920` and the current layout 168 bytes and 0x1f8); with that
+  call moved to another function, it reads the two fields in place
+  (0x60-byte frame) with both compilers; the split that
+  removed the copy made the sort kernel 25% faster when it was made
+  ([result](../research/experiments/halo-bench/RESULTS.md#second-result)).
+  Halo keeps the split it has and splits no other function. Handed to the
+  loopmatch session, which owns copy elimination; reopen when Whitefoot
+  reads such a binding's fields in place: undo the split and check that
+  `sort_compare` has no `memcpy`.
+
 ## Engine
 
 - **Explicit error levels across library callbacks need an oracle check.**
@@ -92,6 +108,22 @@ example apart from the engine code that exposed it
   script's closure. Reopen when a host needs to keep or call a closure
   across scripts.
 
+- **Every collection's sweep visits each slab's whole length.** The sweep
+  walks every slot a slab ever grew to, live, freed or never reused, and
+  slabs never shrink. On Firn's rate-limiter script each collection visited
+  about 16,000 slots while freeing about 1,050 at the 64 KiB floor
+  ([result](../research/experiments/halo-bench/RESULTS.md#the-collection-floor-on-firns-long-lived-vm));
+  there the slabs grew before the first collection, at the then 1 MiB
+  initial threshold. Impact: a fixed cost per collection that a lower floor
+  multiplies, of unknown size (the measurement did not separate visiting
+  from freeing). Uncertainty: with the floor now also the initial threshold,
+  slabs may stay near the garbage between collections and the cost may be
+  small. Change, if it is not: sweep only the slots used since the last
+  collection, or shrink a slab's tail. Validate with Firn's statistics
+  (`slots_visited` against freed objects) and the halo-bench kernels. Reopen
+  when Firn measures the 64 KiB default and `slots_visited` stays far above
+  the objects freed.
+
 - **The embedding probe arms the allocation trigger through heap fields.**
   `research/experiments/halo-e2e/test/probe.wf` sets
   `engine.vm.heap.threshold` and `bytes_since_gc` directly before two runs to
@@ -100,7 +132,7 @@ example apart from the engine code that exposed it
   embedding clients force and observe collection through the embedding API.
   The API offers stress and a collection pause setting: stress bypasses the
   due check those runs exercise, while pause applies after a collection and
-  retains the 1 MiB floor, so neither simply replaces immediate trigger
+  retains the 64 KiB floor, so neither simply replaces immediate trigger
   arming. The statistics and pause observations control and observe collection
   through the embedding API; their statistics oracle uses controlled allocations
   and conservation between completed collections without reading heap fields.
