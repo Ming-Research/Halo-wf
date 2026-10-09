@@ -4672,3 +4672,48 @@ freed objects' payloads, the leak above, which this run does not separate
 from the release's other changes. The vm module check takes 1.09 times as
 long; the cause lies between the two Whitefoot commits and is reported to
 the paged session, whose storage changes (v0.108) are among them.
+
+## Whitefoot wf-404f301c35c3 upgrade
+
+### Question, recorded before it runs
+
+The pin moves from `wf-f887e82c4611` (Whitefoot main `f887e82c4`,
+specification v0.108) to `wf-404f301c35c3` (main `404f301c3`, still v0.108).
+It brings two check-time fixes: on-demand indexing built once per final
+family (Whitefoot#297) and measures for paged storage only where it is used
+(Whitefoot#299). The paged session's release panel on Halo's source
+(Halo-wf run 37901008427) measured the vm module check at 8.60 s with this
+release against 11.25 s with the current pin, 0.76 times; the loopmatch
+session's earlier panel (run 37887766480) measured #297 alone on an
+experiment release, 8.58 s against 10.27 s.
+Halo's source needs no change. Comparison: this branch's source built with
+both releases, six interleaved full-LTO pairs over the seven kernels on the
+14900K with a twin of the old build, and two `--check-module pkg::vm`
+samples each. Expected: no kernel slower beyond its bounds and the module
+check about 0.76 times as long.
+
+### Result
+
+[Run 37904930647](https://github.com/Ming-Research/Halo-wf/actions/runs/37904930647),
+artifact `halo-bench-upgrade-404f301`: this branch's source built by both
+releases, six interleaved full-LTO pairs with a twin of the old build:
+
+| Kernel | `wf-f887e82c4611` | `wf-404f301c35c3` | Ratio | Old range | New range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1028 | 0.1029 | 1.001 | 0.43% | 0.90% | 1.000 |
+| loop | 0.4316 | 0.4315 | 1.000 | 0.67% | 2.92% | 0.998 |
+| integer-table | 0.4178 | 0.4162 | 0.996 | 1.07% | 0.97% | 0.998 |
+| string-key | 0.0260 | 0.0259 | 0.998 | 0.64% | 3.72% | 1.005 |
+| concat | 0.0731 | 0.0733 | 1.003 | 0.44% | 1.49% | 1.001 |
+| sort | 0.1717 | 0.1720 | 1.002 | 0.51% | 2.11% | 1.003 |
+| binary-trees | 1.4943 | 1.4759 | 0.988 | 2.81% | 2.25% | 0.995 |
+
+`--check-module pkg::vm`: old 11.157 and 11.255 s, new 8.666 and 8.603 s;
+the ratio of the two medians is 0.770.
+
+**No kernel moves beyond its bounds, and the vm module check takes 0.77
+times as long,** as the paged session's panel predicted; the upgrade
+stands. Both releases built byte-identical benchmark binaries (the
+manifest's digests): the two fixes change only the checker, and the other
+change in between (conditional calls in parallel lowering, Whitefoot#289)
+does not reach Halo's code.
