@@ -4088,3 +4088,35 @@ as long; and `make check` passes. Otherwise the change is reverted with its
 measurements kept. The binaries' disassembly must show the second closure
 check and the prototype copy gone; if either remains, the run does not test
 the change and is reported as such.
+
+### Result
+
+[Run 37872258846](https://github.com/Ming-Research/Halo-wf/actions/runs/37872258846),
+artifact `halo-bench-onelookup`: the criterion's commit `5f8ba808c` against
+the change `0b9dc62` (the run's `git diff --stat`: `lib/halo/vm/calls.wf`
+only), `wf-691ea8106920`, six interleaved full-LTO pairs with a twin of the
+base:
+
+| Kernel | Before | After | Ratio | Before range | After range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.1042 | 0.1030 | 0.988 | 2.02% | 5.84% | 0.995 |
+| loop | 0.4327 | 0.4341 | 1.003 | 0.99% | 0.77% | 1.001 |
+| integer-table | 0.4925 | 0.4903 | 0.996 | 1.11% | 2.91% | 0.988 |
+| string-key | 0.0255 | 0.0254 | 0.998 | 2.63% | 4.79% | 0.999 |
+| concat | 0.0725 | 0.0726 | 1.001 | 1.45% | 1.49% | 1.001 |
+| sort | 0.1746 | 0.1757 | 1.006 | 2.39% | 2.41% | 0.989 |
+| binary-trees | 1.8874 | 1.8717 | 0.992 | 1.48% | 1.79% | 1.004 |
+
+The run tests the change: in the after build `enter_lua` no longer checks
+the closure slab and reads the prototype's fields in place with byte and
+word loads (452 to 409 instructions, stack frame 0x178 to 0xd8 bytes),
+while `prepare` gains 15 instructions for the one lookup it now does.
+`--check-module pkg::vm`: before 9.079 and 9.169 s, after 9.045 and
+9.132 s.
+
+**The criterion fails and the change is reverted.** Fib is 1.2% faster,
+below the 3% required and inside its ranges; no kernel is slower beyond its
+bounds. The second closure lookup and the prototype copy cost fib at most
+about 1% on this host: the call path's remaining cost lies elsewhere, in the
+compiler-side copies of `Step` and `Value` and the frame's own checks and
+transport.
