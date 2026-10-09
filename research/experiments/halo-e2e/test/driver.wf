@@ -645,7 +645,8 @@ fn main(inputs: Inputs) -> status: ExitStatus pure waits {
   let collections = collections_after -sat collections_before;
   decimal(out: &stats, n: collections);
   text_bytes(out: &stats, bytes: &stats_bytes[0_u64..9_u64]);
-  decimal(out: &stats, n: engine_v114.vm.heap.bytes);
+  let held_bytes = halo::embed::heap_bytes(engine: &engine_v114);
+  decimal(out: &stats, n: held_bytes);
   push(out: &stats, byte: 125_u8);
   push(out: &stats, byte: 10_u8);
   let reported = write_bytes(factory: &factory_v103, output: &stderr_v102, bytes: &stats);

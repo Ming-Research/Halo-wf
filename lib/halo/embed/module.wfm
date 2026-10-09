@@ -42,7 +42,11 @@ public fn set_pcall_error_field(engine: &Engine, field: &[u8]) -> r: unit reads(
 
 public fn set_gc_stress(engine: &Engine, enabled: Bool) -> r: unit writes(engine.vm.heap.gc_stress) doc "Forces a full collection at each collector safepoint while enabled; new engines default to off. The setting survives reset and forget_all.";
 
+public fn collect_at_next_safepoint(engine: &Engine) -> r: unit writes(engine.vm.heap.threshold), writes(engine.vm.heap.bytes_since_gc) doc "Makes the allocation trigger due, so the next collector safepoint of a started or resumed script runs the ordinary collection, which then computes the next threshold as usual. Call while the engine is idle or suspended; unlike stress, it lasts for one collection only.";
+
 public fn collection_count(engine: &Engine) -> r: u64 reads(engine.vm.heap.collections) doc "Completed collections since engine construction, saturating at u64 maximum; reset does not clear the count.";
+
+public fn heap_bytes(engine: &Engine) -> r: u64 reads(engine.vm.heap.bytes) doc "Logical heap bytes now, including garbage not yet collected, in the accounting the engine's byte limit bounds after a safepoint collection; slab and intern reserve are excluded.";
 
 public fn set_gc_pause(engine: &Engine, percent: u64) -> r: unit writes(engine.vm.heap.gc_pause) doc "Sets the Lua 5.1 collection pause for thresholds computed by subsequent collections; defaults to 200, clamps below 100 to 100, and survives reset and forget_all. The threshold is max(64 KiB, floor(live * (percent - 100) / 100)), saturating at u64 maximum; stress and the byte limit still override it.";
 

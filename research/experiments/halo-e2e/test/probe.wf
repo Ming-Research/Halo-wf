@@ -122,9 +122,13 @@ fn embed_probe() -> r: u8 pure {
       set active = id;
     }
   }
-  set engine.vm.heap.threshold = 0_u64;
-  set engine.vm.heap.bytes_since_gc = 1_u64;
+  let collections_before_run = halo::embed::collection_count(engine: &engine);
+  halo::embed::collect_at_next_safepoint(engine: &engine);
   let ran = probe_run(engine: &engine, env: &env, script: active);
+  let collections_after_run = halo::embed::collection_count(engine: &engine);
+  if collections_after_run == collections_before_run {
+    return 97_u8;
+  }
   match ran {
     Done(count: n) => {
       if n != 1_u64 {
@@ -274,9 +278,13 @@ fn embed_probe() -> r: u8 pure {
   }
   halo::embed::unpin(engine: &engine, token: token);
   set env.mode = 0_u8;
-  set engine.vm.heap.threshold = 0_u64;
-  set engine.vm.heap.bytes_since_gc = 1_u64;
+  let collections_before_again = halo::embed::collection_count(engine: &engine);
+  halo::embed::collect_at_next_safepoint(engine: &engine);
   let again = probe_run(engine: &engine, env: &env, script: active);
+  let collections_after_again = halo::embed::collection_count(engine: &engine);
+  if collections_after_again == collections_before_again {
+    return 98_u8;
+  }
   match halo::embed::string_of(engine: &engine, value: held) {
     None() => {
     }

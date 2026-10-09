@@ -362,6 +362,8 @@ embedding checks and is retired or superseded with the controls when Halo
 is retired or its production boundary replaces them. No approval log entry
 is written before the owner's ruling.
 
+The owner ruled on 2026-10-09 for the embedding API; the design log entry "Halo's collector is forced and observed only through the embedding API" records it and the control it added.
+
 ## Findings and remaining scope
 
 The live-stack bound, snapshot retention and memory-limit TODO items are

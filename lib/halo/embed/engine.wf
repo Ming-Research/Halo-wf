@@ -371,8 +371,19 @@ fn set_gc_stress(engine: &Engine, enabled: Bool) -> r: unit writes(engine.vm.hea
   return unit;
 }
 
+fn collect_at_next_safepoint(engine: &Engine) -> r: unit writes(engine.vm.heap.threshold), writes(engine.vm.heap.bytes_since_gc) {
+  doc "Sets the trigger's threshold below the bytes allocated since the last collection; the collection's sweep resets both.";
+  set engine^.vm.heap.threshold = 0_u64;
+  set engine^.vm.heap.bytes_since_gc = imax(engine^.vm.heap.bytes_since_gc, 1_u64);
+  return unit;
+}
+
 fn collection_count(engine: &Engine) -> r: u64 reads(engine.vm.heap.collections) {
   return engine^.vm.heap.collections;
+}
+
+fn heap_bytes(engine: &Engine) -> r: u64 reads(engine.vm.heap.bytes) {
+  return engine^.vm.heap.bytes;
 }
 
 fn set_gc_pause(engine: &Engine, percent: u64) -> r: unit writes(engine.vm.heap.gc_pause) {
