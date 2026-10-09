@@ -2679,7 +2679,7 @@ as long, and no kernel is slower beyond its bounds.
 
 ## The call path
 
-### Attribution, recorded before it runs
+### Call-path attribution, recorded before it runs
 
 Fib spends 42% of its samples in the call path's four functions, `prepare`,
 `enter_lua`, `push_frame` and the return's `finish`
@@ -2700,7 +2700,7 @@ the fib kernel at N = 30; `perf record` of each, three launches, reported by
 symbol; `perf annotate` of Halo's sampled symbols; and the disassembly of the
 call-path functions with their instruction counts.
 
-### Attribution result
+### Call-path attribution result
 
 [Run 37601651300](https://github.com/Ming-Research/Halo-wf/actions/runs/37601651300),
 artifact `halo-call-profile`: an AMD EPYC 7763 guest with 4 vCPUs, Linux
@@ -4117,6 +4117,7 @@ while `prepare` gains 15 instructions for the one lookup it now does.
 **The criterion fails and the change is reverted.** Fib is 1.2% faster,
 below the 3% required and inside its ranges; no kernel is slower beyond its
 bounds. Removing the second closure lookup and the prototype copy did not
-speed fib up beyond this run's noise, so the call path's measurable cost
-lies elsewhere: in the compiler-side copies of `Step` and `Value`, handed
-to the Whitefoot session, and in the frame's own checks and transport.
+speed fib up beyond this run's noise. Where the rest of the call path's
+cost lies is not established by this run: the compiler-side copies of
+`Step` and `Value`, handed to the Whitefoot session, and the frame's own
+checks and transport remain candidates, each to be measured on its own.
