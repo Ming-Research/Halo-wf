@@ -3868,3 +3868,24 @@ both builds; the final revision has no setting. Main (`872dbf838`) against
 this branch's final source, whose library differs from main only in the
 `collection_floor` constant and its two uses, otherwise as above. Kept if no
 kernel is slower beyond its larger range and the twin's difference.
+
+### The final revision against main: result
+
+[Run 37872228924](https://github.com/Ming-Research/Halo-wf/actions/runs/37872228924):
+main `872dbf838` against this branch's final source (`60385dc`; the run's
+`git diff --stat` lists the four library files of the constant), six
+interleaved full-LTO pairs with a twin of main:
+
+| Kernel | Main | Final | Ratio | Main range | Final range | Twin ratio | Collections |
+|---|---:|---:|---:|---:|---:|---:|---|
+| fib | 0.1042 | 0.1045 | 1.003 | 1.12% | 3.41% | 1.005 | 0 → 0 |
+| loop | 0.4329 | 0.4330 | 1.000 | 0.64% | 0.75% | 1.002 | 0 → 0 |
+| integer-table | 0.4881 | 0.4835 | 0.991 | 3.90% | 2.80% | 1.013 | 5 → 7 |
+| string-key | 0.0255 | 0.0255 | 1.002 | 1.77% | 6.52% | 1.002 | 0 → 0 |
+| concat | 0.0726 | 0.0727 | 1.001 | 1.64% | 1.12% | 1.000 | 0 → 0 |
+| sort | 0.1747 | 0.1751 | 1.002 | 1.01% | 2.13% | 0.990 | 3 → 5 |
+| binary-trees | 1.8915 | 1.8888 | 0.999 | 2.07% | 1.23% | 1.001 | 177 → 182 |
+
+**The criterion is met:** no kernel is slower beyond its bounds, string-key
+included, so the final revision without the setting shows none of the
+earlier 1.8%.
