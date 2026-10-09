@@ -4749,7 +4749,11 @@ kernel slower beyond its bounds would stop the upgrade for an attribution.
 [Run 37990892280](https://github.com/Ming-Research/Halo-wf/actions/runs/37990892280),
 artifact `halo-bench-upgrade-5268f51`: the base (`638acad`) built by
 `wf-404f301c35c3` and this branch built by `wf-5268f516c3f8`, six
-interleaved full-LTO pairs with a twin of the old build:
+interleaved full-LTO pairs with a twin of the old build. The artifact's
+`upgrade-*.json` files record the old compiler's digest as `compiler_sha256`
+because the workflow passed the old compiler for both comparisons; the
+manifest gives each binary's compiler (`halo-exp` was built by
+`wf-5268f516c3f8`, digest `38389e5a…`).
 
 | Kernel | `wf-404f301c35c3` | `wf-5268f516c3f8` | Ratio | Old range | New range | Twin ratio |
 |---|---:|---:|---:|---:|---:|---:|
