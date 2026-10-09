@@ -4717,3 +4717,27 @@ stands. Both releases built byte-identical benchmark binaries (the
 manifest's digests): the two fixes change only the checker, and the other
 change in between (conditional calls in parallel lowering, Whitefoot#289)
 does not reach Halo's code.
+
+## Whitefoot wf-5268f516c3f8 upgrade
+
+### Question, recorded before it runs
+
+The pin moves from `wf-404f301c35c3` (Whitefoot main `404f301c3`,
+specification v0.108) to `wf-5268f516c3f8` (main `5268f516c`, v0.110). In
+between: checker completion with offset disequalities and invariant facts
+(Whitefoot#286, v0.109), separate stack slots for each allocation
+(Whitefoot#292), inline range lengths (Whitefoot#302), cross-context
+cancellation of host waits (Whitefoot#296, v0.110), and changes to the
+concurrent map that Halo does not use (Whitefoot#293, Whitefoot#298). Halo's
+own source needs no change; the drivers pass a never-firing cancel watch to
+their deadline I/O. #292 changes Halo's generated code: on its experiment
+release, whose tree is #292's merge, the call path's helpers shrink
+(`enter_lua` from 44 to 15 16-byte moves and from a 376- to a 216-byte frame,
+`prepare` from a 1336- to a 728-byte frame; 1062 to 952 16-byte moves over
+the 78 call-path functions; Halo-wf runs 37915843474 and 37918271155).
+Comparison: this branch's source built with both releases, six interleaved
+full-LTO pairs over the seven kernels on the 14900K with a twin of the old
+build, and two `--check-module pkg::vm` samples each. Expected: no kernel
+slower beyond its bounds; whether fewer copies make fib or another kernel
+faster is not predicted, so any speedup is reported as exploratory. A
+kernel slower beyond its bounds would stop the upgrade for an attribution.
