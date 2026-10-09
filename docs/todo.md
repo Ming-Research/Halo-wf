@@ -23,7 +23,8 @@ example apart from the engine code that exposed it
   display paths (its `docs/todo.md`, Ming-Research/Whitefoot#246).
 
 - **Halo's instruction cells and one handler copy more than needed.** The
-  12-byte `Cell` (an `i32` enum tag) and an unattributed operand copy in
+  `Cell` (an `i32` enum tag, 12 bytes; 20 bytes with the handler word that
+  `wf-23719e608125` adds) and an unattributed operand copy in
   `run`'s `AddRR` arm are lowering findings handed to Whitefoot's
   match-dispatch work (Ming-Research/Whitefoot#237). The Halo-side layout
   question is the Cell stride entry under *Engine*.
@@ -233,7 +234,8 @@ example apart from the engine code that exposed it
 
 - **Halo's instruction Cell stride differs from the proposed eight bytes.**
   The [P1 native inspection](../research/experiments/halo-bench/RESULTS.md#value-width-handles-and-native-dispatch-inspected-first)
-  observes a 12-byte Cell stride and operand offsets 4/5/6/8, while VM.md
+  observed a 12-byte Cell stride and operand offsets 4/5/6/8 with the
+  compilers before the handler word (20 bytes since `wf-23719e608125`), while VM.md
   section 4 proposes eight bytes. Both Halo and PUC value slots are 16 bytes;
   PUC's instruction fetch is four bytes. Impact: the proposed instruction
   density is not implemented, and its throughput effect remains unmeasured.
