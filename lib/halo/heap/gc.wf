@@ -211,7 +211,7 @@ fn collection_stats_empty() -> r: CollectionStats pure {
 }
 
 fn collection_threshold(live: u64, pause: u64) -> r: u64 pure {
-  doc "Computes floor(live * max(pause - 100, 0) / 100) with saturation only on the final mathematical result, then applies the 1 MiB floor. Splitting both operands avoids premature product saturation and preserves pause 200 exactly.";
+  doc "Computes floor(live * max(pause - 100, 0) / 100) with saturation only on the final mathematical result, then applies the 64 KiB collection floor. Splitting both operands avoids premature product saturation and preserves pause 200 exactly.";
   let growth = pause -sat 100_u64;
   let whole = growth / 100_u64;
   let fraction = growth % 100_u64;
@@ -223,7 +223,7 @@ fn collection_threshold(live: u64, pause: u64) -> r: u64 pure {
   let tail = fractional_tail / 100_u64;
   let subtotal = integral +sat fractional_hundreds;
   let total = subtotal +sat tail;
-  return imax(total, 1048576_u64);
+  return imax(total, collection_floor);
 }
 
 fn gc_sweep(heap: &Heap) -> r: u64 writes(heap) {

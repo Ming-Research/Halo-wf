@@ -78,6 +78,7 @@ def main():
     parser.add_argument('--binary', type=Path, default=HERE/'target/halo')
     parser.add_argument('--before-binary', type=Path, help='pair two Halo binaries; validate both against an independent PUC launch')
     parser.add_argument('--before-budget', choices=('large', 'realistic'), default='large')
+    parser.add_argument('--collections-may-change', action='store_true', help='the change under test alters collection timing: record both collection counts instead of refusing the pair')
     parser.add_argument('--kernels', required=True, help='comma-separated explicit selection')
     parser.add_argument('--runs', type=int, required=True)
     parser.add_argument('--scale', action='append', default=[], help='kernel=N; same replacement for both VMs')
@@ -175,7 +176,7 @@ def main():
                 if before:
                     bs, bc = validate(expected, pair['Before']['stdout'].encode(), pair['Before']['stderr'].encode(), args.before_budget == 'realistic')
                     item.update(before_suspends=bs, before_collections=bc)
-                    if bc != collections:
+                    if bc != collections and not args.collections_may_change:
                         raise ValueError(f'{name}: collection counts changed: {bc} -> {collections}')
                 record['pairs'].append(item)
             record[reference_key] = summary([x[reference_key] for x in record['pairs']])
