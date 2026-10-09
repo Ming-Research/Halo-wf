@@ -1,0 +1,85 @@
+# Temporary: the v0.106 upgrade's benchmark (research/experiments/halo-bench/
+# RESULTS.md, "Whitefoot wf-23719e608125 upgrade"): main built by the old
+# release against this branch built by the new one, the sources differing
+# only in statements v0.106 makes unreachable. Runs for a commit whose
+# message contains [bench], pushed once the 14900K is confirmed idle.
+# Removed before the pull request is marked ready.
+name: bench-upgrade
+
+on:
+  push:
+    branches: [claude/halo-whitefoot-v0106]
+
+env:
+  OLD: wf-b2209fd31035
+  NEW: wf-23719e608125
+  BASE_SOURCE: 9f3a842b084c7e22acd2f2c9ea6f4c5f3291f640
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  bench:
+    if: contains(github.event.head_commit.message, '[bench]')
+    runs-on: [self-hosted, 14900k]
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+      - name: Build both sides and compare
+        run: |
+          set -euo pipefail
+          out="$PWD/build/bench-out"
+          rm -rf "$out" build/base-src; mkdir -p "$out" build/base-src
+          cp whitefoot.pin "$out/whitefoot.pin.orig"
+          for release in "$OLD" "$NEW"; do
+            echo "release = $release" > whitefoot.pin
+            make compiler
+            make toolchain-check
+          done
+          cp "$out/whitefoot.pin.orig" whitefoot.pin
+          wfc_old="$PWD/build/whitefoot/$OLD/whitefootc"
+          wfc_new="$PWD/build/whitefoot/$NEW/whitefootc"
+          sh research/experiments/halo-oracle/fetch-redis.sh "$PWD/build/redis"
+          lua="$PWD/build/redis/redis-7.0.15/deps/lua/src/lua"
+          git archive "$BASE_SOURCE" | tar -x -C build/base-src
+          git diff --stat "$BASE_SOURCE" HEAD -- lib research/experiments/halo-bench/host research/experiments/halo-bench/modules.wfg | tee "$out/source-diff.txt"
+          (cd build/base-src && "$wfc_old" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-old")
+          cp "$out/halo-old" "$out/halo-old-twin"
+          "$wfc_new" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-new"
+          {
+            echo "branch $(git rev-parse HEAD), base source $BASE_SOURCE, old $OLD, new $NEW"
+            sha256sum "$wfc_old" "$wfc_new" "$out"/halo-*
+            /usr/bin/clang --version | head -n 1
+          } | tee "$out/manifest.txt"
+          kernels=fib,loop,integer-table,string-key,concat,sort,binary-trees
+          compare() {
+            label=$1; before=$2; after=$3
+            for runs in 1 3 6; do
+              python3 -B research/experiments/halo-bench/run.py --lua "$lua" \
+                --before-binary "$before" --binary "$after" --kernels "$kernels" \
+                --scale binary-trees=14 --runs "$runs" --out "$out/$label-$runs.json" --compiler "$wfc_new" \
+                > "$out/$label-$runs.log" 2>&1 || { cat "$out/$label-$runs.log"; exit 1; }
+              echo "== $label, $runs pair(s)"
+              grep 'ratio=' "$out/$label-$runs.log" | sed 's/ before=.*//'
+            done
+          }
+          compare twin "$out/halo-old" "$out/halo-old-twin"
+          compare upgrade "$out/halo-old" "$out/halo-new"
+          TIMEFORMAT=%R
+          for sample in 1 2; do
+            for side in old new; do
+              if [ "$side" = old ]; then dir=build/base-src; wfc="$wfc_old"; else dir=.; wfc="$wfc_new"; fi
+              seconds=$( { time (cd "$dir" && "$wfc" --graph lib/halo/modules.wfg --check-module pkg::vm > "$out/check-$side-$sample.log" 2>&1); } 2>&1 )
+              echo "check-module pkg::vm $side sample $sample: $seconds s" | tee -a "$out/check-times.txt"
+            done
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: halo-bench-upgrade-v0106
+          path: build/bench-out/
+          retention-days: 30
