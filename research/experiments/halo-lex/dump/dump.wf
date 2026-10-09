@@ -154,7 +154,7 @@ fn dump_source(bytes: &[u8], name: &[u8], initial_line: u64, out: &Box<Slots<u8>
 
 fn main(inputs: Inputs) -> status: ExitStatus pure waits {
   doc "Compare the public lexer interface through a native Whitefoot entry.";
-  let Inputs(args: args, cwd: cwd, stdout: output, stderr: stderr, handles: factory, stdin: input, clock: clock, wall_clock: wall_clock) = move inputs;
+  let Inputs(args: args, cwd: cwd, stdout: output, stderr: stderr, handles: factory, stdin: input, clock: clock, wall_clock: wall_clock, stops: unused_stops, memory_meter: unused_memory_meter) = move inputs;
   let std::fs::Directory(read: cwd_read, write: cwd_write) = move cwd;
   std::fs::close_directory(factory: &factory, directory: move cwd_read);
   std::fs::close_directory_write(factory: &factory, directory: move cwd_write);
