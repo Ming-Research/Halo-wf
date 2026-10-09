@@ -48,15 +48,37 @@ jobs:
           fi
           "$wfc" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo" > "$out/build.log" 2>&1
           sha256sum "$out/halo" | tee -a "$out/manifest.txt"
-          nm "$out/halo" | awk '$2 ~ /[tT]/ {print $3}' > "$out/symbols.txt"
-          for pat in 'run$instance$2ead40aebe81bc32.body.arm.63' 'run$instance$2ead40aebe81bc32.body.arm.65' 'run$instance$2ead40aebe81bc32.body.dispatch' 'prepare$instance' 'wf_package.halo.vm.enter_lua' 'wf_package.halo.vm.push_frame' 'wf_package.halo.vm.finish'; do
-            grep -F "$pat" "$out/symbols.txt" | head -n 3 | while read -r name; do
-              file="$out/disasm-$(echo "$name" | tr '$/' '__').txt"
-              objdump -d --no-show-raw-insn -M intel --disassemble="$name" "$out/halo" > "$file"
-              echo "$name: $(grep -c -E '^ +[0-9a-f]+:' "$file") instructions, $(grep -c -E 'movups|movdqu|movaps|movdqa' "$file") 16-byte moves, $(grep -m1 -oE 'sub +rsp,0x[0-9a-f]+' "$file" || true)" | tee -a "$out/disasm-summary.txt"
-            done
+          nm "$out/halo" | awk '$2 ~ /[tT]/ {print $3}' | sort > "$out/symbols.txt"
+          # The call path by name, independent of the instance hash and arm
+          # numbering, which change between releases: every arm of `run` and its
+          # dispatch, and the helpers fib's call and return reach.
+          export path_re='halo\.vm\.(run\$instance\$[0-9a-f]+\.body\.|(instruction_call|instruction_tail_call|instruction_return|prepare|enter_lua|push_frame|pop_frame|finish|func_of|unwind)($|\$))'
+          grep -E "$path_re" "$out/symbols.txt" > "$out/path-symbols.txt" || true
+          mkdir -p "$out/disasm"
+          while read -r name; do
+            file="$out/disasm/$(echo "$name" | sed 's/^wf_package\.halo\.vm\.//' | tr '$/' '__').txt"
+            objdump -d --no-show-raw-insn -M intel --disassemble="$name" "$out/halo" > "$file"
+            calls=$(grep -oE 'call +[0-9a-f]+ <[^>]*(prepare|enter_lua|push_frame|finish|unwind|instruction_call)[^>]*>' "$file" | sed -E 's/.*<wf_package\.halo\.vm\.([^>$]*).*/\1/' | sort -u | paste -sd, - || true)
+            printf '%s\t%s instructions\t%s 16-byte moves\t%s\tcalls: %s\n' "$name" \
+              "$(grep -c -E '^ +[0-9a-f]+:' "$file" || true)" \
+              "$(grep -c -E 'movups|movdqu|movaps|movdqa' "$file" || true)" \
+              "$(grep -m1 -oE 'sub +rsp,0x[0-9a-f]+' "$file" || echo 'no frame')" \
+              "${calls:-none}" >> "$out/disasm-summary.tsv"
+          done < "$out/path-symbols.txt"
+          echo "call-path functions disassembled: $(wc -l < "$out/path-symbols.txt")" | tee -a "$out/manifest.txt"
+          echo "arms of run that call prepare (the Call arm and its kin):"
+          grep -E 'calls: .*prepare' "$out/disasm-summary.tsv" | tee "$out/call-arms.tsv" || echo "none"
+          # The same functions' definitions from the generated and the optimized IR.
+          for ll in bench bench.opt; do
+            [ -f "$out/$ll.ll" ] || continue
+            awk '
+              /^define / { name = $0; sub(/^[^@]*@"?/, "", name); sub(/"?\(.*/, "", name); keep = (name ~ ENVIRON["path_re"]) }
+              keep { print }
+              /^}/ { if (keep) print ""; keep = 0 }
+            ' "$out/$ll.ll" > "$out/$ll.path.ll"
+            echo "$ll.path.ll: $(grep -c '^define ' "$out/$ll.path.ll" || true) call-path definitions" | tee -a "$out/manifest.txt"
           done
-          for f in "$out"/*.ll; do [ -f "$f" ] && gzip -k "$f"; done
+          for f in "$out"/*.ll; do gzip -k "$f"; done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
