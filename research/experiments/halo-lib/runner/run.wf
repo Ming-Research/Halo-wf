@@ -164,7 +164,7 @@ fn emit(factory: &HandleFactory, output: &OutputStream, bytes: &[u8], count: u64
 }
 
 fn main(inputs: Inputs) -> r: ExitStatus pure waits {
-  let Inputs(args: args, cwd: cwd, stdout: output, stderr: stderr, handles: factory, stdin: input, clock: clock, wall_clock: wall_clock) = move inputs;
+  let Inputs(args: args, cwd: cwd, stdout: output, stderr: stderr, handles: factory, stdin: input, clock: clock, wall_clock: wall_clock, stops: unused_stops, memory_meter: unused_memory_meter) = move inputs;
   let std::fs::Directory(read: cwd_read, write: cwd_write) = move cwd;
   std::fs::close_directory(factory: &factory, directory: move cwd_read);
   std::fs::close_directory_write(factory: &factory, directory: move cwd_write);
