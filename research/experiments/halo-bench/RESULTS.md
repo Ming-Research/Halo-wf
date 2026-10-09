@@ -3860,3 +3860,11 @@ in the previous run, a comparison across runs that neither run tests.
 The owner chose a 64 KiB default floor and initial threshold without the
 `set_gc_floor` setting, which this branch then removed; the floor is the
 heap's `collection_floor` constant.
+
+### The final revision against main: criterion, recorded before measuring
+
+The comparisons above measured the floor with the experimental setting in
+both builds; the final revision has no setting. Main (`872dbf838`) against
+this branch's final source, whose library differs from main only in the
+`collection_floor` constant and its two uses, otherwise as above. Kept if no
+kernel is slower beyond its larger range and the twin's difference.
