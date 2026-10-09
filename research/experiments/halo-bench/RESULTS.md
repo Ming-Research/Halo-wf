@@ -4681,9 +4681,11 @@ The pin moves from `wf-f887e82c4611` (Whitefoot main `f887e82c4`,
 specification v0.108) to `wf-404f301c35c3` (main `404f301c3`, still v0.108).
 It brings two check-time fixes: on-demand indexing built once per final
 family (Whitefoot#297) and measures for paged storage only where it is used
-(Whitefoot#299). The loopmatch and paged sessions' release panels on Halo's
-source measured the vm module check at 8.60 s with this release against
-11.25 s with the current pin (Halo-wf runs 37887766480 and 37901008427).
+(Whitefoot#299). The paged session's release panel on Halo's source
+(Halo-wf run 37901008427) measured the vm module check at 8.60 s with this
+release against 11.25 s with the current pin, 0.76 times; the loopmatch
+session's earlier panel (run 37887766480) measured #297 alone on an
+experiment release, 8.58 s against 10.27 s.
 Halo's source needs no change. Comparison: this branch's source built with
 both releases, six interleaved full-LTO pairs over the seven kernels on the
 14900K with a twin of the old build, and two `--check-module pkg::vm`
@@ -4710,4 +4712,6 @@ releases, six interleaved full-LTO pairs with a twin of the old build:
 the ratio of the two medians is 0.770.
 
 **No kernel moves beyond its bounds, and the vm module check takes 0.77
-times as long,** as the release panels predicted; the upgrade stands.
+times as long,** as the paged session's panel predicted; the upgrade
+stands. Both releases built byte-identical benchmark binaries (the
+manifest's digests), consistent with two checker-only changes.
