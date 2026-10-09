@@ -4777,3 +4777,26 @@ does not attribute them among the adopted changes. #292's smaller frames
 and fewer copies on the call path are a candidate, not an established
 cause. The timed process includes the bench driver, whose stdin and stdout
 calls differ between the sides only by the never-firing cancel watch.
+
+## Whitefoot wf-01697d2de8a1 upgrade
+
+### Question, recorded before it runs
+
+The pin moves from `wf-5268f516c3f8` (Whitefoot main `5268f516c`,
+specification v0.110) to `wf-01697d2de8a1` (main `01697d2de`, v0.112). In
+between: removing the whole-value copies of `Step` at the joins after a
+match and of a subscripted `Value` read only for its tag and payload
+(Whitefoot#310, the call-path work), releasing a concurrent map's reserve
+(v0.111, not used by Halo) and range facts below elements (Whitefoot#315,
+v0.112). Halo's source needs no change; the gate passes unchanged. #310's
+experiment release measured fib 0.779 times as long as #292's release on
+the same source and loop 1.024 times, beyond the bounds (Halo-wf run
+37986461719); loop's slowdown is a register-allocation side effect tracked
+by the loopmatch session as lm-bl-forloop-spill. Comparison: this branch's
+source built with both releases, six interleaved full-LTO pairs over the
+seven kernels on the 14900K with a twin of the old build, and two
+`--check-module pkg::vm` samples each. Expected: fib faster beyond its
+bounds by roughly a fifth; loop at most about 2.5% slower; no other kernel
+slower beyond its bounds. Fib not faster beyond its bounds would mean #310's
+gain did not reach the main release; another kernel slower beyond its
+bounds would stop the upgrade for an attribution.
