@@ -31,15 +31,18 @@ priorities conflict:
 Halo builds with the compiler release `whitefoot.pin` names, through the
 `whitefoot-kit` submodule, whose [downstream.md](whitefoot-kit/downstream.md)
 holds the pin, reading the language at the pinned commit, trying an unmerged
-Whitefoot change and upgrading Whitefoot. A Whitefoot gap goes under
-*Whitefoot requirements* in `docs/todo.md`. The upgrade's benchmark is
+Whitefoot change and upgrading Whitefoot. A Whitefoot gap goes to the
+Whitefoot session that owns it, as an item in its area of the status board.
+The upgrade's benchmark is
 `research/experiments/halo-bench` (`run.py --before-binary`).
 
 ## Research and checks
 
 - Research record: `research/investigations/` and `research/experiments/`;
   `research/investigations/halo/` holds the engine's design (`DESIGN.md`,
-  `VM.md`), work order and falsifiers. Maintained TODO: `docs/todo.md`.
+  `VM.md`), work order and falsifiers. Maintained TODO: the status board's
+  Halo-wf areas (`halo-compat`, `halo-perf`, `halo-tools`); code and
+  documents name an item by its key.
 - Halo's performance comparisons build both sides with full LTO.
 - `make check`, the gate, runs in CI on every push as three parallel groups
   (Makefile): core (the embedding probe, every oracle script at budgets 1, 7
