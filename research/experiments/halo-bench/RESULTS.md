@@ -4953,7 +4953,7 @@ manifest gives each binary's compiler.
 | binary-trees | 1.5838 | 1.5532 | 0.981 | 3.65% | 3.26% | 0.993 | 4.22%, 4.50% |
 
 `--check-module pkg::vm`: old 10.583 and 10.698 s, new 10.604 and 10.614 s;
-the ratio of the two medians is 0.996. Absolute times are not comparable
+the ratio of the two medians is 0.997. Absolute times are not comparable
 with earlier sections, which ran with turbo above 5.0 GHz in a guest.
 
 **No kernel is slower beyond its bounds; the upgrade stands.** Fib (0.969)
