@@ -1,0 +1,37 @@
+# Temporary: compiles the four research drivers that `make check` does not
+# build (halo-compile, halo-lex, halo-heap-core, halo-heap) under the new pin
+# (v0.120 retires eeq/ene and changes equality). Removed before
+# the pull request is marked ready.
+name: build-drivers
+
+on:
+  push:
+    branches: [claude/halo-eeq-retire]
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Build the drivers
+        run: |
+          set -euo pipefail
+          make toolchain
+          make compiler
+          release=$(sed -n 's/^release = //p' whitefoot.pin)
+          wfc="$PWD/build/whitefoot/$release/whitefootc"
+          mkdir -p build/drivers
+          status=0
+          for d in halo-compile halo-lex; do
+            if "$wfc" --graph research/experiments/$d/modules.wfg --entry dump -o build/drivers/$d; then echo "$d: built"; else echo "$d: FAILED"; status=1; fi
+          done
+          if "$wfc" --graph research/experiments/halo-heap-core/modules.wfg --function pkg::test::main -o build/drivers/halo-heap-core; then echo "halo-heap-core: built"; else echo "halo-heap-core: FAILED"; status=1; fi
+          if "$wfc" --full-lto research/experiments/halo-heap/heap.wf -o build/drivers/halo-heap; then echo "halo-heap: built"; else echo "halo-heap: FAILED"; status=1; fi
+          exit $status

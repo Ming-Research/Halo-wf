@@ -4897,3 +4897,28 @@ ratio of the two medians is 1.000 (8.2365 against 8.238 s).
 kernel's old and new ranges overlap, with ratios from 0.993 to 1.003 against
 twin ratios from 0.998 to 1.007, and no kernel is faster beyond its bounds
 either. The upgrade stands.
+
+## Whitefoot wf-78223721f77d upgrade
+
+### Question, recorded before it runs
+
+The pin moves from `wf-f3d081b90a8d` (Whitefoot main `f3d081b90`,
+specification v0.119) to `wf-78223721f77d` (main `78223721f`, v0.121). In
+between: value equality (Whitefoot#323, v0.120), which retires the tag-only
+`eeq`/`ene` in favour of `==`/`!=` over every equality type, so Halo's 19
+`eeq(a, b)` calls become `a == b` (all compare `Bool` values, which carry no
+payload, so the result is the same); copying blocks below 1 KiB on growth
+instead of reallocating (Whitefoot#327), which reaches Halo's in-place table
+growth; initializing only a constant-capacity window's header
+(Whitefoot#320); judging an affine loop's reads by overlap (Whitefoot#330,
+v0.121); a statement-group fix before implicit context awaits
+(Whitefoot#331) and a range-solver budget fix (Whitefoot#332). The old
+release refuses `==` on enums and the new one refuses `eeq`, so the old
+release builds this branch's base (`fe03b41`) and the new release this
+branch; the sources differ only in those 19 rewrites. Comparison: six
+interleaved full-LTO pairs over the seven kernels on the 14900K, now native
+Ubuntu, with a twin of the old build, and two `--check-module pkg::vm`
+samples each. Expected: no kernel slower beyond its bounds. #327 could move
+integer-table or the other table-growing kernels either way and is not
+predicted; a kernel slower beyond its bounds would stop the upgrade for an
+attribution.
