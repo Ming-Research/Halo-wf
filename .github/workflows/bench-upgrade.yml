@@ -90,11 +90,20 @@ jobs:
             fi
             echo "== $side: $(objdump -d --no-show-raw-insn "$out/halo-$side" | grep -c -E 'movups|movdqu|vmovups|vmovdqu') unaligned 128/256-bit moves"
           done
+          # The 14900K is a hybrid part: pin every timed process to the cores
+          # with the highest maximum frequency (P-cores), so no sample lands on
+          # an E-core, and record the topology and governor.
+          lscpu -e=CPU,CORE,MAXMHZ > "$out/lscpu.txt" 2>&1 || true
+          cat /sys/devices/system/cpu/cpufreq/policy*/scaling_governor 2>/dev/null | sort | uniq -c > "$out/governor.txt" || true
+          pcpus=$(lscpu -e=CPU,MAXMHZ --noheadings 2>/dev/null | awk '$2 != "-" {c[$1] = $2; if ($2 + 0 > max) max = $2 + 0} END {for (k in c) if (c[k] + 0 == max) printf "%s,", k}' | sed 's/,$//')
+          pin=""; [ -n "$pcpus" ] && pin="taskset -c $pcpus"
+          echo "timed processes pinned to CPUs: ${pcpus:-none}" | tee -a "$out/manifest.txt"
+          cat "$out/governor.txt" | tee -a "$out/manifest.txt"
           kernels=fib,loop,integer-table,string-key,concat,sort,binary-trees
           compare() {
             label=$1; before=$2; after=$3
             for runs in 1 3 6; do
-              python3 -B research/experiments/halo-bench/run.py --lua "$lua" \
+              $pin python3 -B research/experiments/halo-bench/run.py --lua "$lua" \
                 --before-binary "$before" --binary "$after" --kernels "$kernels" \
                 --scale binary-trees=14 --runs "$runs" --out "$out/$label-$runs.json" --compiler "$wfc_ctl" \
                 > "$out/$label-$runs.log" 2>&1 || { cat "$out/$label-$runs.log"; exit 1; }
@@ -109,7 +118,7 @@ jobs:
             for side in ctl exp; do
               wfc="$wfc_ctl"; graph=build/base-src/lib/halo/modules.wfg
               [ "$side" = exp ] && { wfc="$wfc_exp"; graph=lib/halo/modules.wfg; }
-              seconds=$( { time ("$wfc" --graph "$graph" --check-module pkg::vm > "$out/check-$side-$sample.log" 2>&1); } 2>&1 )
+              seconds=$( { time ($pin "$wfc" --graph "$graph" --check-module pkg::vm > "$out/check-$side-$sample.log" 2>&1); } 2>&1 )
               echo "check-module pkg::vm $side sample $sample: $seconds s" | tee -a "$out/check-times.txt"
             done
           done
