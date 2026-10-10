@@ -4991,6 +4991,7 @@ first, to choose the next experiment for the six failing kernels. It is
 exploratory and tests no proposal. Comparison: Halo built with full LTO
 against Redis 7.0.15's bundled PUC Lua, binary-trees at depth 14 as before,
 one, three and six alternating pairs on the 14900K with every timed process
-on CPU 2, then `perf record -e cycles` of each Halo kernel on the same core.
+on CPU 2, then `perf record -e cpu_core/cycles/` (the P-core cycles event of this
+hybrid part) of each Halo kernel on the same core.
 Expected: every ratio at or below its earlier value; P1 still failing on most
 of the six.

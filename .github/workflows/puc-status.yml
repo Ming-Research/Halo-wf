@@ -76,7 +76,7 @@ jobs:
             for k in fib loop integer-table string-key concat sort binary-trees; do
               src=research/experiments/halo-bench/kernels/$k.lua
               [ "$k" = binary-trees ] && sed 's/^local N = .*/local N = 14/' "$src" > "$out/bt14.lua" && src="$out/bt14.lua"
-              $pin perf record -q -e cycles -g --call-graph dwarf,16384 -o "$out/perf-$k.data" "$out/halo" < "$src" > "$out/perf-$k.out" 2>&1 || echo "perf record failed for $k"
+              $pin perf record -q -e cpu_core/cycles/ -g --call-graph dwarf,16384 -o "$out/perf-$k.data" "$out/halo" < "$src" > "$out/perf-$k.out" 2>&1 || echo "perf record failed for $k"
               perf report -q -i "$out/perf-$k.data" --no-children --sort symbol --stdio 2>/dev/null | grep -E '^ +[0-9]' | head -n 30 > "$out/profile-$k-self.txt" || true
               perf report -q -i "$out/perf-$k.data" --children --sort symbol --stdio 2>/dev/null | grep -E '^ +[0-9]' | head -n 40 > "$out/profile-$k-children.txt" || true
               echo "== $k self"; head -n 12 "$out/profile-$k-self.txt"
