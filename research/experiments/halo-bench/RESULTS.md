@@ -4835,12 +4835,12 @@ faster beyond its bounds (#310's release: 0.913). The other four kernels'
 ranges overlap. The upgrade stands; loop's recovery belongs to the
 loopmatch session's follow-up.
 
-## Whitefoot wf-aea3968362d3 upgrade
+## Whitefoot wf-f3d081b90a8d upgrade
 
 ### Question, recorded before it runs
 
 Moving the pin from `wf-01697d2de8a1` (Whitefoot main 01697d2de, v0.112) to
-`wf-aea3968362d3` (main aea396836, v0.118) adopts:
+`wf-f3d081b90a8d` (main f3d081b90, v0.119) adopts:
 - Whitefoot #304 (guards observe cancellation, v0.113);
 - #316 (proved separations at the release/borrow overlap boundary, which can
   turn overlap-safe moves into ordinary copies);
@@ -4851,7 +4851,9 @@ Moving the pin from `wf-01697d2de8a1` (Whitefoot main 01697d2de, v0.112) to
 - #314 (segment and page selectors, v0.117);
 - #313 (the --par suite);
 - #321 (window range-fact conformance);
-- #317 (a map's reserve released through the memory meter, v0.118).
+- #317 (a map's reserve released through the memory meter, v0.118);
+- #319 (cancellation handles as droppable structs over shared handles,
+  v0.119), which Halo does not use.
 
 Halo's sources need only the two literals. The run follows the previous
 upgrades: this branch's source built with both releases, six interleaved
