@@ -1,0 +1,32 @@
+# Temporary: builds and runs research/experiments/empty-window/witness.wf
+# with the pinned compiler and records its exit code and the IR of
+# box_slots_new at capacity 0. Removed before the branch is merged.
+name: empty-window
+
+on:
+  push:
+    branches: [claude/halo-empty-window-witness]
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  witness:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Build and run the witness
+        run: |
+          set -uo pipefail
+          make toolchain >/dev/null
+          make compiler
+          wfc="$PWD/build/whitefoot/$(sed -n 's/^release = //p' whitefoot.pin)/whitefootc"
+          "$wfc" research/experiments/empty-window/witness.wf -o build/witness || exit 1
+          build/witness; code=$?
+          echo "witness exit code: $code (0: empty box holds no heap; 1: it holds some; 2: meter missed a one-element box)"
+          "$wfc" research/experiments/empty-window/witness.wf --emit-llvm -o build/witness.ll || true
+          grep -n -E "wf__heap_take|define .*held" build/witness.ll | head -20 || true
