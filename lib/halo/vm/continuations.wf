@@ -69,7 +69,7 @@ fn continue_callback<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Sl
     if dest < stack^.inner.len {
       let value = stack^.inner[dest];
       let answer = truthy(v: value);
-      if eeq(answer, plan.expected) {
+      if answer == plan.expected {
         set pc = plan.target;
       }
     }
