@@ -5040,8 +5040,9 @@ Return, 66 ForLoop:
 - loop: ForLoop 65.2%, AddRR 34.5%.
 - integer-table: SetTableRR 31.5%, GetTableR 13.8%, `table_set` 12.5%,
   ForLoop 11.2%, `collect_if_due` 5.0%.
-- binary-trees: glibc's allocator about 21.6% (`_int_free_chunk` 8.4%,
-  `_int_malloc` 5.3%, `__libc_malloc2` 4.9%, `malloc` 3.1%), `node_find`
+- binary-trees: glibc's allocator at least 25.6% among the 30 largest
+  symbols (`_int_free_chunk` 8.4%, `_int_malloc` 5.3%, `__libc_malloc2` 4.9%,
+  `malloc` 3.1%, `_int_free_merge_chunk` 2.1%, `cfree` 1.8%), `node_find`
   10.5%, `collect_if_due` 7.2%, `table_get_str` 4.3%, `push_frame` 4.2%,
   `enter_lua` 4.2%.
 - concat: `intern` 20.9%, `concat_step` 16.4%, GetTableR 14.0%, `slow` 9.0%.
