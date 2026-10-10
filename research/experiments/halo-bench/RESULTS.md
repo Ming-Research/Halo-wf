@@ -4980,7 +4980,7 @@ The last comparison with PUC (Halo-wf#9's head on `wf-8b647edbbc95`, run
 seven kernels: integer-table 2.67, fib 2.56, binary-trees 2.42, concat 1.76,
 string-key 1.69 and loop 1.55 times PUC; sort met it at 0.75. Since then
 Halo has grown nonshrinking arrays in place, lowered the collection floor to
-64 KiB and moved its pin seven times, among them the releases whose
+64 KiB and moved its pin nine times, among them the releases whose
 same-source comparisons made string-key 25%, integer-table 15% and concat
 13% faster (v0.110) and fib 21% faster (v0.112, Whitefoot#310); the 14900K
 has meanwhile become native Ubuntu with its P-cores fixed at 5.0 GHz, so
