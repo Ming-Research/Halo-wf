@@ -1,6 +1,6 @@
 # Temporary, measurement-only branch (status-board item halo-bl-01-05):
 # instruction-level cpu_core/cycles/ annotation of the hottest functions of
-# fib and integer-table on the 14900K, every process on CPU 2, to locate the
+# integer-table and loop (fib's ran in run 38053922774) on the 14900K, every process on CPU 2, to locate the
 # costs inside the call path, GetUpval and SetTableRR. Shares only, nothing
 # timed. The 14900K job runs only for a commit whose message contains
 # [bench]. The branch is deleted after the run.
@@ -50,11 +50,12 @@ jobs:
           wfc="$PWD/build/whitefoot/$(sed -n 's/^release = //p' whitefoot.pin)/whitefootc"
           "$wfc" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo"
           { echo "source $(git rev-parse HEAD)"; sha256sum "$wfc" "$out/halo"; perf --version; } | tee "$out/manifest.txt"
-          for k in fib integer-table; do
+          for k in integer-table loop; do
             taskset -c 2 perf record -q -e cpu_core/cycles/ -c 100003 -o "$out/perf-$k.data" "$out/halo" < research/experiments/halo-bench/kernels/$k.lua > "$out/run-$k.out" 2>&1
-            perf report -q -i "$out/perf-$k.data" --no-children --sort symbol --stdio 2>/dev/null | grep -E '^ +[0-9]' | head -n 20 > "$out/symbols-$k.txt"
-            cat "$out/symbols-$k.txt" | head -n 8
-            awk '{print $3}' "$out/symbols-$k.txt" | head -n 6 | while read -r sym; do
+            { perf report -q -i "$out/perf-$k.data" --no-children --sort symbol --stdio 2>/dev/null || true; } > "$out/report-$k.txt"
+            grep -E '^ +[0-9]' "$out/report-$k.txt" | head -n 20 > "$out/symbols-$k.txt" || true
+            head -n 8 "$out/symbols-$k.txt" || true
+            awk 'NR <= 6 {print $3}' "$out/symbols-$k.txt" | while read -r sym; do
               file="$out/annotate-$k-$(echo "$sym" | sed 's/^wf_package\.halo\.vm\.//' | tr '$/' '__').txt"
               perf annotate -i "$out/perf-$k.data" --stdio --no-source -s "$sym" > "$file" 2>/dev/null || echo "annotate failed: $sym" > "$file"
               echo "== $sym: $(wc -l < "$file") lines"
