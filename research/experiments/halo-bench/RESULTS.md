@@ -4834,3 +4834,66 @@ register-allocation change tracked as lm-bl-forloop-spill, and binary-trees is 7
 faster beyond its bounds (#310's release: 0.913). The other four kernels'
 ranges overlap. The upgrade stands; loop's recovery belongs to the
 loopmatch session's follow-up.
+
+## Whitefoot wf-f3d081b90a8d upgrade
+
+### Question, recorded before it runs
+
+Moving the pin from `wf-01697d2de8a1` (Whitefoot main 01697d2de, v0.112) to
+`wf-f3d081b90a8d` (main f3d081b90, v0.119) adopts:
+- Whitefoot #304 (guards observe cancellation, v0.113);
+- #316 (proved separations at the release/borrow overlap boundary, which can
+  turn overlap-safe moves into ordinary copies);
+- #306 (indexed reductions, v0.114);
+- #309 (one spelling for scientific float literals, v0.115), which needs
+  two of Halo's literals respelled to the same binary64 values;
+- #318 (no merging or reordering of waiting calls, v0.116);
+- #314 (segment and page selectors, v0.117);
+- #313 (the --par suite);
+- #321 (window range-fact conformance);
+- #317 (a map's reserve released through the memory meter, v0.118);
+- #319 (cancellation handles as droppable structs over shared handles,
+  v0.119): Halo's hosts and drivers hold a never-firing CancelWatch, which
+  becomes droppable; their explicit closes stay valid, so no source change
+  is needed.
+
+Halo's sources need only the two literals. The old release refuses the
+new spelling as the new one refuses the old, so the old build uses the old
+spelling of those two literals, the same binary64 values. The run follows the previous
+upgrades: this branch's source built with both releases, six interleaved
+full-LTO pairs over the seven kernels on the 14900K, a twin of the old build,
+and two `--check-module pkg::vm` samples each.
+
+Expected: no kernel slower beyond its bounds, since none of these changes
+targets the interpreter's paths. #316 may make some moves cheaper, so a
+kernel faster beyond its bounds would not contradict the prediction. A
+kernel slower beyond its bounds would stop the upgrade for an attribution.
+
+### Result
+
+[Run 38015278318](https://github.com/Ming-Research/Halo-wf/actions/runs/38015278318),
+artifact `halo-bench-upgrade-f3d081b` (2026-10-10 01:59:41-02:05:18 UTC): this
+branch's source built by both releases, with the two respelled literals in
+each release's spelling, six interleaved full-LTO pairs with a twin of the
+old build.
+The artifact's `upgrade-*.json` record the old compiler's digest as
+`compiler_sha256` although the experiment release built `--binary`;
+`manifest.txt` gives each binary's compiler.
+
+| Kernel | `wf-01697d2de8a1` | `wf-f3d081b90a8d` | Ratio | Old range | New range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.0778 | 0.0780 | 1.003 | 0.62% | 4.83% | 0.998 |
+| loop | 0.4410 | 0.4414 | 1.001 | 0.47% | 0.74% | 1.001 |
+| integer-table | 0.3400 | 0.3403 | 1.001 | 1.64% | 1.06% | 1.000 |
+| string-key | 0.0197 | 0.0197 | 1.002 | 2.34% | 1.19% | 1.003 |
+| concat | 0.0634 | 0.0635 | 1.002 | 1.14% | 0.64% | 1.004 |
+| sort | 0.1627 | 0.1633 | 1.003 | 1.69% | 1.57% | 1.002 |
+| binary-trees | 1.3695 | 1.3600 | 0.993 | 2.59% | 1.53% | 1.007 |
+
+`--check-module pkg::vm`: old 8.265 and 8.211 s, new 8.241 and 8.232 s; the
+ratio of the two medians is 1.000 (8.2365 against 8.238 s).
+
+**The prediction holds: no kernel is slower beyond its bounds.** Every
+kernel's old and new ranges overlap, with ratios from 0.993 to 1.003 against
+twin ratios from 0.998 to 1.007, and no kernel is faster beyond its bounds
+either. The upgrade stands.

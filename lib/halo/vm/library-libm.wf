@@ -338,7 +338,7 @@ fn math_atan(x: f64) -> r: f64 pure {
   let local_sign_206 = local_bits_204 >= 9223372036854775808_u64;
   let local_t_207 = x;
   let local_id_208 = -1_i64;
-  if fge(local_abs_205, 73786976294.83821e9_f64) {
+  if fge(local_abs_205, 7.378697629483821e19_f64) {
     let local_z_209 = 1.5707963267948965_f64;
     if local_sign_206 {
       return fneg(local_z_209);
