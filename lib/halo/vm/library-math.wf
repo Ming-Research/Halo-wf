@@ -152,7 +152,7 @@ fn library_math(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, pc: u64, vm
     } else {
       let local_abs_46 = fabs(local_x_22);
       if fgt(local_abs_46, 0.0_f64) {
-        let local_normalized_47 = fmul.strict(local_x_22, 18446744073.709551e9_f64);
+        let local_normalized_47 = fmul.strict(local_x_22, 1.8446744073709551e19_f64);
         let local_nbits_48 = reinterpret::<f64, u64>(local_normalized_47);
         let local_shifted_49 = ishr.wrap(local_nbits_48, 52_u32);
         let local_biased_50 = iand(local_shifted_49, 2047_u64);
