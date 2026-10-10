@@ -4930,10 +4930,13 @@ The 14900K now runs native Ubuntu instead of a Hyper-V guest. The first run
 unpinned, powersave governor) was unusable: four kernels' ranges were
 19-31% and the twin of the old build was as far as 0.955 (sort), with
 single samples 15-20% slow, the pattern of a hybrid part scheduling onto
-its E-cores. The coordinator then set every core's governor and energy
-preference to performance and fixed the P-cores (CPU 0-15) at 5.0 GHz with
-turbo on, the E-cores (CPU 16-31) unfixed, and the workflow ran every timed
-process with `taskset -c 2`, an ordinary P-core thread.
+its E-cores. Before the rerun, the coordinator session reported setting
+every core's governor and energy preference to performance and fixing the
+P-cores (CPU 0-15) at 5.0 GHz with turbo on, the E-cores (CPU 16-31)
+unfixed; the artifact records only the 32 performance governors and the
+topology (`governor.txt`, `lscpu.txt`), not the frequency cap, the energy
+preference or turbo. The workflow ran every timed process with
+`taskset -c 2`, an ordinary P-core thread.
 
 [Run 38048395673](https://github.com/Ming-Research/Halo-wf/actions/runs/38048395673),
 artifact `halo-bench-upgrade-7822372`, under those conditions: the base
@@ -4960,7 +4963,9 @@ with earlier sections, which ran with turbo above 5.0 GHz in a guest.
 and sort (0.970) are faster with the two sides' ranges apart, at one and
 three pairs too (0.968, 0.971; 0.967, 0.968); the question predicted
 neither, so these are exploratory and not attributed, and fib's twin
-(0.985) leaves its margin small. #327's change to small-block growth moved
-no table kernel. Pinning brought the ranges from 19-31% to 0.03-5.8%;
+(0.985) leaves its margin small. The complete upgrade, #327's change to small-block growth
+included, moved no table kernel beyond its observed range. The rerun, with
+both the affinity and the frequency policy changed, had ranges of 0.03-5.8%
+against 19-31%;
 string-key, a 23 ms kernel, stays noisy (twin 1.045) and needs a larger
 scale or more pairs where a difference of a few percent matters.
