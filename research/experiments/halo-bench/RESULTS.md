@@ -4995,3 +4995,61 @@ on CPU 2, then `perf record -e cpu_core/cycles/` (the P-core cycles event of thi
 hybrid part) of each Halo kernel on the same core.
 Expected: every ratio at or below its earlier value; P1 still failing on most
 of the six.
+
+### Result
+
+[Run 38052416756](https://github.com/Ming-Research/Halo-wf/actions/runs/38052416756),
+artifact `halo-puc-status`: main `e8f3f9b` built by `wf-78223721f77d` against
+Redis 7.0.15's bundled PUC Lua, six alternating pairs (medians in seconds),
+every timed process on CPU 2; the artifact records the performance governor
+on all 32 CPUs and CPU 2's frequency fixed at 5.0 GHz (`governor.txt`).
+
+| Kernel | PUC | Halo | Halo / PUC | Earlier ratio | PUC range | Halo range | 1 and 3 pairs |
+|---|---:|---:|---:|---:|---:|---:|---|
+| fib | 0.0482 | 0.0907 | 1.880 | 2.557 | 0.62% | 1.27% | 1.880, 1.873 |
+| loop | 0.3298 | 0.5232 | 1.586 | 1.548 | 0.14% | 2.04% | 1.585, 1.585 |
+| integer-table | 0.2576 | 0.4092 | 1.589 | 2.666 | 3.39% | 2.74% | 1.580, 1.590 |
+| string-key | 0.0269 | 0.0233 | 0.865 | 1.689 | 2.68% | 5.80% | 0.928, 0.910 |
+| concat | 0.0560 | 0.0738 | 1.316 | 1.756 | 2.04% | 0.65% | 1.338, 1.316 |
+| sort | 0.2920 | 0.1876 | 0.642 | 0.749 | 1.16% | 2.50% | 0.646, 0.644 |
+| binary-trees | 0.9058 | 1.5416 | 1.702 | 2.424 | 2.26% | 3.16% | 1.687, 1.689 |
+
+**P1 now holds on string-key (0.865) and sort (0.642) and still fails on
+five kernels: fib 1.88, binary-trees 1.70, integer-table 1.59, loop 1.59 and
+concat 1.32.** Every ratio fell except loop's, which rose from 1.548 to 1.586,
+so the expectation that none would rise does not hold for loop; the
+#310 release's same-source comparison had already measured loop 2.4-2.6%
+slower (above), with the ForLoop arm's next-instruction position kept on
+the stack suspected from the disassembly. The earlier ratios come from
+another machine setting and compiler, so these are where the kernels stand,
+not attributions.
+
+Self-time shares of `cpu_core/cycles/` per kernel on CPU 2 (the dwarf call
+graphs did not resolve through the dispatch arms, so inclusive shares are
+not available); `run`'s arms are numbered by the order of its match, arm 5
+GetUpval, 11 GetTableR, 13 SetTableRR, 20 AddRR, 37 ModRK, 63 Call, 65
+Return, 66 ForLoop:
+
+- fib: GetUpval 19.9%, `push_frame` 16.6%, `enter_lua` 15.1%, Return 11.5%,
+  `finish` 9.5%, Call 7.8%, `prepare` 3.5%. The call path (Call, `prepare`,
+  `enter_lua`, `push_frame`, Return, `finish`) takes about 64%. GetUpval's hot
+  path reads the top frame's closure, that closure's upvalue array, the
+  upvalue cell and then the stack slot, each with a bounds check, and moves
+  the 16-byte value through a stack slot at the join of its Open and failure
+  paths (disassembly in Halo-wf run 37942302634).
+- loop: ForLoop 65.2%, AddRR 34.5%.
+- integer-table: SetTableRR 31.5%, GetTableR 13.8%, `table_set` 12.5%,
+  ForLoop 11.2%, `collect_if_due` 5.0%.
+- binary-trees: glibc's allocator about 21.6% (`_int_free_chunk` 8.4%,
+  `_int_malloc` 5.3%, `__libc_malloc2` 4.9%, `malloc` 3.1%), `node_find`
+  10.5%, `collect_if_due` 7.2%, `table_get_str` 4.3%, `push_frame` 4.2%,
+  `enter_lua` 4.2%.
+- concat: `intern` 20.9%, `concat_step` 16.4%, GetTableR 14.0%, `slow` 9.0%.
+- string-key and sort meet P1; string-key's largest are GetTableR 34.3% and
+  `table_get_str` 18.5%, sort's `sort_array_run` 53.2%.
+
+Candidates for the next experiment, by the worst ratio first: fib's call
+path and its upvalue read (each a sampled share, not a measured saving);
+binary-trees' per-table allocation through glibc; integer-table's SetTableRR;
+loop's ForLoop, which the loopmatch session's lm-bl-forloop-spill already
+covers.
