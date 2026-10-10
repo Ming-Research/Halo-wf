@@ -4834,3 +4834,31 @@ register-allocation change tracked as lm-bl-forloop-spill, and binary-trees is 7
 faster beyond its bounds (#310's release: 0.913). The other four kernels'
 ranges overlap. The upgrade stands; loop's recovery belongs to the
 loopmatch session's follow-up.
+
+## Whitefoot wf-aea3968362d3 upgrade
+
+### Question, recorded before it runs
+
+Moving the pin from `wf-01697d2de8a1` (Whitefoot main 01697d2de, v0.112) to
+`wf-aea3968362d3` (main aea396836, v0.118) adopts:
+- Whitefoot #304 (guards observe cancellation, v0.113);
+- #316 (proved separations at the release/borrow overlap boundary, which can
+  turn overlap-safe moves into ordinary copies);
+- #306 (indexed reductions, v0.114);
+- #309 (one spelling for scientific float literals, v0.115), which needs
+  two of Halo's literals respelled to the same binary64 values;
+- #318 (no merging or reordering of waiting calls, v0.116);
+- #314 (segment and page selectors, v0.117);
+- #313 (the --par suite);
+- #321 (window range-fact conformance);
+- #317 (a map's reserve released through the memory meter, v0.118).
+
+Halo's sources need only the two literals. The run follows the previous
+upgrades: this branch's source built with both releases, six interleaved
+full-LTO pairs over the seven kernels on the 14900K, a twin of the old build,
+and two `--check-module pkg::vm` samples each.
+
+Expected: no kernel slower beyond its bounds, since none of these changes
+targets the interpreter's paths. #316 may make some moves cheaper, so a
+kernel faster beyond its bounds would not contradict the prediction. A
+kernel slower beyond its bounds would stop the upgrade for an attribution.
