@@ -1,6 +1,6 @@
 # Temporary: the Whitefoot upgrade's benchmark, the same Halo source built by
 # the old and the new pinned release (research/experiments/halo-bench/RESULTS.md,
-# "Whitefoot wf-aea3968362d3 upgrade"). The 14900K job runs only for a commit
+# "Whitefoot wf-f3d081b90a8d upgrade"). The 14900K job runs only for a commit
 # whose message contains [bench], pushed once the runner is confirmed idle.
 # Removed before the pull request is marked ready.
 name: bench-upgrade
@@ -107,6 +107,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: halo-bench-upgrade-aea3968
+          name: halo-bench-upgrade-f3d081b
           path: build/bench-out/
           retention-days: 30
