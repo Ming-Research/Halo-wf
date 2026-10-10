@@ -4970,3 +4970,87 @@ range. The rerun, with both the affinity and the frequency policy changed,
 had ranges of 0.03-5.8% against 19-31%; string-key, a 23 ms kernel, stays
 noisy (twin 1.045) and needs a larger scale or more pairs where a
 difference of a few percent matters.
+
+## P1 on the current pin
+
+### Question, recorded before it runs
+
+The last comparison with PUC (Halo-wf#9's head on `wf-8b647edbbc95`, run
+37575858701) left P1 (each Halo median at most PUC's) failing on six of the
+seven kernels: integer-table 2.67, fib 2.56, binary-trees 2.42, concat 1.76,
+string-key 1.69 and loop 1.55 times PUC; sort met it at 0.75. Since then
+Halo has grown nonshrinking arrays in place, lowered the collection floor to
+64 KiB and moved its pin nine times, among them the releases whose
+same-source comparisons made string-key 25%, integer-table 15% and concat
+13% faster (v0.110) and fib 21% faster (v0.112, Whitefoot#310); the 14900K
+has meanwhile become native Ubuntu with its P-cores fixed at 5.0 GHz, so
+absolute times are not comparable with that run. This status measurement
+asks where each kernel now stands against PUC on main `e8f3f9b`
+(`wf-78223721f77d`), and which costs a cycles profile of each kernel ranks
+first, to choose the next experiment for the six failing kernels. It is
+exploratory and tests no proposal. Comparison: Halo built with full LTO
+against Redis 7.0.15's bundled PUC Lua, binary-trees at depth 14 as before,
+one, three and six alternating pairs on the 14900K with every timed process
+on CPU 2, then `perf record -e cpu_core/cycles/` (the P-core cycles event of this
+hybrid part) of each Halo kernel on the same core.
+Expected: every ratio at or below its earlier value; P1 still failing on most
+of the six.
+
+### Result
+
+[Run 38052416756](https://github.com/Ming-Research/Halo-wf/actions/runs/38052416756),
+artifact `halo-puc-status`: main `e8f3f9b` built by `wf-78223721f77d` against
+Redis 7.0.15's bundled PUC Lua, six alternating pairs (medians in seconds),
+every timed process on CPU 2; the artifact records the performance governor
+on all 32 CPUs and CPU 2's frequency fixed at 5.0 GHz (`governor.txt`).
+
+| Kernel | PUC | Halo | Halo / PUC | Earlier ratio | PUC range | Halo range | 1 and 3 pairs |
+|---|---:|---:|---:|---:|---:|---:|---|
+| fib | 0.0482 | 0.0907 | 1.880 | 2.557 | 0.62% | 1.27% | 1.880, 1.873 |
+| loop | 0.3298 | 0.5232 | 1.586 | 1.548 | 0.14% | 2.04% | 1.585, 1.585 |
+| integer-table | 0.2576 | 0.4092 | 1.589 | 2.666 | 3.39% | 2.74% | 1.580, 1.590 |
+| string-key | 0.0269 | 0.0233 | 0.865 | 1.689 | 2.68% | 5.80% | 0.928, 0.910 |
+| concat | 0.0560 | 0.0738 | 1.316 | 1.756 | 2.04% | 0.65% | 1.338, 1.316 |
+| sort | 0.2920 | 0.1876 | 0.642 | 0.749 | 1.16% | 2.50% | 0.646, 0.644 |
+| binary-trees | 0.9058 | 1.5416 | 1.702 | 2.424 | 2.26% | 3.16% | 1.687, 1.689 |
+
+**P1 now holds on string-key (0.865) and sort (0.642) and still fails on
+five kernels: fib 1.88, binary-trees 1.70, integer-table 1.59, loop 1.59 and
+concat 1.32.** Every ratio fell except loop's, which rose from 1.548 to 1.586,
+so the expectation that none would rise does not hold for loop; the
+#310 release's same-source comparison had already measured loop 2.4-2.6%
+slower (above), with the ForLoop arm's next-instruction position kept on
+the stack suspected from the disassembly. The earlier ratios come from
+another machine setting and compiler, so these are where the kernels stand,
+not attributions.
+
+Self-time shares of `cpu_core/cycles/` per kernel on CPU 2 (the dwarf call
+graphs did not resolve through the dispatch arms, so inclusive shares are
+not available); `run`'s arms are numbered by the order of its match, arm 5
+GetUpval, 11 GetTableR, 13 SetTableRR, 20 AddRR, 37 ModRK, 63 Call, 65
+Return, 66 ForLoop:
+
+- fib: GetUpval 19.9%, `push_frame` 16.6%, `enter_lua` 15.1%, Return 11.5%,
+  `finish` 9.5%, Call 7.8%, `prepare` 3.5%. The call path (Call, `prepare`,
+  `enter_lua`, `push_frame`, Return, `finish`) takes about 64%. GetUpval's hot
+  path reads the top frame's closure, that closure's upvalue array, the
+  upvalue cell and then the stack slot, each with a bounds check, and moves
+  the 16-byte value through a stack slot at the join of its Open and failure
+  paths (disassembly in Halo-wf run 37942302634).
+- loop: ForLoop 65.2%, AddRR 34.5%.
+- integer-table: SetTableRR 31.5%, GetTableR 13.8%, `table_set` 12.5%,
+  ForLoop 11.2%, `collect_if_due` 5.0%.
+- binary-trees: glibc's allocator at least 25.6% among the 30 largest
+  symbols (`_int_free_chunk` 8.4%, `_int_malloc` 5.3%, `__libc_malloc2` 4.9%,
+  `malloc` 3.1%, `_int_free_merge_chunk` 2.1%, `cfree` 1.8%), `node_find`
+  10.5%, `collect_if_due` 7.2%, `table_get_str` 4.3%, `push_frame` 4.2%,
+  `enter_lua` 4.2%.
+- concat: `intern` 20.9%, `concat_step` 16.4%, GetTableR 14.0%, `slow` 9.0%.
+- string-key and sort meet P1; string-key's largest are GetTableR 34.3% and
+  `table_get_str` 18.5%, sort's `sort_array_run` 53.2%.
+
+Candidates for the next experiment, by the worst ratio first: fib's call
+path and its upvalue read (each a sampled share, not a measured saving);
+binary-trees' per-table allocation through glibc; integer-table's SetTableRR;
+loop's ForLoop, which the loopmatch session's lm-bl-forloop-spill already
+covers.
