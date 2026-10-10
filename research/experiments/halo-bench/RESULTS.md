@@ -5054,3 +5054,42 @@ path and its upvalue read (each a sampled share, not a measured saving);
 binary-trees' per-table allocation through glibc; integer-table's SetTableRR;
 loop's ForLoop, which the loopmatch session's lm-bl-forloop-spill already
 covers.
+
+## Store-forwarding stalls in the instruction-level profiles
+
+The profile above ranked functions; this records where inside them the
+cycles fall. `perf annotate` of `cpu_core/cycles/` samples (one sample per
+100003 cycles) of main `e8f3f9b` built by `wf-78223721f77d`, each kernel on
+CPU 2 of the 14900K: fib in
+[run 38053922774](https://github.com/Ming-Research/Halo-wf/actions/runs/38053922774),
+integer-table and loop in
+[run 38054562615](https://github.com/Ming-Research/Halo-wf/actions/runs/38054562615),
+artifact `halo-annotate`. Shares are of a function's own samples; with
+sampling skid a stall is usually charged to an instruction just after the
+one that stalled, so the causes below are inferences consistent with where
+the samples cluster. This is exploratory and measures no change.
+
+- `push_frame` (14.6% of fib, 680 samples): 73.1% fall right after its first
+  16-byte load of the `Frame` argument. `enter_lua` builds that 80-byte
+  `Frame` on its stack with 8-, 4- and 1-byte stores at `0x78(%rsp)` and
+  passes its address; `push_frame` copies it into `vm^.frames` with five
+  16-byte `movups`, each spanning several narrower stores, which the store
+  buffer cannot forward to one load. The samples clustered at that point are
+  about 10.7% of fib's (14.6% times 73.1%), consistent with a
+  store-forwarding stall there.
+- SetTableRR (32.1% of integer-table, 6463 samples): 17.1% fall right after
+  a 16-byte `movupd` that reads the register value. The ForLoop arm that runs
+  just before wrote that register as two 8-byte stores, the tag
+  (`movq $0x3`) and the payload (`movsd`), so the 16-byte read again spans
+  two stores; the same inference applies.
+- GetUpval (fib): the samples follow the dependent loads of the upvalue cell
+  and the stack slot it points to (13.7% and 20.0%), not a copy.
+- ForLoop and AddRR (loop): ForLoop's largest single share is 7.3% and
+  AddRR's 12.6%; neither shows a dominant stall, and the samples spread over
+  the arms' checks.
+
+The pattern, a value written field by field and read back whole with a wider
+load, is a code-generation choice of the compiler, so it is recorded as a
+Whitefoot gap for the loopmatch session (status-board item
+lm-bl-frame-store-forward) with this evidence, rather than worked around in
+Halo's source; the saving is not measured.
