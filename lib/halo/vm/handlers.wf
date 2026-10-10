@@ -2481,7 +2481,7 @@ fn instruction_eq_jmp_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
     }
   }
   let expected = a != 0_u64;
-  if eeq(answer, expected) {
+  if answer == expected {
     set next = target;
   }
   if vm^.suspended {
@@ -2546,7 +2546,7 @@ fn instruction_eq_jmp_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
     }
   }
   let expected = a != 0_u64;
-  if eeq(answer, expected) {
+  if answer == expected {
     set next = target;
   }
   if vm^.suspended {
@@ -2611,7 +2611,7 @@ fn instruction_eq_jmp_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
     }
   }
   let expected = a != 0_u64;
-  if eeq(answer, expected) {
+  if answer == expected {
     set next = target;
   }
   if vm^.suspended {
@@ -2676,7 +2676,7 @@ fn instruction_eq_jmp_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
     }
   }
   let expected = a != 0_u64;
-  if eeq(answer, expected) {
+  if answer == expected {
     set next = target;
   }
   if vm^.suspended {
@@ -2741,7 +2741,7 @@ fn instruction_lt_jmp_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
     }
   }
   let expected = a != 0_u64;
-  if eeq(answer, expected) {
+  if answer == expected {
     set next = target;
   }
   if vm^.suspended {
@@ -2806,7 +2806,7 @@ fn instruction_lt_jmp_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
     }
   }
   let expected = a != 0_u64;
-  if eeq(answer, expected) {
+  if answer == expected {
     set next = target;
   }
   if vm^.suspended {
@@ -2871,7 +2871,7 @@ fn instruction_lt_jmp_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
     }
   }
   let expected = a != 0_u64;
-  if eeq(answer, expected) {
+  if answer == expected {
     set next = target;
   }
   if vm^.suspended {
@@ -2936,7 +2936,7 @@ fn instruction_lt_jmp_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
     }
   }
   let expected = a != 0_u64;
-  if eeq(answer, expected) {
+  if answer == expected {
     set next = target;
   }
   if vm^.suspended {
@@ -3001,7 +3001,7 @@ fn instruction_le_jmp_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
     }
   }
   let expected = a != 0_u64;
-  if eeq(answer, expected) {
+  if answer == expected {
     set next = target;
   }
   if vm^.suspended {
@@ -3066,7 +3066,7 @@ fn instruction_le_jmp_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
     }
   }
   let expected = a != 0_u64;
-  if eeq(answer, expected) {
+  if answer == expected {
     set next = target;
   }
   if vm^.suspended {
@@ -3131,7 +3131,7 @@ fn instruction_le_jmp_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
     }
   }
   let expected = a != 0_u64;
-  if eeq(answer, expected) {
+  if answer == expected {
     set next = target;
   }
   if vm^.suspended {
@@ -3196,7 +3196,7 @@ fn instruction_le_jmp_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
     }
   }
   let expected = a != 0_u64;
-  if eeq(answer, expected) {
+  if answer == expected {
     set next = target;
   }
   if vm^.suspended {
@@ -3230,7 +3230,7 @@ fn instruction_test_jmp<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box
   let v = register_value(stack: stack, base: base, operand: av);
   let actual = truthy(v: v);
   let expected = c != 0_u64;
-  if eeq(actual, expected) {
+  if actual == expected {
     set next = target;
   }
   if vm^.suspended {
@@ -3265,7 +3265,7 @@ fn instruction_test_set_jmp<interface Host<E>>(code: &Box<Slots<Cell>>, consts: 
   let v = register_value(stack: stack, base: base, operand: bv);
   let actual = truthy(v: v);
   let expected = c != 0_u64;
-  if eeq(actual, expected) {
+  if actual == expected {
     set stack^.inner[ra] = v;
     set next = target;
   }
@@ -4445,7 +4445,7 @@ fn fast_instruction_eq_jmp_rk(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
     return Ok<FastCursor, Step>(value: cursor);
   }
   let expected = a != 0_u64;
-  if eeq(answer, expected) {
+  if answer == expected {
     set next = target;
   }
   if vm^.suspended {
@@ -4496,7 +4496,7 @@ fn fast_instruction_lt_jmp_rk(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
     return Ok<FastCursor, Step>(value: cursor);
   }
   let expected = a != 0_u64;
-  if eeq(answer, expected) {
+  if answer == expected {
     set next = target;
   }
   if vm^.suspended {
@@ -4547,7 +4547,7 @@ fn fast_instruction_lt_jmp_kr(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
     return Ok<FastCursor, Step>(value: cursor);
   }
   let expected = a != 0_u64;
-  if eeq(answer, expected) {
+  if answer == expected {
     set next = target;
   }
   if vm^.suspended {
@@ -4598,7 +4598,7 @@ fn fast_instruction_le_jmp_rr(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
     return Ok<FastCursor, Step>(value: cursor);
   }
   let expected = a != 0_u64;
-  if eeq(answer, expected) {
+  if answer == expected {
     set next = target;
   }
   if vm^.suspended {
