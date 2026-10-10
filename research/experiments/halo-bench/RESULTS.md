@@ -4970,3 +4970,27 @@ range. The rerun, with both the affinity and the frequency policy changed,
 had ranges of 0.03-5.8% against 19-31%; string-key, a 23 ms kernel, stays
 noisy (twin 1.045) and needs a larger scale or more pairs where a
 difference of a few percent matters.
+
+## P1 on the current pin
+
+### Question, recorded before it runs
+
+The last comparison with PUC (Halo-wf#9's head on `wf-8b647edbbc95`, run
+37575858701) left P1 (each Halo median at most PUC's) failing on six of the
+seven kernels: integer-table 2.67, fib 2.56, binary-trees 2.42, concat 1.76,
+string-key 1.69 and loop 1.55 times PUC; sort met it at 0.75. Since then
+Halo has grown nonshrinking arrays in place, lowered the collection floor to
+64 KiB and moved its pin seven times, among them the releases whose
+same-source comparisons made string-key 25%, integer-table 15% and concat
+13% faster (v0.110) and fib 21% faster (v0.112, Whitefoot#310); the 14900K
+has meanwhile become native Ubuntu with its P-cores fixed at 5.0 GHz, so
+absolute times are not comparable with that run. This status measurement
+asks where each kernel now stands against PUC on main `e8f3f9b`
+(`wf-78223721f77d`), and which costs a cycles profile of each kernel ranks
+first, to choose the next experiment for the six failing kernels. It is
+exploratory and tests no proposal. Comparison: Halo built with full LTO
+against Redis 7.0.15's bundled PUC Lua, binary-trees at depth 14 as before,
+one, three and six alternating pairs on the 14900K with every timed process
+on CPU 2, then `perf record -e cycles` of each Halo kernel on the same core.
+Expected: every ratio at or below its earlier value; P1 still failing on most
+of the six.

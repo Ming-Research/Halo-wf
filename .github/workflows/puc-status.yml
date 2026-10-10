@@ -1,0 +1,94 @@
+# Temporary, measurement-only branch (status-board item halo-bl-01-05): Halo
+# main against Redis 7.0.15's bundled PUC Lua on the seven kernels, and a
+# cycles profile of each Halo kernel, on the 14900K with every timed process
+# on CPU 2 (research/experiments/halo-bench/RESULTS.md, "P1 on the current
+# pin"). The 14900K job runs only for a commit whose message contains
+# [bench], pushed once the coordinator grants the slot. The branch is deleted
+# after the run.
+name: puc-status
+
+on:
+  push:
+    branches: [claude/halo-puc-status]
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Build the bench program
+        run: |
+          set -euo pipefail
+          make toolchain
+          make compiler
+          make toolchain-check
+          wfc="$PWD/build/whitefoot/$(sed -n 's/^release = //p' whitefoot.pin)/whitefootc"
+          "$wfc" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o build/halo
+          echo "built"
+
+  bench:
+    needs: build
+    if: contains(github.event.head_commit.message, '[bench]')
+    runs-on: [self-hosted, 14900k]
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Compare with PUC and profile
+        run: |
+          set -euo pipefail
+          out="$PWD/build/puc-out"
+          rm -rf "$out"; mkdir -p "$out"
+          make compiler
+          make toolchain-check
+          wfc="$PWD/build/whitefoot/$(sed -n 's/^release = //p' whitefoot.pin)/whitefootc"
+          sh research/experiments/halo-oracle/fetch-redis.sh "$PWD/build/redis"
+          lua="$PWD/build/redis/redis-7.0.15/deps/lua/src/lua"
+          "$wfc" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo"
+          lscpu -e=CPU,CORE,MAXMHZ > "$out/lscpu.txt" 2>&1 || true
+          cat /sys/devices/system/cpu/cpufreq/policy*/scaling_governor 2>/dev/null | sort | uniq -c > "$out/governor.txt" || true
+          for c in 2 3 16; do echo "cpu$c min/max kHz: $(cat /sys/devices/system/cpu/cpu$c/cpufreq/scaling_min_freq 2>/dev/null)/$(cat /sys/devices/system/cpu/cpu$c/cpufreq/scaling_max_freq 2>/dev/null)"; done >> "$out/governor.txt"
+          pin="taskset -c 2"
+          {
+            echo "source $(git rev-parse HEAD), compiler $(basename "$(dirname "$wfc")")"
+            sha256sum "$wfc" "$out/halo" "$lua"
+            /usr/bin/clang --version | head -n 1
+            echo "timed processes pinned with: $pin"
+            cat "$out/governor.txt"
+          } | tee "$out/manifest.txt"
+          kernels=fib,loop,integer-table,string-key,concat,sort,binary-trees
+          for runs in 1 3 6; do
+            $pin python3 -B research/experiments/halo-bench/run.py --lua "$lua" --binary "$out/halo" \
+              --kernels "$kernels" --scale binary-trees=14 --runs "$runs" --out "$out/puc-$runs.json" --compiler "$wfc" \
+              > "$out/puc-$runs.log" 2>&1 || { cat "$out/puc-$runs.log"; exit 1; }
+            echo "== $runs pair(s)"; grep 'ratio=' "$out/puc-$runs.log" | sed -E 's/(ratio=[0-9.]+).*/\1/' || cat "$out/puc-$runs.log"
+          done
+          if command -v perf >/dev/null; then
+            perf --version | tee -a "$out/manifest.txt"
+            for k in fib loop integer-table string-key concat sort binary-trees; do
+              src=research/experiments/halo-bench/kernels/$k.lua
+              [ "$k" = binary-trees ] && sed 's/^local N = .*/local N = 14/' "$src" > "$out/bt14.lua" && src="$out/bt14.lua"
+              $pin perf record -q -e cycles -g --call-graph dwarf,16384 -o "$out/perf-$k.data" "$out/halo" < "$src" > "$out/perf-$k.out" 2>&1 || echo "perf record failed for $k"
+              perf report -q -i "$out/perf-$k.data" --no-children --sort symbol --stdio 2>/dev/null | grep -E '^ +[0-9]' | head -n 30 > "$out/profile-$k-self.txt" || true
+              perf report -q -i "$out/perf-$k.data" --children --sort symbol --stdio 2>/dev/null | grep -E '^ +[0-9]' | head -n 40 > "$out/profile-$k-children.txt" || true
+              echo "== $k self"; head -n 12 "$out/profile-$k-self.txt"
+            done
+          else
+            echo "perf not installed on the runner" | tee -a "$out/manifest.txt"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: halo-puc-status
+          path: |
+            build/puc-out/
+            !build/puc-out/*.data
+          retention-days: 30
