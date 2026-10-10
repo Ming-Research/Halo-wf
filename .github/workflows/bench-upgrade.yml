@@ -34,7 +34,7 @@ jobs:
         run: |
           set -euo pipefail
           make toolchain
-          git worktree add -q build/base-src "$BASE_SOURCE"
+          git worktree prune; rm -rf build/base-src; git worktree add -q -f build/base-src "$BASE_SOURCE"
           for release in "$CONTROL" "$EXPERIMENT"; do
             echo "release = $release" > whitefoot.pin
             make compiler
@@ -70,7 +70,7 @@ jobs:
           wfc_exp="$PWD/build/whitefoot/$EXPERIMENT/whitefootc"
           sh research/experiments/halo-oracle/fetch-redis.sh "$PWD/build/redis"
           lua="$PWD/build/redis/redis-7.0.15/deps/lua/src/lua"
-          git worktree add -q build/base-src "$BASE_SOURCE"
+          git worktree prune; rm -rf build/base-src; git worktree add -q -f build/base-src "$BASE_SOURCE"
           "$wfc_ctl" --graph build/base-src/research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-ctl"
           cp "$out/halo-ctl" "$out/halo-ctl-twin"
           "$wfc_exp" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-exp"
