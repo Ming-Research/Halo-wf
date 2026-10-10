@@ -4866,3 +4866,29 @@ Expected: no kernel slower beyond its bounds, since none of these changes
 targets the interpreter's paths. #316 may make some moves cheaper, so a
 kernel faster beyond its bounds would not contradict the prediction. A
 kernel slower beyond its bounds would stop the upgrade for an attribution.
+
+### Result
+
+[Run 38015278318](https://github.com/Ming-Research/Halo-wf/actions/runs/38015278318),
+artifact `halo-bench-upgrade-f3d081b` (2026-10-10 01:59:41-02:05:18 UTC): this
+branch's source built by both releases, with the two respelled literals in
+each release's spelling, six interleaved full-LTO pairs with a twin of the
+old build.
+
+| Kernel | `wf-01697d2de8a1` | `wf-f3d081b90a8d` | Ratio | Old range | New range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.0778 | 0.0780 | 1.003 | 0.62% | 4.83% | 0.998 |
+| loop | 0.4410 | 0.4414 | 1.001 | 0.47% | 0.74% | 1.001 |
+| integer-table | 0.3400 | 0.3403 | 1.001 | 1.64% | 1.06% | 1.000 |
+| string-key | 0.0197 | 0.0197 | 1.002 | 2.34% | 1.19% | 1.003 |
+| concat | 0.0634 | 0.0635 | 1.002 | 1.14% | 0.64% | 1.004 |
+| sort | 0.1627 | 0.1633 | 1.003 | 1.69% | 1.57% | 1.002 |
+| binary-trees | 1.3695 | 1.3600 | 0.993 | 2.59% | 1.53% | 1.007 |
+
+`--check-module pkg::vm`: old 8.265 and 8.211 s, new 8.241 and 8.232 s; the
+ratio of the two medians is 0.999.
+
+**The prediction holds: no kernel is slower beyond its bounds.** Every
+kernel's old and new ranges overlap, with ratios from 0.993 to 1.003 against
+twin ratios from 0.998 to 1.007, and no kernel is faster beyond its bounds
+either. The upgrade stands.
