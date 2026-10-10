@@ -5081,8 +5081,9 @@ measures no change.
   two stores.
 - GetUpval (fib): the samples follow the dependent loads of the upvalue cell
   and the stack slot it points to (13.7% and 20.0%), not a copy.
-- ForLoop and AddRR (loop): no single instruction above 7.3%; the samples
-  spread over the arms' checks.
+- ForLoop and AddRR (loop): ForLoop's largest single share is 7.3% and
+  AddRR's 12.6%; neither shows a dominant stall, and the samples spread over
+  the arms' checks.
 
 The pattern, a value written field by field and read back whole with a wider
 load, is a code-generation choice of the compiler, so it is recorded as a
