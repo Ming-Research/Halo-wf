@@ -90,14 +90,14 @@ jobs:
             fi
             echo "== $side: $(objdump -d --no-show-raw-insn "$out/halo-$side" | grep -c -E 'movups|movdqu|vmovups|vmovdqu') unaligned 128/256-bit moves"
           done
-          # The 14900K is a hybrid part: pin every timed process to the cores
-          # with the highest maximum frequency (P-cores), so no sample lands on
-          # an E-core, and record the topology and governor.
+          # The 14900K is a hybrid part (P-cores CPU 0-15, E-cores 16-31; CPU 8-9
+          # reach 6.0 GHz, CPU 0 takes interrupts): run every timed process on
+          # one ordinary P-core thread, CPU 2, and record the topology and
+          # frequency policy.
           lscpu -e=CPU,CORE,MAXMHZ > "$out/lscpu.txt" 2>&1 || true
           cat /sys/devices/system/cpu/cpufreq/policy*/scaling_governor 2>/dev/null | sort | uniq -c > "$out/governor.txt" || true
-          pcpus=$(lscpu -e=CPU,MAXMHZ --noheadings 2>/dev/null | awk '$2 != "-" {c[$1] = $2; if ($2 + 0 > max) max = $2 + 0} END {for (k in c) if (c[k] + 0 == max) printf "%s,", k}' | sed 's/,$//')
-          pin=""; [ -n "$pcpus" ] && pin="taskset -c $pcpus"
-          echo "timed processes pinned to CPUs: ${pcpus:-none}" | tee -a "$out/manifest.txt"
+          pin="taskset -c 2"
+          echo "timed processes pinned with: $pin" | tee -a "$out/manifest.txt"
           cat "$out/governor.txt" | tee -a "$out/manifest.txt"
           kernels=fib,loop,integer-table,string-key,concat,sort,binary-trees
           compare() {
