@@ -4853,7 +4853,9 @@ Moving the pin from `wf-01697d2de8a1` (Whitefoot main 01697d2de, v0.112) to
 - #321 (window range-fact conformance);
 - #317 (a map's reserve released through the memory meter, v0.118);
 - #319 (cancellation handles as droppable structs over shared handles,
-  v0.119), which Halo does not use.
+  v0.119): Halo's hosts and drivers hold a never-firing CancelWatch, which
+  becomes droppable; their explicit closes stay valid, so no source change
+  is needed.
 
 Halo's sources need only the two literals. The old release refuses the
 new spelling as the new one refuses the old, so the old build uses the old
@@ -4874,6 +4876,9 @@ artifact `halo-bench-upgrade-f3d081b` (2026-10-10 01:59:41-02:05:18 UTC): this
 branch's source built by both releases, with the two respelled literals in
 each release's spelling, six interleaved full-LTO pairs with a twin of the
 old build.
+The artifact's `upgrade-*.json` record the old compiler's digest as
+`compiler_sha256` although the experiment release built `--binary`;
+`manifest.txt` gives each binary's compiler.
 
 | Kernel | `wf-01697d2de8a1` | `wf-f3d081b90a8d` | Ratio | Old range | New range | Twin ratio |
 |---|---:|---:|---:|---:|---:|---:|
@@ -4886,7 +4891,7 @@ old build.
 | binary-trees | 1.3695 | 1.3600 | 0.993 | 2.59% | 1.53% | 1.007 |
 
 `--check-module pkg::vm`: old 8.265 and 8.211 s, new 8.241 and 8.232 s; the
-ratio of the two medians is 0.999.
+ratio of the two medians is 1.000 (8.2365 against 8.238 s).
 
 **The prediction holds: no kernel is slower beyond its bounds.** Every
 kernel's old and new ranges overlap, with ratios from 0.993 to 1.003 against
