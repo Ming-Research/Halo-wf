@@ -4957,15 +4957,16 @@ manifest gives each binary's compiler.
 
 `--check-module pkg::vm`: old 10.583 and 10.698 s, new 10.604 and 10.614 s;
 the ratio of the two medians is 0.997. Absolute times are not comparable
-with earlier sections, which ran with turbo above 5.0 GHz in a guest.
+with earlier sections, which ran in a Hyper-V guest under other frequency
+settings.
 
 **No kernel is slower beyond its bounds; the upgrade stands.** Fib (0.969)
 and sort (0.970) are faster with the two sides' ranges apart, at one and
 three pairs too (0.968, 0.971; 0.967, 0.968); the question predicted
 neither, so these are exploratory and not attributed, and fib's twin
-(0.985) leaves its margin small. The complete upgrade, #327's change to small-block growth
-included, moved no table kernel beyond its observed range. The rerun, with
-both the affinity and the frequency policy changed, had ranges of 0.03-5.8%
-against 19-31%;
-string-key, a 23 ms kernel, stays noisy (twin 1.045) and needs a larger
-scale or more pairs where a difference of a few percent matters.
+(0.985) leaves its margin small. The complete upgrade, #327's change to
+small-block growth included, moved no table kernel beyond its observed
+range. The rerun, with both the affinity and the frequency policy changed,
+had ranges of 0.03-5.8% against 19-31%; string-key, a 23 ms kernel, stays
+noisy (twin 1.045) and needs a larger scale or more pairs where a
+difference of a few percent matters.
