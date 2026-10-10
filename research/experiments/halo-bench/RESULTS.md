@@ -4922,3 +4922,45 @@ samples each. Expected: no kernel slower beyond its bounds. #327 could move
 integer-table or the other table-growing kernels either way and is not
 predicted; a kernel slower beyond its bounds would stop the upgrade for an
 attribution.
+
+### Result
+
+The 14900K now runs native Ubuntu instead of a Hyper-V guest. The first run
+([run 38046900553](https://github.com/Ming-Research/Halo-wf/actions/runs/38046900553),
+unpinned, powersave governor) was unusable: four kernels' ranges were
+19-31% and the twin of the old build was as far as 0.955 (sort), with
+single samples 15-20% slow, the pattern of a hybrid part scheduling onto
+its E-cores. The coordinator then set every core's governor and energy
+preference to performance and fixed the P-cores (CPU 0-15) at 5.0 GHz with
+turbo on, the E-cores (CPU 16-31) unfixed, and the workflow ran every timed
+process with `taskset -c 2`, an ordinary P-core thread.
+
+[Run 38048395673](https://github.com/Ming-Research/Halo-wf/actions/runs/38048395673),
+artifact `halo-bench-upgrade-7822372`, under those conditions: the base
+built by `wf-f3d081b90a8d` and this branch by `wf-78223721f77d`, six
+interleaved full-LTO pairs with a twin of the old build. The artifact's
+`upgrade-*.json` record the old compiler's digest as `compiler_sha256`; the
+manifest gives each binary's compiler.
+
+| Kernel | `wf-f3d081b90a8d` | `wf-78223721f77d` | Ratio | Old range | New range | Twin ratio | Twin ranges |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| fib | 0.0936 | 0.0907 | 0.969 | 2.98% | 1.36% | 0.985 | 3.13%, 0.28% |
+| loop | 0.5227 | 0.5227 | 1.000 | 2.20% | 0.03% | 1.000 | 2.10%, 0.23% |
+| integer-table | 0.4052 | 0.4048 | 0.999 | 0.36% | 1.11% | 1.000 | 0.70%, 2.79% |
+| string-key | 0.0237 | 0.0238 | 1.004 | 5.84% | 4.61% | 1.045 | 5.71%, 4.52% |
+| concat | 0.0740 | 0.0738 | 0.999 | 1.52% | 1.43% | 0.994 | 2.15%, 2.13% |
+| sort | 0.1931 | 0.1873 | 0.970 | 1.95% | 1.90% | 0.995 | 1.76%, 1.73% |
+| binary-trees | 1.5838 | 1.5532 | 0.981 | 3.65% | 3.26% | 0.993 | 4.22%, 4.50% |
+
+`--check-module pkg::vm`: old 10.583 and 10.698 s, new 10.604 and 10.614 s;
+the ratio of the two medians is 0.996. Absolute times are not comparable
+with earlier sections, which ran with turbo above 5.0 GHz in a guest.
+
+**No kernel is slower beyond its bounds; the upgrade stands.** Fib (0.969)
+and sort (0.970) are faster with the two sides' ranges apart, at one and
+three pairs too (0.968, 0.971; 0.967, 0.968); the question predicted
+neither, so these are exploratory and not attributed, and fib's twin
+(0.985) leaves its margin small. #327's change to small-block growth moved
+no table kernel. Pinning brought the ranges from 19-31% to 0.03-5.8%;
+string-key, a 23 ms kernel, stays noisy (twin 1.045) and needs a larger
+scale or more pairs where a difference of a few percent matters.
