@@ -1,4 +1,5 @@
-# Temporary: the Whitefoot upgrade's benchmark, the same Halo source built by
+# Temporary: the Whitefoot upgrade's benchmark, the same Halo source (its two
+# respelled float literals in each release's spelling, equal values) built by
 # the old and the new pinned release (research/experiments/halo-bench/RESULTS.md,
 # "Whitefoot wf-f3d081b90a8d upgrade"). The 14900K job runs only for a commit
 # whose message contains [bench], pushed once the runner is confirmed idle.
@@ -29,13 +30,20 @@ jobs:
         run: |
           set -euo pipefail
           make toolchain
+          spell_old() {
+            sed -i 's/7\.378697629483821e19_f64/73786976294.83821e9_f64/' lib/halo/vm/library-libm.wf
+            sed -i 's/1\.8446744073709551e19_f64/18446744073.709551e9_f64/' lib/halo/vm/library-math.wf
+          }
+          spell_new() { git checkout -- lib/halo/vm/library-libm.wf lib/halo/vm/library-math.wf; }
           for release in "$CONTROL" "$EXPERIMENT"; do
             echo "release = $release" > whitefoot.pin
             make compiler
             make toolchain-check
+            if [ "$release" = "$CONTROL" ]; then spell_old; else spell_new; fi
             build/whitefoot/$release/whitefootc --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "build/halo-$release"
             echo "built with $release"
           done
+          spell_new
 
   bench:
     needs: build
@@ -63,8 +71,15 @@ jobs:
           wfc_exp="$PWD/build/whitefoot/$EXPERIMENT/whitefootc"
           sh research/experiments/halo-oracle/fetch-redis.sh "$PWD/build/redis"
           lua="$PWD/build/redis/redis-7.0.15/deps/lua/src/lua"
+          spell_old() {
+            sed -i 's/7\.378697629483821e19_f64/73786976294.83821e9_f64/' lib/halo/vm/library-libm.wf
+            sed -i 's/1\.8446744073709551e19_f64/18446744073.709551e9_f64/' lib/halo/vm/library-math.wf
+          }
+          spell_new() { git checkout -- lib/halo/vm/library-libm.wf lib/halo/vm/library-math.wf; }
+          spell_old
           "$wfc_ctl" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-ctl"
           cp "$out/halo-ctl" "$out/halo-ctl-twin"
+          spell_new
           "$wfc_exp" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-exp"
           {
             echo "branch $(git rev-parse HEAD), control $CONTROL, experiment $EXPERIMENT"
@@ -100,6 +115,7 @@ jobs:
           for sample in 1 2; do
             for side in ctl exp; do
               wfc="$wfc_ctl"; [ "$side" = exp ] && wfc="$wfc_exp"
+              if [ "$side" = ctl ]; then spell_old; else spell_new; fi
               seconds=$( { time ("$wfc" --graph lib/halo/modules.wfg --check-module pkg::vm > "$out/check-$side-$sample.log" 2>&1); } 2>&1 )
               echo "check-module pkg::vm $side sample $sample: $seconds s" | tee -a "$out/check-times.txt"
             done

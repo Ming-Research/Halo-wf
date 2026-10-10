@@ -4855,7 +4855,9 @@ Moving the pin from `wf-01697d2de8a1` (Whitefoot main 01697d2de, v0.112) to
 - #319 (cancellation handles as droppable structs over shared handles,
   v0.119), which Halo does not use.
 
-Halo's sources need only the two literals. The run follows the previous
+Halo's sources need only the two literals. The old release refuses the
+new spelling as the new one refuses the old, so the old build uses the old
+spelling of those two literals, the same binary64 values. The run follows the previous
 upgrades: this branch's source built with both releases, six interleaved
 full-LTO pairs over the seven kernels on the 14900K, a twin of the old build,
 and two `--check-module pkg::vm` samples each.
