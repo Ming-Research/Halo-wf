@@ -7,10 +7,15 @@ Halo's `make check-core` compares the corpus through the `oracle` target;
 recording reference replies remains the job of
 [oracle-reference.yml](../../../.github/workflows/oracle-reference.yml).
 
-There are 108 scripts: 68 `lua-core`, 23 `redis-api`, 6 `apps`, and 11 `libs`.
+There are 123 scripts: 68 `lua-core`, 23 `redis-api`, 6 `apps`, 11 `libs`,
+and 15 `coroutines`.
 The scripts, replies and runner belong here until the oracle is replaced or
 Halo/firn scripting is retired. Each case is consumed by `run.sh`; the table
 below is the index of the observations it protects.
+
+The `coroutines` group has scripts only: its first Redis 7.0.15 recording is
+pending, and Halo has no coroutine library yet. A full comparison requires
+those reference replies and the coroutine implementation.
 
 ## Layout and invocation
 
@@ -163,10 +168,12 @@ reference, not portable-language promises for every case.
   addresses, samples wall time, or returns an expiry countdown. Application
   scripts use a fixed window timestamp and long expiry values (60 seconds).
 
-Eleven cases intentionally return top-level errors, marked by `-- error: true`
-in their script headers: three in `lua-core` and eight in `redis-api`.
+Twelve cases intentionally return top-level errors, marked by `-- error: true`
+in their script headers: three in `lua-core`, eight in `redis-api`, and one
+in `coroutines`.
 Redis 7.0.15 reports the global-write refusal as "Attempt to modify a readonly
-table". No script was dropped; there were no unexpected top-level rejections.
+table". In the recorded groups, no script was dropped and there were no
+unexpected top-level rejections; the coroutine replies remain unrecorded.
 Two complete generations must agree before treating a changed corpus as a
 reproducible reference. Cross-platform differences should be investigated,
 not automatically used to overwrite this baseline.
@@ -181,6 +188,21 @@ not automatically used to overwrite this baseline.
 | apps | [rate-limiter](scripts/apps/rate-limiter.lua) | INCR and first-hit PEXPIRE enforce a limit without clock-valued output. |
 | apps | [redlock-release](scripts/apps/redlock-release.lua) | Lock release deletes only a matching owner and handles a missing lock. |
 | apps | [sliding-window](scripts/apps/sliding-window.lua) | Sorted-set limiter removes old scores and counts a fixed-time window. |
+| coroutines | [argument-errors](scripts/coroutines/argument-errors.lua) | create with a non-function and resume with a non-coroutine raise errors caught by pcall. |
+| coroutines | [budget-long-generator](scripts/coroutines/budget-long-generator.lua) | A loop inside a coroutine and thousands of yields exercise budget suspension and resumption. |
+| coroutines | [errors-in-coroutine](scripts/coroutines/errors-in-coroutine.lua) | resume and inner pcall catch located strings, level-zero errors, identity-preserving tables and Redis command errors; redis.pcall returns replies. |
+| coroutines | [generator-values](scripts/coroutines/generator-values.lua) | create, resume and yield exchange multiple values in both directions, counting nil holes. |
+| coroutines | [nested-resume-depth](scripts/coroutines/nested-resume-depth.lua) | Nested resumes reach the reference's own limit and report the reached depth and caught error text. |
+| coroutines | [redis-call-in-coroutine](scripts/coroutines/redis-call-in-coroutine.lua) | Redis reads and writes inside a coroutine survive yields and target declared keys. |
+| coroutines | [results-as-eval-reply](scripts/coroutines/results-as-eval-reply.lua) | A coroutine's returned values become the script's direct EVAL reply. |
+| coroutines | [resume-state-errors](scripts/coroutines/resume-state-errors.lua) | Resuming dead, running and normal coroutines records failure results and exact messages. |
+| coroutines | [shared-upvalues-across](scripts/coroutines/shared-upvalues-across.lua) | Main and another coroutine read and write a shared closure's upvalue while its creator is suspended and after it dies. |
+| coroutines | [status-all](scripts/coroutines/status-all.lua) | suspended, running, normal and dead statuses accompany running's main-thread nil and coroutine identity. |
+| coroutines | [top-level-error](scripts/coroutines/top-level-error.lua) | An error returned by resume is rethrown as an intentional top-level EVAL error. |
+| coroutines | [wrap-errors](scripts/coroutines/wrap-errors.lua) | wrap exchanges values and propagates coroutine errors to the caller's pcall. |
+| coroutines | [yield-across-resumer-callbacks](scripts/coroutines/yield-across-resumer-callbacks.lua) | Yields across resume called from a resumer's pcall, sort comparator, __index and gsub callback record continuation results. |
+| coroutines | [yield-boundaries](scripts/coroutines/yield-boundaries.lua) | Yield attempts inside five metamethods, a __call handler, pcall, xpcall, sort, gsub, foreach and a generic-for iterator record resume results. |
+| coroutines | [yield-outside](scripts/coroutines/yield-outside.lua) | Yield outside a coroutine raises an error caught by pcall. |
 | libs | [bit-logical](scripts/libs/bit-logical.lua) | bit.band, bor and bxor use signed 32-bit results. |
 | libs | [bit-shifts-hex](scripts/libs/bit-shifts-hex.lua) | Shifts mask counts and tohex formats signed values as hex. |
 | libs | [cjson-arrays-nested](scripts/libs/cjson-arrays-nested.lua) | JSON arrays encode and nested object values decode without relying on object order. |
