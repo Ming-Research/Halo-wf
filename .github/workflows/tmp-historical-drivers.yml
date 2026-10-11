@@ -1,0 +1,47 @@
+# Temporary (Halo-wf#44): compiles the four historical drivers the gate does
+# not build, at this head and at the base, to show the deleted
+# close_cancel_watch calls left them compiling. Removed before the branch is
+# ready.
+name: tmp-historical-drivers
+
+on:
+  push:
+    branches: [claude/halo-cancel-close]
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Install the host toolchain and compiler
+        run: |
+          make toolchain
+          make --eval 'print-wfc: $(WHITEFOOTC) ; @echo $(abspath $(WHITEFOOTC))' print-wfc | tail -1 > /tmp/wfc
+          cat /tmp/wfc
+
+      - name: Build at head, then at base
+        run: |
+          wfc=$(cat /tmp/wfc)
+          build() {
+            label=$1
+            out=/tmp/out-$label
+            mkdir -p $out
+            status=0
+            (cd research/experiments/halo-compile && "$wfc" --graph modules.wfg --entry dump -o $out/compile-dump) || { echo "FAIL $label halo-compile"; status=1; }
+            (cd research/experiments/halo-lex && "$wfc" --graph modules.wfg --entry dump -o $out/lex-dump) || { echo "FAIL $label halo-lex"; status=1; }
+            (cd research/experiments/halo-heap-core && "$wfc" --graph modules.wfg --function pkg::test::main -o $out/heap-core) || { echo "FAIL $label halo-heap-core"; status=1; }
+            "$wfc" research/experiments/halo-heap/heap.wf -o $out/heap || { echo "FAIL $label halo-heap"; status=1; }
+            echo "RESULT $label status=$status"
+            return $status
+          }
+          set +e
+          build head; head_status=$?
+          git checkout -q 15709ec -- research/experiments
+          build base; base_status=$?
+          echo "head=$head_status base=$base_status"
+          exit $head_status
