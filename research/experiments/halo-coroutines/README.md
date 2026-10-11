@@ -51,13 +51,13 @@ their optimization permissions. CI exercises missing/duplicate-symbol
 controls before using this transformation and refuses missing machine-code
 symbols after disassembly.
 
-The ordinary binaries use `--full-lto`. The inspection binaries use Clang
-`-O2` on the complete emitted module; `--full-lto` cannot be combined with
-`--emit-llvm`. Standalone emitted IR uses the pin's fallback floor rather
-than the ordinary driver's guarded-stack runtime. Keep that distinction when
-interpreting inspection results: these binaries expose helper boundaries,
-not production timing. Both ordinary and retained binaries run their small
-semantic checks in CI. No Whitefoot source or runtime is vendored here.
+The ordinary binaries use `--full-lto` and run their small semantic checks in
+CI. The inspection compiles the complete retained module to `retained.o`
+with Clang `-O2 -c -x ir`, then disassembles it with `llvm-objdump -d`;
+`--full-lto` cannot be combined with `--emit-llvm`. Emitted IR needs the
+Whitefoot runtime to link, so retained inspection stops at the object and
+does not run a retained binary. These objects expose helper boundaries,
+not production timing. No Whitefoot source or runtime is vendored here.
 
 Reproduce on a CI runner from the repository root:
 
@@ -71,17 +71,17 @@ python3 -B research/experiments/halo-coroutines/inspect.py \
   --objdump "/usr/bin/llvm-objdump-$major" --out build/coroutine-witnesses
 ```
 
-The artifact keeps `ordinary`, `raw.ll`, `retained.ll`, `retained`, compiler
+The artifact keeps `ordinary`, `raw.ll`, `retained.ll`, `retained.o`, compiler
 diagnostics and `disassemble.stdout` under each codegen entry. `results.json`
-maps the studied names to their actual symbols. Inspect a retained binary
+maps the studied names to their actual symbols. Inspect a retained object
 again with:
 
 ```sh
-llvm-objdump -d path/to/retained
+llvm-objdump -d path/to/retained.o
 ```
 
 Read the named function and any dispatch-arm functions it transfers to. The
-script retains full disassembly, the complete binary and raw IR to follow
+script retains full disassembly, the complete object and raw IR to follow
 those arm transfers. Record
 actual instructions and diagnostics before filing a Whitefoot gap; none is
 demonstrated merely by this setup.

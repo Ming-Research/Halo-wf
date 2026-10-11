@@ -97,12 +97,18 @@ fn dispatch_exchange(code: &Box<Slots<Cell>>, consts: &Box<Slots<u64>>, stack: &
 
 fn main() -> status: std::process::ExitStatus pure {
   let code = box_slots_new::<Cell>(capacity: 6_u64);
-  place_back(window: &code.inner, value: Cell::Hot());
-  place_back(window: &code.inner, value: Cell::Switch());
-  place_back(window: &code.inner, value: Cell::Done());
-  place_back(window: &code.inner, value: Cell::Hot());
-  place_back(window: &code.inner, value: Cell::Switch());
-  place_back(window: &code.inner, value: Cell::Done());
+  let active_hot = Cell::Hot();
+  place_back(window: &code.inner, value: active_hot);
+  let active_switch = Cell::Switch();
+  place_back(window: &code.inner, value: active_switch);
+  let active_done = Cell::Done();
+  place_back(window: &code.inner, value: active_done);
+  let saved_hot = Cell::Hot();
+  place_back(window: &code.inner, value: saved_hot);
+  let saved_switch = Cell::Switch();
+  place_back(window: &code.inner, value: saved_switch);
+  let saved_done = Cell::Done();
+  place_back(window: &code.inner, value: saved_done);
   let consts = box_slots_new::<u64>(capacity: 257_u64);
   let stack = box_slots_new::<u64>(capacity: 256_u64);
   let saved = box_slots_new::<u64>(capacity: 257_u64);

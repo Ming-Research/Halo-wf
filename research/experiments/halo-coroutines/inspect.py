@@ -127,16 +127,15 @@ def main():
             save()
             failed = True
             continue
-        # --emit-llvm is a standalone program at the pin. This inspection link
-        # uses its fallback floor, not the normal driver's guarded-stack runtime.
-        if not run(record, 'retained-link', ['/usr/bin/clang', '-O2', '-Wno-override-module',
-                   '-x', 'ir', directory / 'retained.ll', '-lm', '-pthread',
-                   '-o', directory / 'retained'], directory):
+        # Emitted IR needs the Whitefoot runtime to link. Inspect an object;
+        # the ordinary binary above runs the semantic checks with that runtime.
+        if not run(record, 'retained-object', ['/usr/bin/clang', '-O2', '-c', '-Wno-override-module',
+                   '-x', 'ir', directory / 'retained.ll',
+                   '-o', directory / 'retained.o'], directory):
             failed = True
             continue
-        failed |= not run(record, 'retained-run', [directory / 'retained'], directory)
         # Include split dispatch arms and ABI body helpers in the artifact.
-        disassembled = run(record, 'disassemble', [objdump, '-d', directory / 'retained'], directory)
+        disassembled = run(record, 'disassemble', [objdump, '-d', directory / 'retained.o'], directory)
         failed |= not disassembled
         if disassembled:
             assembly = (directory / 'disassemble.stdout').read_text()
