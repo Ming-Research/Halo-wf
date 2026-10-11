@@ -1,0 +1,79 @@
+// Nested boxed byte-copy witness for wf-78223721f77d vs wf-7062f3ac4ac7.
+// In copy_into's byte loop, compare hoisted source/header and destination
+// length/capacity loads with loads repeated after every place_back store.
+// Runtime argument count selects the copy order and repetition count.
+alias ExitStatus = std::process::ExitStatus;
+alias exit_status = std::process::exit_status;
+alias Inputs = std::process::Inputs;
+
+struct Item {
+  bytes: Box<Slots<u8>>;
+}
+
+struct Holder {
+  items: Box<Slots<Item>>;
+}
+
+fn copy_into(src: &Holder, dst: &Box<Slots<u8>>, index: u64) -> r: unit reads(src), writes(dst) {
+  if index < src^.items.inner.len {
+    let count = src^.items.inner[index].bytes.inner.len;
+    for (offset in 0_u64..count) {
+      if offset < src^.items.inner[index].bytes.inner.len {
+        if dst^.inner.len < dst^.inner.cap {
+          let byte = src^.items.inner[index].bytes.inner[offset];
+          place_back(window: &dst^.inner, value: byte);
+        }
+      }
+    }
+  }
+  return unit;
+}
+
+fn main(inputs: Inputs) -> status: ExitStatus pure waits {
+  let Inputs(args: args, cwd: cwd, stdout: output, stderr: errors, handles: factory, stdin: input, clock: clock, wall_clock: wall_clock, ..) = move inputs;
+  let argc = std::text::args_count(args: &args);
+  let items = box_slots_new::<Item>(capacity: 3_u64);
+  for (i in 0_u64..3_u64) {
+    let length = i +sat 4_u64;
+    let bytes = box_slots_new::<u8>(capacity: length);
+    let tag = cvt.wrap::<u64, u8>(i);
+    let byte = tag +wrap 97_u8;
+    for (j in 0_u64..length) {
+      if bytes.inner.len < bytes.inner.cap {
+        place_back(window: &bytes.inner, value: byte);
+      }
+    }
+    let item = Item(bytes: move bytes);
+    if items.inner.len < items.inner.cap {
+      place_back(window: &items.inner, value: move item);
+    }
+  }
+  let src = Holder(items: move items);
+  let extra = argc % 1000_u64;
+  let rounds = extra +sat 10000_u64;
+  let expected = rounds *sat 15_u64;
+  let dst = box_slots_new::<u8>(capacity: expected);
+  let first = argc % 3_u64;
+  let second = first +sat 1_u64;
+  let third = first +sat 2_u64;
+  let next = second % 3_u64;
+  let last = third % 3_u64;
+  for (round in 0_u64..rounds) {
+    copy_into(src: &src, dst: &dst, index: first);
+    copy_into(src: &src, dst: &dst, index: next);
+    copy_into(src: &src, dst: &dst, index: last);
+  }
+  let checksum = 0_u64;
+  for (offset in 0_u64..dst.inner.len) {
+    let byte = cvt::<u8, u64>(dst.inner[offset]);
+    set checksum = checksum +wrap byte;
+  }
+  let expected_checksum = rounds *sat 1472_u64;
+  if checksum != expected_checksum {
+    return exit_status(code: 2_u8);
+  }
+  if dst.inner.len == expected {
+    return exit_status(code: 0_u8);
+  }
+  return exit_status(code: 1_u8);
+}
