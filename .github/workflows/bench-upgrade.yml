@@ -1,0 +1,125 @@
+# Temporary: the Whitefoot upgrade's benchmark, the same Halo source built by
+# the old and the new pinned release (research/experiments/halo-bench/RESULTS.md,
+# "Whitefoot wf-7062f3ac4ac7 upgrade"), with blocked store-forward counts on
+# fib and integer-table. The 14900K job runs only for a commit whose message
+# contains [bench], pushed once the runner is confirmed idle. Removed before
+# the pull request is marked ready.
+name: bench-upgrade
+
+on:
+  push:
+    branches: [claude/halo-pin-7062f3a]
+
+env:
+  CONTROL: wf-78223721f77d
+  EXPERIMENT: wf-7062f3ac4ac7
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+      - name: Build the bench program with both releases
+        run: |
+          set -euo pipefail
+          make toolchain
+          for release in "$CONTROL" "$EXPERIMENT"; do
+            echo "release = $release" > whitefoot.pin
+            make compiler
+            make toolchain-check
+            build/whitefoot/$release/whitefootc --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "build/halo-$release"
+            echo "built with $release"
+          done
+
+  bench:
+    needs: build
+    if: contains(github.event.head_commit.message, '[bench]')
+    runs-on: [self-hosted, 14900k]
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+      - name: Build with both releases and compare
+        run: |
+          set -euo pipefail
+          out="$PWD/build/bench-out"
+          rm -rf "$out"; mkdir -p "$out"
+          cp whitefoot.pin "$out/whitefoot.pin.orig"
+          for release in "$CONTROL" "$EXPERIMENT"; do
+            echo "release = $release" > whitefoot.pin
+            make compiler
+            make toolchain-check
+          done
+          cp "$out/whitefoot.pin.orig" whitefoot.pin
+          wfc_ctl="$PWD/build/whitefoot/$CONTROL/whitefootc"
+          wfc_exp="$PWD/build/whitefoot/$EXPERIMENT/whitefootc"
+          sh research/experiments/halo-oracle/fetch-redis.sh "$PWD/build/redis"
+          lua="$PWD/build/redis/redis-7.0.15/deps/lua/src/lua"
+          # Same source on both sides; only the compiler differs.
+          "$wfc_ctl" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-ctl"
+          cp "$out/halo-ctl" "$out/halo-ctl-twin"
+          "$wfc_exp" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-exp"
+          {
+            echo "source $(git rev-parse HEAD), control $CONTROL, experiment $EXPERIMENT"
+            sha256sum "$wfc_ctl" "$wfc_exp" "$out"/halo-*
+            /usr/bin/clang --version | head -n 1
+          } | tee "$out/manifest.txt"
+          # The 14900K is a hybrid part (P-cores CPU 0-15, E-cores 16-31): run
+          # every timed process on one ordinary P-core thread, CPU 2, and
+          # record the topology and frequency policy.
+          lscpu -e=CPU,CORE,MAXMHZ > "$out/lscpu.txt" 2>&1 || true
+          cat /sys/devices/system/cpu/cpufreq/policy*/scaling_governor 2>/dev/null | sort | uniq -c > "$out/governor.txt" || true
+          pin="taskset -c 2"
+          echo "timed processes pinned with: $pin" | tee -a "$out/manifest.txt"
+          cat "$out/governor.txt" | tee -a "$out/manifest.txt"
+          # Blocked store forwards (LD_BLOCKS.STORE_FORWARD, event 0x03 umask
+          # 0x82 on the P-cores) and cycles, three runs per side, on the two
+          # kernels whose profiles showed the stalls.
+          for kernel in fib integer-table; do
+            for side in ctl exp; do
+              for rep in 1 2 3; do
+                $pin perf stat -x, -e cpu_core/cycles/,cpu_core/event=0x03,umask=0x82,name=ld_blocks_store_forward/ \
+                  -o "$out/perf-$kernel-$side-$rep.csv" "$out/halo-$side" \
+                  < research/experiments/halo-bench/kernels/$kernel.lua > /dev/null 2>> "$out/perf-$kernel-$side-$rep.err"
+                echo "== perf $kernel $side $rep"; grep -v '^#' "$out/perf-$kernel-$side-$rep.csv" | grep -v '^$'
+              done
+            done
+          done
+          kernels=fib,loop,integer-table,string-key,concat,sort,binary-trees
+          compare() {
+            label=$1; before=$2; after=$3
+            for runs in 1 3 6; do
+              $pin python3 -B research/experiments/halo-bench/run.py --lua "$lua" \
+                --before-binary "$before" --binary "$after" --kernels "$kernels" \
+                --scale binary-trees=14 --runs "$runs" --out "$out/$label-$runs.json" --compiler "$wfc_ctl" \
+                > "$out/$label-$runs.log" 2>&1 || { cat "$out/$label-$runs.log"; exit 1; }
+              echo "== $label, $runs pair(s)"
+              grep 'ratio=' "$out/$label-$runs.log" | sed 's/ before=.*//'
+            done
+          }
+          compare twin "$out/halo-ctl" "$out/halo-ctl-twin"
+          compare upgrade "$out/halo-ctl" "$out/halo-exp"
+          TIMEFORMAT=%R
+          for sample in 1 2; do
+            for side in ctl exp; do
+              wfc="$wfc_ctl"; [ "$side" = exp ] && wfc="$wfc_exp"
+              seconds=$( { time ($pin "$wfc" --graph lib/halo/modules.wfg --check-module pkg::vm > "$out/check-$side-$sample.log" 2>&1); } 2>&1 )
+              echo "check-module pkg::vm $side sample $sample: $seconds s" | tee -a "$out/check-times.txt"
+            done
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: halo-bench-upgrade-7062f3a
+          path: build/bench-out/
+          retention-days: 30
