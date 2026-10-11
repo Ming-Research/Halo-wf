@@ -37,6 +37,15 @@ jobs:
             make toolchain-check
             build/whitefoot/$release/whitefootc --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "build/halo-$release"
             echo "built with $release"
+            build/whitefoot/$release/whitefootc --full-lto research/investigations/halo/witnesses/w_copy_hoist.wf -o "build/witness-$release"
+            echo "== witness $release"
+            # Full LTO may inline copy_into; then its loop is in main's body.
+            symbols=$(nm --defined-only "build/witness-$release" | awk '/copy_into/ {print $3}')
+            [ -n "$symbols" ] || symbols=$(nm --defined-only "build/witness-$release" | awk '/main_body/ {print $3}')
+            echo "symbols: $symbols"
+            for symbol in $symbols; do
+              objdump -d --no-show-raw-insn -M intel --disassemble="$symbol" "build/witness-$release" | sed -n '1,120p'
+            done
           done
 
   bench:
