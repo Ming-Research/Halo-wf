@@ -1,7 +1,7 @@
 # Temporary, on the experiment branch only: Halo-wf's acceptance test for
 # Whitefoot#357 (status-board item halo-req-concat-codegen): the same Halo
 # source built by wf-78223721f77d and the experiment release
-# wf-exp-4753d28fb4ae, and wf-7062f3ac4ac7 as a reference, six interleaved
+# wf-exp-a92354b8c160, and wf-7062f3ac4ac7 as a reference, six interleaved
 # pairs over the seven kernels with a twin, plus blocked store-forward counts on fib and integer-table. The 14900K
 # job runs only for a commit whose message contains [bench]. This branch is
 # never merged.
@@ -13,7 +13,7 @@ on:
 
 env:
   CONTROL: wf-78223721f77d
-  EXPERIMENT: wf-exp-4753d28fb4ae
+  EXPERIMENT: wf-exp-a92354b8c160
   REFERENCE: wf-7062f3ac4ac7
 
 defaults:
@@ -125,6 +125,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: halo-bench-exp-4753d2
+          name: halo-bench-exp-a92354
           path: build/bench-out/
           retention-days: 30
