@@ -1,7 +1,3 @@
-// Nested boxed byte-copy witness for wf-78223721f77d vs wf-7062f3ac4ac7.
-// In copy_into's byte loop, compare hoisted source/header and destination
-// length/capacity loads with loads repeated after every place_back store.
-// Runtime argument count selects the copy order and repetition count.
 alias ExitStatus = std::process::ExitStatus;
 alias exit_status = std::process::exit_status;
 alias Inputs = std::process::Inputs;
@@ -15,6 +11,7 @@ struct Holder {
 }
 
 fn copy_into(src: &Holder, dst: &Box<Slots<u8>>, index: u64) -> r: unit reads(src), writes(dst) {
+  doc "Copies one nested boxed byte window into another with the guarded per-byte loop of Halo concat_batch_copy; compare whether the source pointer, source length and destination length and capacity stay in registers across the loop or are reloaded after every place_back store.";
   if index < src^.items.inner.len {
     let count = src^.items.inner[index].bytes.inner.len;
     for (offset in 0_u64..count) {
