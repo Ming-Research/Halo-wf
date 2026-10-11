@@ -5123,3 +5123,38 @@ load, is a code-generation choice of the compiler, so it is recorded as a
 Whitefoot gap for the loopmatch session (status-board item
 lm-bl-frame-store-forward) with this evidence, rather than worked around in
 Halo's source; the saving is not measured.
+
+## Whitefoot wf-7062f3ac4ac7 upgrade
+
+### Question, recorded before it runs
+
+The pin moves from `wf-78223721f77d` (Whitefoot main `78223721f`,
+specification v0.121) to `wf-7062f3ac4ac7` (main `7062f3ac4`, v0.127). In
+between: in-place reads of parameters by functions that return through a
+destination pointer, and copies of small structs and tagged unions split at
+their layout's field boundaries (Whitefoot#345, the gap the section above
+recorded); an empty runtime window that allocates nothing (v0.125), which
+reaches every empty table part binary-trees creates; a `swap` of window
+contents refused (v0.124), which Halo does not use, since it exchanges
+owning `Box`es; whole-value reads of a const (v0.122), frozen objects
+(v0.123), copy destructuring and the prelude's `release` (v0.127), which
+Halo does not use and whose name it does not declare. The source is
+unchanged, so both releases build the same source.
+
+Comparison, on the 14900K with every timed process on CPU 2: one, three and
+six interleaved full-LTO pairs over the seven kernels (binary-trees at
+depth 14), with a twin of the old build, and two `--check-module pkg::vm`
+samples each; and three `perf stat` runs per side of fib and integer-table
+counting cycles and blocked store forwards (`LD_BLOCKS.STORE_FORWARD`,
+event 0x03, umask 0x82, on the P-cores).
+
+Expected: no kernel slower beyond its larger range and the twin's
+difference; a kernel slower beyond that stops the upgrade for an
+attribution. The stalls are gone if, on each of fib and integer-table, the
+largest blocked-store-forward count of the new build is below the smallest
+of the old. Whitefoot's session reported fib at 0.955 and integer-table at
+0.858 on its own comparison, and binary-trees should gain from the empty
+window; these are predictions, and a smaller or no gain is reported as
+measured. Whitefoot's session also reported that LLVM still merges two
+adjacent 8-byte `Frame` fields into one 16-byte load (lm-bl-frame-width-lowering),
+so fib's count may fall without reaching zero.
