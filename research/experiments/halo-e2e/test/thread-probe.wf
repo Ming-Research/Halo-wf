@@ -676,5 +676,8 @@ fn thread_smoke() -> status: ExitStatus pure {
   if code == 0_u8 {
     set code = thread_probe();
   }
+  if code == 0_u8 {
+    set code = upvalue_probe();
+  }
   return std::process::exit_status(code: code);
 }

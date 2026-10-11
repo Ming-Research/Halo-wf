@@ -551,10 +551,15 @@ fn read_upvalue(vm: &Vm, stack: &Box<Slots<Value>>, h: u32) -> r: Value reads(vm
   let i = cvt::<u32, u64>(h);
   if i < vm^.heap.upvalues.inner.len {
     match vm^.heap.upvalues.inner[i].payload {
-      Open(slot: s) => {
+      Open(owner: capture_owner, slot: s) => {
+        let owner_handle = capture_owner^;
         let j = s^;
-        if j < stack^.inner.len {
-          return stack^.inner[j];
+        if owner_handle == vm^.current_thread {
+          if j < stack^.inner.len {
+            return stack^.inner[j];
+          }
+        } else {
+          return pkg::heap::thread_slot(heap: &vm^.heap, owner: owner_handle, slot: j);
         }
       }
       Closed(v: bound_v_3) => {
@@ -571,10 +576,15 @@ fn write_upvalue(vm: &Vm, stack: &Box<Slots<Value>>, h: u32, v: Value) -> r: uni
   let i = cvt::<u32, u64>(h);
   if i < vm^.heap.upvalues.inner.len {
     match vm^.heap.upvalues.inner[i].payload {
-      Open(slot: s) => {
+      Open(owner: capture_owner, slot: s) => {
+        let owner_handle = capture_owner^;
         let j = s^;
-        if j < stack^.inner.len {
-          set stack^.inner[j] = v;
+        if owner_handle == vm^.current_thread {
+          if j < stack^.inner.len {
+            set stack^.inner[j] = v;
+          }
+        } else {
+          pkg::heap::set_thread_slot(heap: &vm^.heap, owner: owner_handle, slot: j, v: v);
         }
       }
       Closed(..) => {
@@ -592,24 +602,28 @@ fn capture(vm: &Vm, slot: u64) -> r: Option<u32> writes(vm) {
       let h = vm^.open_upvalues.inner[i];
       let j = cvt::<u32, u64>(h);
       if j < vm^.heap.upvalues.inner.len {
-        match vm^.heap.upvalues.inner[j].payload {
-          Open(slot: s) => {
-            if s^ == slot {
-              return Some<u32>(value: h);
-            }
-            if s^ < slot {
-              if i < at {
-                set at = i;
+        if vm^.heap.upvalues.inner[j].live {
+          match vm^.heap.upvalues.inner[j].payload {
+            Open(owner: capture_owner, slot: s) => {
+              if capture_owner^ == vm^.current_thread {
+                if s^ == slot {
+                  return Some<u32>(value: h);
+                }
+                if s^ < slot {
+                  if i < at {
+                    set at = i;
+                  }
+                }
               }
             }
-          }
-          Closed(..) => {
+            Closed(..) => {
+            }
           }
         }
       }
     }
   }
-  let uv = Upval::Open(slot: slot);
+  let uv = Upval::Open(owner: vm^.current_thread, slot: slot);
   match pkg::heap::new_upvalue(heap: &vm^.heap, value: uv) {
     None() => {
       return None<u32>();
@@ -641,19 +655,23 @@ fn close_upvalues(vm: &Vm, stack: &Box<Slots<Value>>, level: u64) -> r: unit rea
     let h = vm^.open_upvalues.inner[0_u64];
     let i = cvt::<u32, u64>(h);
     if i < vm^.heap.upvalues.inner.len {
-      match vm^.heap.upvalues.inner[i].payload {
-        Open(slot: s) => {
-          let j = s^;
-          if j < level {
-            break;
+      if vm^.heap.upvalues.inner[i].live {
+        match vm^.heap.upvalues.inner[i].payload {
+          Open(owner: capture_owner, slot: s) => {
+            if capture_owner^ == vm^.current_thread {
+              let j = s^;
+              if j < level {
+                break;
+              }
+              let v = Value::Nil();
+              if j < stack^.inner.len {
+                set v = stack^.inner[j];
+              }
+              set vm^.heap.upvalues.inner[i].payload = Upval::Closed(v: v);
+            }
           }
-          let v = Value::Nil();
-          if j < stack^.inner.len {
-            set v = stack^.inner[j];
+          Closed(..) => {
           }
-          set vm^.heap.upvalues.inner[i].payload = Upval::Closed(v: v);
-        }
-        Closed(..) => {
         }
       }
     }

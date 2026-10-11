@@ -6,3 +6,5 @@ public fn main(inputs: Inputs) -> status: ExitStatus pure waits doc "Runs one or
 public fn smoke() -> status: ExitStatus pure doc "Checks embedding lifecycle, budget continuation, host outcomes and collector root retention and release.";
 
 public fn thread_smoke() -> status: ExitStatus pure doc "Runs isolated thread payload edges, allocation, main identity and limit observations for the missing-edge controls.";
+
+public fn upvalue_smoke() -> status: ExitStatus pure doc "Runs isolated owner-qualified capture lifetime and stack-access observations for the missing-edge controls.";

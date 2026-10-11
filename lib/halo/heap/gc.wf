@@ -94,7 +94,7 @@ fn gc_mark(heap: &Heap, v: Value) -> r: unit writes(heap) {
 }
 
 fn gc_mark_upvalue(heap: &Heap, h: u32) -> r: unit writes(heap) {
-  doc "An open upvalue's value lives on the stack, which the VM marks as a root.";
+  doc "An escaped open capture retains only its captured value, not its inactive owner or unrelated stack slots. The VM marks installed active-stack values.";
   let epoch = heap^.epoch;
   let i = cvt::<u32, u64>(h);
   if i < heap^.upvalues.inner.len {
@@ -106,7 +106,9 @@ fn gc_mark_upvalue(heap: &Heap, h: u32) -> r: unit writes(heap) {
           Closed(v: held) => {
             gc_mark(heap: heap, v: held);
           }
-          Open(slot: s) => {
+          Open(owner: capture_owner, slot: capture_slot) => {
+            let captured = thread_slot(heap: heap, owner: capture_owner, slot: capture_slot);
+            gc_mark(heap: heap, v: captured);
           }
         }
       }
@@ -382,8 +384,24 @@ fn collection_threshold(live: u64, pause: u64) -> r: u64 pure {
 }
 
 fn gc_sweep(heap: &Heap) -> r: u64 writes(heap) {
-  doc "Counts each visited slot and each live or freed payload during the existing sweep, then publishes a completed snapshot; free_string also removes the weak intern entry.";
+  doc "Closes dead owners' captures before freeing any slab payload, so escaped captures cannot retain open references into freed or reused storage. Counts each visited slot and each live or freed payload, then publishes a completed snapshot; free_string also removes the weak intern entry.";
   let epoch = heap^.epoch;
+  let ti = 0_u64;
+  loop {
+    if ti < heap^.threads.inner.len {
+      if heap^.threads.inner[ti].live {
+        if heap^.threads.inner[ti].mark != epoch {
+          if ti < 4294967296_u64 {
+            let owner = cvt::<u64, u32>(ti);
+            close_thread_upvalues(heap: heap, h: owner);
+          }
+        }
+      }
+      set ti = ti +wrap 1_u64;
+    } else {
+      break;
+    }
+  }
   let freed = 0_u64;
   let tables = collection_kind_empty();
   let closures = collection_kind_empty();

@@ -18,8 +18,9 @@ cp -R "$root/research/experiments/halo-e2e" "$tree/research/experiments/halo-e2e
 
 build() {
   label=$1
+  entry=$2
   started=$(date +%s)
-  (cd "$tree/research/experiments/halo-e2e" && "$wfc" --graph modules.wfg --entry thread_roots \
+  (cd "$tree/research/experiments/halo-e2e" && "$wfc" --graph modules.wfg --entry "$entry" \
     --cache "$out/cache" --fragments function -o "$out/test") > "$out/build-$label.log" 2>&1
   code=$?
   ended=$(date +%s)
@@ -27,7 +28,7 @@ build() {
   if [ "$code" != 0 ]; then cat "$out/build-$label.log"; return 1; fi
 }
 
-if ! build baseline; then exit 1; fi
+if ! build baseline thread_roots; then exit 1; fi
 timeout 60 "$out/test" > "$out/baseline.log" 2>&1
 code=$?
 echo "thread roots baseline: exit $code (want 0)"
@@ -35,14 +36,15 @@ if [ "$code" != 0 ]; then cat "$out/baseline.log"; exit 1; fi
 
 status=0
 selected=0
-while IFS='|' read -r label want file line; do
+while IFS='|' read -r label want entry file line; do
   case ",$selection," in
     *,all,*|*,"$label",*) ;;
     *) continue ;;
   esac
   selected=$((selected + 1))
-  # Reset both candidate files so each build contains exactly one omission.
+  # Reset all candidate files so each build contains exactly one omission.
   cp "$root/lib/halo/heap/gc.wf" "$tree/lib/halo/heap/gc.wf"
+  cp "$root/lib/halo/heap/threads.wf" "$tree/lib/halo/heap/threads.wf"
   cp "$root/lib/halo/vm/collect.wf" "$tree/lib/halo/vm/collect.wf"
   source=$root/$file
   target=$tree/$file
@@ -53,7 +55,7 @@ while IFS='|' read -r label want file line; do
     status=1
     continue
   fi
-  if ! build "$label"; then status=1; continue; fi
+  if ! build "$label" "$entry"; then status=1; continue; fi
   timeout 60 "$out/test" > "$out/$label.log" 2>&1
   code=$?
   echo "thread roots $label: exit $code (want isolated observation $want)"
@@ -61,24 +63,28 @@ while IFS='|' read -r label want file line; do
   # count as detecting the omitted edge.
   if [ "$code" != "$want" ]; then status=1; cat "$out/$label.log"; fi
 done <<'EDGES'
-thread|221|lib/halo/heap/gc.wf|mark_thread_contents(heap: heap, ti: ti);
-stack|236|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: stack_value);
-frame|221|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: frame_function);
-open-list|222|lib/halo/heap/gc.wf|gc_mark_upvalue(heap: heap, h: upvalue);
-library-table|223|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: context.table);
-library-comparator|224|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: context.comparator);
-library-error|225|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: context.saved_error);
-library-key|226|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: context.foreach_key);
-library-frame|227|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: library_function);
-sort-a|228|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: frame.a);
-sort-b|229|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: frame.b);
-sort-pivot|230|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: frame.pivot);
-pattern-source|231|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: source);
-pattern-pattern|232|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: pattern);
-pattern-replacement|233|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: replacement);
-error|234|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: error);
-stopped|235|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: stopped_value);
-main|213|lib/halo/vm/collect.wf|pkg::heap::gc_mark(heap: &vm^.heap, v: main);
+thread|221|thread_roots|lib/halo/heap/gc.wf|mark_thread_contents(heap: heap, ti: ti);
+stack|236|thread_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: stack_value);
+frame|221|thread_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: frame_function);
+open-list|222|thread_roots|lib/halo/heap/gc.wf|gc_mark_upvalue(heap: heap, h: upvalue);
+library-table|223|thread_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: context.table);
+library-comparator|224|thread_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: context.comparator);
+library-error|225|thread_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: context.saved_error);
+library-key|226|thread_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: context.foreach_key);
+library-frame|227|thread_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: library_function);
+sort-a|228|thread_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: frame.a);
+sort-b|229|thread_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: frame.b);
+sort-pivot|230|thread_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: frame.pivot);
+pattern-source|231|thread_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: source);
+pattern-pattern|232|thread_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: pattern);
+pattern-replacement|233|thread_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: replacement);
+error|234|thread_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: error);
+stopped|235|thread_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: stopped_value);
+main|213|thread_roots|lib/halo/vm/collect.wf|pkg::heap::gc_mark(heap: &vm^.heap, v: main);
+inactive-open-list|240|upvalue_roots|lib/halo/heap/gc.wf|gc_mark_upvalue(heap: heap, h: upvalue);
+captured-value|241|upvalue_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: captured);
+owner-close|242|upvalue_roots|lib/halo/heap/threads.wf|set heap^.upvalues.inner[ui].payload = Upval::Closed(v: held);
+explicit-close|243|upvalue_roots|lib/halo/heap/threads.wf|close_thread_upvalues(heap: heap, h: h);
 EDGES
 if [ "$selected" = 0 ]; then echo "thread roots: selection names no edge"; exit 1; fi
 exit "$status"

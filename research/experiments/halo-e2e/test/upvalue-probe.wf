@@ -1,0 +1,664 @@
+alias Value = halo::value::Value;
+alias UpProbeCell = halo::value::Cell;
+alias UpProbeProto = halo::value::Proto;
+alias UpProbeUpval = halo::heap::Upval;
+alias UpProbeHeap = halo::heap::Heap;
+alias UpProbeFrame = halo::execution::Frame;
+alias Vm = halo::vm::Vm;
+alias no_handle = halo::heap::no_handle;
+
+fn up_probe_number(value: Value, expected: f64) -> r: Bool pure {
+  match halo::value::num_of(v: value) {
+    Is(x: actual) => {
+      return feq(actual, expected);
+    }
+    Not() => {
+      return False();
+    }
+  }
+}
+
+fn up_probe_same(a: Value, b: Value) -> r: Bool pure {
+  match a {
+    Nil() => {
+      match b {
+        Nil() => {
+          return True();
+        }
+        False() => {
+        }
+        True() => {
+        }
+        Num(..) => {
+        }
+        Str(..) => {
+        }
+        Tab(..) => {
+        }
+        Fun(..) => {
+        }
+        Builtin(..) => {
+        }
+        Thread(..) => {
+        }
+      }
+    }
+    Num(n: expected_number) => {
+      return up_probe_number(value: b, expected: expected_number);
+    }
+    Str(h: expected_handle) => {
+      match halo::value::str_of(v: b) {
+        Handle(h: actual_handle) => {
+          return actual_handle == expected_handle;
+        }
+        NoHandle() => {
+        }
+      }
+    }
+    False() => {
+    }
+    True() => {
+    }
+    Tab(..) => {
+    }
+    Fun(..) => {
+    }
+    Builtin(..) => {
+    }
+    Thread(..) => {
+    }
+  }
+  return False();
+}
+
+fn up_probe_fun(value: Value) -> r: u32 pure {
+  match value {
+    Fun(h: handle) => {
+      return handle;
+    }
+    Nil() => {
+    }
+    False() => {
+    }
+    True() => {
+    }
+    Num(..) => {
+    }
+    Str(..) => {
+    }
+    Tab(..) => {
+    }
+    Builtin(..) => {
+    }
+    Thread(..) => {
+    }
+  }
+  return no_handle;
+}
+
+fn up_probe_handle(heap: &UpProbeHeap, owner: u32, slot: u64) -> r: u32 writes(heap) {
+  let payload = UpProbeUpval::Open(owner: owner, slot: slot);
+  match halo::heap::alloc_upvalue(heap: heap, payload: payload) {
+    Some(value: handle) => {
+      return handle;
+    }
+    None() => {
+      return no_handle;
+    }
+  }
+}
+
+fn up_probe_thread(heap: &UpProbeHeap, parked: Bool, first: Value, second: Value) -> r: u32 writes(heap) {
+  let payload = halo::execution::empty();
+  let saved = box_slots_new::<Value>(capacity: 2_u64);
+  place_back(window: &saved.inner, value: first);
+  place_back(window: &saved.inner, value: second);
+  if parked {
+    set payload.stopped_stack = move saved;
+    set payload.suspended = True();
+  } else {
+    set payload.stack = move saved;
+  }
+  match halo::heap::alloc_thread(heap: heap, payload: move payload) {
+    Some(value: handle) => {
+      return handle;
+    }
+    None() => {
+      return no_handle;
+    }
+  }
+}
+
+fn up_probe_attach(heap: &UpProbeHeap, owner: u32, capture: u32) -> r: Bool writes(heap) {
+  let index = cvt::<u32, u64>(owner);
+  if index < heap^.threads.inner.len {
+    let handles = box_slots_new::<u32>(capacity: 1_u64);
+    place_back(window: &handles.inner, value: capture);
+    set heap^.threads.inner[index].payload.open_upvalues = move handles;
+    return halo::heap::refresh_thread_storage(heap: heap, h: owner);
+  }
+  return False();
+}
+
+fn up_probe_closed(heap: &UpProbeHeap, capture: u32, expected: Value) -> r: Bool reads(heap) {
+  let index = cvt::<u32, u64>(capture);
+  if index < heap^.upvalues.inner.len {
+    if heap^.upvalues.inner[index].live {
+      match heap^.upvalues.inner[index].payload {
+        Open(..) => {
+          return False();
+        }
+        Closed(v: observed) => {
+          return up_probe_same(a: observed^, b: expected);
+        }
+      }
+    }
+  }
+  return False();
+}
+
+fn up_probe_gc(escaped: Bool, parked: Bool) -> r: u8 pure {
+  doc "A captured slot lies outside every live stack window. Rooting only the thread tests its open-list edge (240); rooting only its closure tests captured-value marking (241), owner closing (242), and absence of owner or unrelated-stack retention (244). Removing the final root must reclaim all cells (245).";
+  let heap = halo::heap::heap_new(limit: 0_u64);
+  let target = halo::heap::intern(heap: &heap, bytes: &thread_edge_target[0_u64..4_u64]);
+  let garbage = halo::heap::intern(heap: &heap, bytes: &thread_edge_garbage[0_u64..4_u64]);
+  let owner = up_probe_thread(heap: &heap, parked: parked, first: garbage, second: target);
+  if owner == no_handle {
+    return 240_u8;
+  }
+  let owner_index = cvt::<u32, u64>(owner);
+  if owner_index < heap.threads.inner.len {
+    let frames = box_slots_new::<UpProbeFrame>(capacity: 1_u64);
+    let frame = thread_edge_frame(closure: no_handle, top: 0_u64);
+    place_back(window: &frames.inner, value: frame);
+    set heap.threads.inner[owner_index].payload.frames = move frames;
+  }
+  let capture = up_probe_handle(heap: &heap, owner: owner, slot: 1_u64);
+  if capture == no_handle {
+    return 240_u8;
+  }
+  let attached = up_probe_attach(heap: &heap, owner: owner, capture: capture);
+  if bnot(attached) {
+    return 240_u8;
+  }
+  let handles = array_filled::<u32, 1>(value: capture);
+  let closure = halo::heap::new_closure(heap: &heap, proto: 0_u32, upvals: &handles[0_u64..1_u64]);
+  let root = Value::Thread(h: owner);
+  let missing = 240_u8;
+  if escaped {
+    set root = closure;
+    set missing = 241_u8;
+  }
+  thread_edge_collect(heap: &heap, root: root);
+  let survived = thread_edge_live(heap: &heap, value: target);
+  if bnot(survived) {
+    return missing;
+  }
+  let retained_garbage = thread_edge_live(heap: &heap, value: garbage);
+  if retained_garbage {
+    return 244_u8;
+  }
+  if escaped {
+    let closed = up_probe_closed(heap: &heap, capture: capture, expected: target);
+    if bnot(closed) {
+      return 242_u8;
+    }
+    if heap.last_collection.threads.live_objects != 0_u64 {
+      return 244_u8;
+    }
+    let replacement_value = Value::Num(n: 91.0_f64);
+    let replacement = up_probe_thread(heap: &heap, parked: parked, first: replacement_value, second: replacement_value);
+    if replacement != owner {
+      return 244_u8;
+    }
+    let still_closed = up_probe_closed(heap: &heap, capture: capture, expected: target);
+    if bnot(still_closed) {
+      return 242_u8;
+    }
+    let replacement_index = cvt::<u32, u64>(replacement);
+    if replacement_index < heap.threads.inner.len {
+      set heap.threads.inner[replacement_index].payload.error = Value::Thread(h: replacement);
+    }
+    let vm = halo::vm::vm_new(limit: 67108864_u64);
+    let stack = halo::vm::stack_new(size: 256_u64);
+    swap(first: &heap, second: &vm.heap);
+    let executed = up_probe_execute(vm: &vm, stack: &stack, capture: capture);
+    if bnot(executed) {
+      return 249_u8;
+    }
+    if stack.inner.len >= 256_u64 {
+      let first_ok = up_probe_same(a: stack.inner[0_u64], b: target);
+      let write_ok = up_probe_number(value: stack.inner[3_u64], expected: 73.0_f64);
+      let owner_after = halo::heap::thread_slot(heap: &vm.heap, owner: replacement, slot: 1_u64);
+      let untouched = up_probe_number(value: owner_after, expected: 91.0_f64);
+      if bnot(first_ok) {
+        return 249_u8;
+      }
+      if bnot(write_ok) {
+        return 249_u8;
+      }
+      if bnot(untouched) {
+        return 249_u8;
+      }
+    } else {
+      return 249_u8;
+    }
+    swap(first: &heap, second: &vm.heap);
+  } else {
+    if heap.last_collection.threads.live_objects != 1_u64 {
+      return 244_u8;
+    }
+  }
+  let nil = Value::Nil();
+  thread_edge_collect(heap: &heap, root: nil);
+  if heap.bytes != 0_u64 {
+    return 245_u8;
+  }
+  return 0_u8;
+}
+
+fn up_probe_free(parked: Bool) -> r: u8 pure {
+  doc "Explicit owner free must close a surviving capture before freeing its stack, including the authoritative parked stack (243).";
+  let heap = halo::heap::heap_new(limit: 0_u64);
+  let expected = Value::Num(n: 37.0_f64);
+  let nil = Value::Nil();
+  let owner = up_probe_thread(heap: &heap, parked: parked, first: nil, second: expected);
+  if owner == no_handle {
+    return 243_u8;
+  }
+  let capture = up_probe_handle(heap: &heap, owner: owner, slot: 1_u64);
+  let attached = up_probe_attach(heap: &heap, owner: owner, capture: capture);
+  if bnot(attached) {
+    return 243_u8;
+  }
+  halo::heap::free_thread(heap: &heap, h: owner);
+  let closed = up_probe_closed(heap: &heap, capture: capture, expected: expected);
+  if bnot(closed) {
+    return 243_u8;
+  }
+  return 0_u8;
+}
+
+fn up_probe_code_append(code: &Box<Slots<UpProbeCell>>, cell: UpProbeCell) -> r: unit writes(code) {
+  if code^.inner.len < code^.inner.cap {
+    place_back(window: &code^.inner, value: cell);
+  }
+  return unit;
+}
+
+fn up_probe_execute(vm: &Vm, stack: &Box<Slots<Value>>, capture: u32) -> r: Bool writes(vm), writes(stack) {
+  doc "Execute ordinary GETUPVAL, SETUPVAL and GETUPVAL dispatch, then stop at a budgeted backwards jump without closing the frame.";
+  let handles = array_filled::<u32, 1>(value: capture);
+  let closure = halo::heap::new_closure(heap: &vm^.heap, proto: 0_u32, upvals: &handles[0_u64..1_u64]);
+  let closure_handle = up_probe_fun(value: closure);
+  if closure_handle == no_handle {
+    return False();
+  }
+  let frame = thread_edge_frame(closure: closure_handle, top: 3_u64);
+  let frames = box_slots_new::<UpProbeFrame>(capacity: 1_u64);
+  place_back(window: &frames.inner, value: frame);
+  set vm^.frames = move frames;
+  set vm^.budget = 0_u64;
+  let code = box_slots_new::<UpProbeCell>(capacity: 5_u64);
+  let get_first = UpProbeCell::GetUpval(a: 0_u8, u: 0_u8);
+  let load = UpProbeCell::LoadK(a: 2_u8, k: 0_u8);
+  let write = UpProbeCell::SetUpval(a: 2_u8, u: 0_u8);
+  let get_second = UpProbeCell::GetUpval(a: 3_u8, u: 0_u8);
+  let stop = UpProbeCell::Jmp(target: 4_u32);
+  up_probe_code_append(code: &code, cell: get_first);
+  up_probe_code_append(code: &code, cell: load);
+  up_probe_code_append(code: &code, cell: write);
+  up_probe_code_append(code: &code, cell: get_second);
+  up_probe_code_append(code: &code, cell: stop);
+  let consts = halo::vm::stack_new(size: 256_u64);
+  if consts.inner.len >= 256_u64 {
+    set consts.inner[0_u64] = Value::Num(n: 73.0_f64);
+    if stack^.inner.len >= 256_u64 {
+      if code.inner.len > 0_u64 {
+        let env = Probe(mode: 0_u8, calls: 0_u64);
+        let outcome = halo::vm::run::<ProbeHost>(code: &code, consts: &consts, stack: stack, vm: vm, env: &env, pc: 0_u64, base: 0_u64, kbase: 0_u64);
+        match outcome {
+          Budget() => {
+            return True();
+          }
+          Done(..) => {
+          }
+          Error() => {
+          }
+          HostStopped() => {
+          }
+          HostCall() => {
+          }
+        }
+      }
+    }
+  }
+  return False();
+}
+
+fn up_probe_access(mode: u8) -> r: u8 pure {
+  doc "Modes cover current owner (246), inactive saved owner (247), parked owner (248), closed/reused owner (249), dead owner, out-of-range slot and out-of-range owner (250). Current-owner saved storage deliberately disagrees with the installed stack; inactive writes must leave that stack untouched.";
+  let vm = halo::vm::vm_new(limit: 67108864_u64);
+  let stack = halo::vm::stack_new(size: 256_u64);
+  let active_value = Value::Num(n: 11.0_f64);
+  let saved_value = Value::Num(n: 37.0_f64);
+  let parked = mode == 2_u8;
+  let owner = vm.current_thread;
+  if mode != 0_u8 {
+    set owner = up_probe_thread(heap: &vm.heap, parked: parked, first: saved_value, second: saved_value);
+  } else {
+    let owner_index = cvt::<u32, u64>(owner);
+    let saved = halo::vm::stack_new(size: 2_u64);
+    if saved.inner.len > 1_u64 {
+      set saved.inner[1_u64] = saved_value;
+    }
+    if owner_index < vm.heap.threads.inner.len {
+      set vm.heap.threads.inner[owner_index].payload.stack = move saved;
+    }
+    let refreshed = halo::heap::refresh_thread_storage(heap: &vm.heap, h: owner);
+    if bnot(refreshed) {
+      return 246_u8;
+    }
+  }
+  if mode == 6_u8 {
+    set owner = no_handle;
+  }
+  let slot = 1_u64;
+  if mode == 5_u8 {
+    set slot = 999_u64;
+  }
+  if mode == 4_u8 {
+    halo::heap::free_thread(heap: &vm.heap, h: owner);
+  }
+  let capture = up_probe_handle(heap: &vm.heap, owner: owner, slot: slot);
+  if capture == no_handle {
+    return 250_u8;
+  }
+  if mode == 3_u8 {
+    let attached = up_probe_attach(heap: &vm.heap, owner: owner, capture: capture);
+    if bnot(attached) {
+      return 249_u8;
+    }
+    halo::heap::free_thread(heap: &vm.heap, h: owner);
+    let replacement = up_probe_thread(heap: &vm.heap, parked: parked, first: active_value, second: active_value);
+    if replacement != owner {
+      return 249_u8;
+    }
+  }
+  if stack.inner.len >= 256_u64 {
+    set stack.inner[1_u64] = active_value;
+  }
+  let executed = up_probe_execute(vm: &vm, stack: &stack, capture: capture);
+  if bnot(executed) {
+    return 250_u8;
+  }
+  if stack.inner.len < 256_u64 {
+    return 250_u8;
+  }
+  let expected = 37.0_f64;
+  let failure = 247_u8;
+  if mode == 0_u8 {
+    set expected = 11.0_f64;
+    set failure = 246_u8;
+  }
+  if mode == 2_u8 {
+    set failure = 248_u8;
+  }
+  if mode == 3_u8 {
+    set failure = 249_u8;
+  }
+  if mode >= 4_u8 {
+    let nil = Value::Nil();
+    let first_nil = up_probe_same(a: stack.inner[0_u64], b: nil);
+    let second_nil = up_probe_same(a: stack.inner[3_u64], b: nil);
+    if bnot(first_nil) {
+      return 250_u8;
+    }
+    if bnot(second_nil) {
+      return 250_u8;
+    }
+  } else {
+    let first_ok = up_probe_number(value: stack.inner[0_u64], expected: expected);
+    let second_ok = up_probe_number(value: stack.inner[3_u64], expected: 73.0_f64);
+    if bnot(first_ok) {
+      return failure;
+    }
+    if bnot(second_ok) {
+      return failure;
+    }
+  }
+  let active_expected = 11.0_f64;
+  if mode == 0_u8 {
+    set active_expected = 73.0_f64;
+  }
+  let active_ok = up_probe_number(value: stack.inner[1_u64], expected: active_expected);
+  if bnot(active_ok) {
+    return failure;
+  }
+  if mode == 0_u8 {
+    let saved_after = halo::heap::thread_slot(heap: &vm.heap, owner: owner, slot: 1_u64);
+    let unchanged = up_probe_number(value: saved_after, expected: 37.0_f64);
+    if bnot(unchanged) {
+      return 246_u8;
+    }
+  }
+  if mode == 3_u8 {
+    let replacement_after = halo::heap::thread_slot(heap: &vm.heap, owner: owner, slot: 1_u64);
+    let unchanged = up_probe_number(value: replacement_after, expected: 11.0_f64);
+    if bnot(unchanged) {
+      return 249_u8;
+    }
+  }
+  return 0_u8;
+}
+
+fn upvalue_probe() -> r: u8 pure {
+  let no = False();
+  let yes = True();
+  let code = up_probe_gc(escaped: yes, parked: no);
+  if code == 0_u8 {
+    set code = up_probe_gc(escaped: no, parked: no);
+  }
+  if code == 0_u8 {
+    set code = up_probe_gc(escaped: yes, parked: yes);
+  }
+  if code == 0_u8 {
+    set code = up_probe_free(parked: no);
+  }
+  if code == 0_u8 {
+    set code = up_probe_free(parked: yes);
+  }
+  for (index in 0_u64..7_u64) {
+    if code == 0_u8 {
+      let mode = cvt::<u64, u8>(index);
+      set code = up_probe_access(mode: mode);
+    }
+  }
+  if code == 0_u8 {
+    set code = up_probe_capture();
+  }
+  return code;
+}
+
+fn up_probe_capture_handle(heap: &UpProbeHeap, value: Value) -> r: u32 reads(heap) {
+  let closure = up_probe_fun(value: value);
+  let index = cvt::<u32, u64>(closure);
+  if index < heap^.closures.inner.len {
+    if heap^.closures.inner[index].payload.upvals.inner.len > 0_u64 {
+      return heap^.closures.inner[index].payload.upvals.inner[0_u64];
+    }
+  }
+  return no_handle;
+}
+
+fn up_probe_open(heap: &UpProbeHeap, capture: u32, owner: u32, slot: u64) -> r: Bool reads(heap) {
+  let index = cvt::<u32, u64>(capture);
+  if index < heap^.upvalues.inner.len {
+    if heap^.upvalues.inner[index].live {
+      match heap^.upvalues.inner[index].payload {
+        Open(owner: actual_owner, slot: actual_slot) => {
+          let same_owner = actual_owner^ == owner;
+          let same_slot = actual_slot^ == slot;
+          return band(same_owner, same_slot);
+        }
+        Closed(..) => {
+        }
+      }
+    }
+  }
+  return False();
+}
+
+fn up_probe_capture() -> r: u8 pure {
+  doc "Ordinary CLOSURE pseudo-cells must capture the current owner, reuse that owner's equal slot instead of a foreign equal slot (251), retain descending own-slot order (252), and CLOSE only current-owner slots at or above its threshold (253).";
+  let vm = halo::vm::vm_new(limit: 67108864_u64);
+  let stack = halo::vm::stack_new(size: 256_u64);
+  let nil = Value::Nil();
+  let no = False();
+  let current_owner = up_probe_thread(heap: &vm.heap, parked: no, first: nil, second: nil);
+  if current_owner == no_handle {
+    return 251_u8;
+  }
+  set vm.current_thread = current_owner;
+  let foreign_owner = vm.main_thread;
+  let foreign_capture = up_probe_handle(heap: &vm.heap, owner: foreign_owner, slot: 1_u64);
+  if foreign_capture == no_handle {
+    return 251_u8;
+  }
+  let open_handles = box_slots_new::<u32>(capacity: 1_u64);
+  place_back(window: &open_handles.inner, value: foreign_capture);
+  set vm.open_upvalues = move open_handles;
+  let proto = UpProbeProto(start: 0_u32, kbase: 0_u32, nk: 0_u32, numparams: 0_u8, is_vararg: no, maxstack: 8_u8, nups: 1_u8, local_base: 0_u64, local_count: 0_u64, upvalue_name_base: 0_u64);
+  let prototypes = box_slots_new::<UpProbeProto>(capacity: 1_u64);
+  place_back(window: &prototypes.inner, value: proto);
+  set vm.protos = move prototypes;
+  let code = box_slots_new::<UpProbeCell>(capacity: 9_u64);
+  let first = UpProbeCell::Closure(a: 4_u8, proto: 0_u32);
+  let low = UpProbeCell::Move(a: 0_u8, b: 1_u8);
+  let second = UpProbeCell::Closure(a: 5_u8, proto: 0_u32);
+  let third = UpProbeCell::Closure(a: 6_u8, proto: 0_u32);
+  let high = UpProbeCell::Move(a: 0_u8, b: 2_u8);
+  let stop = UpProbeCell::Jmp(target: 6_u32);
+  let close = UpProbeCell::Close(a: 2_u8);
+  let final_stop = UpProbeCell::Jmp(target: 8_u32);
+  up_probe_code_append(code: &code, cell: first);
+  up_probe_code_append(code: &code, cell: low);
+  up_probe_code_append(code: &code, cell: second);
+  up_probe_code_append(code: &code, cell: low);
+  up_probe_code_append(code: &code, cell: third);
+  up_probe_code_append(code: &code, cell: high);
+  up_probe_code_append(code: &code, cell: stop);
+  up_probe_code_append(code: &code, cell: close);
+  up_probe_code_append(code: &code, cell: final_stop);
+  let consts = halo::vm::stack_new(size: 256_u64);
+  let env = Probe(mode: 0_u8, calls: 0_u64);
+  let first_value = Value::Num(n: 11.0_f64);
+  let second_value = Value::Num(n: 22.0_f64);
+  if stack.inner.len >= 256_u64 {
+    set stack.inner[1_u64] = first_value;
+    set stack.inner[2_u64] = second_value;
+    if consts.inner.len >= 256_u64 {
+      if code.inner.len > 8_u64 {
+        set vm.budget = 0_u64;
+        let outcome = halo::vm::run::<ProbeHost>(code: &code, consts: &consts, stack: &stack, vm: &vm, env: &env, pc: 0_u64, base: 0_u64, kbase: 0_u64);
+        match outcome {
+          Budget() => {
+          }
+          Done(..) => {
+            return 251_u8;
+          }
+          Error() => {
+            return 251_u8;
+          }
+          HostStopped() => {
+            return 251_u8;
+          }
+          HostCall() => {
+            return 251_u8;
+          }
+        }
+        if stack.inner.len >= 256_u64 {
+          let own_low = up_probe_capture_handle(heap: &vm.heap, value: stack.inner[4_u64]);
+          let own_repeat = up_probe_capture_handle(heap: &vm.heap, value: stack.inner[5_u64]);
+          let own_high = up_probe_capture_handle(heap: &vm.heap, value: stack.inner[6_u64]);
+          if own_low == no_handle {
+            return 251_u8;
+          }
+          if own_low == foreign_capture {
+            return 251_u8;
+          }
+          if own_repeat != own_low {
+            return 251_u8;
+          }
+          let low_open = up_probe_open(heap: &vm.heap, capture: own_low, owner: vm.current_thread, slot: 1_u64);
+          let high_open = up_probe_open(heap: &vm.heap, capture: own_high, owner: vm.current_thread, slot: 2_u64);
+          if bnot(low_open) {
+            return 251_u8;
+          }
+          if bnot(high_open) {
+            return 251_u8;
+          }
+          let seen_high = False();
+          let seen_low = False();
+          for (index in 0_u64..vm.open_upvalues.inner.len) {
+            if index < vm.open_upvalues.inner.len {
+              let capture = vm.open_upvalues.inner[index];
+              if capture == own_high {
+                set seen_high = True();
+              }
+              if capture == own_low {
+                set seen_low = True();
+                if bnot(seen_high) {
+                  return 252_u8;
+                }
+              }
+            }
+          }
+          if bnot(seen_high) {
+            return 252_u8;
+          }
+          if bnot(seen_low) {
+            return 252_u8;
+          }
+          set vm.budget = 0_u64;
+          let closed_outcome = halo::vm::run::<ProbeHost>(code: &code, consts: &consts, stack: &stack, vm: &vm, env: &env, pc: 7_u64, base: 0_u64, kbase: 0_u64);
+          match closed_outcome {
+            Budget() => {
+            }
+            Done(..) => {
+              return 253_u8;
+            }
+            Error() => {
+              return 253_u8;
+            }
+            HostStopped() => {
+              return 253_u8;
+            }
+            HostCall() => {
+              return 253_u8;
+            }
+          }
+          let high_closed = up_probe_closed(heap: &vm.heap, capture: own_high, expected: second_value);
+          let low_retained = up_probe_open(heap: &vm.heap, capture: own_low, owner: vm.current_thread, slot: 1_u64);
+          let foreign_retained = up_probe_open(heap: &vm.heap, capture: foreign_capture, owner: foreign_owner, slot: 1_u64);
+          if bnot(high_closed) {
+            return 253_u8;
+          }
+          if bnot(low_retained) {
+            return 253_u8;
+          }
+          if bnot(foreign_retained) {
+            return 253_u8;
+          }
+          return 0_u8;
+        }
+      }
+    }
+  }
+  return 251_u8;
+}
+
+fn upvalue_smoke() -> status: std::process::ExitStatus pure {
+  let code = upvalue_probe();
+  return std::process::exit_status(code: code);
+}

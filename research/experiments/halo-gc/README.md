@@ -106,7 +106,7 @@ These probes stay while the coroutine implementation needs their evidence;
 remove them when maintained tests supersede the same observations.
 
 `thread-controls.sh`, called by `controls.sh` when `THREAD_ROOT_MUTANTS` is
-set, deletes one marking call in a copied tree and builds the ordinary probe
+set, deletes one marking or closing operation in a copied tree and builds the ordinary probe
 entry with the pinned compiler. Native exit must equal that edge's observation
 number; compilation refusal, timeout, signal or another observation is not
 accepted. Every case starts from the original sources. Logs record actual
@@ -115,7 +115,7 @@ compiler provides no source-mutator command, so this uses the established
 copy/delete/build control instead of adding a test path to production code.
 
 Run in CI. First select the single `stack` omission and inspect its build
-duration before selecting further names or `all` (18 omissions):
+duration before selecting further names or `all` (22 omissions):
 
 ```sh
 THREAD_ROOT_MUTANTS=stack make roots
@@ -134,9 +134,32 @@ Names are `thread`, `stack`, `frame`, `open-list`, `library-table`,
 `pattern-replacement`, `error`, `stopped`, and `main`; comma-separated names
 select a bounded batch. The library/sort/pattern fields are tested separately
 so removing one cannot pass because another field holds the same value.
-`open-list` uses a closed capture to isolate the handle edge without changing
-the current ownerless open-upvalue representation. Owner-qualified capture
-lifetime and resumer edges belong to the following coroutine stages.
+`open-list` uses a closed capture to isolate the original handle edge.
+
+Owner-qualified observations in `upvalue-probe.wf` additionally check reads
+and writes against active, inactive and suspended stacks; capture reuse and
+closing against the current owner; and escaped captures after owner collection
+and handle reuse. The new controls use the isolated `upvalue_roots` entry so
+older observations cannot mask their intended failures:
+
+| Name | Omission | Expected exit | Failure observed |
+| --- | --- | --- | --- |
+| `inactive-open-list` | Thread open-list handle marking | 240 | An open capture outside the ordinary live stack extent loses its sole retained value. |
+| `captured-value` | Open capture's selected-value marking | 241 | An escaped closure loses its captured value although the closure survives. |
+| `owner-close` | Shared conversion from Open to Closed | 242 | A surviving capture still names an owner whose storage has been freed. |
+| `explicit-close` | Closing in `free_thread` | 243 | Explicit owner destruction leaves a capture open. |
+
+Collection closes unreachable owners before sweeping any slab; explicit
+thread destruction closes them as well. Omitting only the pre-sweep call can
+be masked by the later destructor call, so `owner-close` removes their shared
+conversion. The pre-sweep ordering is inspected in source; that ordering alone
+has no independently discriminating dynamic control in this stage. Escaped
+captures retain their selected value without retaining the owner or unrelated
+slots. A suspended saved execution uses `stopped_stack`; otherwise it uses
+`stack`. `host_stopped` does not select authority because it can remain set
+after restoration while the active stack changes. Switching must preserve
+this authority invariant when it is introduced. Resumer edges remain for that
+stage.
 
 No results are claimed by these authored controls. Their actual failures and
 the restored positive observations must be recorded from CI before treating
