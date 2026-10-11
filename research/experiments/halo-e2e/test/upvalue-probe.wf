@@ -346,13 +346,14 @@ fn up_probe_access(mode: u8) -> r: u8 pure {
     set owner = up_probe_thread(heap: &vm.heap, parked: parked, first: saved_value, second: saved_value);
   } else {
     let owner_index = cvt::<u32, u64>(owner);
+    if owner_index >= vm.heap.threads.inner.len {
+      return 246_u8;
+    }
     let saved = halo::vm::stack_new(size: 2_u64);
     if saved.inner.len > 1_u64 {
       set saved.inner[1_u64] = saved_value;
     }
-    if owner_index < vm.heap.threads.inner.len {
-      set vm.heap.threads.inner[owner_index].payload.stack = move saved;
-    }
+    set vm.heap.threads.inner[owner_index].payload.stack = move saved;
     let refreshed = halo::heap::refresh_thread_storage(heap: &vm.heap, h: owner);
     if bnot(refreshed) {
       return 246_u8;
