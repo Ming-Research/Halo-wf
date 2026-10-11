@@ -4441,6 +4441,36 @@ interleaved full-LTO pairs with a twin of main:
 included, so the final revision without the setting shows none of the
 earlier 1.8%.
 
+### Slots visited under the 64 KiB default: criterion, recorded on the status board before measuring
+
+The Firn-wf run above visited about 16,000 slots per collection however few
+it freed, because the slabs grew to 1 MiB of garbage before the first
+collection. With the 64 KiB floor now also the initial threshold, the slabs
+should stay near the garbage allocated between collections. Question: does
+the sweep still visit many more slots than it finds occupied? Measured by
+the firn session with its harness: the rate-limiter script at 50
+connections on Halo's defaults (no floor setting, pause 200), reporting each
+collection's `slots_visited`, `live_objects` and `freed_objects` summed over
+the kinds. If `slots_visited` is at most 1.5 times live plus freed in every
+collection, the whole-slab sweep is not a cost worth changing; above that,
+the sweep is changed to skip never-used slots or the slabs shrink, measured
+in pairs on the 14900K.
+
+### Slots visited under the 64 KiB default: result
+
+Firn-wf [run 38139082900](https://github.com/Ming-Research/Firn-wf/actions/runs/38139082900)
+(hosted runner, counts only; Halo `15709ec`, 10,000 requests, 59
+collections), as the firn session reported it: per collection, slots
+visited averaged 1,158 (maximum 1,165), freed objects 1,007 and live
+objects 148. Visited over live plus freed averaged 1.0027 and peaked at
+1.0069.
+
+**The criterion is met:** with the initial threshold at the floor, the
+slabs stay at the garbage between collections, and the sweep visits almost
+only occupied slots. The sweep is left as it is. This holds for this
+workload on one engine; a host reporting visits far above live plus freed
+reopens it.
+
 ## Whitefoot wf-b2209fd31035 upgrade
 
 ### Question, recorded before it runs
