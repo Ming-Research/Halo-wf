@@ -244,10 +244,8 @@ fn up_probe_gc(escaped: Bool, parked: Bool) -> r: u8 pure {
       return 249_u8;
     }
     swap(first: &heap, second: &vm.heap);
-  } else {
-    if heap.last_collection.threads.live_objects != 1_u64 {
-      return 244_u8;
-    }
+  } else if heap.last_collection.threads.live_objects != 1_u64 {
+    return 244_u8;
   }
   let nil = Value::Nil();
   thread_edge_collect(heap: &heap, root: nil);

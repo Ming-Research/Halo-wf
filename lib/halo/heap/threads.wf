@@ -9,10 +9,8 @@ fn thread_slot(heap: &Heap, owner: u32, slot: u64) -> r: Value reads(heap.thread
         if slot < heap^.threads.inner[ti].payload.stopped_stack.inner.len {
           return heap^.threads.inner[ti].payload.stopped_stack.inner[slot];
         }
-      } else {
-        if slot < heap^.threads.inner[ti].payload.stack.inner.len {
-          return heap^.threads.inner[ti].payload.stack.inner[slot];
-        }
+      } else if slot < heap^.threads.inner[ti].payload.stack.inner.len {
+        return heap^.threads.inner[ti].payload.stack.inner[slot];
       }
     }
   }
@@ -27,10 +25,8 @@ fn set_thread_slot(heap: &Heap, owner: u32, slot: u64, v: Value) -> r: unit writ
         if slot < heap^.threads.inner[ti].payload.stopped_stack.inner.len {
           set heap^.threads.inner[ti].payload.stopped_stack.inner[slot] = v;
         }
-      } else {
-        if slot < heap^.threads.inner[ti].payload.stack.inner.len {
-          set heap^.threads.inner[ti].payload.stack.inner[slot] = v;
-        }
+      } else if slot < heap^.threads.inner[ti].payload.stack.inner.len {
+        set heap^.threads.inner[ti].payload.stack.inner[slot] = v;
       }
     }
   }
