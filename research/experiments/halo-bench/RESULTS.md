@@ -5223,3 +5223,10 @@ status-board item halo-req-concat-codegen, with this evidence and the
 comparison above as its acceptance test, rather than worked around in
 Halo's source. Whether to adopt the release before that fix is the owner's
 decision (card halo-card-adopt-7062f3a).
+
+Whitefoot's code-generation session then built Halo with the ten releases
+between the two and compared their disassembly; as it reported, the GetTable
+arm stops inlining `table_get` from Whitefoot#345, and the byte-copy loop's
+per-byte metadata reloads start with Whitefoot#344 (the empty window,
+v0.125), not #345. Both fixes are to land in Whitefoot#357 and be measured
+against the comparison above.
