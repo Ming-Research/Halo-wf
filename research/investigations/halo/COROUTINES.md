@@ -99,8 +99,10 @@ across metamethod/C-call boundary") and nowhere else. PUC's `lua_resume`
 records the native call depth at which it resumes a coroutine
 (`baseCcalls` in `ldo.c`) and refuses a yield only when the depth has grown
 since, so the boundary is relative to the current coroutine's resume: a
-metamethod, callback or `xpcall` entered inside the coroutine refuses, and
-one in the resumer around the `resume` call does not. A `pcall` inside the
+metamethod, library callback or `xpcall` entered inside the coroutine
+refuses, and one in the resumer around the `resume` call does not. `__call`
+is the exception: PUC enters it as an ordinary call (`tryfuncTM` in
+`luaD_precall`), so a yield inside a `__call` handler succeeds. A `pcall` inside the
 coroutine also refuses, since it is a native call in PUC; in Halo it is
 stackless, so a scan of the coroutine's own frames must enforce it. This
 reading of PUC comes from its source, and comparison 1 checks it with
@@ -113,7 +115,8 @@ yields that must succeed beside those that must fail.
    resuming a dead or running coroutine; yield outside a coroutine; yield
    across a metamethod, a `pcall`, an `xpcall`, the sort comparator and an
    iterator inside the coroutine, and yields that succeed when the resumer
-   called `resume` from inside a `pcall`, a comparator or a metamethod;
+   called `resume` from inside a `pcall`, a comparator or a metamethod, and
+   inside a `__call` handler;
    errors inside a coroutine, as strings and as the error tables
    `redis.call` raises; `redis.call` inside a coroutine; closures sharing
    upvalues across coroutines; deep chains of nested resumes until the
