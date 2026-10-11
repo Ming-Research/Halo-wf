@@ -5123,3 +5123,125 @@ load, is a code-generation choice of the compiler, so it is recorded as a
 Whitefoot gap for the loopmatch session (status-board item
 lm-bl-frame-store-forward) with this evidence, rather than worked around in
 Halo's source; the saving is not measured.
+
+## Whitefoot wf-7062f3ac4ac7 upgrade
+
+### Question, recorded before it runs
+
+The pin moves from `wf-78223721f77d` (Whitefoot main `78223721f`,
+specification v0.121) to `wf-7062f3ac4ac7` (main `7062f3ac4`, v0.127). In
+between: in-place reads of parameters by functions that return through a
+destination pointer, and copies of small structs and tagged unions split at
+their layout's field boundaries (Whitefoot#345, the gap the section above
+recorded); an empty runtime window that allocates nothing (v0.125), which
+reaches every empty table part binary-trees creates; a `swap` of window
+contents refused (v0.124), which Halo does not use, since it exchanges
+owning `Box`es; whole-value reads of a const (v0.122), frozen objects
+(v0.123), copy destructuring and the prelude's `release` (v0.127), which
+Halo does not use and whose name it does not declare. The source is
+unchanged, so both releases build the same source.
+
+Comparison, on the 14900K with every timed process on CPU 2: one, three and
+six interleaved full-LTO pairs over the seven kernels (binary-trees at
+depth 14), with a twin of the old build, and two `--check-module pkg::vm`
+samples each; and three `perf stat` runs per side of fib and integer-table
+counting cycles and blocked store forwards (`LD_BLOCKS.STORE_FORWARD`,
+event 0x03, umask 0x82, on the P-cores).
+
+Expected: no kernel slower beyond its larger range and the twin's
+difference; a kernel slower beyond that stops the upgrade for an
+attribution. The stalls are gone if, on each of fib and integer-table, the
+largest blocked-store-forward count of the new build is below the smallest
+of the old. Whitefoot's session reported fib at 0.955 and integer-table at
+0.858 on its own comparison, and binary-trees should gain from the empty
+window; these are predictions, and a smaller or no gain is reported as
+measured. Whitefoot's session also reported that LLVM still merges two
+adjacent 8-byte `Frame` fields into one 16-byte load (lm-bl-frame-width-lowering),
+so fib's count may fall without reaching zero.
+
+### Result
+
+[Run 38143501868](https://github.com/Ming-Research/Halo-wf/actions/runs/38143501868)
+(14900K, 32 performance governors, every timed process on CPU 2; source
+`69b729d`, which differs from main only in `whitefoot.pin`, the temporary
+workflow and this record), six interleaved pairs:
+
+| Kernel | Old | New | Ratio | Old range | New range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.0913 | 0.0878 | 0.961 | 6.54% | 12.56% | 1.006 |
+| loop | 0.5227 | 0.5054 | 0.967 | 0.22% | 2.27% | 1.000 |
+| integer-table | 0.4061 | 0.3504 | 0.863 | 2.87% | 0.53% | 1.000 |
+| string-key | 0.0239 | 0.0226 | 0.948 | 5.81% | 4.68% | 0.978 |
+| concat | 0.0745 | 0.0768 | 1.032 | 1.93% | 1.66% | 1.002 |
+| sort | 0.1877 | 0.1843 | 0.982 | 1.68% | 0.32% | 1.003 |
+| binary-trees | 1.5522 | 1.2390 | 0.798 | 3.24% | 3.09% | 0.997 |
+
+Blocked store forwards, three runs per side: fib 14.50–14.63 million on
+the old build against 8.14–8.22 million on the new; integer-table
+21.22 million against 2.24–2.39 million. **The stalls criterion is met** on
+both kernels; fib's remaining count is consistent with the merged `Frame`
+load Whitefoot's session reported. `--check-module pkg::vm` took 10.6 s on
+the old release and 3.2 s on the new, two samples each.
+
+**The no-slowdown criterion fails on concat**: 3.2% slower, beyond its
+larger range (1.93%) and the twin's difference (0.2%), with every new run
+slower than every old one. Three kernels are faster beyond their larger
+range and the twin's difference: binary-trees (20%), integer-table (14%) and
+loop (3.3%). Fib, string-key and sort have lower medians within those
+bounds, so no gain is established for them. The two releases differ by several
+compiler changes; that binary-trees gains from the empty window
+(v0.125) is the prediction it is consistent with, not an isolated cause.
+
+### Concat attribution
+
+[Run 38145269599](https://github.com/Ming-Research/Halo-wf/actions/runs/38145269599)
+(14900K, CPU 2, the same two builds, ten times concat's iterations, one
+`cpu_core/cycles/` sample per 100003 cycles, artifact `halo-annotate-concat`):
+cycles rose from 3.640 to 3.806 billion while instructions fell 2.5% and
+blocked store forwards fell from 11.9 to 9.4 million. Converting each
+symbol's share to cycles, and reading the annotations:
+
+- The GetTable arm no longer inlines `table_get`
+  (`lib/halo/heap/tables.wf`), which now takes `t` and `key` by address;
+  the two together rose from about 600 to 707 million cycles, most of it in
+  the numeric-key conversion.
+- `concat_step`'s byte-copy loop (`lib/halo/vm/concat.wf`,
+  `concat_batch_copy` inlined) reloads the source box pointer, source length
+  and destination length and capacity on every byte and is no longer
+  unrolled, about 47 to 147 million cycles; the joined value's store in the
+  same function fell from about 161 to 37 million, as #345 splits the copy.
+- `intern`'s hash loop gained about 72 million with the same instructions
+  in other registers; the cause is not identified.
+- `slow` fell about 61 million.
+
+Halo's source is the same on both sides, so each difference is the
+compiler's. A standalone witness of the copy loop's shape alone (two nested
+`Box<Slots<u8>>`, the same guarded byte copy) kept the metadata in registers
+and unrolled by two under both releases, so the regression depends on
+Halo's context. It is filed for Whitefoot's code-generation session as
+status-board item halo-req-concat-codegen, with this evidence and the
+comparison above as its acceptance test, rather than worked around in
+Halo's source. Whether to adopt the release before that fix is the owner's
+decision (card halo-card-adopt-7062f3a).
+
+Whitefoot's code-generation session then built Halo with the ten releases
+between the two and compared their disassembly; as it reported, the GetTable
+arm stops inlining `table_get` from Whitefoot#345, and the byte-copy loop's
+per-byte metadata reloads start with Whitefoot#344 (the empty window,
+v0.125), not #345. Both fixes are to land in Whitefoot#357 and be measured
+against the comparison above.
+
+### Outcome
+
+The owner chose to adopt `wf-7062f3ac4ac7` now, with the concat regression
+tracked by halo-req-concat-codegen, and to move again once a release
+contains Whitefoot#357. Of that pull request's experiment releases, the
+third, `wf-exp-ce22645f11a0`, met the request's timing acceptance on the
+14900K ([run 38175367625](https://github.com/Ming-Research/Halo-wf/actions/runs/38175367625),
+same source, six interleaved pairs per side, a twin): concat 0.980 against
+`wf-78223721f77d` and 0.942 against `wf-7062f3ac4ac7`, with the other
+kernels' gains kept. Its blocked store forwards on integer-table were about
+10% above `wf-7062f3ac4ac7`'s (2.52–2.55 against 2.08–2.33 million) with no
+timing effect (ratio 0.996); Whitefoot recorded that as its item
+lm-bl-int-table-forward-rise. The upgrade to the release that contains
+#357 is measured again when it is published.
