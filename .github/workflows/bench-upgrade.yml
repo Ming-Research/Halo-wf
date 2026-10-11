@@ -1,8 +1,8 @@
 # Temporary, on the experiment branch only: Halo-wf's acceptance test for
 # Whitefoot#357 (status-board item halo-req-concat-codegen): the same Halo
 # source built by wf-78223721f77d and the experiment release
-# wf-exp-e9d765cd6067, six interleaved pairs over the seven kernels with a
-# twin, plus blocked store-forward counts on fib and integer-table. The 14900K
+# wf-exp-4753d28fb4ae, and wf-7062f3ac4ac7 as a reference, six interleaved
+# pairs over the seven kernels with a twin, plus blocked store-forward counts on fib and integer-table. The 14900K
 # job runs only for a commit whose message contains [bench]. This branch is
 # never merged.
 name: bench-upgrade
@@ -13,7 +13,8 @@ on:
 
 env:
   CONTROL: wf-78223721f77d
-  EXPERIMENT: wf-exp-e9d765cd6067
+  EXPERIMENT: wf-exp-4753d28fb4ae
+  REFERENCE: wf-7062f3ac4ac7
 
 defaults:
   run:
@@ -32,7 +33,7 @@ jobs:
         run: |
           set -euo pipefail
           make toolchain
-          for release in "$CONTROL" "$EXPERIMENT"; do
+          for release in "$CONTROL" "$EXPERIMENT" "$REFERENCE"; do
             echo "release = $release" > whitefoot.pin
             make compiler
             make toolchain-check
@@ -56,7 +57,7 @@ jobs:
           out="$PWD/build/bench-out"
           rm -rf "$out"; mkdir -p "$out"
           cp whitefoot.pin "$out/whitefoot.pin.orig"
-          for release in "$CONTROL" "$EXPERIMENT"; do
+          for release in "$CONTROL" "$EXPERIMENT" "$REFERENCE"; do
             echo "release = $release" > whitefoot.pin
             make compiler
             make toolchain-check
@@ -64,15 +65,17 @@ jobs:
           cp "$out/whitefoot.pin.orig" whitefoot.pin
           wfc_ctl="$PWD/build/whitefoot/$CONTROL/whitefootc"
           wfc_exp="$PWD/build/whitefoot/$EXPERIMENT/whitefootc"
+          wfc_ref="$PWD/build/whitefoot/$REFERENCE/whitefootc"
           sh research/experiments/halo-oracle/fetch-redis.sh "$PWD/build/redis"
           lua="$PWD/build/redis/redis-7.0.15/deps/lua/src/lua"
           # Same source on both sides; only the compiler differs.
           "$wfc_ctl" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-ctl"
           cp "$out/halo-ctl" "$out/halo-ctl-twin"
           "$wfc_exp" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-exp"
+          "$wfc_ref" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-ref"
           {
-            echo "source $(git rev-parse HEAD), control $CONTROL, experiment $EXPERIMENT"
-            sha256sum "$wfc_ctl" "$wfc_exp" "$out"/halo-*
+            echo "source $(git rev-parse HEAD), control $CONTROL, experiment $EXPERIMENT, reference $REFERENCE"
+            sha256sum "$wfc_ctl" "$wfc_exp" "$wfc_ref" "$out"/halo-*
             /usr/bin/clang --version | head -n 1
           } | tee "$out/manifest.txt"
           # The 14900K is a hybrid part (P-cores CPU 0-15, E-cores 16-31): run
@@ -87,7 +90,7 @@ jobs:
           # 0x82 on the P-cores) and cycles, three runs per side, on the two
           # kernels whose profiles showed the stalls.
           for kernel in fib integer-table; do
-            for side in ctl exp; do
+            for side in ctl exp ref; do
               for rep in 1 2 3; do
                 $pin perf stat -x, -e cpu_core/cycles/,cpu_core/event=0x03,umask=0x82,name=ld_blocks_store_forward/ \
                   -o "$out/perf-$kernel-$side-$rep.csv" "$out/halo-$side" \
@@ -110,6 +113,7 @@ jobs:
           }
           compare twin "$out/halo-ctl" "$out/halo-ctl-twin"
           compare upgrade "$out/halo-ctl" "$out/halo-exp"
+          compare reference "$out/halo-ref" "$out/halo-exp"
           TIMEFORMAT=%R
           for sample in 1 2; do
             for side in ctl exp; do
@@ -121,6 +125,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: halo-bench-exp-e9d765
+          name: halo-bench-exp-4753d2
           path: build/bench-out/
           retention-days: 30
