@@ -165,7 +165,13 @@ yields that must succeed beside those that must fail.
    baseline on the work branch, which is not merged until step 3 makes
    the gate pass).
 2. The thread value, its slab kind, its tracing and the upvalue change,
-   with the collector's verifier run over coroutine scripts.
+   validated as the [VM stress experiment](../../experiments/halo-gc/README.md#vm-stress-experiment-f4)
+   validates roots (Halo has no complete reachability verifier): the
+   coroutine group under collector stress, and one missing-edge mutant per
+   new edge (a suspended stack, its frames' closures, an inactive
+   coroutine's open upvalues, the waiting resumer) that must change at
+   least one coroutine reply (status-board card
+   halo-card-coroutine-gc-validation, recommendation A, pending).
 3. `resume`, `yield`, `status`, `wrap` and `running`, until comparison 1
    passes.
 4. Comparisons 2 and 3 on the 14900K, through the coordinator's queue.
