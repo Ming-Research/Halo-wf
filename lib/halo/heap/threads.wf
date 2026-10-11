@@ -1,0 +1,99 @@
+alias Execution = pkg::execution::Execution;
+
+fn alloc_thread(heap: &Heap, payload: Execution) -> r: Option<u32> writes(heap) {
+  doc "Allocates a thread through the same bounded slab/free-list protocol as closures, caching its execution storage charge.";
+  let amount = pkg::execution::storage_bytes(execution: &payload);
+  if amount == 18446744073709551615_u64 {
+    return None<u32>();
+  }
+  let h = heap^.threads_free;
+  let i = cvt::<u32, u64>(h);
+  let n = heap^.threads.inner.len;
+  if i >= n {
+    if n >= 4294967295_u64 {
+      return None<u32>();
+    }
+  }
+  if charge(heap: heap, amount: amount) {
+  } else {
+    return None<u32>();
+  }
+  let live = True();
+  let cell = ThreadCell(live: live, mark: 0_u32, next_free: no_handle, payload: move payload, accounted_bytes: amount);
+  if i < heap^.threads.inner.len {
+    let next = heap^.threads.inner[i].next_free;
+    set heap^.threads_free = next;
+    set heap^.threads.inner[i] = move cell;
+    return Some<u32>(value: h);
+  } else if n < 4294967295_u64 {
+    let hnew = cvt::<u64, u32>(n);
+    let needed = n + 1_u64;
+    let oldcap = heap^.threads.inner.cap;
+    if needed > oldcap {
+      let capacity = needed;
+      if oldcap <= 2147483647_u64 {
+        let doubled = oldcap * 2_u64;
+        if doubled > capacity {
+          set capacity = doubled;
+        }
+      } else {
+        set capacity = 4294967295_u64;
+      }
+      grow(cell: &heap^.threads, capacity: capacity);
+    }
+    if heap^.threads.inner.len < heap^.threads.inner.cap {
+      place_back(window: &heap^.threads.inner, value: move cell);
+      return Some<u32>(value: hnew);
+    }
+  }
+  uncharge(heap: heap, amount: amount);
+  return None<u32>();
+}
+
+fn free_thread(heap: &Heap, h: u32) -> r: unit writes(heap) {
+  doc "Drops every owned execution buffer and uncharges the last successful storage estimate, independently of subsequent capacity changes.";
+  let i = cvt::<u32, u64>(h);
+  if i < heap^.threads.inner.len {
+    if heap^.threads.inner[i].live {
+      let amount = heap^.threads.inner[i].accounted_bytes;
+      let empty = pkg::execution::empty();
+      set heap^.threads.inner[i].payload = move empty;
+      set heap^.threads.inner[i].accounted_bytes = 0_u64;
+      set heap^.threads.inner[i].live = False();
+      set heap^.threads.inner[i].next_free = heap^.threads_free;
+      set heap^.threads_free = h;
+      uncharge(heap: heap, amount: amount);
+    }
+  }
+  return unit;
+}
+
+fn refresh_thread_storage(heap: &Heap, h: u32) -> r: Bool writes(heap) {
+  doc "A failed growth charge leaves the accounting intact; its caller must handle exhaustion before any safepoint can accept the changed payload.";
+  let i = cvt::<u32, u64>(h);
+  if i < heap^.threads.inner.len {
+    if heap^.threads.inner[i].live {
+      let previous = heap^.threads.inner[i].accounted_bytes;
+      let amount = pkg::execution::storage_bytes(execution: &heap^.threads.inner[i].payload);
+      if amount == 18446744073709551615_u64 {
+        return False();
+      }
+      if amount > previous {
+        let growth = amount - previous;
+        let charged = charge(heap: heap, amount: growth);
+        let failed = bnot(charged);
+        if failed {
+          return False();
+        }
+      } else if amount < previous {
+        let shrink = previous - amount;
+        uncharge(heap: heap, amount: shrink);
+      }
+      if i < heap^.threads.inner.len {
+        set heap^.threads.inner[i].accounted_bytes = amount;
+        return True();
+      }
+    }
+  }
+  return False();
+}

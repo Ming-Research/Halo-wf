@@ -431,6 +431,9 @@ fn units() -> r: Bool pure {
     Builtin(..) => {
       return False();
     }
+    Thread(..) => {
+      return False();
+    }
   }
   match halo::heap::table_set(heap: &heap, t: t, key: t, val: z) {
     Ok(value: done) => {
@@ -768,6 +771,8 @@ fn key_id(keys: &Array<Value, 162>, key: Value) -> r: u64 reads(keys) {
     Fun(..) => {
     }
     Builtin(..) => {
+    }
+    Thread(..) => {
     }
   }
   return 162_u64;

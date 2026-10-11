@@ -9,6 +9,10 @@ alias num_of = pkg::value::num_of;
 alias tab_of = pkg::value::tab_of;
 alias str_of = pkg::value::str_of;
 alias truthy = pkg::value::truthy;
+alias Frame = pkg::execution::Frame;
+alias CallbackPlan = pkg::execution::CallbackPlan;
+alias LibraryContext = pkg::execution::LibraryContext;
+alias PendingCall = pkg::execution::PendingCall;
 
 const calls_text_0: Array<u8, 14> = "stack overflow";
 

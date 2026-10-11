@@ -259,6 +259,9 @@ fn cjson_isnull(value: Value) -> r: Bool pure {
     Fun(..) => {
       return False();
     }
+    Thread(..) => {
+      return False();
+    }
   }
 }
 
@@ -417,6 +420,9 @@ fn cjson_write(vm: &Vm, writer: &json::encode::Writer, out: &Box<Slots<u8>>, val
       }
     }
     Fun(..) => {
+      return cjson_serial_error(vm: vm, value: value, reason: &cj_unsupported[0_u64..18_u64]);
+    }
+    Thread(..) => {
       return cjson_serial_error(vm: vm, value: value, reason: &cj_unsupported[0_u64..18_u64]);
     }
     Builtin(..) => {

@@ -1,4 +1,5 @@
 alias Value = pkg::value::Value;
+alias Execution = pkg::execution::Execution;
 
 fn gc_begin(heap: &Heap) -> r: unit writes(heap.epoch), writes(heap.gray_pops) {
   doc "A mark equal to the epoch means reached in this collection; new cells carry mark zero, which no epoch takes.";
@@ -34,7 +35,7 @@ fn gray_push(heap: &Heap, v: Value) -> r: unit writes(heap.gray) {
 }
 
 fn gc_mark(heap: &Heap, v: Value) -> r: unit writes(heap) {
-  doc "Strings have no references; tables and closures are gray until propagated.";
+  doc "Strings have no references; tables, closures and threads are gray until propagated.";
   let epoch = heap^.epoch;
   match v {
     Str(h: hv) => {
@@ -62,6 +63,17 @@ fn gc_mark(heap: &Heap, v: Value) -> r: unit writes(heap) {
         if heap^.closures.inner[i].live {
           if heap^.closures.inner[i].mark != epoch {
             set heap^.closures.inner[i].mark = epoch;
+            gray_push(heap: heap, v: v);
+          }
+        }
+      }
+    }
+    Thread(h: hv) => {
+      let i = cvt::<u32, u64>(hv);
+      if i < heap^.threads.inner.len {
+        if heap^.threads.inner[i].live {
+          if heap^.threads.inner[i].mark != epoch {
+            set heap^.threads.inner[i].mark = epoch;
             gray_push(heap: heap, v: v);
           }
         }
@@ -163,6 +175,147 @@ fn mark_closure_contents(heap: &Heap, ci: u64) -> r: unit writes(heap) {
   }
 }
 
+fn thread_stack_limit(execution: &Execution) -> r: u64 reads(execution) {
+  doc "Retains dynamic results and every frame's registers, capped at stack length; without frames the entire stored stack remains live.";
+  let len = execution^.stack.inner.len;
+  if execution^.frames.inner.len == 0_u64 {
+    return len;
+  }
+  let limit = execution^.top;
+  let i = 0_u64;
+  loop {
+    if i < execution^.frames.inner.len {
+      let top = execution^.frames.inner[i].frame_top;
+      if top > limit {
+        set limit = top;
+      }
+      set i = i +wrap 1_u64;
+    } else {
+      break;
+    }
+  }
+  return imin(limit, len);
+}
+
+fn mark_thread_contents(heap: &Heap, ti: u64) -> r: unit writes(heap) {
+  doc "Traces only a reached thread's owned execution; rechecks slab and buffer bounds after marking writes the heap.";
+  if ti < heap^.threads.inner.len {
+    let limit = thread_stack_limit(execution: &heap^.threads.inner[ti].payload);
+    for (i in 0_u64..limit) {
+      if ti < heap^.threads.inner.len {
+        if i < heap^.threads.inner[ti].payload.stack.inner.len {
+          let stack_value = heap^.threads.inner[ti].payload.stack.inner[i];
+          gc_mark(heap: heap, v: stack_value);
+        }
+      }
+    }
+  }
+  let i = 0_u64;
+  loop {
+    if ti < heap^.threads.inner.len {
+      if i < heap^.threads.inner[ti].payload.frames.inner.len {
+        let closure = heap^.threads.inner[ti].payload.frames.inner[i].closure;
+        if closure != no_handle {
+          let frame_function = Value::Fun(h: closure);
+          gc_mark(heap: heap, v: frame_function);
+        }
+        set i = i +wrap 1_u64;
+      } else {
+        break;
+      }
+    } else {
+      return unit;
+    }
+  }
+  set i = 0_u64;
+  loop {
+    if ti < heap^.threads.inner.len {
+      if i < heap^.threads.inner[ti].payload.open_upvalues.inner.len {
+        let upvalue = heap^.threads.inner[ti].payload.open_upvalues.inner[i];
+        gc_mark_upvalue(heap: heap, h: upvalue);
+        set i = i +wrap 1_u64;
+      } else {
+        break;
+      }
+    } else {
+      return unit;
+    }
+  }
+  set i = 0_u64;
+  loop {
+    if ti < heap^.threads.inner.len {
+      if i < heap^.threads.inner[ti].payload.library_contexts.inner.len {
+        let context = heap^.threads.inner[ti].payload.library_contexts.inner[i];
+        gc_mark(heap: heap, v: context.table);
+        gc_mark(heap: heap, v: context.comparator);
+        gc_mark(heap: heap, v: context.saved_error);
+        gc_mark(heap: heap, v: context.foreach_key);
+        if context.frame.closure != no_handle {
+          let library_function = Value::Fun(h: context.frame.closure);
+          gc_mark(heap: heap, v: library_function);
+        }
+        set i = i +wrap 1_u64;
+      } else {
+        break;
+      }
+    } else {
+      return unit;
+    }
+  }
+  set i = 0_u64;
+  loop {
+    if ti < heap^.threads.inner.len {
+      if i < heap^.threads.inner[ti].payload.sort_frames.inner.len {
+        let frame = heap^.threads.inner[ti].payload.sort_frames.inner[i];
+        gc_mark(heap: heap, v: frame.a);
+        gc_mark(heap: heap, v: frame.b);
+        gc_mark(heap: heap, v: frame.pivot);
+        set i = i +wrap 1_u64;
+      } else {
+        break;
+      }
+    } else {
+      return unit;
+    }
+  }
+  set i = 0_u64;
+  loop {
+    if ti < heap^.threads.inner.len {
+      if i < heap^.threads.inner[ti].payload.pattern_subs.inner.len {
+        let source = heap^.threads.inner[ti].payload.pattern_subs.inner[i].source;
+        let pattern = heap^.threads.inner[ti].payload.pattern_subs.inner[i].pattern;
+        let replacement = heap^.threads.inner[ti].payload.pattern_subs.inner[i].replacement;
+        gc_mark(heap: heap, v: source);
+        gc_mark(heap: heap, v: pattern);
+        gc_mark(heap: heap, v: replacement);
+        set i = i +wrap 1_u64;
+      } else {
+        break;
+      }
+    } else {
+      return unit;
+    }
+  }
+  if ti < heap^.threads.inner.len {
+    let error = heap^.threads.inner[ti].payload.error;
+    gc_mark(heap: heap, v: error);
+  }
+  set i = 0_u64;
+  loop {
+    if ti < heap^.threads.inner.len {
+      if i < heap^.threads.inner[ti].payload.stopped_stack.inner.len {
+        let stopped_value = heap^.threads.inner[ti].payload.stopped_stack.inner[i];
+        gc_mark(heap: heap, v: stopped_value);
+        set i = i +wrap 1_u64;
+      } else {
+        return unit;
+      }
+    } else {
+      return unit;
+    }
+  }
+}
+
 fn gc_propagate(heap: &Heap) -> r: unit writes(heap) {
   doc "Empties the gray stack; each object is pushed at most once per epoch, so the work is proportional to what is reachable.";
   loop {
@@ -177,6 +330,10 @@ fn gc_propagate(heap: &Heap) -> r: unit writes(heap) {
         Fun(h: hv) => {
           let ci = cvt::<u32, u64>(hv);
           mark_closure_contents(heap: heap, ci: ci);
+        }
+        Thread(h: hv) => {
+          let ti = cvt::<u32, u64>(hv);
+          mark_thread_contents(heap: heap, ti: ti);
         }
         Nil() => {
         }
@@ -205,7 +362,7 @@ fn collection_kind_empty() -> r: CollectionKindStats pure {
 fn collection_stats_empty() -> r: CollectionStats pure {
   doc "No completed collection yet, including no next-collection threshold observation.";
   let empty = collection_kind_empty();
-  return CollectionStats(strings: empty, tables: empty, closures: empty, upvalues: empty, gray_pops: 0_u64, next_threshold: 0_u64);
+  return CollectionStats(strings: empty, tables: empty, closures: empty, upvalues: empty, threads: empty, gray_pops: 0_u64, next_threshold: 0_u64);
 }
 
 fn collection_threshold(live: u64, pause: u64) -> r: u64 pure {
@@ -232,6 +389,7 @@ fn gc_sweep(heap: &Heap) -> r: u64 writes(heap) {
   let closures = collection_kind_empty();
   let upvalues = collection_kind_empty();
   let strings = collection_kind_empty();
+  let threads = collection_kind_empty();
   let i = 0_u64;
   loop {
     if i < heap^.tables.inner.len {
@@ -341,12 +499,39 @@ fn gc_sweep(heap: &Heap) -> r: u64 writes(heap) {
       break;
     }
   }
+  set i = 0_u64;
+  loop {
+    if i < heap^.threads.inner.len {
+      set threads.slots_visited = threads.slots_visited +sat 1_u64;
+      if heap^.threads.inner[i].live {
+        let amount = heap^.threads.inner[i].accounted_bytes;
+        let retained = True();
+        if heap^.threads.inner[i].mark != epoch {
+          if i < 4294967296_u64 {
+            let h = cvt::<u64, u32>(i);
+            free_thread(heap: heap, h: h);
+            set freed = freed +wrap 1_u64;
+            set threads.freed_objects = threads.freed_objects +sat 1_u64;
+            set threads.freed_bytes = threads.freed_bytes +sat amount;
+            set retained = False();
+          }
+        }
+        if retained {
+          set threads.live_objects = threads.live_objects +sat 1_u64;
+          set threads.live_bytes = threads.live_bytes +sat amount;
+        }
+      }
+      set i = i +wrap 1_u64;
+    } else {
+      break;
+    }
+  }
   set heap^.collections = heap^.collections +sat 1_u64;
   set heap^.bytes_since_gc = 0_u64;
   let live = heap^.bytes;
   let threshold = collection_threshold(live: live, pause: heap^.gc_pause);
   set heap^.threshold = threshold;
-  set heap^.last_collection = CollectionStats(strings: strings, tables: tables, closures: closures, upvalues: upvalues, gray_pops: heap^.gray_pops, next_threshold: threshold);
+  set heap^.last_collection = CollectionStats(strings: strings, tables: tables, closures: closures, upvalues: upvalues, threads: threads, gray_pops: heap^.gray_pops, next_threshold: threshold);
   return freed;
 }
 

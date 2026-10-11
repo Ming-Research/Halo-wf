@@ -29,7 +29,9 @@ fn stack_limit(vm: &Vm, stack: &Box<Slots<Value>>) -> r: u64 reads(vm), reads(st
 }
 
 fn mark_roots(vm: &Vm, stack: &Box<Slots<Value>>, consts: &Box<Slots<Value>>, limit: u64) -> r: unit reads(stack), reads(consts), writes(vm) {
-  doc "Marks every root: the live stack, each frame's closure, the open upvalues, the globals, the per-type metatables, the script's constants, the error value and a host-stopped stack.";
+  doc "Marks every root: the main-thread identity, the live stack, each frame's closure, the open upvalues, the globals, the per-type metatables, the script's constants, the error value and a host-stopped stack. Main is the only installed execution until coroutine switching is implemented; its buffers are traced here and its thread cell owns empty counterparts.";
+  let main = Value::Thread(h: vm^.main_thread);
+  pkg::heap::gc_mark(heap: &vm^.heap, v: main);
   let i = 0_u64;
   loop {
     if i < limit {
@@ -69,7 +71,7 @@ fn mark_roots(vm: &Vm, stack: &Box<Slots<Value>>, consts: &Box<Slots<Value>>, li
   pkg::heap::gc_mark(heap: &vm^.heap, v: g);
   set i = 0_u64;
   loop {
-    if i < 6_u64 {
+    if i < 8_u64 {
       let m = vm^.type_metatables[i];
       if m != no_handle {
         let mv = Value::Tab(h: m);

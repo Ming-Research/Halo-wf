@@ -44,6 +44,9 @@ fn mp_write(vm: &Vm, out: &Box<Slots<u8>>, value: Value, depth: u64) -> r: unit 
     Fun(..) => {
       let ignored_v11 = msgpack::encode::nil(out: out);
     }
+    Thread(..) => {
+      let ignored_thread = msgpack::encode::nil(out: out);
+    }
     Builtin(..) => {
       let ignored_v12 = msgpack::encode::nil(out: out);
     }

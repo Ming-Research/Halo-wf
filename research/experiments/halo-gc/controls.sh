@@ -131,4 +131,10 @@ mutant constants 'pkg::heap::gc_mark(heap: &vm^.heap, v: k);'
 expect 1 open-upvalues-unmarked compare --binary "$out/mutant-open-upvalues" --cases "$cases" --filter gc/open-upvalues --budgets 1,7,1000 --gc-stress
 expect 1 frame-closure-unmarked compare --binary "$out/mutant-frame-closure" --cases "$cases" --filter gc/frame-closure --budgets 1 --gc-stress --isolate-frames
 expect 1 constants-unmarked compare --binary "$out/mutant-constants" --budgets 1,7,1000 --gc-stress
+# Thread controls are an explicitly selected investigation batch: sample one
+# new build before choosing its scale. Positive thread probes always run in
+# the ordinary embedding gate, independently of this selection.
+if [ -n "${THREAD_ROOT_MUTANTS:-}" ]; then
+  if ! sh "$root/research/experiments/halo-gc/thread-controls.sh" "$out/thread-controls"; then status=1; fi
+fi
 exit $status

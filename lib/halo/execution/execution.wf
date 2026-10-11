@@ -1,0 +1,60 @@
+alias Value = pkg::value::Value;
+
+fn empty() -> r: Execution pure contract {
+  ensures r.stack.inner.cap == 0_u64;
+  ensures r.stack.inner.len == 0_u64;
+  ensures r.frames.inner.cap == 0_u64;
+  ensures r.frames.inner.len == 0_u64;
+  ensures r.open_upvalues.inner.cap == 0_u64;
+  ensures r.open_upvalues.inner.len == 0_u64;
+  ensures r.pattern_subs.inner.cap == 0_u64;
+  ensures r.pattern_subs.inner.len == 0_u64;
+  ensures r.library_contexts.inner.cap == 0_u64;
+  ensures r.library_contexts.inner.len == 0_u64;
+  ensures r.sort_frames.inner.cap == 0_u64;
+  ensures r.sort_frames.inner.len == 0_u64;
+  ensures r.callbacks.inner.cap == 0_u64;
+  ensures r.callbacks.inner.len == 0_u64;
+  ensures r.stopped_stack.inner.cap == 0_u64;
+  ensures r.stopped_stack.inner.len == 0_u64;
+} {
+  let stack = box_slots_new::<Value>(capacity: 0_u64);
+  let frames = box_slots_new::<Frame>(capacity: 0_u64);
+  let open_upvalues = box_slots_new::<u32>(capacity: 0_u64);
+  let pattern_subs = box_slots_new::<PatternSubFrame>(capacity: 0_u64);
+  let library_contexts = box_slots_new::<LibraryContext>(capacity: 0_u64);
+  let sort_frames = box_slots_new::<SortFrame>(capacity: 0_u64);
+  let callbacks = box_slots_new::<CallbackFrame>(capacity: 0_u64);
+  let stopped_stack = box_slots_new::<Value>(capacity: 0_u64);
+  let no = False();
+  let nil = Value::Nil();
+  let plan = CallbackPlan(pc: 0_u64, base: 0_u64, kbase: 0_u64, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: no);
+  let pending = PendingCall(id: 0_u32, argc: 0_u64, func: 0_u64, wanted: 0_i64, return_pc: 0_u64, base: 0_u64, kbase: 0_u64, tail: no, activation: 0_u32, top: 0_u64);
+  return Execution(stack: move stack, frames: move frames, open_upvalues: move open_upvalues, pattern_subs: move pattern_subs, library_contexts: move library_contexts, sort_frames: move sort_frames, callbacks: move callbacks, stopped_stack: move stopped_stack, top: 0_u64, saved_pc: 0_u64, saved_base: 0_u64, saved_kbase: 0_u64, error: nil, activation: 0_u32, callback_plan: plan, suspended: no, pending: pending, call_pending: no, raise_pc: 0_u64, host_stopped: no, post_catch: 18446744073709551615_u64, cjson_active_config: 0_u64);
+}
+
+fn storage_bytes(execution: &Execution) -> r: u64 reads(execution) {
+  let bytes = 512_u64;
+  let stack = execution^.stack.inner.cap *sat 16_u64;
+  set bytes = bytes +sat stack;
+  let stopped_stack = execution^.stopped_stack.inner.cap *sat 16_u64;
+  set bytes = bytes +sat stopped_stack;
+  let frames = execution^.frames.inner.cap *sat 80_u64;
+  set bytes = bytes +sat frames;
+  let open_upvalues = execution^.open_upvalues.inner.cap *sat 4_u64;
+  set bytes = bytes +sat open_upvalues;
+  let callbacks = execution^.callbacks.inner.cap *sat 120_u64;
+  set bytes = bytes +sat callbacks;
+  let library_contexts = execution^.library_contexts.inner.cap *sat 168_u64;
+  set bytes = bytes +sat library_contexts;
+  let sort_frames = execution^.sort_frames.inner.cap *sat 96_u64;
+  set bytes = bytes +sat sort_frames;
+  let pattern_subs = execution^.pattern_subs.inner.cap *sat 104_u64;
+  set bytes = bytes +sat pattern_subs;
+  for (i in 0_u64..execution^.pattern_subs.inner.len) {
+    if i < execution^.pattern_subs.inner.len {
+      set bytes = bytes +sat execution^.pattern_subs.inner[i].output.inner.cap;
+    }
+  }
+  return bytes;
+}

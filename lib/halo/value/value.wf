@@ -25,6 +25,9 @@ fn num_of(v: Value) -> r: NumView pure {
     Builtin(id: hid) => {
       return NumView::Not();
     }
+    Thread(..) => {
+      return NumView::Not();
+    }
   }
 }
 
@@ -53,6 +56,9 @@ fn str_of(v: Value) -> r: HandleView pure {
       return HandleView::NoHandle();
     }
     Builtin(id: hid) => {
+      return HandleView::NoHandle();
+    }
+    Thread(..) => {
       return HandleView::NoHandle();
     }
   }
@@ -85,6 +91,9 @@ fn tab_of(v: Value) -> r: HandleView pure {
     Builtin(id: hid) => {
       return HandleView::NoHandle();
     }
+    Thread(..) => {
+      return HandleView::NoHandle();
+    }
   }
 }
 
@@ -113,6 +122,9 @@ fn truthy(v: Value) -> r: Bool pure {
       return True();
     }
     Builtin(id: hid) => {
+      return True();
+    }
+    Thread(..) => {
       return True();
     }
   }

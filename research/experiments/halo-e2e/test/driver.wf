@@ -250,6 +250,9 @@ fn reply(vm: &Vm, value: Value, out: &Box<Slots<u8>>, depth: u64) -> r: unit wri
     Builtin(..) => {
       nil_reply(out: out);
     }
+    Thread(..) => {
+      nil_reply(out: out);
+    }
   }
   return unit;
 }
@@ -795,6 +798,8 @@ fn isolate_frame_roots(engine: &Engine) -> r: unit reads(engine.vm.frames), writ
           Tab(..) => {
           }
           Builtin(..) => {
+          }
+          Thread(..) => {
           }
         }
       }

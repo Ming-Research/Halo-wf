@@ -93,6 +93,58 @@ Lua reply. The ordinary stack otherwise keeps that same closure reachable,
 so a corpus pass alone cannot establish the separate frame-root path.
 This isolation is an experiment condition, never the default harness mode.
 
+## Thread payload controls
+
+Board item `halo-coroutine-study` adds isolated thread observations to the
+embedding smoke gate: allocation/free/reuse and capacity accounting, retained
+and unreachable cells, intrinsic main identity, classifiers and logical-limit
+failure/recovery. `thread-edges-probe.wf` gives each payload reference its own
+fresh heap, with only that edge retaining its target string, unrelated garbage
+that must be freed, and a second collection without the thread root. It also
+checks dynamic top, the maximum frame window and the first dead stack slot.
+These probes stay while the coroutine implementation needs their evidence;
+remove them when maintained tests supersede the same observations.
+
+`thread-controls.sh`, called by `controls.sh` when `THREAD_ROOT_MUTANTS` is
+set, deletes one marking call in a copied tree and builds the ordinary probe
+entry with the pinned compiler. Native exit must equal that edge's observation
+number; compilation refusal, timeout, signal or another observation is not
+accepted. Every case starts from the original sources. Logs record actual
+build and native exit codes. A zero-mutant baseline must pass first. The
+compiler provides no source-mutator command, so this uses the established
+copy/delete/build control instead of adding a test path to production code.
+
+Run in CI. First select the single `stack` omission and inspect its build
+duration before selecting further names or `all` (18 omissions):
+
+```sh
+THREAD_ROOT_MUTANTS=stack make roots
+# After the sample establishes a practical batch size:
+THREAD_ROOT_MUTANTS=all make roots
+```
+
+The temporary `coroutine-thread-controls.yml` workflow selects `stack` on a
+branch push; its manual `edges` input selects a bounded later batch. It keeps
+build diagnostics and native outputs as an artifact. Remove this workflow
+before the branch is ready, after recording the controls' CI evidence.
+
+Names are `thread`, `stack`, `frame`, `open-list`, `library-table`,
+`library-comparator`, `library-error`, `library-key`, `library-frame`, `sort-a`,
+`sort-b`, `sort-pivot`, `pattern-source`, `pattern-pattern`,
+`pattern-replacement`, `error`, `stopped`, and `main`; comma-separated names
+select a bounded batch. The library/sort/pattern fields are tested separately
+so removing one cannot pass because another field holds the same value.
+`open-list` uses a closed capture to isolate the handle edge without changing
+the current ownerless open-upvalue representation. Owner-qualified capture
+lifetime and resumer edges belong to the following coroutine stages.
+
+No results are claimed by these authored controls. Their actual failures and
+the restored positive observations must be recorded from CI before treating
+the new edges as validated. Main's installed VM/embedding buffers retain their
+existing accounting treatment at this stage; its empty counterpart cell is
+charged 512 logical bytes. Thread-owned payload buffers and pattern output
+reserve are charged by capacity, even when their live lengths are zero.
+
 The corrected comparison (source digest recorded by the runner) passed
 240/240 replies, with 20,450 collections per budget and no zero-count
 script. Memory exhaustion/recovery passed at all three budgets; the sampled

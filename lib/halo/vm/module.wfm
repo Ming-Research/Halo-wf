@@ -5,96 +5,17 @@ alias Cell = pkg::value::Cell;
 alias Proto = pkg::value::Proto;
 alias Script = pkg::value::Script;
 alias Heap = pkg::heap::Heap;
-
-public struct Frame {
-  public func: u64;
-  public base: u64;
-  public return_pc: u64;
-  public kbase: u64;
-  public closure: u32;
-  public nresults: i64;
-  public activation: u32;
-  public flags: u8;
-  public varbase: u64;
-  public varcount: u64;
-  public frame_top: u64;
-}
-
-public struct CallbackPlan {
-  public pc: u64;
-  public base: u64;
-  public kbase: u64;
-  public kind: u8;
-  public dest: u64;
-  public first: u64;
-  public index: u64;
-  public target: u64;
-  public expected: Bool;
-}
-
-public struct CallbackFrame {
-  public plan: CallbackPlan;
-  public scratch: u64;
-  public dest: u64;
-  public wanted: i64;
-  public length: u64;
-  public top: u64;
-  public activation: u32;
-  public mode: u8;
-}
-
-public struct LibraryContext {
-  public frame: Frame;
-  public tail: Bool;
-  public id: u32;
-  public phase: u8;
-  public count: u64;
-  public table: Value;
-  public comparator: Value;
-  public saved_error: Value;
-  public foreach_key: Value;
-}
-
-public struct SortFrame {
-  public context: u64;
-  public lower: i64;
-  public upper: i64;
-  public i: i64;
-  public j: i64;
-  public phase: u8;
-  public a: Value;
-  public b: Value;
-  public pivot: Value;
-}
-
-public struct PatternSubFrame {
-  public context: u64;
-  public source: Value;
-  public pattern: Value;
-  public replacement: Value;
-  public output: Box<Slots<u8>>;
-  public start: u64;
-  public end: u64;
-  public count: u64;
-  public maximum: i64;
-  public anchor: Bool;
-  public phase: u8;
-}
-
-public struct PendingCall {
-  public id: u32;
-  public argc: u64;
-  public func: u64;
-  public wanted: i64;
-  public return_pc: u64;
-  public base: u64;
-  public kbase: u64;
-  public tail: Bool;
-  public activation: u32;
-  public top: u64;
-}
+alias Frame = pkg::execution::Frame;
+alias CallbackPlan = pkg::execution::CallbackPlan;
+alias CallbackFrame = pkg::execution::CallbackFrame;
+alias LibraryContext = pkg::execution::LibraryContext;
+alias SortFrame = pkg::execution::SortFrame;
+alias PatternSubFrame = pkg::execution::PatternSubFrame;
+alias PendingCall = pkg::execution::PendingCall;
 
 public struct Vm {
+  public main_thread: u32;
+  public current_thread: u32;
   public pattern_subs: Box<Slots<PatternSubFrame>>;
   public cjson_configs: Box<Slots<CjsonConfig>>;
   public cjson_active_config: u64;
@@ -115,7 +36,7 @@ public struct Vm {
   public error: Value;
   public activation: u32;
   public globals: u32;
-  public type_metatables: Array<u32, 6>;
+  public type_metatables: Array<u32, 8>;
   public host_stopped: Bool;
   public stopped_stack: Box<Slots<Value>>;
   public callback_plan: CallbackPlan;
@@ -176,7 +97,7 @@ public const builtin_getmetatable: u32 = 7_u32;
 
 public const unlimited: u64 = 18446744073709551615_u64;
 
-public fn vm_new(limit: u64) -> r: Vm pure doc "An empty VM with an ordinary globals table. start installs script metadata.";
+public fn vm_new(limit: u64) -> r: Vm pure doc "A VM with an ordinary globals table and a real main-thread cell whose identity survives reset and start. Installed execution buffers remain in the VM and embedding stack; the cell holds empty counterpart owners. start installs script metadata.";
 
 public fn stack_new(size: u64) -> r: Box<Slots<Value>> pure contract {
   ensures r.inner.len == size;

@@ -1,4 +1,5 @@
 alias Value = pkg::value::Value;
+alias Execution = pkg::execution::Execution;
 
 public struct String {
   public readonly hash: u64;
@@ -88,6 +89,15 @@ public struct UpvalCell {
   public payload: Upval;
 }
 
+public struct ThreadCell {
+  doc "A thread owns its inactive execution buffers; accounted_bytes caches the last successful logical storage charge. Refresh after changing owned storage before a safepoint.";
+  public live: Bool;
+  public mark: u32;
+  public next_free: u32;
+  public payload: Execution;
+  public accounted_bytes: u64;
+}
+
 public struct CollectionKindStats {
   doc "Logical payload accounting for one object kind, using Heap's byte estimates; slots_visited includes already free slab slots.";
   public readonly live_objects: u64;
@@ -103,20 +113,23 @@ public struct CollectionStats {
   public readonly tables: CollectionKindStats;
   public readonly closures: CollectionKindStats;
   public readonly upvalues: CollectionKindStats;
+  public readonly threads: CollectionKindStats;
   public readonly gray_pops: u64;
   public readonly next_threshold: u64;
 }
 
 public struct Heap {
-  doc "Slab indices are collector handles; no_handle terminates every free list. Logical accounting estimates: strings 24 plus byte capacity, tables 48 plus 16 per array slot and 32 per node, closures 24 plus 4 per upvalue, upvalues 32. Slab and intern reserve are excluded. limit bounds live logical bytes after a full VM safepoint collection; zero is unlimited.";
+  doc "Slab indices are collector handles; no_handle terminates every free list. Logical accounting estimates: strings 24 plus byte capacity, tables 48 plus 16 per array slot and 32 per node, closures 24 plus 4 per upvalue, upvalues 32; threads use execution.storage_bytes, including their buffer capacities. Slab and intern reserve are excluded. limit bounds live logical bytes after a full VM safepoint collection; zero is unlimited.";
   public strings: Box<Slots<StringCell>>;
   public tables: Box<Slots<TableCell>>;
   public closures: Box<Slots<ClosureCell>>;
   public upvalues: Box<Slots<UpvalCell>>;
+  public threads: Box<Slots<ThreadCell>>;
   public strings_free: u32;
   public tables_free: u32;
   public closures_free: u32;
   public upvalues_free: u32;
+  public threads_free: u32;
   public interned: Box<Slots<u32>>;
   public intern_count: u64;
   public bytes: u64;
@@ -134,11 +147,11 @@ public struct Heap {
 
 public fn gc_begin(heap: &Heap) -> r: unit writes(heap.epoch), writes(heap.gray_pops) doc "Starts a collection with zero gray pops and a new epoch, so every cell's mark is stale until marked again; the last completed snapshot is preserved until sweep finishes.";
 
-public fn gc_mark(heap: &Heap, v: Value) -> r: unit writes(heap) doc "Marks the object a value names in the current epoch; a table or closure joins the gray stack to have its references marked.";
+public fn gc_mark(heap: &Heap, v: Value) -> r: unit writes(heap) doc "Marks the object a value names in the current epoch; a table, closure or thread joins the gray stack to have its references marked.";
 
 public fn gc_mark_upvalue(heap: &Heap, h: u32) -> r: unit writes(heap) doc "Marks an upvalue cell and, when closed, the value it holds.";
 
-public fn gc_propagate(heap: &Heap) -> r: unit writes(heap) doc "Marks everything reachable from the gray stack until it is empty: a table's array values, node keys and values and metatable; a closure's upvalues.";
+public fn gc_propagate(heap: &Heap) -> r: unit writes(heap) doc "Marks everything reachable from the gray stack until it is empty: a table's array values, node keys and values and metatable; a closure's upvalues; a thread's retained execution roots.";
 
 public fn gc_sweep(heap: &Heap) -> r: u64 writes(heap) doc "Frees every live cell not marked in the current epoch, dead strings leaving the intern table, and returns how many cells were freed; resets bytes_since_gc and publishes collection statistics and sets threshold to max(collection_floor (64 KiB), live * (gc_pause - 100) / 100), saturating at u64 maximum. The default pause of 200 preserves the live-byte threshold exactly.";
 
@@ -161,6 +174,12 @@ public fn free_closure(heap: &Heap, h: u32) -> r: unit writes(heap) doc "Release
 public fn alloc_upvalue(heap: &Heap, payload: Upval) -> r: Option<u32> writes(heap) doc "Allocates an open or closed upvalue with mark zero; None denotes handle or accounting exhaustion.";
 
 public fn free_upvalue(heap: &Heap, h: u32) -> r: unit writes(heap) doc "Replaces a live upvalue with closed Nil and links it onto upvalues_free; repeated frees do nothing.";
+
+public fn alloc_thread(heap: &Heap, payload: Execution) -> r: Option<u32> writes(heap) doc "Allocates a live thread cell with mark zero and charges its execution storage; None denotes handle or accounting exhaustion.";
+
+public fn free_thread(heap: &Heap, h: u32) -> r: unit writes(heap) doc "Releases a live thread's owned execution storage using its cached charge and links it onto threads_free; repeated frees do nothing.";
+
+public fn refresh_thread_storage(heap: &Heap, h: u32) -> r: Bool writes(heap) doc "Reconciles a live thread's cached charge after owned execution storage changes, before a safepoint. Charges growth or uncharges shrink; invalid handles or accounting exhaustion return False without changing the cached charge.";
 
 public fn new_closure(heap: &Heap, proto: u32, upvals: &[u32]) -> r: Value reads(upvals), writes(heap) doc "Copies the captured handles into a new Lua closure of prototype proto; Nil denotes representational exhaustion.";
 

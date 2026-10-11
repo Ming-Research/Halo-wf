@@ -68,6 +68,8 @@ fn print_call(env: &Output, vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc:
           }
           Builtin(..) => {
           }
+          Thread(..) => {
+          }
         }
       }
     }

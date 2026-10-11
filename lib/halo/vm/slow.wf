@@ -8,6 +8,7 @@ alias truthy = pkg::value::truthy;
 alias intern = pkg::heap::intern;
 alias table_get = pkg::heap::table_get;
 alias table_set = pkg::heap::table_set;
+alias CallbackFrame = pkg::execution::CallbackFrame;
 
 const slow_text_0: Array<u8, 34> = "Attempt to modify a readonly table";
 
@@ -120,7 +121,7 @@ fn metatable(vm: &Vm, v: Value) -> r: Value reads(vm) {
     NoHandle() => {
       let tag = kind(v: v);
       let index = cvt::<u8, u64>(tag);
-      if index < 6_u64 {
+      if index < 8_u64 {
         let h = vm^.type_metatables[index];
         if h != no_handle {
           return Value::Tab(h: h);

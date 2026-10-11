@@ -140,6 +140,9 @@ fn library_base<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<V
       Builtin(id: bid) => {
         set local_handle_20 = bid;
       }
+      Thread(h: th) => {
+        set local_handle_20 = th;
+      }
       Nil() => {
       }
       False() => {
