@@ -47,6 +47,11 @@ jobs:
               objdump -d --no-show-raw-insn -M intel --disassemble="$symbol" "build/witness-$release" | sed -n '1,120p'
             done
           done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: witness-copy-hoist
+          path: build/witness-*
+          retention-days: 30
 
   bench:
     needs: build
