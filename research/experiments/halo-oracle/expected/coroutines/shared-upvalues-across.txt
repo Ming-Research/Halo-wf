@@ -1,0 +1,163 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "bulk",
+          "bytes": "closures-ready"
+        },
+        {
+          "type": "bulk",
+          "bytes": "suspended"
+        },
+        {
+          "type": "integer",
+          "value": 10
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "main-suspended"
+        },
+        {
+          "type": "integer",
+          "value": 10
+        },
+        {
+          "type": "integer",
+          "value": 20
+        },
+        {
+          "type": "integer",
+          "value": 20
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "other-suspended"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "integer",
+          "value": 20
+        },
+        {
+          "type": "integer",
+          "value": 20
+        },
+        {
+          "type": "integer",
+          "value": 30
+        },
+        {
+          "type": "integer",
+          "value": 30
+        },
+        {
+          "type": "bulk",
+          "bytes": "suspended"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "creator-return"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "integer",
+          "value": 30
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        },
+        {
+          "type": "integer",
+          "value": 30
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "main-dead"
+        },
+        {
+          "type": "integer",
+          "value": 30
+        },
+        {
+          "type": "integer",
+          "value": 40
+        },
+        {
+          "type": "integer",
+          "value": 40
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "other-dead"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "integer",
+          "value": 40
+        },
+        {
+          "type": "integer",
+          "value": 40
+        },
+        {
+          "type": "integer",
+          "value": 50
+        },
+        {
+          "type": "integer",
+          "value": 50
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        },
+        {
+          "type": "integer",
+          "value": 50
+        }
+      ]
+    }
+  ]
+}

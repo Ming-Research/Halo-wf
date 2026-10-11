@@ -13,9 +13,10 @@ The scripts, replies and runner belong here until the oracle is replaced or
 Halo/firn scripting is retired. Each case is consumed by `run.sh`; the table
 below is the index of the observations it protects.
 
-The `coroutines` group has scripts only: its first Redis 7.0.15 recording is
-pending, and Halo has no coroutine library yet. A full comparison requires
-those reference replies and the coroutine implementation.
+The `coroutines` group is comparison 1 of the
+[coroutine study](../../investigations/halo/COROUTINES.md); Halo has no
+coroutine library yet, so `make check-core` fails on these cases until it
+does.
 
 ## Layout and invocation
 
@@ -172,8 +173,7 @@ Twelve cases intentionally return top-level errors, marked by `-- error: true`
 in their script headers: three in `lua-core`, eight in `redis-api`, and one
 in `coroutines`.
 Redis 7.0.15 reports the global-write refusal as "Attempt to modify a readonly
-table". In the recorded groups, no script was dropped and there were no
-unexpected top-level rejections; the coroutine replies remain unrecorded.
+table". No script was dropped; there were no unexpected top-level rejections.
 Two complete generations must agree before treating a changed corpus as a
 reproducible reference. Cross-platform differences should be investigated,
 not automatically used to overwrite this baseline.

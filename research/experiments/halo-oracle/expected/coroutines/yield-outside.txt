@@ -1,0 +1,21 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "bulk",
+      "bytes": "false"
+    },
+    {
+      "type": "bulk",
+      "bytes": "string"
+    },
+    {
+      "type": "bulk",
+      "bytes": "attempt to yield across metamethod/C-call boundary"
+    },
+    {
+      "type": "bulk",
+      "bytes": "true"
+    }
+  ]
+}

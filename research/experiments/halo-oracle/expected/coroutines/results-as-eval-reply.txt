@@ -1,0 +1,30 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "bulk",
+      "bytes": "coroutine-reply"
+    },
+    {
+      "type": "integer",
+      "value": 17
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "nested"
+        },
+        {
+          "type": "integer",
+          "value": 23
+        }
+      ]
+    },
+    {
+      "type": "status",
+      "bytes": "OK"
+    }
+  ]
+}

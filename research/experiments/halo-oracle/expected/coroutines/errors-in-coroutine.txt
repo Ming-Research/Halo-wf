@@ -1,0 +1,584 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "string-location-resume"
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 2
+            },
+            {
+              "type": "array",
+              "items": [
+                {
+                  "type": "bulk",
+                  "bytes": "boolean"
+                },
+                {
+                  "type": "bulk",
+                  "bytes": "false"
+                }
+              ]
+            },
+            {
+              "type": "array",
+              "items": [
+                {
+                  "type": "bulk",
+                  "bytes": "string"
+                },
+                {
+                  "type": "bulk",
+                  "bytes": "user_script:23: coroutine-location"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "level-zero-resume"
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 2
+            },
+            {
+              "type": "array",
+              "items": [
+                {
+                  "type": "bulk",
+                  "bytes": "boolean"
+                },
+                {
+                  "type": "bulk",
+                  "bytes": "false"
+                }
+              ]
+            },
+            {
+              "type": "array",
+              "items": [
+                {
+                  "type": "bulk",
+                  "bytes": "string"
+                },
+                {
+                  "type": "bulk",
+                  "bytes": "coroutine-no-location"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "table-resume"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "bulk",
+              "bytes": "table"
+            },
+            {
+              "type": "bulk",
+              "bytes": "nil"
+            },
+            {
+              "type": "bulk",
+              "bytes": "nil"
+            },
+            {
+              "type": "bulk",
+              "bytes": "string"
+            },
+            {
+              "type": "bulk",
+              "bytes": "identity-token"
+            }
+          ]
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "string-location-pcall"
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 3
+            },
+            {
+              "type": "array",
+              "items": [
+                {
+                  "type": "bulk",
+                  "bytes": "boolean"
+                },
+                {
+                  "type": "bulk",
+                  "bytes": "true"
+                }
+              ]
+            },
+            {
+              "type": "array",
+              "items": [
+                {
+                  "type": "bulk",
+                  "bytes": "boolean"
+                },
+                {
+                  "type": "bulk",
+                  "bytes": "false"
+                }
+              ]
+            },
+            {
+              "type": "array",
+              "items": [
+                {
+                  "type": "bulk",
+                  "bytes": "string"
+                },
+                {
+                  "type": "bulk",
+                  "bytes": "user_script:30: protected-coroutine-location"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "level-zero-pcall"
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 3
+            },
+            {
+              "type": "array",
+              "items": [
+                {
+                  "type": "bulk",
+                  "bytes": "boolean"
+                },
+                {
+                  "type": "bulk",
+                  "bytes": "true"
+                }
+              ]
+            },
+            {
+              "type": "array",
+              "items": [
+                {
+                  "type": "bulk",
+                  "bytes": "boolean"
+                },
+                {
+                  "type": "bulk",
+                  "bytes": "false"
+                }
+              ]
+            },
+            {
+              "type": "array",
+              "items": [
+                {
+                  "type": "bulk",
+                  "bytes": "string"
+                },
+                {
+                  "type": "bulk",
+                  "bytes": "protected-coroutine-no-location"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "table-pcall"
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 4
+            },
+            {
+              "type": "array",
+              "items": [
+                {
+                  "type": "bulk",
+                  "bytes": "boolean"
+                },
+                {
+                  "type": "bulk",
+                  "bytes": "true"
+                }
+              ]
+            },
+            {
+              "type": "array",
+              "items": [
+                {
+                  "type": "bulk",
+                  "bytes": "boolean"
+                },
+                {
+                  "type": "bulk",
+                  "bytes": "false"
+                }
+              ]
+            },
+            {
+              "type": "array",
+              "items": [
+                {
+                  "type": "bulk",
+                  "bytes": "table"
+                },
+                {
+                  "type": "bulk",
+                  "bytes": "nil"
+                },
+                {
+                  "type": "bulk",
+                  "bytes": "nil"
+                },
+                {
+                  "type": "bulk",
+                  "bytes": "string"
+                },
+                {
+                  "type": "bulk",
+                  "bytes": "identity-token"
+                }
+              ]
+            },
+            {
+              "type": "array",
+              "items": [
+                {
+                  "type": "bulk",
+                  "bytes": "boolean"
+                },
+                {
+                  "type": "bulk",
+                  "bytes": "true"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "redis.call-resume"
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 2
+            },
+            {
+              "type": "array",
+              "items": [
+                {
+                  "type": "bulk",
+                  "bytes": "boolean"
+                },
+                {
+                  "type": "bulk",
+                  "bytes": "false"
+                }
+              ]
+            },
+            {
+              "type": "array",
+              "items": [
+                {
+                  "type": "bulk",
+                  "bytes": "table"
+                },
+                {
+                  "type": "bulk",
+                  "bytes": "string"
+                },
+                {
+                  "type": "bulk",
+                  "bytes": "ERR value is not an integer or out of range"
+                },
+                {
+                  "type": "bulk",
+                  "bytes": "nil"
+                },
+                {
+                  "type": "bulk",
+                  "bytes": "nil"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "redis.call-pcall"
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 3
+            },
+            {
+              "type": "array",
+              "items": [
+                {
+                  "type": "bulk",
+                  "bytes": "boolean"
+                },
+                {
+                  "type": "bulk",
+                  "bytes": "true"
+                }
+              ]
+            },
+            {
+              "type": "array",
+              "items": [
+                {
+                  "type": "bulk",
+                  "bytes": "boolean"
+                },
+                {
+                  "type": "bulk",
+                  "bytes": "false"
+                }
+              ]
+            },
+            {
+              "type": "array",
+              "items": [
+                {
+                  "type": "bulk",
+                  "bytes": "string"
+                },
+                {
+                  "type": "bulk",
+                  "bytes": "ERR value is not an integer or out of range"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "redis.pcall-error"
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 2
+            },
+            {
+              "type": "array",
+              "items": [
+                {
+                  "type": "bulk",
+                  "bytes": "boolean"
+                },
+                {
+                  "type": "bulk",
+                  "bytes": "true"
+                }
+              ]
+            },
+            {
+              "type": "array",
+              "items": [
+                {
+                  "type": "bulk",
+                  "bytes": "table"
+                },
+                {
+                  "type": "bulk",
+                  "bytes": "string"
+                },
+                {
+                  "type": "bulk",
+                  "bytes": "ERR value is not an integer or out of range"
+                },
+                {
+                  "type": "bulk",
+                  "bytes": "nil"
+                },
+                {
+                  "type": "bulk",
+                  "bytes": "nil"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "redis.pcall-success"
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 2
+            },
+            {
+              "type": "array",
+              "items": [
+                {
+                  "type": "bulk",
+                  "bytes": "boolean"
+                },
+                {
+                  "type": "bulk",
+                  "bytes": "true"
+                }
+              ]
+            },
+            {
+              "type": "array",
+              "items": [
+                {
+                  "type": "bulk",
+                  "bytes": "string"
+                },
+                {
+                  "type": "bulk",
+                  "bytes": "not-an-integer"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    }
+  ]
+}
