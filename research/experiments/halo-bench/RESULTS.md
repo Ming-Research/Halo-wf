@@ -5188,8 +5188,8 @@ larger range (1.93%) and the twin's difference (0.2%), with every new run
 slower than every old one. Three kernels are faster beyond their larger
 range and the twin's difference: binary-trees (20%), integer-table (14%) and
 loop (3.3%). Fib, string-key and sort have lower medians within those
-bounds, so no gain is established for them. The comparison changes several
-compiler changes at once; that binary-trees gains from the empty window
+bounds, so no gain is established for them. The two releases differ by several
+compiler changes; that binary-trees gains from the empty window
 (v0.125) is the prediction it is consistent with, not an isolated cause.
 
 ### Concat attribution
