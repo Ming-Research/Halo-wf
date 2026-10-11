@@ -28,6 +28,9 @@ fn copy_into(src: &Holder, dst: &Box<Slots<u8>>, index: u64) -> r: unit reads(sr
 
 fn main(inputs: Inputs) -> status: ExitStatus pure waits {
   let Inputs(args: args, cwd: cwd, stdout: output, stderr: errors, handles: factory, stdin: input, clock: clock, wall_clock: wall_clock, ..) = move inputs;
+  let std::fs::Directory(read: cwd_read, write: cwd_write) = move cwd;
+  std::fs::close_directory(factory: &factory, directory: move cwd_read);
+  std::fs::close_directory_write(factory: &factory, directory: move cwd_write);
   let argc = std::text::args_count(args: &args);
   let items = box_slots_new::<Item>(capacity: 3_u64);
   for (i in 0_u64..3_u64) {
