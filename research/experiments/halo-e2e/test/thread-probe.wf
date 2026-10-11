@@ -431,8 +431,8 @@ fn thread_engine_probe(stress: Bool) -> r: u8 pure {
   doc "Observations 213 through 216 detect loss or replacement of the intrinsic main-thread root across forced collection, reset and start before any Lua global refers to it. Host-only injection then exercises thread classification, identity formatting, truthiness, equality and distinct table keys for a live table and thread with the same numeric handle. Protected failures cover arithmetic, indexing, call, concatenation, length and gsub replacement rejection, detecting thread misclassification as a function or admitted replacement. The codec checks use Redis 7.0.15's cjson thread refusal and MessagePack nil encoding; cjson.null must remain userdata.";
   let engine = halo::embed::new_engine(limit: 0_u64);
   let env = Probe(mode: 0_u8, calls: 0_u64);
-  let main = engine.vm.main_thread;
-  let initial_main_live = thread_main_live(engine: &engine, expected: main);
+  let main_handle = engine.vm.main_thread;
+  let initial_main_live = thread_main_live(engine: &engine, expected: main_handle);
   let initial_main_missing = bnot(initial_main_live);
   if initial_main_missing {
     return 213_u8;
@@ -441,7 +441,7 @@ fn thread_engine_probe(stress: Bool) -> r: u8 pure {
   if bnot(collected) {
     return 213_u8;
   }
-  let collected_main_live = thread_main_live(engine: &engine, expected: main);
+  let collected_main_live = thread_main_live(engine: &engine, expected: main_handle);
   let collected_main_missing = bnot(collected_main_live);
   if collected_main_missing {
     return 213_u8;
@@ -454,7 +454,7 @@ fn thread_engine_probe(stress: Bool) -> r: u8 pure {
     return 213_u8;
   }
   halo::embed::reset(engine: &engine);
-  let reset_main_live = thread_main_live(engine: &engine, expected: main);
+  let reset_main_live = thread_main_live(engine: &engine, expected: main_handle);
   let reset_main_missing = bnot(reset_main_live);
   if reset_main_missing {
     return 214_u8;
@@ -463,7 +463,7 @@ fn thread_engine_probe(stress: Bool) -> r: u8 pure {
   if bnot(restarted) {
     return 214_u8;
   }
-  let restarted_main_live = thread_main_live(engine: &engine, expected: main);
+  let restarted_main_live = thread_main_live(engine: &engine, expected: main_handle);
   let restarted_main_missing = bnot(restarted_main_live);
   if restarted_main_missing {
     return 214_u8;
@@ -477,10 +477,10 @@ fn thread_engine_probe(stress: Bool) -> r: u8 pure {
       give handle;
     }
   }
-  if other == main {
+  if other == main_handle {
     return 215_u8;
   }
-  let peer_index = cvt::<u32, u64>(main);
+  let peer_index = cvt::<u32, u64>(main_handle);
   if peer_index < engine.vm.heap.tables.inner.len {
     if bnot(engine.vm.heap.tables.inner[peer_index].live) {
       return 215_u8;
@@ -488,9 +488,9 @@ fn thread_engine_probe(stress: Bool) -> r: u8 pure {
   } else {
     return 215_u8;
   }
-  let main_value = Value::Thread(h: main);
+  let main_value = Value::Thread(h: main_handle);
   let other_value = Value::Thread(h: other);
-  let peer_value = Value::Tab(h: main);
+  let peer_value = Value::Tab(h: main_handle);
   let main_kind = halo::embed::kind(value: main_value);
   if main_kind != 7_u8 {
     return 215_u8;
@@ -515,13 +515,13 @@ fn thread_engine_probe(stress: Bool) -> r: u8 pure {
   if bnot(observed) {
     return 216_u8;
   }
-  let observed_main_live = thread_main_live(engine: &engine, expected: main);
+  let observed_main_live = thread_main_live(engine: &engine, expected: main_handle);
   let observed_main_missing = bnot(observed_main_live);
   if observed_main_missing {
     return 216_u8;
   }
   halo::embed::reset(engine: &engine);
-  let final_main_live = thread_main_live(engine: &engine, expected: main);
+  let final_main_live = thread_main_live(engine: &engine, expected: main_handle);
   let final_main_missing = bnot(final_main_live);
   if final_main_missing {
     return 216_u8;

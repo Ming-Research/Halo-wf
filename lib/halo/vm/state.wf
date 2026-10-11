@@ -238,10 +238,10 @@ fn raw_equal(a: Value, b: Value) -> r: Bool pure {
         }
       }
     }
-    Thread(h: h) => {
+    Thread(h: thread_handle) => {
       match b {
         Thread(h: other) => {
-          return h == other;
+          return thread_handle == other;
         }
         Nil() => {
         }
