@@ -99,11 +99,9 @@ fn read_source(factory: &HandleFactory, input: &InputStream, source: &Box<Slots<
       Err(error: stop_v97) => {
         match stop_v97 {
           ReadEnd() => {
-            std::time::close_cancel_watch(watch: move never);
             return True();
           }
           ReadFailed(error: problem_v98) => {
-            std::time::close_cancel_watch(watch: move never);
             return False();
           }
         }
@@ -119,7 +117,6 @@ fn write_bytes(factory: &HandleFactory, output: &OutputStream, bytes: &Box<Slots
   let position = 0_u64;
   loop {
     if position >= length {
-      std::time::close_cancel_watch(watch: move never);
       return True();
     }
     let deadline = None<std::time::Instant>();
@@ -127,13 +124,11 @@ fn write_bytes(factory: &HandleFactory, output: &OutputStream, bytes: &Box<Slots
     match written {
       Ok(value: end) => {
         if end == position {
-          std::time::close_cancel_watch(watch: move never);
           return False();
         }
         set position = end;
       }
       Err(..) => {
-        std::time::close_cancel_watch(watch: move never);
         return False();
       }
     }

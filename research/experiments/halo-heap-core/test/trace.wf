@@ -81,7 +81,6 @@ fn trace(factory: &HandleFactory, output: &OutputStream, tag: u64, step: u64, ke
       let deadline = None<std::time::Instant>();
       match std::io::write_once(factory: factory, output: output, source: &buffer[0_u64..buffer.len], start: sent, end: buffer.len, deadline: deadline, cancel: &never) {
         Err(error: problem) => {
-          std::time::close_cancel_watch(watch: move never);
           return False();
         }
         Ok(value: next) => {
@@ -89,7 +88,6 @@ fn trace(factory: &HandleFactory, output: &OutputStream, tag: u64, step: u64, ke
         }
       }
     } else {
-      std::time::close_cancel_watch(watch: move never);
       return True();
     }
   }
