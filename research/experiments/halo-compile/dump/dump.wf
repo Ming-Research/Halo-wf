@@ -100,11 +100,9 @@ fn read_source(factory: &HandleFactory, input: &InputStream, source: &Box<Slots<
       Err(error: stop) => {
         match stop {
           ReadEnd() => {
-            std::time::close_cancel_watch(watch: move never);
             return True();
           }
           ReadFailed(error: problem) => {
-            std::time::close_cancel_watch(watch: move never);
             return False();
           }
         }
@@ -1401,7 +1399,6 @@ fn main(inputs: Inputs) -> status: ExitStatus pure waits {
   let read = read_source(factory: &factory, input: &input, source: &source);
   if read {
   } else {
-    std::time::close_cancel_watch(watch: move never);
     return std::process::exit_status(code: 2_u8);
   }
   let out = box_slots_new::<u8>(capacity: 0_u64);
@@ -1438,17 +1435,14 @@ fn main(inputs: Inputs) -> status: ExitStatus pure waits {
     match written {
       Ok(value: end) => {
         if end == position {
-          std::time::close_cancel_watch(watch: move never);
           return std::process::exit_status(code: 2_u8);
         }
         set position = end;
       }
       Err(error: problem) => {
-        std::time::close_cancel_watch(watch: move never);
         return std::process::exit_status(code: 2_u8);
       }
     }
   }
-  std::time::close_cancel_watch(watch: move never);
   return std::process::exit_status(code: 0_u8);
 }
