@@ -5158,3 +5158,64 @@ window; these are predictions, and a smaller or no gain is reported as
 measured. Whitefoot's session also reported that LLVM still merges two
 adjacent 8-byte `Frame` fields into one 16-byte load (lm-bl-frame-width-lowering),
 so fib's count may fall without reaching zero.
+
+### Result
+
+[Run 38143501868](https://github.com/Ming-Research/Halo-wf/actions/runs/38143501868)
+(14900K, 32 performance governors, every timed process on CPU 2; source
+`69b729d`, which differs from main only in `whitefoot.pin`, the temporary
+workflow and this record), six interleaved pairs:
+
+| Kernel | Old | New | Ratio | Old range | New range | Twin ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.0913 | 0.0878 | 0.961 | 6.54% | 12.56% | 1.006 |
+| loop | 0.5227 | 0.5054 | 0.967 | 0.22% | 2.27% | 1.000 |
+| integer-table | 0.4061 | 0.3504 | 0.863 | 2.87% | 0.53% | 1.000 |
+| string-key | 0.0239 | 0.0226 | 0.948 | 5.81% | 4.68% | 0.978 |
+| concat | 0.0745 | 0.0768 | 1.032 | 1.93% | 1.66% | 1.002 |
+| sort | 0.1877 | 0.1843 | 0.982 | 1.68% | 0.32% | 1.003 |
+| binary-trees | 1.5522 | 1.2390 | 0.798 | 3.24% | 3.09% | 0.997 |
+
+Blocked store forwards, three runs per side: fib 14.50–14.63 million on
+the old build against 8.14–8.22 million on the new; integer-table
+21.22 million against 2.24–2.39 million. **The stalls criterion is met** on
+both kernels; fib's remaining count is consistent with the merged `Frame`
+load Whitefoot's session reported. `--check-module pkg::vm` took 10.6 s on
+the old release and 3.2 s on the new, two samples each.
+
+**The no-slowdown criterion fails on concat**: 3.2% slower, beyond its
+larger range (1.93%) and the twin's difference (0.2%), with every new run
+slower than every old one. Six kernels are faster beyond their bounds,
+binary-trees most (the empty window, v0.125).
+
+### Concat attribution
+
+[Run 38145269599](https://github.com/Ming-Research/Halo-wf/actions/runs/38145269599)
+(14900K, CPU 2, the same two builds, ten times concat's iterations, one
+`cpu_core/cycles/` sample per 100003 cycles, artifact `halo-annotate-concat`):
+cycles rose from 3.640 to 3.806 billion while instructions fell 2.5% and
+blocked store forwards fell from 11.9 to 9.4 million. Converting each
+symbol's share to cycles, and reading the annotations:
+
+- The GetTable arm no longer inlines `table_get`
+  (`lib/halo/heap/tables.wf`), which now takes `t` and `key` by address;
+  the two together rose from about 600 to 707 million cycles, most of it in
+  the numeric-key conversion.
+- `concat_step`'s byte-copy loop (`lib/halo/vm/concat.wf`,
+  `concat_batch_copy` inlined) reloads the source box pointer, source length
+  and destination length and capacity on every byte and is no longer
+  unrolled, about 47 to 147 million cycles; the joined value's store in the
+  same function fell from about 161 to 37 million, as #345 splits the copy.
+- `intern`'s hash loop gained about 72 million with the same instructions
+  in other registers; the cause is not identified.
+- `slow` fell about 61 million.
+
+Halo's source is the same on both sides, so each difference is the
+compiler's. A standalone witness of the copy loop's shape alone (two nested
+`Box<Slots<u8>>`, the same guarded byte copy) kept the metadata in registers
+and unrolled by two under both releases, so the regression depends on
+Halo's context. It is filed for Whitefoot's code-generation session as
+status-board item halo-req-concat-codegen, with this evidence and the
+comparison above as its acceptance test, rather than worked around in
+Halo's source. Whether to adopt the release before that fix is the owner's
+decision (card halo-card-adopt-7062f3a).
