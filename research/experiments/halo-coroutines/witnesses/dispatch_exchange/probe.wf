@@ -75,8 +75,8 @@ fn dispatch_exchange(code: &Box<Slots<Cell>>, consts: &Box<Slots<u64>>, stack: &
         set state^.saved_kbase = kbase;
         swap(first: stack, second: &state^.saved_stack);
         let received = Cursor(pc: next_pc, base: next_base, kbase: next_kbase);
-        let checked = checked_cursor(code: code, consts: consts, stack: stack, cursor: received);
-        match checked {
+        let checked_result = checked_cursor(code: code, consts: consts, stack: stack, cursor: received);
+        match checked_result {
           Some(value: next) => {
             set pc = next.pc;
             set base = next.base;

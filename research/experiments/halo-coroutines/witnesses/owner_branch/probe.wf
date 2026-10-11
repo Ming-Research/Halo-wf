@@ -15,14 +15,14 @@ struct State {
 
 fn read_open(state: &State, active: &Box<Slots<u64>>, capture: &Upval) -> r: Option<u64> reads(state), reads(active), reads(capture) {
   match capture^ {
-    Open(owner: owner, slot: slot) => {
-      let index = slot^;
-      if owner^ == state^.current {
+    Open(owner: captured_owner, slot: captured_slot) => {
+      let index = captured_slot^;
+      if captured_owner^ == state^.current {
         if index < active^.inner.len {
           return Some<u64>(value: active^.inner[index]);
         }
       } else {
-        let thread = cvt::<u32, u64>(owner^);
+        let thread = cvt::<u32, u64>(captured_owner^);
         if thread < state^.threads.inner.len {
           if state^.threads.inner[thread].live {
             if index < state^.threads.inner[thread].stack.inner.len {
@@ -32,8 +32,8 @@ fn read_open(state: &State, active: &Box<Slots<u64>>, capture: &Upval) -> r: Opt
         }
       }
     }
-    Closed(value: value) => {
-      return Some<u64>(value: value^);
+    Closed(value: closed_value) => {
+      return Some<u64>(value: closed_value^);
     }
   }
   return None<u64>();
@@ -41,15 +41,15 @@ fn read_open(state: &State, active: &Box<Slots<u64>>, capture: &Upval) -> r: Opt
 
 fn write_open(state: &State, active: &Box<Slots<u64>>, capture: &Upval, value: u64) -> r: Bool writes(state), writes(active), writes(capture) {
   match capture^ {
-    Open(owner: owner, slot: slot) => {
-      let index = slot^;
-      if owner^ == state^.current {
+    Open(owner: captured_owner, slot: captured_slot) => {
+      let index = captured_slot^;
+      if captured_owner^ == state^.current {
         if index < active^.inner.len {
           set active^.inner[index] = value;
           return True();
         }
       } else {
-        let thread = cvt::<u32, u64>(owner^);
+        let thread = cvt::<u32, u64>(captured_owner^);
         if thread < state^.threads.inner.len {
           if state^.threads.inner[thread].live {
             if index < state^.threads.inner[thread].stack.inner.len {
@@ -70,8 +70,8 @@ fn write_open(state: &State, active: &Box<Slots<u64>>, capture: &Upval, value: u
 
 fn is_value(observed: Option<u64>, expected: u64) -> r: Bool pure {
   match observed {
-    Some(value: value) => {
-      return value == expected;
+    Some(value: observed_value) => {
+      return observed_value == expected;
     }
     None() => {
       return False();
