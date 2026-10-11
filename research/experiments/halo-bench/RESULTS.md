@@ -5230,3 +5230,18 @@ arm stops inlining `table_get` from Whitefoot#345, and the byte-copy loop's
 per-byte metadata reloads start with Whitefoot#344 (the empty window,
 v0.125), not #345. Both fixes are to land in Whitefoot#357 and be measured
 against the comparison above.
+
+### Outcome
+
+The owner chose to adopt `wf-7062f3ac4ac7` now, with the concat regression
+tracked by halo-req-concat-codegen, and to move again once a release
+contains Whitefoot#357. Of that pull request's experiment releases, the
+third, `wf-exp-ce22645f11a0`, met the request's timing acceptance on the
+14900K ([run 38175367625](https://github.com/Ming-Research/Halo-wf/actions/runs/38175367625),
+same source, six interleaved pairs per side, a twin): concat 0.980 against
+`wf-78223721f77d` and 0.942 against `wf-7062f3ac4ac7`, with the other
+kernels' gains kept. Its blocked store forwards on integer-table were about
+10% above `wf-7062f3ac4ac7`'s (2.52–2.55 against 2.08–2.33 million) with no
+timing effect (ratio 0.996); Whitefoot recorded that as its item
+lm-bl-int-table-forward-rise. The upgrade to the release that contains
+#357 is measured again when it is published.
