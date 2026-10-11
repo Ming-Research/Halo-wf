@@ -1,7 +1,7 @@
 # Coroutines in Halo
 
-Status: proposal awaiting the owner's ruling; nothing here is implemented
-or measured. Board item `halo-coroutine-study`.
+Status: approved as an experiment; nothing here is implemented or measured
+yet. Board item `halo-coroutine-study`.
 
 ## Question
 
@@ -133,14 +133,17 @@ stackless in Halo, so a frame scan must enforce it.
 - Comparison 1 shows a reference behavior neither mechanism can reproduce:
   it is reported to the owner with the cases it covers.
 
-## Rulings asked of the owner
+## Owner's rulings
 
-- Reopen the coroutine exclusion on the ground above, without new evidence
-  of demand. Recommended: yes, as an experiment; the exclusion stands until
-  the comparisons pass, and a rejected result is recorded on the node.
-- Try A first, B as the fallback. Recommended: yes.
+- The coroutine exclusion is reopened on the ground above, without new
+  evidence of demand, as an experiment: the exclusion in
+  [design/halo.md](../../../design/halo.md) stands until the comparisons
+  pass, and a rejected result is recorded on that node (status-board card
+  halo-card-coroutine-reopen, option A).
+- Mechanism A is tried first, B is the fallback if A fails comparison 2
+  (card halo-card-coroutine-mechanism, option A).
 
-## Work order if approved
+## Work order
 
 1. Record the oracle group on Redis 7.0.15 and add `coroutine.lua` to the
    recorded Lua 5.1 suite, failing on Halo (a red baseline).
