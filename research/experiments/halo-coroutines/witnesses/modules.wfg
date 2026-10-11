@@ -1,0 +1,9 @@
+pkg::length_transport: [std::process];
+pkg::box_exchange: [std::process];
+pkg::owner_branch: [std::process];
+pkg::dispatch_exchange: [std::process];
+
+entry length_transport = pkg::length_transport::main;
+entry box_exchange = pkg::box_exchange::main;
+entry owner_branch = pkg::owner_branch::main;
+entry dispatch_exchange = pkg::dispatch_exchange::main;

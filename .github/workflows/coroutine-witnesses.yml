@@ -1,0 +1,76 @@
+# Temporary mechanism-A investigation; remove before this branch is ready.
+name: coroutine witnesses
+
+on:
+  push:
+    branches: [claude/halo-coroutines]
+  workflow_dispatch:
+
+concurrency:
+  group: coroutine-witnesses-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  witnesses:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Install the pinned compiler and host toolchain
+        run: |
+          make toolchain
+          major=$(/usr/bin/clang -dumpversion | cut -d. -f1)
+          sudo apt-get install -y "llvm-$major"
+          echo "OBJDUMP=/usr/bin/llvm-objdump-$major" >> "$GITHUB_ENV"
+      - name: Compile every witness and inspect retained functions
+        run: |
+          release=$(sed -n 's/^release = //p' whitefoot.pin)
+          python3 -B research/experiments/halo-coroutines/inspect.py \
+            --compiler "build/whitefoot/$release/whitefootc" \
+            --objdump "$OBJDUMP" --out build/coroutine-witnesses
+      - name: Keep diagnostics, exit codes, binaries and disassembly
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coroutine-witnesses
+          path: build/coroutine-witnesses/
+          if-no-files-found: warn
+          retention-days: 14
+
+  captured-assignment:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Install the pinned compiler and host toolchain
+        run: make toolchain
+      - name: Build the baseline benchmark and PUC reference
+        run: |
+          make reference-lua
+          release=$(sed -n 's/^release = //p' whitefoot.pin)
+          mkdir -p build/coroutine-bench
+          "build/whitefoot/$release/whitefootc" \
+            --graph research/experiments/halo-bench/modules.wfg --entry bench \
+            --full-lto -o build/coroutine-bench/halo
+      # One small correctness sample, not evidence for comparison 2's timing
+      # criterion. Precise timings belong on the coordinator's 14900K queue.
+      - name: Check captured assignment against PUC
+        run: |
+          release=$(sed -n 's/^release = //p' whitefoot.pin)
+          python3 -B research/experiments/halo-bench/run.py \
+            --lua build/redis/redis-7.0.15/deps/lua/src/lua \
+            --compiler "build/whitefoot/$release/whitefootc" \
+            --binary build/coroutine-bench/halo \
+            --kernels captured-assignment --scale captured-assignment=1000 \
+            --runs 1 --out build/coroutine-bench/correctness.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coroutine-captured-assignment
+          path: build/coroutine-bench/
+          if-no-files-found: warn
+          retention-days: 14

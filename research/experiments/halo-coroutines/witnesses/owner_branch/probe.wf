@@ -1,0 +1,123 @@
+enum Upval {
+  Open(owner: u32, slot: u64);
+  Closed(value: u64);
+}
+
+struct ThreadCell {
+  live: Bool;
+  stack: Box<Slots<u64>>;
+}
+
+struct State {
+  current: u32;
+  threads: Box<Slots<ThreadCell>>;
+}
+
+fn read_open(state: &State, active: &Box<Slots<u64>>, capture: &Upval) -> r: Option<u64> reads(state), reads(active), reads(capture) {
+  match capture^ {
+    Open(owner: owner, slot: slot) => {
+      let index = slot^;
+      if owner^ == state^.current {
+        if index < active^.inner.len {
+          return Some<u64>(value: active^.inner[index]);
+        }
+      } else {
+        let thread = cvt::<u32, u64>(owner^);
+        if thread < state^.threads.inner.len {
+          if state^.threads.inner[thread].live {
+            if index < state^.threads.inner[thread].stack.inner.len {
+              return Some<u64>(value: state^.threads.inner[thread].stack.inner[index]);
+            }
+          }
+        }
+      }
+    }
+    Closed(value: value) => {
+      return Some<u64>(value: value^);
+    }
+  }
+  return None<u64>();
+}
+
+fn write_open(state: &State, active: &Box<Slots<u64>>, capture: &Upval, value: u64) -> r: Bool writes(state), writes(active), writes(capture) {
+  match capture^ {
+    Open(owner: owner, slot: slot) => {
+      let index = slot^;
+      if owner^ == state^.current {
+        if index < active^.inner.len {
+          set active^.inner[index] = value;
+          return True();
+        }
+      } else {
+        let thread = cvt::<u32, u64>(owner^);
+        if thread < state^.threads.inner.len {
+          if state^.threads.inner[thread].live {
+            if index < state^.threads.inner[thread].stack.inner.len {
+              set state^.threads.inner[thread].stack.inner[index] = value;
+              return True();
+            }
+          }
+        }
+      }
+    }
+    Closed(..) => {
+      set capture^ = Upval::Closed(value: value);
+      return True();
+    }
+  }
+  return False();
+}
+
+fn is_value(observed: Option<u64>, expected: u64) -> r: Bool pure {
+  match observed {
+    Some(value: value) => { return value == expected; }
+    None() => { return False(); }
+  }
+}
+
+fn main() -> status: std::process::ExitStatus pure {
+  let active = box_slots_new::<u64>(capacity: 1_u64);
+  place_back(window: &active.inner, value: 11_u64);
+  let saved = box_slots_new::<u64>(capacity: 1_u64);
+  place_back(window: &saved.inner, value: 22_u64);
+  let threads = box_slots_new::<ThreadCell>(capacity: 1_u64);
+  let cell = ThreadCell(live: True(), stack: move saved);
+  place_back(window: &threads.inner, value: move cell);
+  let state = State(current: 1_u32, threads: move threads);
+  let current = Upval::Open(owner: 1_u32, slot: 0_u64);
+  let inactive = Upval::Open(owner: 0_u32, slot: 0_u64);
+  let closed = Upval::Closed(value: 33_u64);
+  if bnot(is_value(observed: read_open(state: &state, active: &active, capture: &current), expected: 11_u64)) {
+    return std::process::exit_status(code: 1_u8);
+  }
+  if bnot(is_value(observed: read_open(state: &state, active: &active, capture: &inactive), expected: 22_u64)) {
+    return std::process::exit_status(code: 2_u8);
+  }
+  if bnot(write_open(state: &state, active: &active, capture: &current, value: 44_u64)) {
+    return std::process::exit_status(code: 3_u8);
+  }
+  if bnot(write_open(state: &state, active: &active, capture: &inactive, value: 55_u64)) {
+    return std::process::exit_status(code: 4_u8);
+  }
+  if bnot(is_value(observed: read_open(state: &state, active: &active, capture: &current), expected: 44_u64)) {
+    return std::process::exit_status(code: 5_u8);
+  }
+  if bnot(is_value(observed: read_open(state: &state, active: &active, capture: &inactive), expected: 55_u64)) {
+    return std::process::exit_status(code: 6_u8);
+  }
+  if bnot(write_open(state: &state, active: &active, capture: &closed, value: 66_u64)) {
+    return std::process::exit_status(code: 7_u8);
+  }
+  if bnot(is_value(observed: read_open(state: &state, active: &active, capture: &closed), expected: 66_u64)) {
+    return std::process::exit_status(code: 8_u8);
+  }
+  let bad_owner = Upval::Open(owner: 2_u32, slot: 0_u64);
+  if write_open(state: &state, active: &active, capture: &bad_owner, value: 77_u64) {
+    return std::process::exit_status(code: 9_u8);
+  }
+  let bad_slot = Upval::Open(owner: 1_u32, slot: 1_u64);
+  if write_open(state: &state, active: &active, capture: &bad_slot, value: 88_u64) {
+    return std::process::exit_status(code: 10_u8);
+  }
+  return std::process::exit_status(code: 0_u8);
+}

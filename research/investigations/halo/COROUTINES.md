@@ -171,7 +171,7 @@ yields that must succeed beside those that must fail.
    new edge (a suspended stack, its frames' closures, an inactive
    coroutine's open upvalues, the waiting resumer) that must change at
    least one coroutine reply (status-board card
-   halo-card-coroutine-gc-validation, recommendation A, pending).
+   halo-card-coroutine-gc-validation, option A, the owner's ruling).
 3. `resume`, `yield`, `status`, `wrap` and `running`, until comparison 1
    passes.
 4. Comparisons 2 and 3 on the 14900K, through the coordinator's queue.
