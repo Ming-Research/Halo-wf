@@ -7,7 +7,7 @@ Halo's `make check-core` compares the corpus through the `oracle` target;
 recording reference replies remains the job of
 [oracle-reference.yml](../../../.github/workflows/oracle-reference.yml).
 
-There are 122 scripts: 70 `lua-core`, 34 `redis-api`, 6 `apps`, and 12 `libs`.
+There are 123 scripts: 71 `lua-core`, 34 `redis-api`, 6 `apps`, and 12 `libs`.
 The scripts, replies and runner belong here until the oracle is replaced or
 Halo/firn scripting is retired. Each case is consumed by `run.sh`; the table
 below is the index of the observations it protects.
@@ -200,7 +200,7 @@ not automatically used to overwrite this baseline.
 | lua-core | [array-holes](scripts/lua-core/array-holes.lua) | Lua 5.1 length selects a boundary for arrays with holes. |
 | lua-core | [assert](scripts/lua-core/assert.lua) | assert returns all successful arguments and raises a chosen message. |
 | lua-core | [call-kinds](scripts/lua-core/call-kinds.lua) | Ordinary calls reach native functions, native iterators and vararg Lua functions; number and nil callees raise errors checked apart from the variable description. |
-| lua-core | [callback-error-levels](scripts/lua-core/callback-error-levels.lua) | error levels count through native frames (pcall, sort, gsub) and metamethod calls: a native frame or a level past the top adds no location. |
+| lua-core | [callback-error-levels](scripts/lua-core/callback-error-levels.lua) | error levels count each native function (pcall, sort, gsub) between Lua frames as a level without a location; metamethods (__index, __add) add no level; a level past the top adds no location. |
 | lua-core | [concat-numbers](scripts/lua-core/concat-numbers.lua) | Concatenation coerces numbers with Lua number formatting. |
 | lua-core | [counter-closure](scripts/lua-core/counter-closure.lua) | Separate counter closures retain independent upvalue state. |
 | lua-core | [embedded-zero](scripts/lua-core/embedded-zero.lua) | Embedded NUL survives length, slicing, byte lookup and RESP bulk. |
@@ -262,6 +262,7 @@ not automatically used to overwrite this baseline.
 | lua-core | [table-parts](scripts/lua-core/table-parts.lua) | Array and hash entries coexist; hash entries do not add array length. |
 | lua-core | [table-sort](scripts/lua-core/table-sort.lua) | Default and custom comparator sort numbers into opposite orders. |
 | lua-core | [table-sort-order](scripts/lua-core/table-sort-order.lua) | Default auxsort permutation for duplicate numbers, signed zeros, strings with NUL, NaN, hash-backed indices and short arrays. |
+| lua-core | [tail-call-error-levels](scripts/lua-core/tail-call-error-levels.lua) | error levels count each call a Lua-to-Lua tail call replaced as a level without a location, one to three per frame and around sort comparators and pcall; a tail call into error or pcall keeps the calling frame. |
 | lua-core | [tail-recursion](scripts/lua-core/tail-recursion.lua) | Proper tail calls allow deep recursion without growing call stack. |
 | lua-core | [unpack-overflow-range](scripts/lua-core/unpack-overflow-range.lua) | unpack refuses ranges too long for an int with the too-many-results error; 7.0.15 overflows for three of four ranges. |
 | lua-core | [unpack-select-varargs](scripts/lua-core/unpack-select-varargs.lua) | unpack ranges and select preserve vararg count including nil. |

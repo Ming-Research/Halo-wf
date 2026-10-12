@@ -158,7 +158,7 @@ fn library_level(vm: &Vm, opener: u32, index: u64) -> r: Bool reads(vm) {
 }
 
 fn error_location(vm: &Vm, pc: u64, level: u64, message: Value) -> r: Value writes(vm) {
-  doc "Prefixes message with chunk:line: as luaL_where does, the chunk's display name coming from the running script. Missing line information leaves the original value intact. Levels count as lua_getstack counts CallInfo: each frame record is one level, a protected or native one without a location, and each library function between a nested activation and its caller is one more level without a location.";
+  doc "Prefixes message with chunk:line: as luaL_where does, the chunk's display name coming from the running script. Missing line information leaves the original value intact. Levels count as lua_getstack counts CallInfo: each frame record is one level, a protected or native one without a location, and each library function between a nested activation and its caller is one more level without a location. A Lua frame that tail calls replaced also stands for each call it replaced, lua_getstack subtracting ci->tailcalls past it; a level that lands on a replaced call is a lost tail call, which has no location.";
   let remaining = level;
   let index = vm^.frames.inner.len;
   let location = pc;
@@ -202,7 +202,12 @@ fn error_location(vm: &Vm, pc: u64, level: u64, message: Value) -> r: Value writ
         if remaining == 1_u64 {
           break;
         }
-        set remaining = remaining -sat 1_u64;
+        let deeper = remaining -sat 1_u64;
+        let replaced = cvt::<u32, u64>(frame.tailcalls);
+        if deeper <= replaced {
+          return message;
+        }
+        set remaining = deeper - replaced;
         set location = frame.return_pc -sat 1_u64;
       }
     }
