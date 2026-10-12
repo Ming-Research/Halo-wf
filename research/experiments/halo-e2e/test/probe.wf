@@ -1241,8 +1241,11 @@ const sealed_error: Array<u8, 49> = "user_script:1: Attempt to modify a readonly
 const sealed_key: Array<u8, 1> = "x";
 
 fn smoke() -> status: ExitStatus pure {
-  doc "Runs the embedding lifecycle observations, including cjson reclamation, collection statistics and configurable pause with ordinary and stress collection.";
+  doc "Runs the embedding lifecycle observations, including cjson reclamation, collection statistics, configurable pause and thread ownership/accounting with ordinary and stress collection.";
   let code = embed_probe();
+  if code == 0_u8 {
+    set code = thread_edges_probe();
+  }
   if code == 0_u8 {
     set code = pending_probe();
   }
@@ -1278,6 +1281,15 @@ fn smoke() -> status: ExitStatus pure {
   if code == 0_u8 {
     let stress = True();
     set code = gc_pause_probe(stress: stress);
+  }
+  if code == 0_u8 {
+    set code = thread_probe();
+  }
+  if code == 0_u8 {
+    set code = upvalue_probe();
+  }
+  if code == 0_u8 {
+    set code = switch_probe();
   }
   return std::process::exit_status(code: code);
 }

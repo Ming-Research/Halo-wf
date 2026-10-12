@@ -1,0 +1,51 @@
+alias Value = pkg::value::Value;
+alias no_handle = pkg::heap::no_handle;
+
+fn coroutine_refresh_storage(vm: &Vm, stack: &Box<Slots<Value>>) -> r: Bool reads(stack), writes(vm) {
+  if vm^.current_thread == vm^.main_thread {
+    return True();
+  }
+  let amount = pkg::execution::storage_buffers(stack: stack, stopped_stack: &vm^.stopped_stack, frames: &vm^.frames, open_upvalues: &vm^.open_upvalues, callbacks: &vm^.callbacks, library_contexts: &vm^.library_contexts, sort_frames: &vm^.sort_frames, pattern_subs: &vm^.pattern_subs);
+  return pkg::heap::refresh_thread_bytes(heap: &vm^.heap, h: vm^.current_thread, amount: amount);
+}
+
+fn coroutine_reset(vm: &Vm, stack: &Box<Slots<Value>>) -> r: unit writes(vm), writes(stack) {
+  doc "A new start ends every coroutine from the previous start, even a reachable or host-stopped child. Close installed captures before returning ownership to main, then terminate every other thread; reachable identity cells await ordinary collection.";
+  if vm^.current_thread != vm^.main_thread {
+    if bor(vm^.suspended, vm^.host_stopped) {
+      restore_stopped_stack(vm: vm, stack: stack);
+      set vm^.suspended = False();
+    }
+    close_upvalues(vm: vm, stack: stack, level: 0_u64);
+    let main_handle = vm^.main_thread;
+    let restored = coroutine_exchange(vm: vm, stack: stack, target: main_handle);
+  }
+  let index = 0_u64;
+  loop {
+    if index >= vm^.heap.threads.inner.len {
+      break;
+    }
+    if index < 4294967295_u64 {
+      let handle = cvt::<u64, u32>(index);
+      if handle != vm^.main_thread {
+        pkg::heap::retire_thread(heap: &vm^.heap, owner: handle);
+      }
+    }
+    set index = index +sat 1_u64;
+  }
+  let main_index = cvt::<u32, u64>(vm^.main_thread);
+  if main_index < vm^.heap.threads.inner.len {
+    set vm^.heap.threads.inner[main_index].status = 1_u8;
+    set vm^.heap.threads.inner[main_index].started = True();
+    set vm^.heap.threads.inner[main_index].resumer = no_handle;
+    set vm^.heap.threads.inner[main_index].entry_function = Value::Nil();
+  }
+  let empty_call = pkg::execution::coroutine_call_empty();
+  set vm^.transfer_kind = 0_u8;
+  set vm^.transfer = empty_call;
+  set vm^.resume_call = empty_call;
+  set vm^.yield_call = empty_call;
+  set vm^.c_depth = 0_u32;
+  set vm^.native_entries = 0_u32;
+  return unit;
+}

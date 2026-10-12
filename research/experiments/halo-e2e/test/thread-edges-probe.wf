@@ -1,0 +1,326 @@
+alias Value = halo::value::Value;
+alias no_handle = halo::heap::no_handle;
+alias ThreadEdgeUpval = halo::heap::Upval;
+alias ThreadEdgeHeap = halo::heap::Heap;
+alias ThreadEdgeExecution = halo::execution::Execution;
+alias ThreadEdgeFrame = halo::execution::Frame;
+alias ThreadEdgeLibrary = halo::execution::LibraryContext;
+alias ThreadEdgeSort = halo::execution::SortFrame;
+alias ThreadEdgePattern = halo::execution::PatternSubFrame;
+
+fn thread_edge_frame(closure: u32, top: u64) -> r: ThreadEdgeFrame pure {
+  return ThreadEdgeFrame(func: 0_u64, base: 0_u64, return_pc: 0_u64, kbase: 0_u64, closure: closure, tailcalls: 0_u32, nresults: 0_i64, activation: 0_u32, flags: 0_u8, varbase: 0_u64, varcount: 0_u64, frame_top: top);
+}
+
+fn thread_edge_closure(heap: &ThreadEdgeHeap, target: Value) -> r: Option<u32> writes(heap) {
+  let capture = ThreadEdgeUpval::Closed(v: target);
+  let allocated = halo::heap::alloc_upvalue(heap: heap, payload: capture);
+  match allocated {
+    None() => {
+      return None<u32>();
+    }
+    Some(value: handle) => {
+      let handles = array_filled::<u32, 1>(value: handle);
+      let closure = halo::heap::new_closure(heap: heap, proto: 0_u32, upvals: &handles[0_u64..1_u64]);
+      match closure {
+        Fun(h: found) => {
+          return Some<u32>(value: found);
+        }
+        Nil() => {
+          return None<u32>();
+        }
+        False() => {
+          return None<u32>();
+        }
+        True() => {
+          return None<u32>();
+        }
+        Num(..) => {
+          return None<u32>();
+        }
+        Str(..) => {
+          return None<u32>();
+        }
+        Tab(..) => {
+          return None<u32>();
+        }
+        Builtin(..) => {
+          return None<u32>();
+        }
+        Thread(..) => {
+          return None<u32>();
+        }
+      }
+    }
+  }
+}
+
+fn thread_edge_install(heap: &ThreadEdgeHeap, execution: &ThreadEdgeExecution, edge: u8, target: Value) -> r: Bool writes(heap), writes(execution) {
+  doc "Selects one execution edge; all other heap-valued fields remain Nil and no unrelated stack slot roots the target.";
+  let nil = Value::Nil();
+  if edge == 0_u8 {
+    let closure = no_handle;
+    let made = thread_edge_closure(heap: heap, target: target);
+    match made {
+      None() => {
+        return False();
+      }
+      Some(value: handle) => {
+        set closure = handle;
+      }
+    }
+    let frames = box_slots_new::<ThreadEdgeFrame>(capacity: 1_u64);
+    let frame = thread_edge_frame(closure: closure, top: 0_u64);
+    place_back(window: &frames.inner, value: frame);
+    set execution^.frames = move frames;
+    return True();
+  }
+  if edge == 1_u8 {
+    let capture = ThreadEdgeUpval::Closed(v: target);
+    let made = halo::heap::alloc_upvalue(heap: heap, payload: capture);
+    match made {
+      None() => {
+        return False();
+      }
+      Some(value: handle) => {
+        let handles = box_slots_new::<u32>(capacity: 1_u64);
+        place_back(window: &handles.inner, value: handle);
+        set execution^.open_upvalues = move handles;
+        return True();
+      }
+    }
+  }
+  if edge <= 5_u8 {
+    let frame = thread_edge_frame(closure: no_handle, top: 0_u64);
+    let no = False();
+    let context = ThreadEdgeLibrary(frame: frame, tail: no, id: 0_u32, phase: 0_u8, count: 0_u64, table: nil, comparator: nil, saved_error: nil, foreach_key: nil);
+    if edge == 2_u8 {
+      set context.table = target;
+    }
+    if edge == 3_u8 {
+      set context.comparator = target;
+    }
+    if edge == 4_u8 {
+      set context.saved_error = target;
+    }
+    if edge == 5_u8 {
+      set context.foreach_key = target;
+    }
+    let contexts = box_slots_new::<ThreadEdgeLibrary>(capacity: 1_u64);
+    place_back(window: &contexts.inner, value: context);
+    set execution^.library_contexts = move contexts;
+    return True();
+  }
+  if edge <= 8_u8 {
+    let frame = ThreadEdgeSort(context: 0_u64, lower: 0_i64, upper: 0_i64, i: 0_i64, j: 0_i64, phase: 0_u8, a: nil, b: nil, pivot: nil);
+    if edge == 6_u8 {
+      set frame.a = target;
+    }
+    if edge == 7_u8 {
+      set frame.b = target;
+    }
+    if edge == 8_u8 {
+      set frame.pivot = target;
+    }
+    let frames = box_slots_new::<ThreadEdgeSort>(capacity: 1_u64);
+    place_back(window: &frames.inner, value: frame);
+    set execution^.sort_frames = move frames;
+    return True();
+  }
+  if edge <= 11_u8 {
+    let output = box_slots_new::<u8>(capacity: 0_u64);
+    let no = False();
+    let frame = ThreadEdgePattern(context: 0_u64, source: nil, pattern: nil, replacement: nil, output: move output, start: 0_u64, end: 0_u64, count: 0_u64, maximum: 0_i64, anchor: no, phase: 0_u8);
+    if edge == 9_u8 {
+      set frame.source = target;
+    }
+    if edge == 10_u8 {
+      set frame.pattern = target;
+    }
+    if edge == 11_u8 {
+      set frame.replacement = target;
+    }
+    let frames = box_slots_new::<ThreadEdgePattern>(capacity: 1_u64);
+    place_back(window: &frames.inner, value: move frame);
+    set execution^.pattern_subs = move frames;
+    return True();
+  }
+  if edge == 12_u8 {
+    set execution^.error = target;
+    return True();
+  }
+  if edge == 13_u8 {
+    let stack = box_slots_new::<Value>(capacity: 1_u64);
+    place_back(window: &stack.inner, value: target);
+    set execution^.stopped_stack = move stack;
+    return True();
+  }
+  return False();
+}
+
+fn thread_edge_collect(heap: &ThreadEdgeHeap, root: Value) -> r: unit writes(heap) {
+  halo::heap::gc_begin(heap: heap);
+  halo::heap::gc_mark(heap: heap, v: root);
+  halo::heap::gc_propagate(heap: heap);
+  let freed = halo::heap::gc_sweep(heap: heap);
+  return unit;
+}
+
+fn thread_edge_live(heap: &ThreadEdgeHeap, value: Value) -> r: Bool reads(heap) {
+  let found = halo::heap::string_of(heap: heap, value: value);
+  match found {
+    Some(..) => {
+      return True();
+    }
+    None() => {
+      return False();
+    }
+  }
+}
+
+fn thread_edge_trial(edge: u8) -> r: Bool pure {
+  let heap = halo::heap::heap_new(limit: 0_u64);
+  let target = halo::heap::intern(heap: &heap, bytes: &thread_edge_target[0_u64..4_u64]);
+  let garbage = halo::heap::intern(heap: &heap, bytes: &thread_edge_garbage[0_u64..4_u64]);
+  let target_ready = thread_edge_live(heap: &heap, value: target);
+  if bnot(target_ready) {
+    return False();
+  }
+  let garbage_ready = thread_edge_live(heap: &heap, value: garbage);
+  if bnot(garbage_ready) {
+    return False();
+  }
+  let payload = halo::execution::empty();
+  let installed = thread_edge_install(heap: &heap, execution: &payload, edge: edge, target: target);
+  if bnot(installed) {
+    return False();
+  }
+  let allocated = halo::heap::alloc_thread(heap: &heap, payload: move payload);
+  match allocated {
+    None() => {
+      return False();
+    }
+    Some(value: handle) => {
+      let root = Value::Thread(h: handle);
+      thread_edge_collect(heap: &heap, root: root);
+      let kept = thread_edge_live(heap: &heap, value: target);
+      if bnot(kept) {
+        return False();
+      }
+      let unrelated = thread_edge_live(heap: &heap, value: garbage);
+      if unrelated {
+        return False();
+      }
+      if heap.last_collection.strings.live_objects != 1_u64 {
+        return False();
+      }
+      let nil = Value::Nil();
+      thread_edge_collect(heap: &heap, root: nil);
+      let leaked = thread_edge_live(heap: &heap, value: target);
+      if leaked {
+        return False();
+      }
+      if heap.last_collection.threads.live_objects != 0_u64 {
+        return False();
+      }
+      if heap.bytes != 0_u64 {
+        return False();
+      }
+      return True();
+    }
+  }
+}
+
+fn thread_edge_window(from_top: Bool) -> r: u8 pure {
+  doc "With a five-slot stack, retain slot three through dynamic top or a nonlast frame's larger frame_top, but free slot four at the live-window boundary; remove the thread root and require all storage reclaimed.";
+  let heap = halo::heap::heap_new(limit: 0_u64);
+  let target = halo::heap::intern(heap: &heap, bytes: &thread_edge_target[0_u64..4_u64]);
+  let garbage = halo::heap::intern(heap: &heap, bytes: &thread_edge_garbage[0_u64..4_u64]);
+  let missing = 237_u8;
+  if from_top {
+    set missing = 236_u8;
+  }
+  let target_ready = thread_edge_live(heap: &heap, value: target);
+  if bnot(target_ready) {
+    return missing;
+  }
+  let garbage_ready = thread_edge_live(heap: &heap, value: garbage);
+  if bnot(garbage_ready) {
+    return 238_u8;
+  }
+  let stack = box_slots_new::<Value>(capacity: 5_u64);
+  let nil = Value::Nil();
+  place_back(window: &stack.inner, value: nil);
+  place_back(window: &stack.inner, value: nil);
+  place_back(window: &stack.inner, value: nil);
+  place_back(window: &stack.inner, value: target);
+  place_back(window: &stack.inner, value: garbage);
+  let top = 1_u64;
+  let frame_top = 4_u64;
+  if from_top {
+    set top = 4_u64;
+    set frame_top = 1_u64;
+  }
+  let frames = box_slots_new::<ThreadEdgeFrame>(capacity: 2_u64);
+  let no_closure = no_handle;
+  let first = thread_edge_frame(closure: no_closure, top: frame_top);
+  let last = thread_edge_frame(closure: no_closure, top: 1_u64);
+  place_back(window: &frames.inner, value: first);
+  place_back(window: &frames.inner, value: last);
+  let payload = halo::execution::empty();
+  set payload.stack = move stack;
+  set payload.frames = move frames;
+  set payload.top = top;
+  let allocated = halo::heap::alloc_thread(heap: &heap, payload: move payload);
+  match allocated {
+    None() => {
+      return missing;
+    }
+    Some(value: handle) => {
+      let root = Value::Thread(h: handle);
+      thread_edge_collect(heap: &heap, root: root);
+      let kept = thread_edge_live(heap: &heap, value: target);
+      if bnot(kept) {
+        return missing;
+      }
+      let unrelated = thread_edge_live(heap: &heap, value: garbage);
+      if unrelated {
+        return 238_u8;
+      }
+      if heap.last_collection.strings.live_objects != 1_u64 {
+        return 238_u8;
+      }
+      thread_edge_collect(heap: &heap, root: nil);
+      let leaked = thread_edge_live(heap: &heap, value: target);
+      if leaked {
+        return 239_u8;
+      }
+      if heap.bytes != 0_u64 {
+        return 239_u8;
+      }
+      return 0_u8;
+    }
+  }
+}
+
+fn thread_edges_probe() -> r: u8 pure {
+  doc "Failures 221 through 234 identify omitted frame closure, open-list capture, four library, three sort, three pattern, error or stopped-stack edges. Each fresh heap has one target edge, unrelated garbage and a removed-root control. Failures 236 through 239 check dynamic top, maximum frame top, the first dead slot and final reclamation.";
+  for (index in 0_u64..14_u64) {
+    let edge = cvt::<u64, u8>(index);
+    let passed = thread_edge_trial(edge: edge);
+    if bnot(passed) {
+      return edge +sat 221_u8;
+    }
+  }
+  let from_top = True();
+  let top = thread_edge_window(from_top: from_top);
+  if top != 0_u8 {
+    return top;
+  }
+  let from_frame = False();
+  return thread_edge_window(from_top: from_frame);
+}
+
+const thread_edge_target: Array<u8, 4> = "edge";
+
+const thread_edge_garbage: Array<u8, 4> = "junk";

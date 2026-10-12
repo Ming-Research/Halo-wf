@@ -164,4 +164,5 @@ the globals during the walk and put back after it, so they stay writable as
 Redis's per-call KEYS and ARGV do (`luaCallFunction` installs them after
 protection). `redis-api/readonly-library-tables` records the result for the
 library tables and `redis-api/keys-argv-writable` for KEYS and ARGV; `make
-roots` checks that the first fails when the host marks only the walks' roots.
+roots-base` checks that the first fails when the host marks only the walks'
+roots.

@@ -178,6 +178,10 @@ stdout keeps the original typed RESP2 schema. The switch defaults off.
 See [the F4 experiment](../halo-gc/README.md#vm-stress-experiment-f4) for
 missing-root mutation and memory-limit evidence.
 
+`--case-timeout SECONDS` bounds each script run (default 900); a case that
+exceeds it fails with the subprocess timeout as its reason. The thread
+omission controls pass 60 so a looping mutant cannot exhaust their job.
+
 `--cases PATH` runs paired local `scripts/GROUP/*.lua` and
 `expected/GROUP/*.txt` files with the same comparator. `--verify-memory`
 adds F4's unbounded allocator and then a recovery script in the same engine
@@ -198,7 +202,8 @@ fail with the original expected reply unchanged. Ordinary runs omit this flag.
 the walk from the globals table, which leaves it and the tables reached only
 from it writable, or the walk from the shared string metatable, or marks only
 the two walks' roots, the globals table and the string metatable, and no table
-reachable from them. `make roots` runs `redis-api/global-write`,
+reachable from them. `make roots-base` (CI's roots-base job, and part of
+`make roots`) runs `redis-api/global-write`,
 `redis-api/string-metatable-readonly` and `redis-api/readonly-library-tables`
 with and without the matching flag; each must pass without it and fail by a
 reply difference with it.

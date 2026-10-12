@@ -1,0 +1,31 @@
+fn exchange(active: &Box<Slots<u64>>, saved: &Box<Slots<u64>>) -> r: unit writes(active), writes(saved) contract {
+  requires saved^.inner.len >= 256_u64;
+  ensures active^.inner.len >= 256_u64;
+} {
+  swap(first: active, second: saved);
+  return unit;
+}
+
+fn main() -> status: std::process::ExitStatus pure {
+  let active = box_slots_new::<u64>(capacity: 0_u64);
+  let saved = box_slots_new::<u64>(capacity: 256_u64);
+  for (i in 0_u64..256_u64) {
+    if saved.inner.len < saved.inner.cap {
+      place_back(window: &saved.inner, value: i);
+    }
+  }
+  if saved.inner.len < 256_u64 {
+    return std::process::exit_status(code: 1_u8);
+  }
+  exchange(active: &active, saved: &saved);
+  if active.inner.len != 256_u64 {
+    return std::process::exit_status(code: 2_u8);
+  }
+  if saved.inner.len != 0_u64 {
+    return std::process::exit_status(code: 3_u8);
+  }
+  if active.inner[255_u64] != 255_u64 {
+    return std::process::exit_status(code: 4_u8);
+  }
+  return std::process::exit_status(code: 0_u8);
+}

@@ -1,0 +1,118 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "located-string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "user_script:10: user_script:19: direct-wrapped-string"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "level-zero-string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "user_script:10: direct-wrapped-zero"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "number"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "user_script:10: 17"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "bulk",
+          "bytes": "wrapped-table"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        },
+        {
+          "type": "bulk",
+          "bytes": "finished"
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "user_script:26: cannot resume dead coroutine"
+        }
+      ]
+    }
+  ]
+}

@@ -8,6 +8,7 @@ alias truthy = pkg::value::truthy;
 alias intern = pkg::heap::intern;
 alias table_get = pkg::heap::table_get;
 alias table_set = pkg::heap::table_set;
+alias CallbackFrame = pkg::execution::CallbackFrame;
 
 const slow_text_0: Array<u8, 34> = "Attempt to modify a readonly table";
 
@@ -120,7 +121,7 @@ fn metatable(vm: &Vm, v: Value) -> r: Value reads(vm) {
     NoHandle() => {
       let tag = kind(v: v);
       let index = cvt::<u8, u64>(tag);
-      if index < 6_u64 {
+      if index < 8_u64 {
         let h = vm^.type_metatables[index];
         if h != no_handle {
           return Value::Tab(h: h);
@@ -212,11 +213,17 @@ fn callback<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value
 fn callback_values<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, dest: u64, f: Value, args: &[Value], wanted: i64, mode: u8) -> r: Bool reads(code), reads(consts), reads(args), writes(stack), writes(vm), writes(env) contract {
   ensures stack^.inner.len == entry(stack)^.inner.len;
 } {
-  doc "Nested activation with a finite continuation record for budget suspension. An immediate native failure may still reach a protected frame, whose continuation must run before classifying the callback as failed. Stack storage is restored before returning to the caller.";
+  doc "Nested activation with a finite continuation record for budget or coroutine-transfer suspension. Logical depth survives parking, while native_entries counts only live machine entries. An immediate native failure may still reach a protected frame, whose continuation must run before classifying the callback as failed. Stack storage is restored before returning to the caller.";
   let argc = args^.len;
   let depth = vm^.activation;
   if depth >= 199_u32 {
     return raise_text(vm: vm, text: &slow_text_5[0_u64..16_u64]);
+  }
+  if vm^.current_thread != vm^.main_thread {
+    let logical_depth = coroutine_depth(vm: vm);
+    if logical_depth >= 199_u32 {
+      return raise_text(vm: vm, text: &slow_text_5[0_u64..16_u64]);
+    }
   }
   let length = stack^.inner.len;
   let scratch = vm^.top;
@@ -246,6 +253,7 @@ fn callback_values<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slot
   if plan.kind == 2_u8 {
     set return_pc = return_pc +sat 1_u64;
   }
+  set vm^.native_entries = vm^.native_entries +sat 1_u32;
   let step = prepare::<Host<E>>(code: code, consts: consts, vm: vm, stack: stack, env: env, func: scratch, argc: argc, wanted: wanted, return_pc: return_pc, base: 0_u64, kbase: 0_u64, tail: atom4);
   let out = dispatch_step::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, step: step);
   let ok = False();
@@ -294,6 +302,7 @@ fn callback_values<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slot
       }
     }
   }
+  set vm^.native_entries = vm^.native_entries -sat 1_u32;
   resize_stack(stack: stack, size: length);
   if bor(vm^.host_stopped, vm^.suspended) {
     return False();

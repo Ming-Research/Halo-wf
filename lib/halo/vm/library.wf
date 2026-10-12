@@ -40,6 +40,8 @@ const library_version_value: Array<u8, 7> = "Lua 5.1";
 
 const library_math_mod_key: Array<u8, 3> = "mod";
 
+const library_coroutine_key: Array<u8, 9> = "coroutine";
+
 fn library_builtin(index: u64) -> r: Option<BuiltinBinding> pure {
   doc "Maps installation indices to stable builtin IDs; aliases installed separately share their builtin implementation.";
   if index == 0_u64 {
@@ -704,6 +706,70 @@ fn library_builtin(index: u64) -> r: Option<BuiltinBinding> pure {
     let table_foreach_binding = BuiltinBinding(library: 2_u8, name: table_foreach_name, length: 7_u64, id: builtin_table_foreach);
     return Some<BuiltinBinding>(value: table_foreach_binding);
   }
+  if index == 66_u64 {
+    let coroutine_name_66 = array_filled::<u8, 32>(value: 0_u8);
+    set coroutine_name_66[0_u64] = 99_u8;
+    set coroutine_name_66[1_u64] = 114_u8;
+    set coroutine_name_66[2_u64] = 101_u8;
+    set coroutine_name_66[3_u64] = 97_u8;
+    set coroutine_name_66[4_u64] = 116_u8;
+    set coroutine_name_66[5_u64] = 101_u8;
+    let coroutine_binding_66 = BuiltinBinding(library: 8_u8, name: coroutine_name_66, length: 6_u64, id: builtin_coroutine_create);
+    return Some<BuiltinBinding>(value: coroutine_binding_66);
+  }
+  if index == 67_u64 {
+    let coroutine_name_67 = array_filled::<u8, 32>(value: 0_u8);
+    set coroutine_name_67[0_u64] = 114_u8;
+    set coroutine_name_67[1_u64] = 101_u8;
+    set coroutine_name_67[2_u64] = 115_u8;
+    set coroutine_name_67[3_u64] = 117_u8;
+    set coroutine_name_67[4_u64] = 109_u8;
+    set coroutine_name_67[5_u64] = 101_u8;
+    let coroutine_binding_67 = BuiltinBinding(library: 8_u8, name: coroutine_name_67, length: 6_u64, id: builtin_coroutine_resume);
+    return Some<BuiltinBinding>(value: coroutine_binding_67);
+  }
+  if index == 68_u64 {
+    let coroutine_name_68 = array_filled::<u8, 32>(value: 0_u8);
+    set coroutine_name_68[0_u64] = 121_u8;
+    set coroutine_name_68[1_u64] = 105_u8;
+    set coroutine_name_68[2_u64] = 101_u8;
+    set coroutine_name_68[3_u64] = 108_u8;
+    set coroutine_name_68[4_u64] = 100_u8;
+    let coroutine_binding_68 = BuiltinBinding(library: 8_u8, name: coroutine_name_68, length: 5_u64, id: builtin_coroutine_yield);
+    return Some<BuiltinBinding>(value: coroutine_binding_68);
+  }
+  if index == 69_u64 {
+    let coroutine_name_69 = array_filled::<u8, 32>(value: 0_u8);
+    set coroutine_name_69[0_u64] = 115_u8;
+    set coroutine_name_69[1_u64] = 116_u8;
+    set coroutine_name_69[2_u64] = 97_u8;
+    set coroutine_name_69[3_u64] = 116_u8;
+    set coroutine_name_69[4_u64] = 117_u8;
+    set coroutine_name_69[5_u64] = 115_u8;
+    let coroutine_binding_69 = BuiltinBinding(library: 8_u8, name: coroutine_name_69, length: 6_u64, id: builtin_coroutine_status);
+    return Some<BuiltinBinding>(value: coroutine_binding_69);
+  }
+  if index == 70_u64 {
+    let coroutine_name_70 = array_filled::<u8, 32>(value: 0_u8);
+    set coroutine_name_70[0_u64] = 119_u8;
+    set coroutine_name_70[1_u64] = 114_u8;
+    set coroutine_name_70[2_u64] = 97_u8;
+    set coroutine_name_70[3_u64] = 112_u8;
+    let coroutine_binding_70 = BuiltinBinding(library: 8_u8, name: coroutine_name_70, length: 4_u64, id: builtin_coroutine_wrap);
+    return Some<BuiltinBinding>(value: coroutine_binding_70);
+  }
+  if index == 71_u64 {
+    let coroutine_name_71 = array_filled::<u8, 32>(value: 0_u8);
+    set coroutine_name_71[0_u64] = 114_u8;
+    set coroutine_name_71[1_u64] = 117_u8;
+    set coroutine_name_71[2_u64] = 110_u8;
+    set coroutine_name_71[3_u64] = 110_u8;
+    set coroutine_name_71[4_u64] = 105_u8;
+    set coroutine_name_71[5_u64] = 110_u8;
+    set coroutine_name_71[6_u64] = 103_u8;
+    let coroutine_binding_71 = BuiltinBinding(library: 8_u8, name: coroutine_name_71, length: 7_u64, id: builtin_coroutine_running);
+    return Some<BuiltinBinding>(value: coroutine_binding_71);
+  }
   return codec_builtin(index: index);
 }
 
@@ -1068,11 +1134,12 @@ fn lib_argtext(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, pc:
 }
 
 fn install_libraries(vm: &Vm) -> r: unit writes(vm) {
-  doc "Installs library members and constants, including Lua 5.1's mod compatibility alias using the fmod builtin value.";
+  doc "Installs library members and constants, including the six public coroutine functions and Lua 5.1's mod compatibility alias using the fmod builtin value.";
   install_codecs(vm: vm);
   let local_string_147 = new_table(heap: &vm^.heap, asize: 0_u32, hsize: 16_u32);
   let local_table_148 = new_table(heap: &vm^.heap, asize: 0_u32, hsize: 8_u32);
   let local_math_149 = new_table(heap: &vm^.heap, asize: 0_u32, hsize: 32_u32);
+  let coroutine_table = new_table(heap: &vm^.heap, asize: 0_u32, hsize: 8_u32);
   let local_globals_150 = Value::Tab(h: vm^.globals);
   let version_key = intern(heap: &vm^.heap, bytes: &library_version_key[0_u64..8_u64]);
   let version_value = intern(heap: &vm^.heap, bytes: &library_version_value[0_u64..7_u64]);
@@ -1083,6 +1150,8 @@ fn install_libraries(vm: &Vm) -> r: unit writes(vm) {
   let local_ignored_table_154 = table_set(heap: &vm^.heap, t: local_globals_150, key: local_table_key_153, val: local_table_148);
   let local_math_key_155 = intern(heap: &vm^.heap, bytes: &library_lib_text_10[0_u64..4_u64]);
   let local_ignored_math_156 = table_set(heap: &vm^.heap, t: local_globals_150, key: local_math_key_155, val: local_math_149);
+  let coroutine_key = intern(heap: &vm^.heap, bytes: &library_coroutine_key[0_u64..9_u64]);
+  let ignored_coroutine = table_set(heap: &vm^.heap, t: local_globals_150, key: coroutine_key, val: coroutine_table);
   for (i in 0_u64..library_builtin_count) {
     match library_builtin(index: i) {
       Some(value: row) => {
@@ -1099,6 +1168,9 @@ fn install_libraries(vm: &Vm) -> r: unit writes(vm) {
             }
             if row.library == 3_u8 {
               set local_target_159 = local_math_149;
+            }
+            if row.library == 8_u8 {
+              set local_target_159 = coroutine_table;
             }
             let local_value_160 = Value::Builtin(id: row.id);
             let local_ignored_161 = table_set(heap: &vm^.heap, t: local_target_159, key: local_key_158, val: local_value_160);

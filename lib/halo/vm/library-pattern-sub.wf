@@ -1,5 +1,6 @@
 alias Value = pkg::value::Value;
 alias Cell = pkg::value::Cell;
+alias PatternSubFrame = pkg::execution::PatternSubFrame;
 
 const pattern_replacement_expected: Array<u8, 30> = "string/function/table expected";
 
@@ -168,7 +169,9 @@ fn pattern_gsub_start<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       }
     }
   }
-  if k < 2_u8 {
+  let primitive_invalid = k < 2_u8;
+  let identity_invalid = k >= 6_u8;
+  if bor(primitive_invalid, identity_invalid) {
     return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 3_u64, text: &pattern_replacement_expected[0_u64..30_u64]);
   }
   let first = pattern_textbyte(vm: vm, text: pattern, at: 0_u64);

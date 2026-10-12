@@ -1,0 +1,125 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "integer",
+          "value": 6
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean:true"
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean:true"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string:outgoing"
+        },
+        {
+          "type": "bulk",
+          "bytes": "nil:nil"
+        },
+        {
+          "type": "bulk",
+          "bytes": "number:7"
+        },
+        {
+          "type": "bulk",
+          "bytes": "nil:nil"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        },
+        {
+          "type": "bulk",
+          "bytes": "suspended"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "integer",
+          "value": 5
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean:true"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string:incoming"
+        },
+        {
+          "type": "bulk",
+          "bytes": "nil:nil"
+        },
+        {
+          "type": "bulk",
+          "bytes": "number:9"
+        },
+        {
+          "type": "bulk",
+          "bytes": "nil:nil"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "integer",
+          "value": 6
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean:true"
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean:true"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string:leaf"
+        },
+        {
+          "type": "bulk",
+          "bytes": "nil:nil"
+        },
+        {
+          "type": "bulk",
+          "bytes": "number:11"
+        },
+        {
+          "type": "bulk",
+          "bytes": "nil:nil"
+        }
+      ]
+    },
+    {
+      "type": "bulk",
+      "bytes": "dead"
+    },
+    {
+      "type": "bulk",
+      "bytes": "dead"
+    },
+    {
+      "type": "bulk",
+      "bytes": "dead"
+    }
+  ]
+}

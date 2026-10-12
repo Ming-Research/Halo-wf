@@ -22,6 +22,8 @@ const builtins_text_4: Array<u8, 5> = "table";
 
 const builtins_text_5: Array<u8, 8> = "function";
 
+const builtins_thread: Array<u8, 6> = "thread";
+
 const builtins_text_6: Array<u8, 23> = "attempt to compare two ";
 
 const builtins_text_7: Array<u8, 7> = " values";
@@ -54,6 +56,9 @@ const builtin_expected_3_value_expected: Array<u8, 14> = "value expected";
 
 fn kind_name(vm: &Vm, v: Value) -> r: Value writes(vm) {
   let k = kind(v: v);
+  if k == 7_u8 {
+    return intern(heap: &vm^.heap, bytes: &builtins_thread[0_u64..6_u64]);
+  }
   if k == 6_u8 {
     return intern(heap: &vm^.heap, bytes: &cj_userdata[0_u64..8_u64]);
   }

@@ -1,0 +1,56 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "1,2,3"
+        },
+        {
+          "type": "bulk",
+          "bytes": "2<3 1<2"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "invalid key to 'next'"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "table"
+        },
+        {
+          "type": "bulk",
+          "bytes": "original"
+        },
+        {
+          "type": "bulk",
+          "bytes": "nil"
+        },
+        {
+          "type": "bulk",
+          "bytes": "err:original false:replacement"
+        }
+      ]
+    }
+  ]
+}

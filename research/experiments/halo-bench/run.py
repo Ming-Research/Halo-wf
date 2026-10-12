@@ -12,7 +12,8 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
-NAMES = ('fib', 'loop', 'integer-table', 'string-key', 'concat', 'sort', 'binary-trees')
+NAMES = ('fib', 'loop', 'integer-table', 'string-key', 'concat', 'sort', 'binary-trees',
+         'captured-assignment', 'producer-consumer')
 WRAPPER = 'local f=assert(loadstring(io.read("*a"), "@user_script")); f()'
 
 

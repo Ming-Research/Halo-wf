@@ -1,0 +1,29 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "bulk",
+      "bytes": "true"
+    },
+    {
+      "type": "bulk",
+      "bytes": "parked"
+    },
+    {
+      "type": "bulk",
+      "bytes": "true"
+    },
+    {
+      "type": "bulk",
+      "bytes": "mid"
+    },
+    {
+      "type": "bulk",
+      "bytes": "overwrite"
+    },
+    {
+      "type": "bulk",
+      "bytes": "dead"
+    }
+  ]
+}

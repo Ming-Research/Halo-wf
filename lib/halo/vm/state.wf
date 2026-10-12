@@ -15,6 +15,13 @@ alias intern = pkg::heap::intern;
 alias table_get = pkg::heap::table_get;
 alias table_set = pkg::heap::table_set;
 alias new_table = pkg::heap::new_table;
+alias Frame = pkg::execution::Frame;
+alias CallbackPlan = pkg::execution::CallbackPlan;
+alias CallbackFrame = pkg::execution::CallbackFrame;
+alias LibraryContext = pkg::execution::LibraryContext;
+alias SortFrame = pkg::execution::SortFrame;
+alias PatternSubFrame = pkg::execution::PatternSubFrame;
+alias PendingCall = pkg::execution::PendingCall;
 
 const state_text_0: Array<u8, 44> = "attempt to perform arithmetic on a nil value";
 
@@ -64,6 +71,16 @@ const state_text_22: Array<u8, 39> = "attempt to get length of a number value";
 
 const state_text_23: Array<u8, 41> = "attempt to get length of a function value";
 
+const state_thread_arithmetic: Array<u8, 47> = "attempt to perform arithmetic on a thread value";
+
+const state_thread_index: Array<u8, 31> = "attempt to index a thread value";
+
+const state_thread_call: Array<u8, 30> = "attempt to call a thread value";
+
+const state_thread_concat: Array<u8, 37> = "attempt to concatenate a thread value";
+
+const state_thread_length: Array<u8, 39> = "attempt to get length of a thread value";
+
 enum Step {
   Jump(pc: u64, base: u64, kbase: u64);
   Done(count: u64);
@@ -98,6 +115,8 @@ fn func_of(v: Value) -> r: FuncView pure {
     }
     Tab(..) => {
     }
+    Thread(..) => {
+    }
   }
   return FuncView::Other();
 }
@@ -130,6 +149,9 @@ fn kind(v: Value) -> r: u8 pure {
         return 6_u8;
       }
       return 5_u8;
+    }
+    Thread(..) => {
+      return 7_u8;
     }
   }
 }
@@ -216,6 +238,29 @@ fn raw_equal(a: Value, b: Value) -> r: Bool pure {
         }
       }
     }
+    Thread(h: thread_handle) => {
+      match b {
+        Thread(h: other) => {
+          return thread_handle == other;
+        }
+        Nil() => {
+        }
+        False() => {
+        }
+        True() => {
+        }
+        Num(..) => {
+        }
+        Str(..) => {
+        }
+        Tab(..) => {
+        }
+        Fun(..) => {
+        }
+        Builtin(..) => {
+        }
+      }
+    }
   }
   return False();
 }
@@ -294,6 +339,20 @@ fn push_frame(vm: &Vm, frame: Frame) -> r: Bool writes(vm) {
 
 fn vm_new(limit: u64) -> r: Vm pure {
   let heap = pkg::heap::heap_new(limit: limit);
+  let main_payload = pkg::execution::empty();
+  let main_thread = no_handle;
+  match pkg::heap::alloc_thread(heap: &heap, payload: move main_payload) {
+    Some(value: h) => {
+      set main_thread = h;
+    }
+    None() => {
+    }
+  }
+  let main_index = cvt::<u32, u64>(main_thread);
+  if main_index < heap.threads.inner.len {
+    set heap.threads.inner[main_index].status = 1_u8;
+    set heap.threads.inner[main_index].started = True();
+  }
   let g = new_table(heap: &heap, asize: 0_u32, hsize: 8_u32);
   let gh = no_handle;
   match tab_of(v: g) {
@@ -316,14 +375,15 @@ fn vm_new(limit: u64) -> r: Vm pure {
   let atom3 = False();
   let callbacks = box_slots_new::<CallbackFrame>(capacity: 0_u64);
   let callback_plan = CallbackPlan(pc: 0_u64, base: 0_u64, kbase: 0_u64, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: atom3);
-  let type_metatables = array_filled::<u32, 6>(value: no_handle);
+  let type_metatables = array_filled::<u32, 8>(value: no_handle);
   let library_contexts = box_slots_new::<LibraryContext>(capacity: 0_u64);
   let sort_frames = box_slots_new::<SortFrame>(capacity: 0_u64);
   let pattern_subs = box_slots_new::<PatternSubFrame>(capacity: 0_u64);
   let cjson_configs = box_slots_new::<CjsonConfig>(capacity: 16_u64);
   let pcall_field = box_slots_new::<u8>(capacity: 0_u64);
   let no_call = PendingCall(id: 0_u32, argc: 0_u64, func: 0_u64, wanted: 0_i64, return_pc: 0_u64, base: 0_u64, kbase: 0_u64, tail: atom3, activation: 0_u32, top: 0_u64);
-  return Vm(pattern_subs: move pattern_subs, cjson_configs: move cjson_configs, cjson_active_config: 0_u64, library_contexts: move library_contexts, sort_frames: move sort_frames, random_state: 20017429951246_u64, heap: move heap, frames: move frames, open_upvalues: move opens, protos: move protos, lineinfo: move lineinfo, source: move source, top: 0_u64, budget: unlimited, saved_pc: 0_u64, saved_base: 0_u64, saved_kbase: 0_u64, error: nil, activation: 0_u32, globals: gh, type_metatables: type_metatables, host_stopped: atom3, stopped_stack: move stopped_stack, callback_plan: callback_plan, callbacks: move callbacks, suspended: atom3, pending: no_call, call_pending: atom3, raise_pc: 0_u64, native_raise: atom3, pcall_field: move pcall_field, post_catch: unlimited, debug_names: move debug_names, local_variables: move local_variables, upvalue_names: move upvalue_names);
+  let transfer = pkg::execution::coroutine_call_empty();
+  return Vm(main_thread: main_thread, current_thread: main_thread, native_entries: 0_u32, transfer_kind: 0_u8, transfer: transfer, resume_call: transfer, yield_call: transfer, c_depth: 0_u32, pattern_subs: move pattern_subs, cjson_configs: move cjson_configs, cjson_active_config: 0_u64, library_contexts: move library_contexts, sort_frames: move sort_frames, random_state: 20017429951246_u64, heap: move heap, frames: move frames, open_upvalues: move opens, protos: move protos, lineinfo: move lineinfo, source: move source, top: 0_u64, budget: unlimited, saved_pc: 0_u64, saved_base: 0_u64, saved_kbase: 0_u64, error: nil, activation: 0_u32, globals: gh, type_metatables: type_metatables, host_stopped: atom3, stopped_stack: move stopped_stack, callback_plan: callback_plan, callbacks: move callbacks, suspended: atom3, pending: no_call, call_pending: atom3, raise_pc: 0_u64, native_raise: atom3, pcall_field: move pcall_field, post_catch: unlimited, debug_names: move debug_names, local_variables: move local_variables, upvalue_names: move upvalue_names);
 }
 
 fn raise_text(vm: &Vm, text: &[u8]) -> r: Bool reads(text), writes(vm) {
@@ -339,6 +399,22 @@ fn raise_native_text(vm: &Vm, text: &[u8]) -> r: Bool reads(text), writes(vm) {
 }
 
 fn raw_type_error(vm: &Vm, v: Value, op: u8) -> r: Bool writes(vm) {
+  let k = kind(v: v);
+  if k == 7_u8 {
+    if op == 0_u8 {
+      return raise_text(vm: vm, text: &state_thread_arithmetic[0_u64..47_u64]);
+    }
+    if op == 1_u8 {
+      return raise_text(vm: vm, text: &state_thread_index[0_u64..31_u64]);
+    }
+    if op == 2_u8 {
+      return raise_text(vm: vm, text: &state_thread_call[0_u64..30_u64]);
+    }
+    if op == 3_u8 {
+      return raise_text(vm: vm, text: &state_thread_concat[0_u64..37_u64]);
+    }
+    return raise_text(vm: vm, text: &state_thread_length[0_u64..39_u64]);
+  }
   if cjson_isnull(value: v) {
     if op == 0_u8 {
       return raise_text(vm: vm, text: &cj_nullarith[0_u64..49_u64]);
@@ -354,7 +430,6 @@ fn raw_type_error(vm: &Vm, v: Value, op: u8) -> r: Bool writes(vm) {
     }
     return raise_text(vm: vm, text: &cj_nulllen[0_u64..41_u64]);
   }
-  let k = kind(v: v);
   if op == 0_u8 {
     if k == 0_u8 {
       return raise_text(vm: vm, text: &state_text_0[0_u64..44_u64]);
@@ -488,10 +563,15 @@ fn read_upvalue(vm: &Vm, stack: &Box<Slots<Value>>, h: u32) -> r: Value reads(vm
   let i = cvt::<u32, u64>(h);
   if i < vm^.heap.upvalues.inner.len {
     match vm^.heap.upvalues.inner[i].payload {
-      Open(slot: s) => {
+      Open(owner: capture_owner, slot: s) => {
+        let owner_handle = capture_owner^;
         let j = s^;
-        if j < stack^.inner.len {
-          return stack^.inner[j];
+        if owner_handle == vm^.current_thread {
+          if j < stack^.inner.len {
+            return stack^.inner[j];
+          }
+        } else {
+          return pkg::heap::thread_slot(heap: &vm^.heap, owner: owner_handle, slot: j);
         }
       }
       Closed(v: bound_v_3) => {
@@ -508,10 +588,15 @@ fn write_upvalue(vm: &Vm, stack: &Box<Slots<Value>>, h: u32, v: Value) -> r: uni
   let i = cvt::<u32, u64>(h);
   if i < vm^.heap.upvalues.inner.len {
     match vm^.heap.upvalues.inner[i].payload {
-      Open(slot: s) => {
+      Open(owner: capture_owner, slot: s) => {
+        let owner_handle = capture_owner^;
         let j = s^;
-        if j < stack^.inner.len {
-          set stack^.inner[j] = v;
+        if owner_handle == vm^.current_thread {
+          if j < stack^.inner.len {
+            set stack^.inner[j] = v;
+          }
+        } else {
+          pkg::heap::set_thread_slot(heap: &vm^.heap, owner: owner_handle, slot: j, v: v);
         }
       }
       Closed(..) => {
@@ -529,24 +614,28 @@ fn capture(vm: &Vm, slot: u64) -> r: Option<u32> writes(vm) {
       let h = vm^.open_upvalues.inner[i];
       let j = cvt::<u32, u64>(h);
       if j < vm^.heap.upvalues.inner.len {
-        match vm^.heap.upvalues.inner[j].payload {
-          Open(slot: s) => {
-            if s^ == slot {
-              return Some<u32>(value: h);
-            }
-            if s^ < slot {
-              if i < at {
-                set at = i;
+        if vm^.heap.upvalues.inner[j].live {
+          match vm^.heap.upvalues.inner[j].payload {
+            Open(owner: capture_owner, slot: s) => {
+              if capture_owner^ == vm^.current_thread {
+                if s^ == slot {
+                  return Some<u32>(value: h);
+                }
+                if s^ < slot {
+                  if i < at {
+                    set at = i;
+                  }
+                }
               }
             }
-          }
-          Closed(..) => {
+            Closed(..) => {
+            }
           }
         }
       }
     }
   }
-  let uv = Upval::Open(slot: slot);
+  let uv = Upval::Open(owner: vm^.current_thread, slot: slot);
   match pkg::heap::new_upvalue(heap: &vm^.heap, value: uv) {
     None() => {
       return None<u32>();
@@ -578,19 +667,23 @@ fn close_upvalues(vm: &Vm, stack: &Box<Slots<Value>>, level: u64) -> r: unit rea
     let h = vm^.open_upvalues.inner[0_u64];
     let i = cvt::<u32, u64>(h);
     if i < vm^.heap.upvalues.inner.len {
-      match vm^.heap.upvalues.inner[i].payload {
-        Open(slot: s) => {
-          let j = s^;
-          if j < level {
-            break;
+      if vm^.heap.upvalues.inner[i].live {
+        match vm^.heap.upvalues.inner[i].payload {
+          Open(owner: capture_owner, slot: s) => {
+            if capture_owner^ == vm^.current_thread {
+              let j = s^;
+              if j < level {
+                break;
+              }
+              let v = Value::Nil();
+              if j < stack^.inner.len {
+                set v = stack^.inner[j];
+              }
+              set vm^.heap.upvalues.inner[i].payload = Upval::Closed(v: v);
+            }
           }
-          let v = Value::Nil();
-          if j < stack^.inner.len {
-            set v = stack^.inner[j];
+          Closed(..) => {
           }
-          set vm^.heap.upvalues.inner[i].payload = Upval::Closed(v: v);
-        }
-        Closed(..) => {
         }
       }
     }
@@ -602,6 +695,7 @@ fn close_upvalues(vm: &Vm, stack: &Box<Slots<Value>>, level: u64) -> r: unit rea
 }
 
 fn reset(vm: &Vm, stack: &Box<Slots<Value>>) -> r: unit writes(stack), writes(vm) {
+  coroutine_reset(vm: vm, stack: stack);
   set vm^.post_catch = unlimited;
   loop {
     if vm^.pattern_subs.inner.len == 0_u64 {
@@ -621,7 +715,7 @@ fn reset(vm: &Vm, stack: &Box<Slots<Value>>) -> r: unit writes(stack), writes(vm
     }
     let discarded = take_back(window: &vm^.sort_frames.inner);
   }
-  if vm^.suspended {
+  if bor(vm^.suspended, vm^.host_stopped) {
     restore_stopped_stack(vm: vm, stack: stack);
   }
   set vm^.suspended = False();
