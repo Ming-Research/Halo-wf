@@ -237,7 +237,8 @@ def main():
         if required != present:
             raise ValueError('missing or surplus baseline files')
     source_files = sorted((ROOT / 'lib/halo').rglob('*.wf')) + sorted((ROOT / 'lib/halo').rglob('*.wfm'))
-    source_files += [ROOT / 'lib/halo/modules.wfg', HERE / 'modules.wfg', HERE / 'run.py', HERE.parent / 'compiler_cache.py']
+    source_files += sorted((ROOT / 'lib/fpconv').rglob('*.wf')) + sorted((ROOT / 'lib/fpconv').rglob('*.wfm'))
+    source_files += [ROOT / 'lib/halo/modules.wfg', ROOT / 'lib/fpconv/modules.wfg', HERE / 'modules.wfg', HERE / 'run.py', HERE.parent / 'compiler_cache.py']
     source_files += sorted((HERE / 'test').glob('*'))
     source_files += cases + [case_root / 'expected' / p.relative_to(case_root / 'scripts').with_suffix('.txt') for p in cases]
     digest = hashlib.sha256()
@@ -247,7 +248,7 @@ def main():
     report = ['# Halo end-to-end comparison', '',
               f'Local parent revision: `{revision}`. Source digest: `{digest.hexdigest()}`.',
               f'GC stress: {args.gc_stress}; suspended checkpoint probe: {args.collect_suspended}; frame alias isolation: {args.isolate_frames}; parked root omitted: {args.omit_suspended_root}.',
-              'The digest includes every Halo module, the graph, host and runner; it identifies uncommitted source bytes too.', '']
+              'The digest includes every Halo and fpconv module, the graph, host and runner; it identifies uncommitted source bytes too.', '']
     with tempfile.TemporaryDirectory(prefix='halo-e2e-', dir=args.scratch_root) as temporary:
         scratch = Path(temporary)
         binary = args.binary.resolve() if args.binary else scratch / 'test'

@@ -136,8 +136,8 @@ both modes:
 | `error-reply-newline` | The test host stored `error_reply`'s text unchanged instead of applying `luaPushErrorBuff`'s code rule. | This change. |
 | `set-repl-no-argument` | The test host had no `redis.set_repl`. | This change. |
 | `redis-version` | The test host had no `REDIS_VERSION` or `REDIS_VERSION_NUM`. | This change. |
-| `number-argument-format`, `number-argument-effects`, `double-score-reply` | The test host had no ECHO, INCRBYFLOAT or ZRANGE; behind that, number text. | Commands: this change. Number text: `wf-need-halo-oracle-72`. |
-| `double-reply-table` | The test host did not convert a `{double=x}` table; behind that, number text. | Conversion: this change. Number text: `wf-need-halo-oracle-72`. |
+| `number-argument-format`, `number-argument-effects`, `double-score-reply` | The test host had no ECHO, INCRBYFLOAT or ZRANGE; behind that, number text. | Commands: this change. Number text: the fpconv package (`halo-redis-double-text`). |
+| `double-reply-table` | The test host did not convert a `{double=x}` table; behind that, number text. | Conversion: this change. Number text: the fpconv package (`halo-redis-double-text`). |
 | `string-metatable-readonly` | The string metatable is not read-only, and the embedding interface gives the host no way to reach or mark it. | `halo-embed-protect`. |
 
 "Number text" is the digits of a finite, non-integral number: Redis 7.2.16
@@ -156,6 +156,17 @@ LLONG_MAX/2, nan, inf, zeros), so by reading:
   shortest-digit rule, and the first does not test INCRBYFLOAT's long double
   sum, which the host computes in double.
 - `string-metatable-readonly` still fails until `halo-embed-protect`.
+
+Number text, afterwards: Redis 7.2.16 writes these digits with fpconv's
+Grisu2, which has no exact fallback, so A1 and A2's "shortest round-trip
+digits" is not exact. On Whitefoot CI run 38236089638, 355 of 16,922 nonzero
+values outside the integer rule that redis-server 7.2.16 wrote had other
+digits than the exact shortest (1e23 is 99999999999999990000000), and every
+one matched a reconstruction of `fpconv_dtoa`. The test host now writes
+number text with the fpconv package (`lib/fpconv`, a port of `fpconv_dtoa`),
+and the gate compares its texts with the measured table
+([fpconv README](../../../lib/fpconv/README.md#oracle-table)). The four
+scripts' replies with it are unverified until CI runs them.
 
 The reference check group (`REFERENCE_LUA`, the number library and the
 MessagePack package against Redis's bundled Lua) now builds 7.2.16's Lua;

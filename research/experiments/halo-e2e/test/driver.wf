@@ -541,6 +541,7 @@ fn main(inputs: Inputs) -> status: ExitStatus pure waits {
   let isolate_frames = False();
   let recover = False();
   let omit_refresh = 0_u8;
+  let double_text_mode = False();
   let positional = 0_u64;
   for (index in 1_u64..modes) {
     if argument_is(args: &args_v99, index: index, text: &stress_option[0_u64..11_u64]) {
@@ -559,6 +560,8 @@ fn main(inputs: Inputs) -> status: ExitStatus pure waits {
       set omit_refresh = 2_u8;
     } else if argument_is(args: &args_v99, index: index, text: &unpin_refresh_option[0_u64..20_u64]) {
       set omit_refresh = 3_u8;
+    } else if argument_is(args: &args_v99, index: index, text: &double_text_option[0_u64..13_u64]) {
+      set double_text_mode = True();
     } else {
       set positional = positional +sat 1_u64;
     }
@@ -569,6 +572,23 @@ fn main(inputs: Inputs) -> status: ExitStatus pure waits {
   }
   if positional > 2_u64 {
     return smoke();
+  }
+  if double_text_mode {
+    let records = box_slots_new::<u8>(capacity: 0_u64);
+    let loaded = read_source(factory: &factory_v103, input: &input_v104, source: &records);
+    if bnot(loaded) {
+      return std::process::exit_status(code: 2_u8);
+    }
+    let lines = box_slots_new::<u8>(capacity: 0_u64);
+    let whole = double_text_lines(records: &records, out: &lines);
+    if bnot(whole) {
+      return std::process::exit_status(code: 2_u8);
+    }
+    let sent = write_bytes(factory: &factory_v103, output: &output_v101, bytes: &lines);
+    if bnot(sent) {
+      return std::process::exit_status(code: 2_u8);
+    }
+    return std::process::exit_status(code: 0_u8);
   }
   let source_v109 = box_slots_new::<u8>(capacity: 0_u64);
   let read_v110 = read_source(factory: &factory_v103, input: &input_v104, source: &source_v109);
@@ -739,6 +759,8 @@ const suspended_option: Array<u8, 19> = "--collect-suspended";
 const recovery_option: Array<u8, 17> = "--memory-recovery";
 
 const stress_option: Array<u8, 11> = "--gc-stress";
+
+const double_text_option: Array<u8, 13> = "--double-text";
 
 const stats_prefix: Array<u8, 15> = "{\"collections\":";
 

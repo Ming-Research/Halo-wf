@@ -75,41 +75,95 @@ fn whole_integer(x: f64) -> r: Option<i64> pure {
   return None<i64>();
 }
 
-fn fallback_text(vm: &Vm, x: f64) -> r: Value writes(vm) {
-  doc "Stands in for Redis 7.2.16's fpconv_dtoa, which writes a minus sign for a set sign bit, then 0, nan or inf for those values and otherwise the shortest digits that read back exactly. This writes Lua's %.14g text: the sign, zero, nan and inf agree, finite digits can differ (0.1 agrees, 1/3 does not). Whitefoot's standard library cannot write shortest round-trip digits yet: board item wf-need-halo-oracle-72.";
+fn fpconv_text(out: &Box<Slots<u8>>, x: f64, signed_nan: Bool) -> r: unit writes(out) {
+  doc "Appends Redis 7.2.16's fpconv_dtoa text of x, written by the fpconv package; signed_nan true keeps a negative NaN's sign, as fpconv_dtoa writes it, and false writes every NaN as nan.";
   let bytes = array_filled::<u8, 32>(value: 0_u8);
-  let count = halo::number::format_number(value: x, out: &bytes[0_u64..32_u64]);
-  return literal(vm: vm, text: &bytes[0_u64..count]);
+  let count = fpconv::dtoa::format_double(value: x, signed_nan: signed_nan, out: &bytes[0_u64..32_u64]);
+  text_bytes(out: out, bytes: &bytes[0_u64..count]);
+  return unit;
 }
 
-fn argument_text(vm: &Vm, x: f64) -> r: Value writes(vm) {
-  doc "The text a Lua number becomes as a redis.call argument, after Redis 7.2.16's luaArgsToRedisArgv: an integer when double2ll accepts it, otherwise fpconv_dtoa, whose finite digits wait on wf-need-halo-oracle-72 (see fallback_text).";
+fn append_argument_text(out: &Box<Slots<u8>>, x: f64) -> r: unit writes(out) {
+  doc "Appends the text a Lua number becomes as a redis.call argument, after Redis 7.2.16's luaArgsToRedisArgv: an integer when double2ll accepts it, otherwise fpconv_dtoa's text, in which a negative NaN keeps its sign (0/0 is -nan on the reference platform).";
   match whole_integer(x: x) {
     Some(value: integer) => {
-      return integer_string(vm: vm, value: integer);
+      append_integer(out: out, value: integer);
+      return unit;
     }
     None() => {
     }
   }
-  return fallback_text(vm: vm, x: x);
+  let keep_sign = True();
+  fpconv_text(out: out, x: x, signed_nan: keep_sign);
+  return unit;
 }
 
-fn double_text(vm: &Vm, x: f64) -> r: Value writes(vm) {
-  doc "A RESP2 double reply's text, after Redis 7.2.16's d2string: nan for every NaN; inf, -inf, 0 and -0 as fpconv_dtoa writes them; an integer when double2ll accepts it; otherwise fpconv_dtoa, whose finite digits wait on wf-need-halo-oracle-72 (see fallback_text).";
-  if fne(x, x) {
-    return literal(vm: vm, text: &nan_word[0_u64..3_u64]);
-  }
+fn append_double_text(out: &Box<Slots<u8>>, x: f64) -> r: unit writes(out) {
+  doc "Appends a RESP2 double reply's text, after Redis 7.2.16's d2string: nan for every NaN, and inf, -inf, 0 and -0 as fpconv_dtoa writes them; any other value as a redis.call argument's text.";
   let zero = feq(x, 0.0_f64);
   let magnitude = fabs(x);
   let infinite = fgt(magnitude, 1.7976931348623157e308_f64);
-  if bor(zero, infinite) {
-    return fallback_text(vm: vm, x: x);
+  let not_a_number = fne(x, x);
+  let edge = bor(zero, infinite);
+  let special = bor(edge, not_a_number);
+  if special {
+    let drop_sign = False();
+    fpconv_text(out: out, x: x, signed_nan: drop_sign);
+    return unit;
   }
-  return argument_text(vm: vm, x: x);
+  append_argument_text(out: out, x: x);
+  return unit;
+}
+
+fn argument_text(vm: &Vm, x: f64) -> r: Value writes(vm) {
+  doc "A Lua number's text as a redis.call argument (see append_argument_text).";
+  let bytes = box_slots_new::<u8>(capacity: 0_u64);
+  append_argument_text(out: &bytes, x: x);
+  let length = bytes.inner.len;
+  return literal(vm: vm, text: &bytes.inner[0_u64..length]);
+}
+
+fn double_text(vm: &Vm, x: f64) -> r: Value writes(vm) {
+  doc "A RESP2 double reply's text (see append_double_text).";
+  let bytes = box_slots_new::<u8>(capacity: 0_u64);
+  append_double_text(out: &bytes, x: x);
+  let length = bytes.inner.len;
+  return literal(vm: vm, text: &bytes.inner[0_u64..length]);
+}
+
+fn double_text_lines(records: &Box<Slots<u8>>, out: &Box<Slots<u8>>) -> whole: Bool reads(records), writes(out) {
+  doc "The --double-text mode: for each 8-byte little-endian binary64 bit pattern in records, one line holding its RESP2 double reply text, a tab and its redis.call argument text. False when records do not divide into 8-byte patterns.";
+  let total = records^.inner.len;
+  let leftover = total % 8_u64;
+  if leftover != 0_u64 {
+    return False();
+  }
+  let patterns = total / 8_u64;
+  for (pattern in 0_u64..patterns) {
+    let first = pattern *wrap 8_u64;
+    let pattern_bits = 0_u64;
+    for (offset in 0_u64..8_u64) {
+      let position = first +wrap offset;
+      if position < records^.inner.len {
+        let byte = records^.inner[position];
+        let wide = cvt::<u8, u64>(byte);
+        let distance = offset *wrap 8_u64;
+        let amount = cvt.wrap::<u64, u32>(distance);
+        let part = ishl.wrap(wide, amount);
+        set pattern_bits = ior(pattern_bits, part);
+      }
+    }
+    let x = reinterpret::<u64, f64>(pattern_bits);
+    append_double_text(out: out, x: x);
+    push(out: out, byte: 9_u8);
+    append_argument_text(out: out, x: x);
+    push(out: out, byte: 10_u8);
+  }
+  return True();
 }
 
 fn incrbyfloat_text(vm: &Vm, x: f64) -> r: Value writes(vm) {
-  doc "Stands in for the value INCRBYFLOAT stores and replies. Redis 7.2.16 adds in long double and writes the sum with ld2string's human mode: %.17Lf with trailing zeros and a trailing point removed, -0 written 0. This adds in double and writes the argument text: when both precisions give the same integral sum within double2ll's range the digits agree; other sums can differ (0 + 0.1 agrees as 0.1; 1e17 + 1 does not, since long double keeps the 1). Exact text needs long double arithmetic and fixed-point digits, beyond the shortest-digit conversion of board item wf-need-halo-oracle-72.";
+  doc "Stands in for the value INCRBYFLOAT stores and replies. Redis 7.2.16 adds in long double and writes the sum with ld2string's human mode: %.17Lf with trailing zeros and a trailing point removed, -0 written 0. This adds in double and writes the argument text: when both precisions give the same integral sum within double2ll's range the digits agree; other sums can differ (0 + 0.1 agrees as 0.1; 1e17 + 1 does not, since long double keeps the 1). Exact text needs long double arithmetic and ld2string's fixed-point digits, which the fpconv package's conversion of a double does not provide.";
   return argument_text(vm: vm, x: x);
 }
 
@@ -514,10 +568,10 @@ fn table_count(vm: &Vm, table: Value) -> r: u64 reads(vm) {
   return count_v24;
 }
 
-fn integer_string(vm: &Vm, value: i64) -> r: Value writes(vm) {
-  let bytes_v27 = box_slots_new::<u8>(capacity: 0_u64);
+fn append_integer(out: &Box<Slots<u8>>, value: i64) -> r: unit writes(out) {
+  doc "Appends an integer in decimal, with a minus sign when negative.";
   if value < 0_i64 {
-    push(out: &bytes_v27, byte: 45_u8);
+    push(out: out, byte: 45_u8);
   }
   let mag_v28 = 0_u64;
   if value < 0_i64 {
@@ -528,7 +582,13 @@ fn integer_string(vm: &Vm, value: i64) -> r: Value writes(vm) {
   } else {
     set mag_v28 = cvt::<i64, u64>(value);
   }
-  decimal(out: &bytes_v27, n: mag_v28);
+  decimal(out: out, n: mag_v28);
+  return unit;
+}
+
+fn integer_string(vm: &Vm, value: i64) -> r: Value writes(vm) {
+  let bytes_v27 = box_slots_new::<u8>(capacity: 0_u64);
+  append_integer(out: &bytes_v27, value: value);
   let n_v32 = bytes_v27.inner.len;
   return literal(vm: vm, text: &bytes_v27.inner[0_u64..n_v32]);
 }

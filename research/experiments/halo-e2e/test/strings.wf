@@ -130,8 +130,6 @@ const set_repl_arity: Array<u8, 43> = "ERR redis.set_repl() requires one argumen
 
 const set_repl_flags: Array<u8, 81> = "ERR Invalid replication flags. Use REPL_AOF, REPL_REPLICA, REPL_ALL or REPL_NONE.";
 
-const nan_word: Array<u8, 3> = "nan";
-
 const double_field: Array<u8, 6> = "double";
 
 const set_repl_name: Array<u8, 8> = "set_repl";

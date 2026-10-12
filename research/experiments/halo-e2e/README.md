@@ -178,6 +178,12 @@ negative control at budget 1: the harness hides the snapshot during collection
 and restores it before resume. The suspended-stack comparison is expected to
 fail with the original expected reply unchanged. Ordinary runs omit this flag.
 
+The executable's `--double-text` mode runs no script: it reads 8-byte
+little-endian binary64 bit patterns from stdin and prints, per pattern, the
+host's RESP2 double reply text, a tab and its `redis.call` argument text.
+`make check` compares them with the doubles measured on redis-server 7.2.16
+([fpconv package](../../../lib/fpconv/README.md#check)).
+
 `--scratch-root DIR` keeps temporary build and fixture files under an existing
 chosen directory. The cost-repair runs use the benchmark's `target/` so all
 new artifacts stay in the requested worktree; the default remains `/private/tmp`.

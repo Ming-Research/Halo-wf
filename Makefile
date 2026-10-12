@@ -21,15 +21,16 @@ DESIGN_REVIEW_BASE ?= origin/main
 # projects written in Whitefoot (whitefoot-kit/downstream.md).
 include $(ROOT)/whitefoot-kit/whitefoot.mk
 
-.PHONY: check check-core check-extended check-reference oracle roots hosts json reference-lua number msgpack design-lint design-ready FORCE
+.PHONY: check check-core check-extended check-reference oracle double-text roots hosts json reference-lua number msgpack design-lint design-ready FORCE
 
 # `make check` runs three groups, which CI runs as parallel jobs: the core
-# (the embedding probe, the oracle corpus and the design lint), the extended
-# checks that need no reference build (the collector's root controls, the
-# research hosts, the JSON package) and the checks against Redis 7.2.16's
-# bundled Lua built from source (the number library, the MessagePack package).
+# (the embedding probe, the oracle corpus, the double texts and the design
+# lint), the extended checks that need no reference build (the collector's
+# root controls, the research hosts, the JSON package) and the checks against
+# Redis 7.2.16's bundled Lua built from source (the number library, the
+# MessagePack package).
 check: check-core check-extended check-reference
-check-core: compiler oracle design-lint
+check-core: compiler oracle double-text design-lint
 check-extended: compiler roots hosts json
 check-reference: compiler number msgpack
 
@@ -67,6 +68,15 @@ oracle: $(E2E_TEST)
 	$(E2E_RUN) --report $(E2E)/ordinary.md --actual $(E2E)/ordinary || status=1; \
 	$(E2E_RUN) --gc-stress --report $(E2E)/stress.md --actual $(E2E)/stress || status=1; \
 	exit $$status
+
+# The double texts (research/experiments/redis-double-text): the same test
+# program writes each of the 18,231 doubles that redis-server 7.2.16 wrote in a
+# measured table, as a double reply and as a redis.call argument, with the test
+# host's rules and the fpconv package (lib/fpconv), and the runner requires
+# every text byte for byte. It first shows that the table rejects an
+# exact-shortest formatter.
+double-text: $(E2E_TEST)
+	@cd $(ROOT) && $(PY) -B research/experiments/redis-double-text/check.py --binary $(E2E_TEST)
 
 # The collector's removed-root controls (research/experiments/halo-gc): the
 # local root cases pass with the oracle's test program, and fail once a sole

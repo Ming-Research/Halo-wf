@@ -108,15 +108,14 @@ immediately. Reopen with clock-valued expiry fixtures before using this host
 to test countdowns. Malformed score/expiry inputs are not verified.
 
 A Lua number passed to redis.call, a double reply (ZSCORE, WITHSCORES scores,
-a returned `{double=x}`) and INCRBYFLOAT's result follow Redis 7.2.16's rules
-(double2ll's integer range, d2string's nan, infinities and zeros), except
-for the digits of a finite non-integral value: Redis writes the shortest
-digits that read back exactly, and this host writes Lua's %.14g text, which
-agrees for values such as 0.1 and differs for values such as 1/3. Whitefoot's
-standard library has no shortest round-trip conversion yet (board item
-`wf-need-halo-oracle-72`). INCRBYFLOAT also adds in double where Redis adds in
-long double and prints with `%.17Lf`, so sums that the two precisions round
-differently still differ.
+a returned `{double=x}`) and INCRBYFLOAT's result follow Redis 7.2.16's rules:
+double2ll's integer range, d2string's nan, infinities and zeros, and
+otherwise fpconv's Grisu2 text, which this host writes with the
+[fpconv package](../../../lib/fpconv/README.md) (board item
+`halo-redis-double-text`). The gate compares both texts with 18,231 doubles
+measured on redis-server 7.2.16. INCRBYFLOAT still adds in double where Redis
+adds in long double and prints with `%.17Lf`, so sums that the two precisions
+round differently still differ.
 
 RESP2 conversion truncates representable numbers toward zero, maps true to one and false/nil
 to nil bulk, recognizes err before ok fields, and traverses tables from index

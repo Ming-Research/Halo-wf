@@ -1,0 +1,455 @@
+const fraction_mask: u64 = 4503599627370495_u64;
+
+const hidden_bit: u64 = 4503599627370496_u64;
+
+const upper_hidden_bit: u64 = 9007199254740992_u64;
+
+const magnitude_mask: u64 = 9223372036854775807_u64;
+
+const text_inf: Array<u8, 3> = "inf";
+
+const text_nan: Array<u8, 3> = "nan";
+
+struct Chars {
+  doc "Bytes written so far: the first length of 32.";
+  bytes: Array<u8, 32>;
+  length: u64;
+}
+
+struct Bounds {
+  doc "The boundaries of a value's rounding interval, at one exponent.";
+  lower: Fp;
+  upper: Fp;
+}
+
+struct Cached {
+  doc "A cached power of ten: its normalized significand and binary exponent, and its decimal exponent k.";
+  power: Fp;
+  k: i64;
+}
+
+fn chars_new() -> fresh: Chars pure {
+  doc "Empty bytes.";
+  let zeros = array_filled::<u8, 32>(value: 0_u8);
+  return Chars(bytes: zeros, length: 0_u64);
+}
+
+fn push_byte(chars: &Chars, byte: u8) -> pushed: unit writes(chars) {
+  doc "Appends one byte while there is room.";
+  let length = chars^.length;
+  if length < chars^.bytes.len {
+    set chars^.bytes[length] = byte;
+    set chars^.length = length +wrap 1_u64;
+  }
+  return unit;
+}
+
+fn push_word(chars: &Chars, word: &[u8]) -> pushed_word: unit reads(word), writes(chars) {
+  doc "Appends every byte of a word.";
+  let word_length = word^.len;
+  for (word_index in 0_u64..word_length) {
+    let word_byte = word^[word_index];
+    push_byte(chars: chars, byte: word_byte);
+  }
+  return unit;
+}
+
+fn push_glyph(chars: &Chars, digit: i64) -> pushed_glyph: unit writes(chars) {
+  doc "Appends one decimal digit, 0 to 9, as its ASCII glyph.";
+  let narrow = cvt.wrap::<i64, u8>(digit);
+  let glyph = narrow +wrap 48_u8;
+  push_byte(chars: chars, byte: glyph);
+  return unit;
+}
+
+fn push_digits(chars: &Chars, digits: &Chars, from: u64, to: u64) -> copied: unit reads(digits), writes(chars) {
+  doc "Appends the digits held from one position up to another.";
+  for (index in from..to) {
+    if index < digits^.length {
+      if index < digits^.bytes.len {
+        let held = digits^.bytes[index];
+        push_byte(chars: chars, byte: held);
+      }
+    }
+  }
+  return unit;
+}
+
+fn push_zeros(chars: &Chars, count: u64) -> padded: unit writes(chars) {
+  doc "Appends count zero glyphs.";
+  for (step in 0_u64..count) {
+    push_byte(chars: chars, byte: 48_u8);
+  }
+  return unit;
+}
+
+fn boundaries(frac: u64, exp: i64) -> bounds: Bounds pure {
+  doc "fpconv's get_normalized_boundaries: the upper boundary (2 frac + 1) times 2^(exp - 1) shifted until bit 63 is its top, and the lower boundary, 2 frac - 1 or 4 frac - 1 for a significand of exactly the hidden bit, brought to the upper boundary's exponent.";
+  let doubled = ishl.wrap(frac, 1_u32);
+  let upper_frac = doubled +wrap 1_u64;
+  let upper_exp = exp -wrap 1_i64;
+  loop @upper_top {
+    let top = iand(upper_frac, upper_hidden_bit);
+    if top != 0_u64 {
+      break @upper_top;
+    }
+    set upper_frac = ishl.wrap(upper_frac, 1_u32);
+    set upper_exp = upper_exp -wrap 1_i64;
+  }
+  set upper_frac = ishl.wrap(upper_frac, 10_u32);
+  set upper_exp = upper_exp -wrap 10_i64;
+  let lower_shift = 1_u32;
+  if frac == hidden_bit {
+    set lower_shift = 2_u32;
+  }
+  let lower_scaled = ishl.wrap(frac, lower_shift);
+  let lower_frac = lower_scaled -wrap 1_u64;
+  let lower_shift_wide = cvt::<u32, i64>(lower_shift);
+  let lower_exp = exp -wrap lower_shift_wide;
+  let lower_gap = lower_exp -wrap upper_exp;
+  let lower_amount = cvt.wrap::<i64, u32>(lower_gap);
+  set lower_frac = ishl.wrap(lower_frac, lower_amount);
+  let lower = Fp(frac: lower_frac, exp: upper_exp);
+  let upper = Fp(frac: upper_frac, exp: upper_exp);
+  return Bounds(lower: lower, upper: upper);
+}
+
+fn normalize(frac: u64, exp: i64) -> normal: Fp pure {
+  doc "fpconv's normalize: the significand shifted until bit 63 is its top, the exponent lowered to match.";
+  let shifted_frac = frac;
+  let shifted_exp = exp;
+  loop @hidden_top {
+    let lead = iand(shifted_frac, hidden_bit);
+    if lead != 0_u64 {
+      break @hidden_top;
+    }
+    set shifted_frac = ishl.wrap(shifted_frac, 1_u32);
+    set shifted_exp = shifted_exp -wrap 1_i64;
+  }
+  set shifted_frac = ishl.wrap(shifted_frac, 11_u32);
+  set shifted_exp = shifted_exp -wrap 11_i64;
+  return Fp(frac: shifted_frac, exp: shifted_exp);
+}
+
+fn cached_power(exp: i64) -> cached: Cached pure {
+  doc "fpconv's find_cachedpow10: the cached power whose product with a significand of binary exponent exp has an exponent from -60 to -32. The search starts at the index fpconv estimates by truncating the double product of -(exp + 87) and 0.30102999566398114 (the same double as the literal here), and moves one entry at a time; every binary64 value finds its entry within two moves, and the bound of 87 moves only makes the search total.";
+  let biased = exp +wrap 87_i64;
+  let negated = 0_i64 -wrap biased;
+  let wide = cvt.nearest::<i64, f64>(negated);
+  let scaled = fmul.strict(wide, 0.30102999566398112_f64);
+  let whole = ftrunc(scaled);
+  let approx = 0_i64;
+  if cvt.defined::<f64, i64>(whole) {
+    set approx = cvt::<f64, i64>(whole);
+  }
+  let from_first = approx +wrap 348_i64;
+  let index = from_first / 8_i64;
+  for (step in 0_u64..87_u64) {
+    let above_zero = imax(index, 0_i64);
+    set index = imin(above_zero, 86_i64);
+    let at = cvt.wrap::<i64, u64>(index);
+    if at < powers_ten.len {
+      let power_exp = powers_ten[at].exp;
+      let summed = exp +wrap power_exp;
+      let current = summed +wrap 64_i64;
+      if current < -60_i64 {
+        set index = index +wrap 1_i64;
+      } else if current > -32_i64 {
+        set index = index -wrap 1_i64;
+      } else {
+        let found = powers_ten[at];
+        let index_scaled = index *wrap 8_i64;
+        let found_k = index_scaled -wrap 348_i64;
+        return Cached(power: found, k: found_k);
+      }
+    }
+  }
+  let last_low = imax(index, 0_i64);
+  let last_index = imin(last_low, 86_i64);
+  let last_at = cvt.wrap::<i64, u64>(last_index);
+  let last_scaled = last_index *wrap 8_i64;
+  let last_k = last_scaled -wrap 348_i64;
+  if last_at < powers_ten.len {
+    let last_found = powers_ten[last_at];
+    return Cached(power: last_found, k: last_k);
+  }
+  let none = Fp(frac: 0_u64, exp: 0_i64);
+  return Cached(power: none, k: last_k);
+}
+
+fn multiply(a: Fp, b: Fp) -> product: Fp pure {
+  doc "fpconv's multiply: the high 64 bits of the 128-bit product of the significands, plus one when the low 64 bits are at least 2^63, which is the sum fpconv forms from four 32-bit partial products and its added 2^31.";
+  let a_frac = a.frac;
+  let b_frac = b.frac;
+  let high = imulhi(a_frac, b_frac);
+  let low = a_frac *wrap b_frac;
+  let carry = ishr.wrap(low, 63_u32);
+  let rounded = high +wrap carry;
+  let a_exp = a.exp;
+  let b_exp = b.exp;
+  let exp_sum = a_exp +wrap b_exp;
+  let product_exp = exp_sum +wrap 64_i64;
+  return Fp(frac: rounded, exp: product_exp);
+}
+
+fn append_digit(digits: &Chars, digit: u64) -> appended: unit writes(digits) {
+  doc "Appends a generated digit unless it is a leading zero.";
+  let started = digits^.length != 0_u64;
+  let nonzero = digit != 0_u64;
+  let kept = bor(nonzero, started);
+  if kept {
+    let narrow = cvt.wrap::<u64, u8>(digit);
+    let glyph = narrow +wrap 48_u8;
+    push_byte(chars: digits, byte: glyph);
+  }
+  return unit;
+}
+
+fn round_digit(digits: &Chars, delta: u64, rem: u64, kappa: u64, frac: u64) -> rounded_down: unit writes(digits) {
+  doc "fpconv's round_digit: lowers the last digit while the remainder stays inside the interval of width delta and moving it by kappa brings the value closer to frac, the scaled distance from the upper boundary to the value.";
+  let remainder = rem;
+  loop @lower_last {
+    if remainder >= frac {
+      break @lower_last;
+    }
+    let room = delta -wrap remainder;
+    if room < kappa {
+      break @lower_last;
+    }
+    let next = remainder +wrap kappa;
+    let below = next < frac;
+    let gap_low = frac -wrap remainder;
+    let gap_high = next -wrap frac;
+    let closer = gap_low > gap_high;
+    let moved = bor(below, closer);
+    if bnot(moved) {
+      break @lower_last;
+    }
+    let last = digits^.length;
+    if last > 0_u64 {
+      let last_at = last -wrap 1_u64;
+      if last_at < digits^.bytes.len {
+        let old = digits^.bytes[last_at];
+        let lowered = old -wrap 1_u8;
+        set digits^.bytes[last_at] = lowered;
+      }
+    }
+    set remainder = next;
+  }
+  return unit;
+}
+
+fn generate_digits(w: Fp, upper: Fp, lower: Fp, digits: &Chars, k_start: i64) -> k_end: i64 writes(digits) {
+  doc "fpconv's generate_digits: the digits of the upper boundary, integral part first, stopping as soon as the rest fits within the interval to the lower boundary, then rounded toward the value; returns k_start raised by the number of digit positions left unwritten.";
+  let upper_frac = upper.frac;
+  let w_frac = w.frac;
+  let lower_frac = lower.frac;
+  let wfrac = upper_frac -wrap w_frac;
+  let delta = upper_frac -wrap lower_frac;
+  let upper_exp = upper.exp;
+  let neg_exp = 0_i64 -wrap upper_exp;
+  let shift = cvt.wrap::<i64, u32>(neg_exp);
+  let one = ishl.wrap(1_u64, shift);
+  let mask = one -wrap 1_u64;
+  let part1 = ishr.wrap(upper_frac, shift);
+  let part2 = iand(upper_frac, mask);
+  let kappa = 10_i64;
+  let divisor = 1000000000_u64;
+  let k_now = k_start;
+  loop @integral {
+    if kappa <= 0_i64 {
+      break @integral;
+    }
+    if divisor > 0_u64 {
+      let digit = part1 / divisor;
+      append_digit(digits: digits, digit: digit);
+      let taken = digit *wrap divisor;
+      set part1 = part1 -wrap taken;
+    }
+    set kappa = kappa -wrap 1_i64;
+    let high_part = ishl.wrap(part1, shift);
+    let rest = high_part +wrap part2;
+    if rest <= delta {
+      set k_now = k_now +wrap kappa;
+      let step = ishl.wrap(divisor, shift);
+      round_digit(digits: digits, delta: delta, rem: rest, kappa: step, frac: wfrac);
+      return k_now;
+    }
+    set divisor = divisor / 10_u64;
+  }
+  let scale = 10_u64;
+  loop @fraction {
+    set part2 = part2 *wrap 10_u64;
+    set delta = delta *wrap 10_u64;
+    set kappa = kappa -wrap 1_i64;
+    let fraction_digit = ishr.wrap(part2, shift);
+    append_digit(digits: digits, digit: fraction_digit);
+    set part2 = iand(part2, mask);
+    if part2 < delta {
+      set k_now = k_now +wrap kappa;
+      let scaled_wfrac = wfrac *wrap scale;
+      round_digit(digits: digits, delta: delta, rem: part2, kappa: one, frac: scaled_wfrac);
+      return k_now;
+    }
+    set scale = scale *wrap 10_u64;
+  }
+}
+
+fn grisu2(bits: u64, digits: &Chars) -> power: i64 writes(digits) {
+  doc "fpconv's grisu2 for a finite nonzero value's bits: writes its digits and returns K, the power of ten of the last digit.";
+  let field = ishr.wrap(bits, 52_u32);
+  let biased = iand(field, 2047_u64);
+  let frac = iand(bits, fraction_mask);
+  let exp = -1074_i64;
+  if biased != 0_u64 {
+    set frac = frac +wrap hidden_bit;
+    let biased_signed = cvt.wrap::<u64, i64>(biased);
+    set exp = biased_signed -wrap 1075_i64;
+  }
+  let bounds = boundaries(frac: frac, exp: exp);
+  let w_normal = normalize(frac: frac, exp: exp);
+  let upper_exp = bounds.upper.exp;
+  let cached = cached_power(exp: upper_exp);
+  let cp = cached.power;
+  let w = multiply(a: w_normal, b: cp);
+  let upper_bound = bounds.upper;
+  let upper_scaled = multiply(a: upper_bound, b: cp);
+  let lower_bound = bounds.lower;
+  let lower_scaled = multiply(a: lower_bound, b: cp);
+  let lower_frac = lower_scaled.frac;
+  let lower_inside = lower_frac +wrap 1_u64;
+  let lower_exp = lower_scaled.exp;
+  let lower = Fp(frac: lower_inside, exp: lower_exp);
+  let upper_frac = upper_scaled.frac;
+  let upper_inside = upper_frac -wrap 1_u64;
+  let upper_scaled_exp = upper_scaled.exp;
+  let upper = Fp(frac: upper_inside, exp: upper_scaled_exp);
+  let cached_k = cached.k;
+  let k_start = 0_i64 -wrap cached_k;
+  return generate_digits(w: w, upper: upper, lower: lower, digits: digits, k_start: k_start);
+}
+
+fn emit_digits(digits: &Chars, power: i64, negative: Bool, out: &Chars) -> emitted: unit reads(digits), writes(out) {
+  doc "fpconv's emit_digits: lays out the digits, K being power, as an integer with K trailing zeros, a decimal with a point, or one digit, a point, the rest and an unpadded exponent.";
+  let count = digits^.length;
+  let count_signed = cvt.wrap::<u64, i64>(count);
+  let first_power = power +wrap count_signed;
+  let first_exp = first_power -wrap 1_i64;
+  let exp_abs = iabs.wrap(first_exp);
+  let integer_limit = count_signed +wrap 7_i64;
+  let power_nonnegative = power >= 0_i64;
+  let short_integer = exp_abs < integer_limit;
+  let integer = band(power_nonnegative, short_integer);
+  if integer {
+    push_digits(chars: out, digits: digits, from: 0_u64, to: count);
+    let zeros = cvt.wrap::<i64, u64>(power);
+    push_zeros(chars: out, count: zeros);
+    return unit;
+  }
+  let power_negative = power < 0_i64;
+  let near = power > -7_i64;
+  let small_exp = exp_abs < 4_i64;
+  let decimal_allowed = bor(near, small_exp);
+  let decimal = band(power_negative, decimal_allowed);
+  if decimal {
+    let power_abs = iabs.wrap(power);
+    let offset = count_signed -wrap power_abs;
+    if offset <= 0_i64 {
+      push_byte(chars: out, byte: 48_u8);
+      push_byte(chars: out, byte: 46_u8);
+      let leading = 0_i64 -wrap offset;
+      let leading_count = cvt.wrap::<i64, u64>(leading);
+      push_zeros(chars: out, count: leading_count);
+      push_digits(chars: out, digits: digits, from: 0_u64, to: count);
+    } else {
+      let split = cvt.wrap::<i64, u64>(offset);
+      push_digits(chars: out, digits: digits, from: 0_u64, to: split);
+      push_byte(chars: out, byte: 46_u8);
+      push_digits(chars: out, digits: digits, from: split, to: count);
+    }
+    return unit;
+  }
+  let limit = 18_u64;
+  if negative {
+    set limit = 17_u64;
+  }
+  let shown = imin(count, limit);
+  push_digits(chars: out, digits: digits, from: 0_u64, to: 1_u64);
+  if shown > 1_u64 {
+    push_byte(chars: out, byte: 46_u8);
+    push_digits(chars: out, digits: digits, from: 1_u64, to: shown);
+  }
+  push_byte(chars: out, byte: 101_u8);
+  let shown_signed = cvt.wrap::<u64, i64>(shown);
+  let shown_power = power +wrap shown_signed;
+  let shown_exp = shown_power -wrap 1_i64;
+  if shown_exp < 0_i64 {
+    push_byte(chars: out, byte: 45_u8);
+  } else {
+    push_byte(chars: out, byte: 43_u8);
+  }
+  let rest = exp_abs;
+  let cent = 0_i64;
+  if rest > 99_i64 {
+    set cent = rest / 100_i64;
+    push_glyph(chars: out, digit: cent);
+    let hundreds = cent *wrap 100_i64;
+    set rest = rest -wrap hundreds;
+  }
+  if rest > 9_i64 {
+    let dec = rest / 10_i64;
+    push_glyph(chars: out, digit: dec);
+    let tens = dec *wrap 10_i64;
+    set rest = rest -wrap tens;
+  } else if cent != 0_i64 {
+    push_byte(chars: out, byte: 48_u8);
+  }
+  let units = rest % 10_i64;
+  push_glyph(chars: out, digit: units);
+  return unit;
+}
+
+fn format_double(value: f64, signed_nan: Bool, out: &[u8]) -> length: u64 writes(out) contract {
+  requires out^.len >= 32_u64;
+  ensures length <= 32_u64;
+} {
+  doc "fpconv_dtoa with filter_special, NaN's sign written only when signed_nan is true.";
+  let text = chars_new();
+  let bits = reinterpret::<f64, u64>(value);
+  let sign = ishr.wrap(bits, 63_u32);
+  let negative = sign == 1_u64;
+  let field = ishr.wrap(bits, 52_u32);
+  let biased = iand(field, 2047_u64);
+  let fraction = iand(bits, fraction_mask);
+  let magnitude = iand(bits, magnitude_mask);
+  let zero = magnitude == 0_u64;
+  let special = biased == 2047_u64;
+  let has_fraction = fraction != 0_u64;
+  let nan = band(special, has_fraction);
+  let show_sign = negative;
+  if nan {
+    if bnot(signed_nan) {
+      set show_sign = False();
+    }
+  }
+  if show_sign {
+    push_byte(chars: &text, byte: 45_u8);
+  }
+  if zero {
+    push_byte(chars: &text, byte: 48_u8);
+  } else if nan {
+    push_word(chars: &text, word: &text_nan[0_u64..3_u64]);
+  } else if special {
+    push_word(chars: &text, word: &text_inf[0_u64..3_u64]);
+  } else {
+    let digits = chars_new();
+    let power = grisu2(bits: bits, digits: &digits);
+    emit_digits(digits: &digits, power: power, negative: negative, out: &text);
+  }
+  let count = imin(text.length, 32_u64);
+  for (index in 0_u64..count) {
+    let byte = text.bytes[index];
+    set out^[index] = byte;
+  }
+  return count;
+}
