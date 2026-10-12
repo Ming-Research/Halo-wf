@@ -1,0 +1,415 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "pcall"
+        },
+        {
+          "type": "integer",
+          "value": 190
+        },
+        {
+          "type": "integer",
+          "value": 198
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "bulk",
+          "bytes": "number"
+        },
+        {
+          "type": "bulk",
+          "bytes": "199"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "C stack overflow"
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "pcall"
+        },
+        {
+          "type": "integer",
+          "value": 197
+        },
+        {
+          "type": "integer",
+          "value": 198
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "bulk",
+          "bytes": "number"
+        },
+        {
+          "type": "bulk",
+          "bytes": "199"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "C stack overflow"
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "sort"
+        },
+        {
+          "type": "integer",
+          "value": 190
+        },
+        {
+          "type": "integer",
+          "value": 198
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "bulk",
+          "bytes": "number"
+        },
+        {
+          "type": "bulk",
+          "bytes": "199"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "C stack overflow"
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "sort"
+        },
+        {
+          "type": "integer",
+          "value": 197
+        },
+        {
+          "type": "integer",
+          "value": 198
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "bulk",
+          "bytes": "number"
+        },
+        {
+          "type": "bulk",
+          "bytes": "199"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "C stack overflow"
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "gsub"
+        },
+        {
+          "type": "integer",
+          "value": 190
+        },
+        {
+          "type": "integer",
+          "value": 198
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "bulk",
+          "bytes": "number"
+        },
+        {
+          "type": "bulk",
+          "bytes": "199"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "C stack overflow"
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "gsub"
+        },
+        {
+          "type": "integer",
+          "value": 197
+        },
+        {
+          "type": "integer",
+          "value": 198
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "bulk",
+          "bytes": "number"
+        },
+        {
+          "type": "bulk",
+          "bytes": "199"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "C stack overflow"
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "pcall-sort"
+        },
+        {
+          "type": "integer",
+          "value": 190
+        },
+        {
+          "type": "integer",
+          "value": 197
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "bulk",
+          "bytes": "number"
+        },
+        {
+          "type": "bulk",
+          "bytes": "198"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "C stack overflow"
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "pcall-sort"
+        },
+        {
+          "type": "integer",
+          "value": 197
+        },
+        {
+          "type": "integer",
+          "value": 197
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "bulk",
+          "bytes": "number"
+        },
+        {
+          "type": "bulk",
+          "bytes": "198"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "C stack overflow"
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "pcall-gsub"
+        },
+        {
+          "type": "integer",
+          "value": 190
+        },
+        {
+          "type": "integer",
+          "value": 197
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "bulk",
+          "bytes": "number"
+        },
+        {
+          "type": "bulk",
+          "bytes": "198"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "C stack overflow"
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "pcall-gsub"
+        },
+        {
+          "type": "integer",
+          "value": 197
+        },
+        {
+          "type": "integer",
+          "value": 197
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "bulk",
+          "bytes": "number"
+        },
+        {
+          "type": "bulk",
+          "bytes": "198"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string"
+        },
+        {
+          "type": "bulk",
+          "bytes": "C stack overflow"
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    }
+  ]
+}
