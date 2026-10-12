@@ -182,7 +182,12 @@ while executions or captures are parked; collection is forced by Halo's
 `--gc-stress` runner, without inserting a reference-only `collectgarbage`
 call. `gc-error-over-limit` and `gc-stopped-over-limit` instead reach the
 collection Halo runs when a coroutine stops with the test host's 64 MiB heap
-limit exceeded, so they collect in ordinary runs too. Their target descriptions identify the intended discrimination, not a
+limit exceeded, so they collect in ordinary runs too.
+`gc-error-over-limit` makes a reply depend on a dead coroutine's error value;
+`gc-stopped-over-limit` did not make one depend on the stopped stack copy (see
+the [thread omission controls](../halo-gc/README.md)), and stays as the only
+case that takes that collection during a budget stop inside a callback.
+Their target descriptions identify the intended discrimination, not a
 claim that each individual omission has already changed a reply. Some saved
 fields have alternate retaining paths or are not live at a script-visible
 collection point; a surviving mutant must remain visible in the control
@@ -212,7 +217,7 @@ report rather than being counted as detected by a probe alone.
 | coroutines | [gc-open-recapture](scripts/coroutines/gc-open-recapture.lua) | A discarded closure leaves an open capture that a suspended owner later recaptures and writes; targets the open-list omission. |
 | coroutines | [gc-pattern-coercion](scripts/coroutines/gc-pattern-coercion.lua) | gsub keeps strings converted from a numeric source and pattern while its replacement resumes an allocating child; targets pattern-source and pattern-pattern omissions. |
 | coroutines | [gc-sort-frames](scripts/coroutines/gc-sort-frames.lua) | sort keeps a compared pair and its pivot that a comparator removed from the table; targets sort-a, sort-b and sort-pivot omissions. |
-| coroutines | [gc-stopped-over-limit](scripts/coroutines/gc-stopped-over-limit.lua) | A table held only in a deep register of a foreach callback inside a coroutine survives a budget stop taken over the host's 64 MiB heap limit; targets the stopped omission at budget 1. |
+| coroutines | [gc-stopped-over-limit](scripts/coroutines/gc-stopped-over-limit.lua) | A table held only in a deep register of a foreach callback inside a coroutine survives a budget stop taken over the host's 64 MiB heap limit; exercises the over-limit collection during a budget stop in a callback (it does not detect omitting the stopped-copy mark). |
 | coroutines | [gc-thread-roots](scripts/coroutines/gc-thread-roots.lua) | An unstarted thread retains a private entry capture, and normal parents retain private locals during nested child allocation. |
 | coroutines | [gc-transfer-values](scripts/coroutines/gc-transfer-values.lua) | Tail resume and yield carry 20 fresh table values and a trailing nil beyond the caller's fixed registers. |
 | coroutines | [generator-values](scripts/coroutines/generator-values.lua) | create, resume and yield exchange multiple values in both directions, counting nil holes. |

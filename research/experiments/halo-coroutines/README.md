@@ -5,9 +5,9 @@ in [the coroutine study](../../investigations/halo/COROUTINES.md), board item
 `halo-coroutines`. They import no Halo code. They are evidence for the
 experiment, not coroutine support or performance results. Keep the witnesses
 while the study or a filed Whitefoot gap needs reproduction; remove this
-directory when both no longer need it. Remove the temporary
-`.github/workflows/coroutine-witnesses.yml` before the work branch is ready;
-keep any still-needed reproduction commands here.
+directory when both no longer need it. The temporary workflow that ran them is kept at
+[`319bf27`](https://github.com/Ming-Research/Halo-wf/blob/319bf27/.github/workflows/coroutine-witnesses.yml);
+the reproduction commands below repeat it.
 
 ## Questions and expected outcomes
 
@@ -29,7 +29,7 @@ comparison 2's runtime-cost criterion or guarantee Halo's eventual lowering.
 
 ## CI and inspection
 
-The temporary workflow uses `make toolchain`, as `check.yml` does: the pinned
+The temporary workflow used `make toolchain`, as `check.yml` does: the pinned
 Whitefoot-kit downloads and verifies the release and installs the LLVM major
 its manifest names. CI also installs that major's `llvm-objdump`.
 `inspect.py`, called only by this workflow or an explicit reproduction, runs

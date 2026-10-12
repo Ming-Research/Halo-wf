@@ -167,13 +167,12 @@ THREAD_ROOT_MUTANTS=stack make roots
 THREAD_ROOT_MUTANTS=all make roots
 ```
 
-The temporary `coroutine-thread-controls.yml` workflow selects `stack` on a
-branch push; its manual `edges` input selects a bounded later batch. It keeps
-the diagnostics above as an artifact. The supplied cost estimate is about
-20 seconds per mutant build; the first selected edge builds both its e2e
-entry and its established isolated probe, in addition to baseline builds.
-The harness records their actual costs separately. No local timing is claimed.
-Remove this workflow before the branch is ready, after recording CI evidence.
+The recorded runs came from a temporary workflow on the coroutine branch,
+kept at [`319bf27`](https://github.com/Ming-Research/Halo-wf/blob/319bf27/.github/workflows/coroutine-thread-controls.yml):
+it ran the command above on a hosted runner with a selected batch and kept
+the diagnostics above as an artifact. A full run of all 25 controls took
+about 55 minutes there; a repetition after a change to thread marking runs
+the same command.
 
 Names are `thread`, `stack`, `frame`, `open-list`, `library-table`,
 `library-comparator`, `library-error`, `library-key`, `sort-a`,
@@ -197,31 +196,39 @@ frames' function-slot aliases at budget checkpoints, and each distinct option
 set gets its own unmutated baseline.
 
 Some omissions may be observationally redundant under the public interface.
-The first full run left nine rows unchanged; the branch has since changed
-six of them. `gc-library-table-sole`, `gc-error-over-limit` and
-`gc-stopped-over-limit` are scripts whose replies depend on `library-table`,
-`error` and `stopped`; the last two reach the driver's over-limit
-collection, which runs before a stopped copy is restored, and the stopped
-script reaches it only at budget 1, where every checkpoint after a resumed
-one stops before its safepoint collects. The mark of a library context's
-function was deleted with its row, because every library context saves a
-native frame without a closure. `gc_sweep` no longer closes unreachable
-owners in a pass of its own before `free_thread` does, and a new thread no
-longer copies its entry closure into stack slot zero, so existing scripts
-can observe `explicit-close` and `thread-entry`. The other three rows remain
-probe-only pending the owner's ruling
+The first full run left nine rows unchanged. The branch changed five of them:
+`gc-library-table-sole` and `gc-error-over-limit` are scripts whose replies
+depend on `library-table` and `error`; `gc-error-over-limit` reaches the
+driver's over-limit collection, which runs before a stopped copy is restored.
+The mark of a library context's function was deleted with its row, because
+every library context saves a native frame without a closure. `gc_sweep` no
+longer closes unreachable owners in a pass of its own before `free_thread`
+does, and a new thread no longer copies its entry closure into stack slot
+zero, so existing scripts observe `explicit-close` and `thread-entry`. That
+leaves 25 rows. The full rerun (CI run 38223742481, source `319bf27`)
+detected 18 by a changed coroutine reply, stopped 3 in setup (`thread`,
+`stack`, `main`, counted as detected) and left 4 unchanged. Each of the four
+is observed by its isolated probe, and the owner accepted the probes for them
 ([collector validation](../../../design/halo/heap/collector-validation.md)):
-`coroutine_transfer` clears the pending request before saving the resumer,
-so the transfer child and argument marks see a pending request only in the
-driver's over-limit collection between a request and its transfer, where
-the requesting call's registers also hold both (a wrapped child through the
-wrapper in the call's function register); and gsub's replacement stays in
-its caller's argument registers for the whole call. The stack mark, or the
-stopped-copy mark while the caller is parked, covers those registers.
-These are validation-contract gaps, not detections: the rows remain
-selected by `all`, unchanged replies fail, and the isolated probes do not
-waive the owner's oracle criterion. CI must distinguish further redundancy
-from missing discriminating cases; no all-edge success is claimed.
+`pattern-replacement`, because gsub's replacement stays in its caller's
+argument registers for the whole call; `transfer-child` and
+`transfer-arguments`, because `coroutine_transfer` clears the pending request
+before saving the resumer, so those marks see a pending request only in the
+driver's over-limit collection between a request and its transfer, where the
+requesting call's registers also hold both (a wrapped child through the
+wrapper in the call's function register); and `stopped`.
+
+`gc-stopped-over-limit` was written to make a reply depend on `stopped`, and
+it did not. It is the only script that takes the over-limit collection during
+a budget stop inside a callback, and at budget 1 its run records 246
+collections against 245 at budgets 7 and 1000, so the extra collection runs;
+with the `stopped` mark omitted its reply still matches Redis's. Why is not
+established: the table has another holder at that collection, and the live
+stack's marked length covering the deep registers is the most likely
+candidate, but it was not checked. The script stays as an observation of that
+collection, and the `stopped` row stays validated by its isolated probe.
+These four rows remain selected by `all` and their unchanged replies are
+reported as such; no all-edge detection is claimed.
 
 Owner-qualified observations in `upvalue-probe.wf` additionally check reads
 and writes against active, inactive and suspended stacks; capture reuse and
@@ -235,7 +242,7 @@ extent loses its sole retained value:
 | --- | --- | --- | --- |
 | `captured-value` | Open capture's selected-value marking | 241 | An escaped closure loses its captured value although the closure survives. |
 | `owner-close` | Shared conversion from Open to Closed | 242 | A surviving capture still names an owner whose storage has been freed. |
-| `explicit-close` | Closing in `free_thread` | 243 | Explicit owner destruction leaves a capture open. |
+| `explicit-close` | Closing in `free_thread` | 242 | Explicit owner destruction leaves a capture open; with the sweep's separate close removed, the probe fails at its owner-close check before the explicit-close check (243), so the two checks exercise one path. |
 
 Collection closes an unreachable owner's captures only in `free_thread`,
 which sweeps threads after every other slab: each surviving open capture

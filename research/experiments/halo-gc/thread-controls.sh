@@ -154,7 +154,11 @@ compare() {
 # field has one mark line in mark_thread_contents (lib/halo/heap/gc.wf), which
 # traces saved executions and the installed one that collect_if_due parks in
 # its cell; collect.wf keeps only the main, current, global, metatable and
-# constant roots. probes lists entry:exit isolated observations.
+# constant roots. probes lists entry:exit isolated observations. The
+# explicit-close row names exit 242 (the owner-close check), not 243: with the
+# sweep's separate close removed, omitting free_thread's close makes the
+# upvalue probe fail at its owner-close check first, so the two checks now
+# exercise one path.
 edges() {
   cat <<'EDGES'
 thread|thread_roots:221|lib/halo/heap/gc.wf|mark_thread_contents(heap: heap, ti: ti);||
@@ -177,7 +181,7 @@ main|thread_roots:213|lib/halo/vm/collect.wf|pkg::heap::gc_mark(heap: &vm^.heap,
 current-thread|switch_roots:46|lib/halo/vm/collect.wf|pkg::heap::gc_mark(heap: &vm^.heap, v: current);||
 captured-value|upvalue_roots:241|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: captured);||
 owner-close|upvalue_roots:242|lib/halo/heap/threads.wf|set heap^.upvalues.inner[ui].payload = Upval::Closed(v: held);|set heap^.upvalues.inner[ui].live = heap^.upvalues.inner[ui].live;|
-explicit-close|upvalue_roots:243|lib/halo/heap/threads.wf|close_thread_upvalues(heap: heap, h: h);||
+explicit-close|upvalue_roots:242|lib/halo/heap/threads.wf|close_thread_upvalues(heap: heap, h: h);||
 thread-entry|switch_roots:40|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: entry_value);||
 resumer|switch_roots:41|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: resumer_value);||
 transfer-child|switch_roots:42|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: transfer_child);||

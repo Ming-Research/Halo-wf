@@ -2,8 +2,9 @@
 
 Status: implemented on the work branch; comparisons 1 and 2 passed and
 comparison 3 is exploratory (Results below); the design-tree change is
-proposed and awaits the owner, as does the proposed resolution for the nine
-collector edges whose omission changed no reply. Board items `halo-coroutine-study` (this study) and `halo-coroutines` (the implementation).
+proposed and awaits the owner. The owner has ruled on the nine collector
+edges whose omission changed no reply (Results below). Board items
+`halo-coroutine-study` (this study) and `halo-coroutines` (the implementation).
 
 ## Question
 
@@ -188,26 +189,52 @@ the coroutine group under collector stress (run 38208572999, `d08f224`):
   coroutine's value, the explicit close of a dead coroutine's upvalues,
   the entry function, and the child and arguments of a transfer in
   progress. The code-reading review predicted exactly these nine. Each
-  one's isolated probe observes the deletion. Whether a probe may stand
-  in for a reply change is the owner's ruling (status board, coroutine
-  item).
+  one's isolated probe observes the deletion.
 
-The branch has since changed six of the nine; their control results are
-pending CI. Three new oracle scripts, `gc-library-table-sole`,
-`gc-error-over-limit` and `gc-stopped-over-limit`, make a reply depend on
-a library context's table, on a dead coroutine's error value and on a
-stopped coroutine's stack copy; their Redis 7.0.15 replies are recorded in
-CI. The last two reach the collection Halo runs when a coroutine stops
-above the test host's 64 MiB heap limit, which runs before a stopped copy
-is restored; the stopped script reaches it only at budget 1. The mark of a library context's function is deleted with
+The owner ruled on the nine with option A (status board, coroutine item;
+[collector validation](../../../design/halo/heap/collector-validation.md)).
+Three new oracle scripts, `gc-library-table-sole`, `gc-error-over-limit` and
+`gc-stopped-over-limit`, were added with their Redis 7.0.15 replies recorded
+in CI. The first two make a reply depend on a library context's table and on
+a dead coroutine's error value; the second and third reach the collection
+Halo runs when a coroutine stops above the test host's 64 MiB heap limit,
+which runs before a stopped copy is restored (the stopped script reaches it
+only at budget 1). The mark of a library context's function is deleted with
 its control, because every library context saves a native frame without a
 closure, which leaves 25 controls. Two duplicate holders are removed so that
 existing scripts can observe the other two marks: the collector's separate
 pass that closed dead coroutines' upvalues before sweeping, and the copy of
-the entry function in a new coroutine's stack slot zero. The remaining
-three, gsub's replacement and a pending transfer's child and arguments, are
-proposed to rest on their isolated probes
-([collector validation](../../../design/halo/heap/collector-validation.md)).
+the entry function in a new coroutine's stack slot zero.
+
+The full rerun of the 25 controls (run 38223742481, source `319bf27`):
+
+- 18 change a coroutine reply: frame, open-list, library-table,
+  library-comparator, library-error, library-key, sort-a, sort-b,
+  sort-pivot, pattern-source, pattern-pattern, error, current-thread,
+  captured-value, owner-close, explicit-close, thread-entry and resumer.
+- 3 fail-stop in setup (thread, stack, main), counted as detection.
+- 4 change no reply and are each observed by their isolated probe:
+  pattern-replacement, stopped, transfer-child and transfer-arguments. The
+  owner accepted the isolated probes for these four. gsub's replacement
+  stays in its caller's argument registers for the whole call; a pending
+  transfer's child and arguments stay in the requesting call's registers
+  until the transfer consumes the request.
+
+The stopped finding: `gc-stopped-over-limit` did not detect the omission of
+the stopped mark. At budget 1 its run records 246 collections against 245 at
+budgets 7 and 1000, so the extra over-limit collection does run, yet the
+table survives without the stopped mark. Why is not established. The table
+evidently has another holder at that collection; the most likely candidate is
+that the live stack's marked length still covers the deep registers, but
+this was not checked. The script stays: it is the corpus's only case that
+takes the over-limit collection during a budget stop inside a callback, and
+its reply is recorded on Redis.
+
+With the sweep's separate close removed, deleting the close in `free_thread`
+(explicit-close) makes the upvalue probe fail at its owner-close check (exit
+242) rather than the explicit-close check (exit 243), so the two checks now
+exercise one path. The control therefore expects 242, and
+`thread-controls.sh` says why.
 
 Comparison 2 passes. The 14900K ran it on CPU 2 with governor
 `performance` (run 38213220871): main `3e86f0f` against branch `90d950b`,
