@@ -4,6 +4,14 @@ Newest first. One entry per approved change of the tree: a dated title,
 `Nodes:` naming every node changed, `Owner-approved:` and `Summary:`; the
 owner-wide instructions' *Log format* owns the form.
 
+## 2026-10-12 error's levels count call records as Lua 5.1 does
+
+Nodes: halo/calls
+
+Owner-approved: 2026-10-12 on the WF status board, card "Approve this design decision: error(message, level) counts levels the way Lua 5.1 counts call records, a library function's callback and each call replaced by a tail call counting as one level?" under item "An error(msg, 2) raised in a sort comparator gives text byte-identical with Redis": chose option A, "approve: the two lines become decisions, and the pull request can be marked ready once its gate is green and merged into the Redis 7.2.16 branch".
+
+Summary: Halo skipped native frames when counting error levels and kept only one tail-call bit, so a level could gain a location Redis does not give. A library function that calls Lua back counts as one level without a location, metamethods add none, and each call a Lua-to-Lua tail call replaced counts as one level without a location, as `lua_getstack` subtracts `ci->tailcalls`; a tail call into a native function keeps its caller. Two oracle scripts recorded on Redis 7.2.16 (63 tail-call rows, every one as predicted from PUC 5.1.5's source) pass at budgets 1, 7 and 1000, and fail on the engine before the fix. Rejected: a one-bit tail flag, and a pushed frame per library callback.
+
 ## 2026-10-12 Halo's reference moves from Redis 7.0.15 to Redis 7.2.16
 
 Nodes: halo
