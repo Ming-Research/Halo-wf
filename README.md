@@ -58,7 +58,10 @@ make check
 end-to-end test program and compares the oracle corpus at three execution
 budgets, with the collector run normally and at every safepoint, and runs the
 collector's root controls, the research hosts and the number, JSON and
-MessagePack comparisons. It needs git, curl, Python 3, a C compiler and the
+MessagePack comparisons. CI runs these checks as eight parallel jobs, split
+along the Makefile's `check-*` targets so that no job builds more than three
+Whitefoot programs, nor more than one end-to-end test program; `make check`
+runs them all in one. It needs git, curl, Python 3, a C compiler and the
 toolchain the compiler links with: `/usr/bin/clang`, and on Linux LLD of the
 LLVM major the pinned release names (`make toolchain` installs it).
 
