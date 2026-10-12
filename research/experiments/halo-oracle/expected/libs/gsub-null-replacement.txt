@@ -1,0 +1,21 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "bulk",
+      "bytes": "userdata"
+    },
+    {
+      "type": "bulk",
+      "bytes": "false"
+    },
+    {
+      "type": "bulk",
+      "bytes": "string"
+    },
+    {
+      "type": "bulk",
+      "bytes": "bad argument #3 to '?' (string/function/table expected)"
+    }
+  ]
+}
