@@ -26,7 +26,7 @@ include $(ROOT)/whitefoot-kit/whitefoot.mk
 # `make check` runs three groups, which CI runs as parallel jobs: the core
 # (the embedding probe, the oracle corpus and the design lint), the extended
 # checks that need no reference build (the collector's root controls, the
-# research hosts, the JSON package) and the checks against Redis 7.0.15's
+# research hosts, the JSON package) and the checks against Redis 7.2.16's
 # bundled Lua built from source (the number library, the MessagePack package).
 check: check-core check-extended check-reference
 check-core: compiler oracle design-lint
@@ -37,7 +37,7 @@ check-reference: compiler number msgpack
 # program that runs scripts through pkg::embed and an in-memory host, and its
 # runner compares every script of research/experiments/halo-oracle at
 # budgets 1, 7 and 1000, in ordinary and collector-stress modes, byte for
-# byte with Redis 7.0.15's recorded replies. The same program's embedding
+# byte with Redis 7.2.16's recorded replies. The same program's embedding
 # probe, run with three arguments, checks the engine lifecycle, budget
 # continuation, host outcomes and collector roots, and exits with the number
 # of the first failed observation. In each mode the runner first checks the
@@ -94,9 +94,9 @@ json: $(PIN) $(WHITEFOOTC) FORCE
 	@cd $(ROOT) && $(PY) -B research/experiments/json/run.py --compiler $(WHITEFOOTC) --incremental \
 		--binary $(BUILD)/json/check --build --samples $(JSON_SAMPLES)
 
-# Redis 7.0.15's bundled Lua, built from its verified source with Redis's own
+# Redis 7.2.16's bundled Lua, built from its verified source with Redis's own
 # deps Makefile, is the reference of the number and MessagePack comparisons.
-REFERENCE_LUA := $(BUILD)/redis/redis-7.0.15/deps/lua/src
+REFERENCE_LUA := $(BUILD)/redis/redis-7.2.16/deps/lua/src
 reference-lua:
 	@sh $(ROOT)/research/experiments/halo-oracle/fetch-redis.sh $(BUILD)/redis
 

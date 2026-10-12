@@ -63,7 +63,7 @@ itself overlaps `writes(out)` and must be copied by the caller first.
 The writer appends to a caller-owned `Box<Slots<u8>>`, growing its capacity.
 Typed integers preserve all 64 bits; nonnegative signed values use unsigned
 encodings. Strings use fixstr/str8/str16/str32 at the same thresholds as Redis
-7.0.15's bundled `lua_cmsgpack.c`. Number writing takes f64: an exactly
+7.2.16's bundled `lua_cmsgpack.c`. Number writing takes f64: an exactly
 representable signed i64 is encoded as an integer; other numbers use float32
 if converting to f32 and back equals the original, otherwise float64. Thus
 negative zero becomes integer zero, infinities use float32, and NaNs use

@@ -33,7 +33,7 @@ a host binds it by path:
 
 ## Compatibility target
 
-Halo's behavior is judged against Redis 7.0.15 and its bundled Lua 5.1 (PUC
+Halo's behavior is judged against Redis 7.2.16 and its bundled Lua 5.1 (PUC
 Lua 5.1.5 with Redis's patches) on x86-64 Linux with glibc. The oracle corpus
 in [research/experiments/halo-oracle](research/experiments/halo-oracle/)
 records that reference's exact replies to scripts covering Lua 5.1's core
