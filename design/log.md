@@ -4,6 +4,14 @@ Newest first. One entry per approved change of the tree: a dated title,
 `Nodes:` naming every node changed, `Owner-approved:` and `Summary:`; the
 owner-wide instructions' *Log format* owns the form.
 
+## 2026-10-12 Hosts protect tables through the embedding, and raw-store errors stay unlocated
+
+Nodes: halo/embedding/table-protection, halo/operand-names
+
+Owner-approved: 2026-10-12 on the WF status board, under item "Hosts protect the globals table and the string metatable through Halo's interface instead of writing Halo's internal data": card "Approve the new design-tree decision that the embedding interface lets the host protect tables itself?", chose option A, "approve this node: three general functions, a read-only mark that cannot be lifted, host writes let through, and the three rejected alternatives"; and card "Approve the new design-tree decision on which library errors carry the script line, with its four rejected alternatives?", chose option A, "approve this decision, the four rejected alternatives, and its place in this node".
+
+Summary: The embedding interface gives a host three general functions (set or clear a table's metatable, read a value's metatable with the shared string metatable for a string, mark a table read-only for good), and the host decides which tables to protect, because Halo's source names no Redis rule and Redis changes the protected set between releases (7.2.16 adds the string metatable). Host writes through the embedding still reach a read-only table, which gives the effect of Redis lifting the globals table's protection around installing `KEYS` and `ARGV`, without a call pair a host could leave half done. A native function's error raised as `luaL_error` takes its Lua caller's location, while one raised as Lua raises its runtime errors while the native function is current (raw stores' read-only refusal and nil or NaN keys, `next`'s invalid key) stays bare, as `luaG_runerror` locates only a running Lua function; a mark set by the raising body and consumed at the location step carries the difference. Evidence: the oracle scripts recorded on Redis 7.2.16 (`readonly-library-tables`, `readonly-rawset-error`, `keys-argv-writable`, `library-error-location`) pass at budgets 1, 7 and 1000, and the protection controls fail as intended when a protection is removed.
+
 ## 2026-10-12 error's levels count call records as Lua 5.1 does
 
 Nodes: halo/calls
