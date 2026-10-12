@@ -1,0 +1,1 @@
+public fn main() -> status: std::process::ExitStatus pure doc "Checks a qualified constant path as the value of a set statement.";

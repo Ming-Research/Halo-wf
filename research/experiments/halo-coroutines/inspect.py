@@ -13,6 +13,7 @@ PROBES = {
     'box_exchange': ('box_exchange',),
     'owner_branch': ('read_open', 'write_open'),
     'dispatch_exchange': ('dispatch_exchange',),
+    'qualified_constant': (),
 }
 
 
