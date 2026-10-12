@@ -5632,3 +5632,98 @@ still counts `prepare` or `native_binding` once per Lua call of fib, the run
 does not test the change and is reported as such; if it counts fewer than
 70 instructions saved per Lua call, the reading above was wrong and is
 corrected before the timing is interpreted.
+
+### Result
+
+Instruction counts, callgrind on a hosted ubuntu-24.04 runner, fib(32),
+7,049,155 Lua calls of fib, full LTO, `wf-d837678c6905`, clang 22.1.8:
+
+| Build | Run | Instructions in the executable | Per Lua call |
+| --- | --- | ---: | ---: |
+| Before (branch `f11e9b3`) | [38236457893](https://github.com/Ming-Research/Halo-wf/actions/runs/38236457893) | 6,080,073,256 | 862.5 |
+| After (`a324a52`) | [38308001560](https://github.com/Ming-Research/Halo-wf/actions/runs/38308001560) | 5,502,042,549 | 780.5 |
+
+The counts are the executable's own instructions, the basis of the
+criterion's 862.5 (the whole-program totals, 6,080,575,729 and
+5,502,545,022, differ by 0.1 per call). The change removes 578,030,707
+instructions, 82.0 per Lua call or 9.5% of
+the before count, inside the 80 to 90 expected. `prepare` and
+`native_binding` no longer appear among the per-call functions, and the
+saving is above 70, so both run-validity conditions of the criterion hold
+and the run tests the change. Per Lua call after the change: `enter_lua`
+190, the `Call` arm 125, the `Return` arm 122, finish 93, the `GetUpval`
+arm 62, the `LtJmpRK` arm 56, the `SubRK` arm 53, `push_frame` 40, the
+`AddRR` arm 28.5 and `ensure_stack` 11. `enter_lua` and `push_frame` are
+unchanged from before (190 and 40), as the change leaves them; the `Call`
+arm rose from 113 to 125 for the classification, which is the reading's
+"about 10".
+
+Timing, [run 38311147418](https://github.com/Ming-Research/Halo-wf/actions/runs/38311147418)
+on the 14900K (workflow `bench-direct-call.yml` at `95f7f52`): base
+`bc6a77c` against the experiment `95f7f52`, the same compiler
+`wf-d837678c6905`, full LTO, every timed process on CPU 2, governor
+`performance` on all 32 CPUs, binary-trees at depth 14. Medians of six
+interleaved pairs; ratio is the experiment's median over the base's, below
+one meaning faster, and a range is (max - min) / median.
+
+| Kernel | Twin ratio | Direct ratio | Base range | Direct range |
+| --- | ---: | ---: | ---: | ---: |
+| fib | 0.995 | 0.902 | 1.37% | 1.20% |
+| loop | 1.000 | 1.002 | 0.09% | 0.22% |
+| integer-table | 0.987 | 1.003 | 8.13% | 8.85% |
+| string-key | 1.024 | 0.978 | 6.54% | 5.97% |
+| concat | 1.004 | 1.001 | 1.72% | 1.81% |
+| sort | 1.002 | 0.998 | 2.14% | 2.55% |
+| binary-trees | 0.999 | 0.965 | 2.59% | 2.32% |
+
+Fib's medians are 0.08718 s for the base and 0.07861 s with the change. The
+twin's ranges in the kernels the verdict turns on: fib 1.50% and 1.96%,
+binary-trees 1.88% and 0.96%, string-key 6.21% and 5.45%. At one and three
+pairs the direct ratios are fib 0.899 and 0.902, binary-trees 0.966 and
+0.960; the twin's fib is 0.994 and 1.012. `--check-module pkg::vm`: base
+3.136 and 3.133 s, with the change 3.118 and 3.163 s, a ratio of about
+1.00 against at most 1.25 allowed. `make check`
+([run 38311147389](https://github.com/Ming-Research/Halo-wf/actions/runs/38311147389)
+on `95f7f52`) succeeded.
+
+**The criterion is met and the change is kept.**
+
+- Fib is 9.8% faster, against 3% required, beyond its larger range (1.37%)
+  and the twin's difference (0.5%); the ratio is 0.902, 0.899 and 0.902 at
+  six, one and three pairs.
+- No kernel is slower beyond its bounds. Loop's median is 0.2% slower, within
+  its larger range (0.22%) plus the twin's difference (0.0%). Integer-table
+  (0.3% slower) lies far inside its 8.85% range; concat (0.1% slower) inside
+  1.81%.
+- Binary-trees is 3.5% faster, beyond its larger range (2.59%) and the
+  twin's difference (0.1%), at six, three and one pairs (0.965, 0.960,
+  0.966). It is not a gain the criterion asked for; it is reported as
+  measured. String-key's 2.2% lower median (0.978) is inside both ranges
+  (6.54% and 5.97%) and inside the twin's own 2.4% difference, and sort
+  (0.998) and integer-table (1.003) are unchanged, so no other gain is
+  established.
+- `--check-module pkg::vm` is unchanged and the gate passes.
+
+What it means: removing the instructions `prepare` and `native_binding`
+executed for a Lua callee made fib faster on this machine, which the
+prototype-copy change in one closure lookup did not. The instruction saving (9.5%) and the time
+saving (9.8%) are close on fib; this run shows that for fib on the 14900K
+only, and does not show that instruction counts predict time in general.
+The earlier fixed-arity entry, which also routed `Call` around `prepare`,
+gave 1.7% on fib; this change differs from it in the compiler
+(`wf-d837678c6905` against `wf-e1708490c384`), in the dispatch form
+(`loop { match }` against the one before it) and in keeping `enter_lua`
+unchanged, and this run does not separate which of the three made the
+difference. The result holds for these seven kernels on one machine.
+
+The callgrind after-count was taken at `a324a52` and the timing at
+`95f7f52`, which differ only by the timing workflow. What is not
+established: the 14900K run measured no PUC, so the gap to PUC Lua
+5.1.5 is not restated: after the change Halo executes 780.5 instructions
+per Lua call of fib against PUC's 403.0 (the count above), and the time
+ratio of 1.80 times PUC's, recorded before the change, is replaced by the
+next PUC comparison. `enter_lua` (190), the `Call` arm (125) and the
+`Return` arm (122) remain the largest per-call costs; whether
+`enter_lua`'s repeated closure checks and prototype copy now matter more is
+a measurement for [one closure lookup](#one-closure-lookup-and-the-prototype-fields-a-call-reads)'s
+change on this base, not yet taken.
