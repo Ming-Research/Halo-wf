@@ -1,0 +1,41 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "bulk",
+      "bytes": "user_script:14: invalid order function for sorting"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:15: invalid order function for sorting"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:16: invalid replacement value (a table)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:17: invalid replacement value (a table)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:18: invalid replacement value (a table)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:19: invalid replacement value (a table)"
+    },
+    {
+      "type": "bulk",
+      "bytes": "invalid key to 'next'"
+    },
+    {
+      "type": "bulk",
+      "bytes": "Attempt to modify a readonly table"
+    },
+    {
+      "type": "bulk",
+      "bytes": "nil"
+    }
+  ]
+}
