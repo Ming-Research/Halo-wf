@@ -1,8 +1,8 @@
 # Temporary, on this branch only: removed before the branch is ready. Board
 # item halo-beat-puc-work. Why the direct Lua-callee entry, 9.8% faster on fib
 # before main's coroutines merged and 15% slower after (14900K run
-# 38317338456): Halo's bench host at BASE (main, with coroutines) and at this
-# branch's head, both built by the pinned compiler with full LTO, on a hosted
+# 38317338456): Halo's bench host at BASE (the direct entry before main's
+# coroutines merged; first run compared main) and at this branch's head, both built by the pinned compiler with full LTO, on a hosted
 # x86-64 runner. It reads instruction counts and code, never times:
 # callgrind of fib(32) per side joined with objdump of the hot functions and
 # the call path, and the dispatch function's frame and prologue.
@@ -19,7 +19,7 @@ defaults:
     shell: bash
 
 env:
-  BASE: f45edc6
+  BASE: a324a52
   FIB_N: 32
 
 jobs:
