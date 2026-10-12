@@ -16,8 +16,8 @@ This experiment compiles Lua source with `pkg::compile`, runs it with
 It serves the slice 1 library and number wiring described in
 `research/investigations/halo/VM.md`, sections 3 and 8. The adapter, corpus,
 and comparison runner live here. Halo's `make check-extended` includes the
-`hosts` target, which builds this experiment's `run` entry but executes only
-halo-vm's smoke and suite; it does not run this library comparison. Remove the
+`hosts-lib` target, which builds this experiment's `run` entry without
+running it; the gate does not run this library comparison. Remove the
 adapter and runner when an embedding-level oracle replaces this experiment.
 
 Work is local to this worktree, with no Cargo invocation or network access.
