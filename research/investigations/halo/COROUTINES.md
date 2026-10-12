@@ -1,7 +1,13 @@
 # Coroutines in Halo
 
-Status: approved as an experiment; nothing here is implemented or measured
-yet. Board item `halo-coroutine-study`.
+Status: implemented on the work branch; comparisons 1 and 2 passed and
+comparison 3 is exploratory (Results below); the design-tree change is
+proposed and awaits the owner. The owner has ruled on the nine collector
+edges whose omission changed no reply (Results below). Two coroutine oracle
+scripts added after the validated revision are recorded on Redis 7.0.15 and
+pass the gate, and the rerun of the collector controls confirmed the
+prediction one of them was written for (Results below). Board items
+`halo-coroutine-study` (this study) and `halo-coroutines` (the implementation).
 
 ## Question
 
@@ -28,6 +34,10 @@ running interpreter. No part of Halo exercises that today. The study asks
 whether Whitefoot expresses it soundly and fast, and it removes one of the
 sandbox features [design/halo.md](../../../design/halo.md) excludes. Reopening the exclusion on this ground, rather than
 on demand, is the owner's ruling (below).
+
+Since then a host has asked for it: Firn's item for running scripts that use
+the coroutine library depends on Halo providing it (status-board item
+halo-firn-coroutine-needs).
 
 ## What Halo builds on
 
@@ -159,13 +169,275 @@ yields that must succeed beside those that must fail.
 - Mechanism A is tried first, B is the fallback if A fails comparison 2
   (card halo-card-coroutine-mechanism, option A).
 
+## Results
+
+All on 2026-10-12, Whitefoot `wf-d837678c6905`, full LTO.
+
+### Comparison 1
+
+The gate run 38230219303 at source `29cd574` passed every oracle script,
+the 34 coroutine scripts among them: 429 of 429 runs (143 scripts at budgets
+1, 7 and 1000), both ordinary and under collector stress. Two coroutine
+scripts added after that revision, `refused-resume-state` and
+`gc-stopped-high-register` (both below), were recorded on Redis 7.0.15 by
+oracle-reference run 38234229680, each reply as predicted from PUC 5.1.5's
+source. The gate run 38235190315 at source `a032018` passed every oracle
+script, the 36 coroutine scripts among them: 435 of 435 runs (145 scripts at
+budgets 1, 7 and 1000), both ordinary and under collector stress.
+
+A resume refused at the nested-resume limit. In PUC Lua 5.1.5, `lua_resume`
+refuses a resume past the C-depth limit through `resume_error`, which sets
+the coroutine's top back to its frame base. For a coroutine that never ran,
+that overwrites its function, so `costatus` finds an empty stack and reports
+it dead, and a later resume says "cannot resume dead coroutine". A yielded
+coroutine keeps its yield status and stays suspended. Halo left both
+suspended; it now ends a never-started coroutine whose resume is refused at
+the limit, and `refused-resume-state` checks both cases.
+
+Not modeled: PUC's `auxresume` raises "too many arguments to resume" when
+the values already on the coroutine (its function for one never started,
+none for a yielded one) plus the arguments exceed `LUAI_MAXCSTACK` (8000),
+and "too many results to resume" when the resumer's frame values (the
+coroutine argument for `coroutine.resume`, none for a wrapper) plus the
+results exceed it, after the coroutine has run. Both need at least 8000
+values in one call, more than `unpack` alone yields (7999), so a script
+must add explicit values to reach them, as in
+`coroutine.resume(co, 1, unpack(t))` with 7999 elements. Halo does not
+raise either; it is left until a script needs it.
+
+### Collector validation
+
+Work order step 2. The first run had twenty-six controls; each deletes one
+marking line, or one closing call, of what coroutines added, and runs the
+coroutine group under collector stress (run 38208572999, `d08f224`):
+
+- 14 change a recorded reply: a suspended frame, the open-upvalue list, a
+  captured value, an owner's close, the library contexts' comparator, key
+  and error, sort's two operands and pivot, a pattern's source and
+  pattern, the current thread and the waiting resumer.
+- 3 stop every case in host setup: the running thread's contents, its
+  stack and the main thread. All 93 runs exit natively with status 4 (a
+  runtime error in the host's setup chunk) while the baseline passes all
+  93. `thread-controls.sh` counts this fail-stop as detection.
+- 9 leave every reply unchanged: a library context's table and function,
+  a pattern's replacement, a dead coroutine's error value, a stopped
+  coroutine's value, the explicit close of a dead coroutine's upvalues,
+  the entry function, and the child and arguments of a transfer in
+  progress. The code-reading review predicted exactly these nine. Each
+  one's isolated probe observes the deletion.
+
+Why the three setup stops happen, read from the code rather than observed
+(the test host does not print a setup error): with stress on, the engine's
+start collects before the setup chunk's first call, and at that point the
+chunk's main function is held only in stack slot zero of the installed
+execution. Omitting the thread's contents, its stack values or the main
+identity leaves that slot unmarked; the sweep frees the function, and the
+call then refuses the freed closure ("invalid Lua closure"). The collector's
+test of the installed cell's live flag does not stop any of them: for the
+main omission it would fire only at the next collection, which the setup
+chunk never reaches.
+
+The owner ruled on the nine with option A (status board, coroutine item;
+[collector validation](../../../design/halo/heap/collector-validation.md)):
+add a script where one can make a reply depend on the edge, delete a mark
+that marks nothing, remove a duplicate holder that hides an edge, and accept
+the isolated probe for the rest with the reason recorded. The branch then:
+
+- added `gc-library-table-sole` and `gc-error-over-limit`, whose replies
+  depend on a library context's table and on a dead coroutine's error value;
+  the second reaches the collection Halo runs when a coroutine stops above
+  the test host's 64 MiB heap limit, which runs before a stopped copy is
+  restored;
+- added `gc-stopped-over-limit`, written for the stopped coroutine's value,
+  which did not detect it (below);
+- deleted the mark of a library context's function, because every library
+  context saves a native frame without a closure, which leaves 25 controls;
+- removed two duplicate holders so that existing scripts observe the other
+  two marks: the collector's separate pass that closed dead coroutines'
+  upvalues before sweeping, and the copy of the entry function in a new
+  coroutine's stack slot zero.
+
+The full rerun of the 25 controls (run 38223742481, source `319bf27`):
+
+- 18 change a coroutine reply: frame, open-list, library-table,
+  library-comparator, library-error, library-key, sort-a, sort-b,
+  sort-pivot, pattern-source, pattern-pattern, error, current-thread,
+  captured-value, owner-close, explicit-close, thread-entry and resumer.
+- 3 fail-stop in setup (thread, stack, main), counted as detection.
+- 4 change no reply and are each observed by their isolated probe:
+  pattern-replacement, stopped, transfer-child and transfer-arguments. The
+  owner accepted the isolated probes for these four. gsub's replacement
+  stays in its caller's argument registers for the whole call; a pending
+  transfer's child and arguments stay in the requesting call's registers
+  until the transfer consumes the request.
+
+The stopped copy is not a duplicate holder, and a script can observe it.
+When a callback inside a coroutine first stops inside a native level,
+`park_suspended_stack` copies the whole stack, and the native levels then
+return through `callback_values`, `callback` and `library_dispatch`, each
+truncating the live stack to its entry length. The callback's slots at or
+above the outermost entry length are then held only by the copy, while the
+collector marks the live stack only below that length. `gc-stopped-over-limit`
+missed this: at budget 1 its callback first stops at its first call, before
+the table exists, and from then on continues from its saved record without a
+native level, so the over-limit collection at its later stop (246 collections
+at budget 1 against 245 at 7 and 1000) finds the whole stack installed. The
+new `gc-stopped-high-register` puts the table about 80 slots above the
+coroutine stack's length at callback entry and drops 40 MiB before the
+callback's first loop, so at budget 1 the over-limit collection runs at that
+first stop while only the copy holds the table, and decoy tables made after
+the stop would reuse the table's slot if it were freed. The prediction was
+that the stopped control now changes this script's reply. The rerun of all 25
+controls (run 38235190313, source `a032018`) confirmed it: without the mark,
+`gc-stopped-high-register` replies differently under stress at budget 1. That
+run detected 22 controls, 19 by a changed reply and 3 in setup (thread, stack,
+main), and left pattern-replacement, transfer-child and transfer-arguments
+unchanged, each observed by its isolated probe; every probe gave its expected
+exit. The probes accepted by the owner now cover those three edges.
+
+With the sweep's separate close removed, deleting the close in `free_thread`
+(explicit-close) makes the upvalue probe fail at its owner-close check (exit
+242) rather than the explicit-close check (exit 243), so the two checks now
+exercise one path. The control therefore expects 242, and
+`thread-controls.sh` says why.
+
+### Collections at run exits
+
+While a coroutine is installed, the driver collects at each exit from the
+dispatch loop when, after it reconciles the coroutine's buffer charges, the
+heap is over its limit, whether buffer growth or garbage allocated since the
+last safepoint put it there (`drive` in `lib/halo/vm/calls.wf`); the
+collections `gc-error-over-limit` and `gc-stopped-high-register` depend on
+are of the second kind. That collection marks the
+installed stack up to the largest of the current top, every frame's top and
+a pending transfer's extent, and the whole stack when no frame remains.
+Reading each exit for a live value outside those bounds found none:
+
+- A finished run or callback (`Done`): `finish` places the results at the
+  finished frame's function slot and sets the top just past them, so they
+  are below the top; with no frame left the whole stack is marked.
+- A pending host call: the call instruction sets the top just past its
+  arguments before the call is prepared, and the pending call records that
+  top. A host call made as a library callback takes its arguments above the
+  top, but its native level parks the whole stack in the copy, which is
+  marked. One gap was found: a `__call` handler shifts the arguments one slot
+  up, and the top stayed where it was, so the last argument of a host call
+  reached through `__call` sat at the top, which can also be the calling
+  frame's top, and neither bound marked it. The collection runs at that exit
+  only if the host allocates between the call's safepoint and deferring the
+  call, because the safepoint has just tested the heap and the shift never
+  grows the stack. The test host allocates nothing there, so no oracle script
+  can observe it. The `__call` path now raises the top past the shifted
+  arguments, as PUC's `tryfuncTM` does. An embedding probe case whose host
+  allocates at that point would fail before the fix, but its host only reads
+  the stack, and Whitefoot refuses to bind such a host to the engine's host
+  interface, whose call may write the stack and promises to keep its length
+  (`witnesses/w4_reads_only_binding.wf`: `FN-4 BehaviorArgumentMismatch`;
+  declaring the write is `EFF-2 EffectMismatch`, restating the promise is
+  `MSR-3 InvalidEntryFormer`). The case waits for that gap
+  (`halo-call-top-probe`).
+- A budget stop: every register of a frame lies below that frame's top, and
+  a transfer requested but not yet consumed is covered by its extent, in the
+  copy when a native level parked it.
+- An error: the error value is saved with the execution's scalars and
+  marked as the execution's error.
+
+No other value was found that the collection could free while it is still
+needed, and no oracle script was added.
+
+### Comparison 2
+
+Comparison 2 passes, so mechanism B, kept as the fallback, is not needed.
+The 14900K ran it on CPU 2 with governor `performance` (run 38213220871):
+main `3e86f0f` against branch `90d950b`, six interleaved pairs, and a twin
+of main. For each kernel, the branch over main against the allowance (larger
+relative range plus the twin's difference):
+
+| Kernel | Branch / main | Twin / main | Allowance | Verdict |
+|---|---:|---:|---:|---|
+| fib | 1.0079 | 1.0002 | 3.57% | pass |
+| loop | 0.9994 | 1.0002 | 0.09% | pass |
+| integer-table | 0.9977 | 1.0091 | 5.55% | pass |
+| string-key | 1.0012 | 0.9986 | 8.35% | pass |
+| concat | 1.0006 | 0.9966 | 2.48% | pass |
+| sort | 0.9835 | 0.9991 | 6.57% | pass |
+| binary-trees | 1.0029 | 0.9938 | 3.18% | pass |
+| captured-assignment | 0.9667 | 0.9947 | 3.96% | pass |
+
+Comparison 2 measured branch `90d950b` and was not rerun after these engine
+changes:
+
+- the sweep's separate pass over dead threads and the mark of a library
+  context's function were removed, which removes work from every collection;
+- the entry-function copy in a new coroutine was removed, and a resume
+  refused at the depth limit now ends a never-started coroutine, which run
+  only when a script creates or resumes a coroutine;
+- a call through a `__call` metamethod now raises the top past its shifted
+  arguments (collections at run exits, above). This adds one comparison and
+  at most one store to every call made through `__call`, coroutines or not;
+  none of the eight kernels calls through `__call`.
+
+### Comparison 3
+
+Comparison 3 is exploratory. The producer-consumer kernel takes Halo
+3.59 times PUC 5.1.5's time: medians 0.0296 s against 0.0082 s, with
+ranges of 0.4% and 2.3%. Its profile has 158 samples, too few for more
+than a direction. 19% of them are in marking and 18% in the collection
+check, so collection, not the switch itself, takes the largest share.
+Coroutine exchange, transfer, storage refresh, deliver and scalar saves
+together take 20%.
+
+The run's JSON, manifest and profile are in
+[`coroutines-2026-10-12/`](../../experiments/halo-bench/coroutines-2026-10-12/),
+kept while the design node cites them.
+
+### Comparison 4
+
+Two Whitefoot gaps were found and filed; each has a witness in
+[`halo-coroutines`](../../experiments/halo-coroutines/README.md), a program
+that imports no Halo code.
+
+- A swap of two boxed stacks loses the length the checker had proved. The
+  `length_transport` witness requires the saved box to hold at least 256
+  values, swaps the two boxes and ensures the active box holds at least 256;
+  the pinned compiler refuses it with FN-9, an undischarged postcondition at
+  the return, which is the refusal predicted for this pin. Halo meets the gap
+  where the collector parks and reinstalls the installed execution and where
+  a coroutine switch exchanges stacks: a `resize_stack` that only restates a
+  length, and index tests after the exchange that never fail. Filed as the
+  status-board item wf-need-halo-coroutines, which collects what Halo's
+  coroutines need from Whitefoot, with Whitefoot's swap length and capacity
+  fact rule, coord-wfbl-09-04-rule, under it. The owner ruled these sites an
+  exception to the rule against routing around a Whitefoot gap: they stay
+  until that rule lands, each site cites both items, and their removal is
+  Halo's item halo-coroutine-swap-workaround.
+- A qualified constant used as an assigned value gets a misplaced
+  diagnostic. The `qualified_constant` witness assigns
+  `pkg::qualified_source::marker` to a field; the compiler reports FORM-3,
+  an unexpected token, at the next line's `set` instead of at the constant.
+  Halo names such constants through an alias. Status-board item
+  halo-req-qualified-constant-diagnostic.
+
+The witness workflow concluded "failure" in every run (38214254017 at
+`7babfa7`, 38223306565 at `c91b56b`, 38223717366 at `319bf27`) because of
+exactly these two expected refusals: the workflow attempts every witness and
+fails when any refuses, and in each run the other three witnesses
+(`box_exchange`, `owner_branch`, `dispatch_exchange`) compiled and exited
+zero.
+
 ## Work order
 
 1. Record the oracle group on Redis 7.0.15, failing on Halo (a red
    baseline on the work branch, which is not merged until step 3 makes
    the gate pass).
 2. The thread value, its slab kind, its tracing and the upvalue change,
-   with the collector's verifier run over coroutine scripts.
+   validated as the [VM stress experiment](../../experiments/halo-gc/README.md#vm-stress-experiment-f4)
+   validates roots (Halo has no complete reachability verifier): the
+   coroutine group under collector stress, and one missing-edge mutant per
+   new edge (a suspended stack, its frames' closures, an inactive
+   coroutine's open upvalues, the waiting resumer) that must change at
+   least one coroutine reply (status-board card
+   halo-card-coroutine-gc-validation, option A, the owner's ruling).
 3. `resume`, `yield`, `status`, `wrap` and `running`, until comparison 1
    passes.
 4. Comparisons 2 and 3 on the 14900K, through the coordinator's queue.

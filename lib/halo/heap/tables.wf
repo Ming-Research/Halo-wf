@@ -26,6 +26,9 @@ fn is_nil(v: Value) -> r: Bool pure {
     Builtin(..) => {
       return False();
     }
+    Thread(..) => {
+      return False();
+    }
   }
 }
 
@@ -53,6 +56,8 @@ fn equal(a: Value, b: Value) -> r: Bool pure {
         }
         Builtin(id: y) => {
         }
+        Thread(..) => {
+        }
       }
     }
     True() => {
@@ -73,6 +78,8 @@ fn equal(a: Value, b: Value) -> r: Bool pure {
         Fun(h: y) => {
         }
         Builtin(id: y) => {
+        }
+        Thread(..) => {
         }
       }
     }
@@ -95,6 +102,8 @@ fn equal(a: Value, b: Value) -> r: Bool pure {
         }
         Builtin(id: y) => {
         }
+        Thread(..) => {
+        }
       }
     }
     Str(h: x) => {
@@ -115,6 +124,8 @@ fn equal(a: Value, b: Value) -> r: Bool pure {
         Fun(h: y) => {
         }
         Builtin(id: y) => {
+        }
+        Thread(..) => {
         }
       }
     }
@@ -137,6 +148,8 @@ fn equal(a: Value, b: Value) -> r: Bool pure {
         }
         Builtin(id: y) => {
         }
+        Thread(..) => {
+        }
       }
     }
     Fun(h: x) => {
@@ -158,6 +171,31 @@ fn equal(a: Value, b: Value) -> r: Bool pure {
         }
         Builtin(id: y) => {
         }
+        Thread(..) => {
+        }
+      }
+    }
+    Thread(h: x) => {
+      match b {
+        Thread(h: y) => {
+          return x == y;
+        }
+        Nil() => {
+        }
+        False() => {
+        }
+        True() => {
+        }
+        Num(..) => {
+        }
+        Str(..) => {
+        }
+        Tab(..) => {
+        }
+        Fun(..) => {
+        }
+        Builtin(..) => {
+        }
       }
     }
     Builtin(id: x) => {
@@ -178,6 +216,8 @@ fn equal(a: Value, b: Value) -> r: Bool pure {
         Tab(h: y) => {
         }
         Fun(h: y) => {
+        }
+        Thread(..) => {
         }
       }
     }
@@ -222,6 +262,9 @@ fn key_hash(heap: &Heap, key: Value) -> r: u64 reads(heap.strings) {
       return cvt::<u32, u64>(x);
     }
     Builtin(id: x) => {
+      return cvt::<u32, u64>(x);
+    }
+    Thread(h: x) => {
       return cvt::<u32, u64>(x);
     }
   }
@@ -289,6 +332,10 @@ fn main_position(heap: &Heap, key: Value, n: u64) -> r: u64 reads(heap.strings) 
       set modulus = ior(last, 1_u64);
     }
     Builtin(..) => {
+      let last = n - 1_u64;
+      set modulus = ior(last, 1_u64);
+    }
+    Thread(..) => {
       let last = n - 1_u64;
       set modulus = ior(last, 1_u64);
     }
@@ -432,6 +479,8 @@ fn node_get_str(nodes: &Box<Slots<Node>>, h: u32, hash: u64, mask: u64) -> r: Va
         Fun(..) => {
         }
         Builtin(..) => {
+        }
+        Thread(..) => {
         }
       }
       set i = cvt::<u32, u64>(nodes^.inner[i].next);

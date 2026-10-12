@@ -1,6 +1,8 @@
 alias Value = pkg::value::Value;
 alias Cell = pkg::value::Cell;
 alias truthy = pkg::value::truthy;
+alias CallbackPlan = pkg::execution::CallbackPlan;
+alias CallbackFrame = pkg::execution::CallbackFrame;
 
 const concat_range_error: Array<u8, 20> = "invalid concat range";
 

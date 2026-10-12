@@ -1,0 +1,132 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "integer",
+          "value": 8
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean:true"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string:ready"
+        },
+        {
+          "type": "bulk",
+          "bytes": "nil:nil"
+        },
+        {
+          "type": "bulk",
+          "bytes": "number:4"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string:string:start"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string:nil:nil"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string:number:23"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string:nil:nil"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "integer",
+          "value": 8
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean:true"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string:received"
+        },
+        {
+          "type": "bulk",
+          "bytes": "nil:nil"
+        },
+        {
+          "type": "bulk",
+          "bytes": "number:4"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string:string:left"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string:nil:nil"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string:string:right"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string:nil:nil"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "integer",
+          "value": 8
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean:true"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string:done"
+        },
+        {
+          "type": "bulk",
+          "bytes": "nil:nil"
+        },
+        {
+          "type": "bulk",
+          "bytes": "number:3"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string:number:41"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string:nil:nil"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string:number:43"
+        },
+        {
+          "type": "bulk",
+          "bytes": "nil:nil"
+        }
+      ]
+    },
+    {
+      "type": "bulk",
+      "bytes": "dead"
+    }
+  ]
+}

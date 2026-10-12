@@ -1,0 +1,191 @@
+{
+  "revision": "90d950be4a65934f67c3ac6124d5ad534a48ae56",
+  "host": "Linux-7.0.0-38-generic-x86_64-with-glibc2.43",
+  "started_utc": "2026-10-12T06:38:35Z",
+  "binary_sha256": "1ff10895415b872b23d3cb21f3c4068b09454637562619faecae3e7f68a49aed",
+  "lua_sha256": "8117a054b5de152fb3e666dde2fe0c5abf3650e22e9ff0090d282bdbc7d8321b",
+  "compiler_sha256": "19e5b96a992507097d0c8fcac404665b0125cd746e9e63a68427bc82a12730be",
+  "host_sources_sha256": {
+    "modules.wfg": "dae3b0320fcfb9d8223b537ee27b7d1342e277a639dddf4582b5736d4b865230",
+    "host/module.wfm": "6b555158bf47efd20cbd81a123f4906b55d5213364ee829b7c0253a89820a939",
+    "host/driver.wf": "c4aa666e223d3e9780a58e4c0d83b71cb59749345b0ba66ca1a5d4ef9bc94d29"
+  },
+  "budget": "large",
+  "profile": false,
+  "reference_only": false,
+  "scales": {},
+  "kernels": {
+    "producer-consumer": {
+      "source_sha256": "5c2147c06f71cdd3245c3a66ae8583b6426cf9c4ee4308f5f544ea07be0a7de8",
+      "pairs": [
+        {
+          "halo": 0.029701833991566673,
+          "checksum": "5000050000",
+          "suspends": 0,
+          "collections": 10000,
+          "puc": 0.008238009992055595
+        },
+        {
+          "halo": 0.029579625988844782,
+          "checksum": "5000050000",
+          "suspends": 0,
+          "collections": 10000,
+          "puc": 0.008217834983952343
+        },
+        {
+          "halo": 0.02964018299826421,
+          "checksum": "5000050000",
+          "suspends": 0,
+          "collections": 10000,
+          "puc": 0.00832546700257808
+        },
+        {
+          "halo": 0.029598477005492896,
+          "checksum": "5000050000",
+          "suspends": 0,
+          "collections": 10000,
+          "puc": 0.0082422950072214
+        },
+        {
+          "halo": 0.02966612999443896,
+          "checksum": "5000050000",
+          "suspends": 0,
+          "collections": 10000,
+          "puc": 0.008405530010350049
+        },
+        {
+          "halo": 0.02962346898857504,
+          "checksum": "5000050000",
+          "suspends": 0,
+          "collections": 10000,
+          "puc": 0.0082527159829624
+        }
+      ],
+      "puc": {
+        "median": 0.0082475054950919,
+        "minimum": 0.008217834983952343,
+        "maximum": 0.008405530010350049,
+        "relative_range": 0.02275779343334813,
+        "runs": 6
+      },
+      "halo": {
+        "median": 0.029631825993419625,
+        "minimum": 0.029579625988844782,
+        "maximum": 0.029701833991566673,
+        "relative_range": 0.004124214375078664,
+        "runs": 6
+      },
+      "ratio": 3.5928228251625365
+    }
+  },
+  "launches": [
+    {
+      "kernel": "producer-consumer",
+      "run": 1,
+      "engine": "PUC",
+      "seconds": 0.008238009992055595,
+      "exit": 0,
+      "stdout": "5000050000\n",
+      "stderr": ""
+    },
+    {
+      "kernel": "producer-consumer",
+      "run": 1,
+      "engine": "Halo",
+      "seconds": 0.029701833991566673,
+      "exit": 0,
+      "stdout": "5000050000\n",
+      "stderr": "0\n10000\n"
+    },
+    {
+      "kernel": "producer-consumer",
+      "run": 2,
+      "engine": "Halo",
+      "seconds": 0.029579625988844782,
+      "exit": 0,
+      "stdout": "5000050000\n",
+      "stderr": "0\n10000\n"
+    },
+    {
+      "kernel": "producer-consumer",
+      "run": 2,
+      "engine": "PUC",
+      "seconds": 0.008217834983952343,
+      "exit": 0,
+      "stdout": "5000050000\n",
+      "stderr": ""
+    },
+    {
+      "kernel": "producer-consumer",
+      "run": 3,
+      "engine": "PUC",
+      "seconds": 0.00832546700257808,
+      "exit": 0,
+      "stdout": "5000050000\n",
+      "stderr": ""
+    },
+    {
+      "kernel": "producer-consumer",
+      "run": 3,
+      "engine": "Halo",
+      "seconds": 0.02964018299826421,
+      "exit": 0,
+      "stdout": "5000050000\n",
+      "stderr": "0\n10000\n"
+    },
+    {
+      "kernel": "producer-consumer",
+      "run": 4,
+      "engine": "Halo",
+      "seconds": 0.029598477005492896,
+      "exit": 0,
+      "stdout": "5000050000\n",
+      "stderr": "0\n10000\n"
+    },
+    {
+      "kernel": "producer-consumer",
+      "run": 4,
+      "engine": "PUC",
+      "seconds": 0.0082422950072214,
+      "exit": 0,
+      "stdout": "5000050000\n",
+      "stderr": ""
+    },
+    {
+      "kernel": "producer-consumer",
+      "run": 5,
+      "engine": "PUC",
+      "seconds": 0.008405530010350049,
+      "exit": 0,
+      "stdout": "5000050000\n",
+      "stderr": ""
+    },
+    {
+      "kernel": "producer-consumer",
+      "run": 5,
+      "engine": "Halo",
+      "seconds": 0.02966612999443896,
+      "exit": 0,
+      "stdout": "5000050000\n",
+      "stderr": "0\n10000\n"
+    },
+    {
+      "kernel": "producer-consumer",
+      "run": 6,
+      "engine": "Halo",
+      "seconds": 0.02962346898857504,
+      "exit": 0,
+      "stdout": "5000050000\n",
+      "stderr": "0\n10000\n"
+    },
+    {
+      "kernel": "producer-consumer",
+      "run": 6,
+      "engine": "PUC",
+      "seconds": 0.0082527159829624,
+      "exit": 0,
+      "stdout": "5000050000\n",
+      "stderr": ""
+    }
+  ]
+}

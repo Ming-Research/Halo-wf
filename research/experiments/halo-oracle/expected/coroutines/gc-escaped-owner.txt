@@ -1,0 +1,33 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "bulk",
+      "bytes": "true"
+    },
+    {
+      "type": "bulk",
+      "bytes": "escaped"
+    },
+    {
+      "type": "integer",
+      "value": 31
+    },
+    {
+      "type": "bulk",
+      "bytes": "heldheldheld"
+    },
+    {
+      "type": "integer",
+      "value": 73
+    },
+    {
+      "type": "bulk",
+      "bytes": "replacement"
+    },
+    {
+      "type": "integer",
+      "value": 33984
+    }
+  ]
+}

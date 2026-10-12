@@ -1,0 +1,341 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "pcall"
+        },
+        {
+          "type": "integer",
+          "value": 1
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 4
+            },
+            {
+              "type": "bulk",
+              "bytes": "true"
+            },
+            {
+              "type": "bulk",
+              "bytes": "from-coroutine"
+            },
+            {
+              "type": "bulk",
+              "bytes": "nil"
+            },
+            {
+              "type": "bulk",
+              "bytes": "7"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 2
+            },
+            {
+              "type": "bulk",
+              "bytes": "true"
+            },
+            {
+              "type": "bulk",
+              "bytes": "pcall-return"
+            }
+          ]
+        },
+        {
+          "type": "bulk",
+          "bytes": "suspended"
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 4
+            },
+            {
+              "type": "bulk",
+              "bytes": "true"
+            },
+            {
+              "type": "bulk",
+              "bytes": "finished"
+            },
+            {
+              "type": "bulk",
+              "bytes": "back"
+            },
+            {
+              "type": "bulk",
+              "bytes": "nil"
+            }
+          ]
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "table.sort"
+        },
+        {
+          "type": "integer",
+          "value": 1
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 4
+            },
+            {
+              "type": "bulk",
+              "bytes": "true"
+            },
+            {
+              "type": "bulk",
+              "bytes": "from-coroutine"
+            },
+            {
+              "type": "bulk",
+              "bytes": "nil"
+            },
+            {
+              "type": "bulk",
+              "bytes": "7"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 1
+            },
+            {
+              "type": "integer",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "type": "bulk",
+          "bytes": "suspended"
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 4
+            },
+            {
+              "type": "bulk",
+              "bytes": "true"
+            },
+            {
+              "type": "bulk",
+              "bytes": "finished"
+            },
+            {
+              "type": "bulk",
+              "bytes": "back"
+            },
+            {
+              "type": "bulk",
+              "bytes": "nil"
+            }
+          ]
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "__index"
+        },
+        {
+          "type": "integer",
+          "value": 1
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 4
+            },
+            {
+              "type": "bulk",
+              "bytes": "true"
+            },
+            {
+              "type": "bulk",
+              "bytes": "from-coroutine"
+            },
+            {
+              "type": "bulk",
+              "bytes": "nil"
+            },
+            {
+              "type": "bulk",
+              "bytes": "7"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "bulk",
+              "bytes": "index-return"
+            }
+          ]
+        },
+        {
+          "type": "bulk",
+          "bytes": "suspended"
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 4
+            },
+            {
+              "type": "bulk",
+              "bytes": "true"
+            },
+            {
+              "type": "bulk",
+              "bytes": "finished"
+            },
+            {
+              "type": "bulk",
+              "bytes": "back"
+            },
+            {
+              "type": "bulk",
+              "bytes": "nil"
+            }
+          ]
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "string.gsub"
+        },
+        {
+          "type": "integer",
+          "value": 1
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 4
+            },
+            {
+              "type": "bulk",
+              "bytes": "true"
+            },
+            {
+              "type": "bulk",
+              "bytes": "from-coroutine"
+            },
+            {
+              "type": "bulk",
+              "bytes": "nil"
+            },
+            {
+              "type": "bulk",
+              "bytes": "7"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "bulk",
+              "bytes": "replacement"
+            },
+            {
+              "type": "integer",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "type": "bulk",
+          "bytes": "suspended"
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 4
+            },
+            {
+              "type": "bulk",
+              "bytes": "true"
+            },
+            {
+              "type": "bulk",
+              "bytes": "finished"
+            },
+            {
+              "type": "bulk",
+              "bytes": "back"
+            },
+            {
+              "type": "bulk",
+              "bytes": "nil"
+            }
+          ]
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    }
+  ]
+}

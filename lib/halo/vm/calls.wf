@@ -9,6 +9,10 @@ alias num_of = pkg::value::num_of;
 alias tab_of = pkg::value::tab_of;
 alias str_of = pkg::value::str_of;
 alias truthy = pkg::value::truthy;
+alias Frame = pkg::execution::Frame;
+alias CallbackPlan = pkg::execution::CallbackPlan;
+alias LibraryContext = pkg::execution::LibraryContext;
+alias PendingCall = pkg::execution::PendingCall;
 
 const calls_text_0: Array<u8, 14> = "stack overflow";
 
@@ -283,7 +287,38 @@ fn enter_lua(vm: &Vm, stack: &Box<Slots<Value>>, h: u32, func: u64, argc: u64, w
 }
 
 fn prepare<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, stack: &Box<Slots<Value>>, env: &E, func: u64, argc: u64, wanted: i64, return_pc: u64, base: u64, kbase: u64, tail: Bool) -> r: Step reads(code), reads(consts), writes(vm), writes(stack), writes(env) {
-  doc "Prepares Lua, native and protected calls while retaining the invoking Lua frame through native tail calls.";
+  doc "Charges child execution growth before another safepoint tests the heap counters. Parked callbacks and pending calls reach drive before an accounting failure is unwound, so no native caller unwinds against a truncated parked stack; a host stop retains precedence.";
+  let step = prepare_inner::<Host<E>>(code: code, consts: consts, vm: vm, stack: stack, env: env, func: func, argc: argc, wanted: wanted, return_pc: return_pc, base: base, kbase: kbase, tail: tail);
+  if vm^.current_thread != vm^.main_thread {
+    let accounted = coroutine_refresh_storage(vm: vm, stack: stack);
+    if bnot(accounted) {
+      match step {
+        Stop() => {
+          return step;
+        }
+        Jump(..) => {
+        }
+        Done(..) => {
+        }
+        Error() => {
+        }
+        Budget() => {
+        }
+      }
+      if bor(vm^.suspended, vm^.call_pending) {
+        return step;
+      }
+      set vm^.transfer_kind = 0_u8;
+      set vm^.transfer = pkg::execution::coroutine_call_empty();
+      let ignored = raise_text(vm: vm, text: &collection_memory_error[0_u64..17_u64]);
+      return Step::Error();
+    }
+  }
+  return step;
+}
+
+fn prepare_inner<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, stack: &Box<Slots<Value>>, env: &E, func: u64, argc: u64, wanted: i64, return_pc: u64, base: u64, kbase: u64, tail: Bool) -> r: Step reads(code), reads(consts), writes(vm), writes(stack), writes(env) {
+  doc "Prepares Lua, native and protected calls while retaining the invoking Lua frame through native tail calls. A __call handler shifts the arguments one slot up, so the top is raised past the last one, as Lua 5.1's tryfuncTM raises it; a host call left pending through __call then keeps every argument below the top that a collection at the run's exit marks.";
   let fslot = func;
   let nargs = argc;
   let nr = wanted;
@@ -298,6 +333,10 @@ fn prepare<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
     let codec_config = 0_u64;
     match view {
       Lua(h: closure_handle) => {
+        let wrapped = coroutine_is_wrapper(vm: vm, handle: closure_handle);
+        if wrapped {
+          return coroutine_prepare(code: code, consts: consts, vm: vm, stack: stack, id: builtin_coroutine_wrapaux, callable: v, func: fslot, argc: nargs, wanted: nr, return_pc: return_pc, base: base, kbase: kbase, tail: tailing);
+        }
         match native_binding(vm: vm, handle: closure_handle) {
           Some(value: native_record) => {
             set view = FuncView::Native(id: native_record.id);
@@ -317,6 +356,11 @@ fn prepare<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
         return enter_lua(vm: vm, stack: stack, h: bound_h_2, func: fslot, argc: nargs, wanted: nr, return_pc: return_pc, tail: tailing);
       }
       Native(id: bound_id_1) => {
+        let coroutine_first = bound_id_1 >= builtin_coroutine_create;
+        let coroutine_last = bound_id_1 <= builtin_coroutine_running;
+        if band(coroutine_first, coroutine_last) {
+          return coroutine_prepare(code: code, consts: consts, vm: vm, stack: stack, id: bound_id_1, callable: v, func: fslot, argc: nargs, wanted: nr, return_pc: return_pc, base: base, kbase: kbase, tail: tailing);
+        }
         set vm^.cjson_active_config = codec_config;
         if bound_id_1 == 111_u32 {
           let ignored = call_type_error(code: code, consts: consts, vm: vm, v: v, func: fslot, return_pc: return_pc);
@@ -474,6 +518,9 @@ fn prepare<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
           set stack^.inner[fslot] = tm;
         }
         set nargs = nargs +sat 1_u64;
+        if vm^.top < room {
+          set vm^.top = room;
+        }
       }
     }
   }
@@ -576,11 +623,71 @@ fn suspension(vm: &Vm) -> r: Outcome reads(vm) {
 }
 
 fn drive<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, step: Step) -> r: Outcome reads(script), writes(stack), writes(vm), writes(env) {
-  doc "Dispatches step, then completes or unwinds the library callbacks a suspension left parked, until the run finishes or suspends again.";
+  doc "Consumes coroutine transfers only after native callback entries return, restoring their complete parked stack before exchanging execution owners. Callback activation completions are resolved before a coroutine root returns to its resumer. A completion that leaves the finishing coroutine installed found no live resumer to exchange with, which only a broken collector invariant produces; the run ends with an error instead of completing the same coroutine again.";
   let outcome = dispatch_step::<Host<E>>(code: &script^.code, consts: &script^.consts, stack: stack, vm: vm, env: env, step: step);
   loop {
     match outcome {
+      HostStopped() => {
+        return Outcome::HostStopped();
+      }
       Budget() => {
+      }
+      HostCall() => {
+      }
+      Done(..) => {
+      }
+      Error() => {
+      }
+    }
+    if vm^.current_thread != vm^.main_thread {
+      let accounted = coroutine_refresh_storage(vm: vm, stack: stack);
+      if accounted {
+        if vm^.heap.limit > 0_u64 {
+          if vm^.heap.bytes > vm^.heap.limit {
+            set accounted = collect_if_due(vm: vm, stack: stack, consts: &script^.consts);
+          }
+        }
+      }
+      if bnot(accounted) {
+        if vm^.suspended {
+          restore_stopped_stack(vm: vm, stack: stack);
+          set vm^.suspended = False();
+        }
+        set vm^.call_pending = False();
+        set vm^.transfer_kind = 0_u8;
+        set vm^.transfer = pkg::execution::coroutine_call_empty();
+        let ignored = raise_text(vm: vm, text: &collection_memory_error[0_u64..17_u64]);
+        let exhausted = unwind(vm: vm, stack: stack);
+        set outcome = dispatch_step::<Host<E>>(code: &script^.code, consts: &script^.consts, stack: stack, vm: vm, env: env, step: exhausted);
+        match outcome {
+          Budget() => {
+            continue;
+          }
+          HostCall() => {
+            continue;
+          }
+          HostStopped() => {
+          }
+          Done(..) => {
+          }
+          Error() => {
+          }
+        }
+      }
+    }
+    match outcome {
+      Budget() => {
+        if vm^.transfer_kind != 0_u8 {
+          if vm^.native_entries == 0_u32 {
+            if vm^.suspended {
+              restore_stopped_stack(vm: vm, stack: stack);
+              set vm^.suspended = False();
+            }
+            let transferred = coroutine_transfer(vm: vm, stack: stack);
+            set outcome = dispatch_step::<Host<E>>(code: &script^.code, consts: &script^.consts, stack: stack, vm: vm, env: env, step: transferred);
+            continue;
+          }
+        }
         return suspension(vm: vm);
       }
       HostCall() => {
@@ -591,6 +698,17 @@ fn drive<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm,
       }
       Done(count: countv) => {
         if vm^.callbacks.inner.len == 0_u64 {
+          if vm^.current_thread != vm^.main_thread {
+            let failed = False();
+            let finishing = vm^.current_thread;
+            let completed = coroutine_complete(vm: vm, stack: stack, count: countv, failed: failed);
+            if vm^.current_thread == finishing {
+              let ignored = raise_text(vm: vm, text: &calls_text_resumer[0_u64..25_u64]);
+              return Outcome::Error();
+            }
+            set outcome = dispatch_step::<Host<E>>(code: &script^.code, consts: &script^.consts, stack: stack, vm: vm, env: env, step: completed);
+            continue;
+          }
           return Outcome::Done(count: countv);
         }
         let frame = take_back(window: &vm^.callbacks.inner);
@@ -601,6 +719,17 @@ fn drive<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm,
       }
       Error() => {
         if vm^.callbacks.inner.len == 0_u64 {
+          if vm^.current_thread != vm^.main_thread {
+            let failed = True();
+            let finishing = vm^.current_thread;
+            let completed = coroutine_complete(vm: vm, stack: stack, count: 0_u64, failed: failed);
+            if vm^.current_thread == finishing {
+              let ignored = raise_text(vm: vm, text: &calls_text_resumer[0_u64..25_u64]);
+              return Outcome::Error();
+            }
+            set outcome = dispatch_step::<Host<E>>(code: &script^.code, consts: &script^.consts, stack: stack, vm: vm, env: env, step: completed);
+            continue;
+          }
           return Outcome::Error();
         }
         let frame = take_back(window: &vm^.callbacks.inner);
@@ -740,10 +869,12 @@ fn fail_call<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: 
 
 const calls_text_pending: Array<u8, 22> = "a host call is pending";
 
+const calls_text_resumer: Array<u8, 25> = "invalid coroutine resumer";
+
 const calls_text_no_call: Array<u8, 23> = "no host call is pending";
 
 fn dispatch_step<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, step: Step) -> r: Outcome reads(code), reads(consts), writes(stack), writes(vm), writes(env) {
-  doc "Consumes post-catch requests before interpreting a run exit. Clearing the request before lookup lets nested callback activations record and consume their own; the budget remains unchanged until an ordinary checkpoint suspends. unwind signals a request as Budget, so every caller of unwind outside run must pass its step here before reading Budget as a suspension.";
+  doc "Consumes post-catch requests before interpreting a run exit. Clearing the request before lookup lets nested callback activations record and consume their own; the budget remains unchanged until an ordinary checkpoint suspends. Coroutine transfers remain for drive because callback callers still own live native entries here. unwind signals a request as Budget, so every caller of unwind outside run must pass its step here before reading Budget as a suspension.";
   let current = step;
   loop {
     let index = vm^.post_catch;

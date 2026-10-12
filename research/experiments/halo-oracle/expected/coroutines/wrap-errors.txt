@@ -1,0 +1,131 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "integer",
+          "value": 5
+        },
+        {
+          "type": "bulk",
+          "bytes": "string:wrapped"
+        },
+        {
+          "type": "bulk",
+          "bytes": "nil:nil"
+        },
+        {
+          "type": "bulk",
+          "bytes": "number:2"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string:number:11"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string:nil:nil"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "integer",
+          "value": 6
+        },
+        {
+          "type": "bulk",
+          "bytes": "string:returned"
+        },
+        {
+          "type": "bulk",
+          "bytes": "nil:nil"
+        },
+        {
+          "type": "bulk",
+          "bytes": "number:2"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string:string:back"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string:nil:nil"
+        },
+        {
+          "type": "bulk",
+          "bytes": "nil:nil"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean:false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string:cannot resume dead coroutine"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "integer",
+          "value": 1
+        },
+        {
+          "type": "bulk",
+          "bytes": "string:before-error"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean:false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string:user_script:20: wrapped-boom"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "boolean:false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "string:cannot resume dead coroutine"
+        }
+      ]
+    }
+  ]
+}

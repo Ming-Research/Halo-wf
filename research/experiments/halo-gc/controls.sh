@@ -1,8 +1,10 @@
 #!/bin/sh
 # The collector's removed-root controls ("Local root witnesses" in README.md):
 # the local root cases pass with every root, and each fails once its sole
-# root is hidden from the collector or one marking call of mark_roots
-# (lib/halo/vm/collect.wf) is removed. An expected failure must be detected:
+# root is hidden from the collector or one marking call is removed: a root of
+# mark_roots (lib/halo/vm/collect.wf) or an execution field of
+# mark_thread_contents (lib/halo/heap/gc.wf), which traces the installed
+# execution after collect_if_due parks it in its thread cell. An expected failure must be detected:
 # every FAIL line must be a reply difference (any reason halo-e2e/run.py's
 # reason() gives, or a budget-dependent reply) or the engine's own setup
 # compile (3), setup runtime (4), budget (5) or host-stop (6) exit; a crash by
@@ -192,14 +194,14 @@ expect() {
 }
 
 mutant() {
-  label=$1; line=$2
+  label=$1; file=$2; line=$3
   tree=$out/tree-$label
   rm -rf "$tree"
   mkdir -p "$tree/research/experiments"
   cp -R "$root/lib" "$tree/lib"
   cp -R "$root/research/experiments/halo-e2e" "$tree/research/experiments/halo-e2e"
-  grep -vF "$line" "$root/lib/halo/vm/collect.wf" > "$tree/lib/halo/vm/collect.wf"
-  removed=$(( $(wc -l < "$root/lib/halo/vm/collect.wf") - $(wc -l < "$tree/lib/halo/vm/collect.wf") ))
+  grep -vF "$line" "$root/$file" > "$tree/$file"
+  removed=$(( $(wc -l < "$root/$file") - $(wc -l < "$tree/$file") ))
   if [ "$removed" != 1 ]; then
     echo "roots mutant $label: removed $removed lines, want 1"; status=1; return
   fi
@@ -219,15 +221,15 @@ fi
 # its control, which must fail by a detected result. The label names the part,
 # the mutant and the control alike, so a part cannot run another's control.
 mutant_part() {
-  mutant_label=$1; removed_line=$2; shift 2
+  mutant_label=$1; removed_file=$2; removed_line=$3; shift 3
   runs "mutant-$mutant_label" || return 0
-  mutant "$mutant_label" "$removed_line"
+  mutant "$mutant_label" "$removed_file" "$removed_line"
   expect 1 "$mutant_label-unmarked" compare --binary "$out/mutant-$mutant_label" "$@"
 }
 
-mutant_part open-upvalues 'pkg::heap::gc_mark_upvalue(heap: &vm^.heap, h: u);' --cases "$cases" --filter gc/open-upvalues --budgets 1,7,1000 --gc-stress
-mutant_part frame-closure 'pkg::heap::gc_mark(heap: &vm^.heap, v: f);' --cases "$cases" --filter gc/frame-closure --budgets 1 --gc-stress --isolate-frames
-mutant_part constants 'pkg::heap::gc_mark(heap: &vm^.heap, v: k);' --budgets 1,7,1000 --gc-stress
+mutant_part open-upvalues lib/halo/heap/gc.wf 'gc_mark_upvalue(heap: heap, h: upvalue);' --cases "$cases" --filter gc/open-upvalues --budgets 1,7,1000 --gc-stress
+mutant_part frame-closure lib/halo/heap/gc.wf 'gc_mark(heap: heap, v: frame_function);' --cases "$cases" --filter gc/frame-closure --budgets 1 --gc-stress --isolate-frames
+mutant_part constants lib/halo/vm/collect.wf 'pkg::heap::gc_mark(heap: &vm^.heap, v: k);' --budgets 1,7,1000 --gc-stress
 
 # A part whose label has no control line ran none, and a control line whose
 # label is not in `mutants` runs only under `all`, which then ran one too many.
@@ -239,5 +241,13 @@ esac
 echo "roots part $part: ran $ran controls (want $want_ran):$ran_labels"
 if [ "$ran" != "$want_ran" ]; then
   echo "roots part $part: ran $ran controls, want $want_ran"; status=1
+fi
+
+# Thread controls are an explicitly selected investigation batch: sample one
+# new build before choosing its scale. Positive thread probes always run in
+# the ordinary embedding gate, independently of this selection. They run with
+# the base part and are not counted among its controls.
+if runs base && [ -n "${THREAD_ROOT_MUTANTS:-}" ]; then
+  if ! sh "$root/research/experiments/halo-gc/thread-controls.sh" "$out/thread-controls"; then status=1; fi
 fi
 exit $status

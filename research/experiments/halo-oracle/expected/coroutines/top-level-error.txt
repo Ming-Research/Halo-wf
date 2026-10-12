@@ -1,0 +1,4 @@
+{
+  "type": "error",
+  "bytes": "ERR user_script:7: uncaught-coroutine-error script: 0607efde8adb195f9af579dd46d6e16e12b2dbc2, on @user_script:10."
+}

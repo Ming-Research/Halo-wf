@@ -1,0 +1,193 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "sort"
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "bulk",
+              "bytes": "true"
+            },
+            {
+              "type": "integer",
+              "value": 1
+            },
+            {
+              "type": "bulk",
+              "bytes": "false"
+            },
+            {
+              "type": "bulk",
+              "bytes": "string"
+            },
+            {
+              "type": "bulk",
+              "bytes": "ERR value is not an integer or out of range"
+            },
+            {
+              "type": "bulk",
+              "bytes": "table"
+            },
+            {
+              "type": "bulk",
+              "bytes": "ERR value is not an integer or out of range"
+            },
+            {
+              "type": "bulk",
+              "bytes": "not-an-integer"
+            },
+            {
+              "type": "bulk",
+              "bytes": "false"
+            },
+            {
+              "type": "bulk",
+              "bytes": "table"
+            },
+            {
+              "type": "bulk",
+              "bytes": "ERR value is not an integer or out of range"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 1
+            },
+            {
+              "type": "integer",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "type": "bulk",
+          "bytes": "suspended"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "bulk",
+              "bytes": "sort"
+            }
+          ]
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "gsub"
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "bulk",
+              "bytes": "true"
+            },
+            {
+              "type": "integer",
+              "value": 2
+            },
+            {
+              "type": "bulk",
+              "bytes": "false"
+            },
+            {
+              "type": "bulk",
+              "bytes": "string"
+            },
+            {
+              "type": "bulk",
+              "bytes": "ERR value is not an integer or out of range"
+            },
+            {
+              "type": "bulk",
+              "bytes": "table"
+            },
+            {
+              "type": "bulk",
+              "bytes": "ERR value is not an integer or out of range"
+            },
+            {
+              "type": "bulk",
+              "bytes": "not-an-integer"
+            },
+            {
+              "type": "bulk",
+              "bytes": "false"
+            },
+            {
+              "type": "bulk",
+              "bytes": "table"
+            },
+            {
+              "type": "bulk",
+              "bytes": "ERR value is not an integer or out of range"
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "bulk",
+              "bytes": "done"
+            },
+            {
+              "type": "integer",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "type": "bulk",
+          "bytes": "suspended"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "bulk",
+              "bytes": "sort"
+            },
+            {
+              "type": "bulk",
+              "bytes": "gsub"
+            }
+          ]
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    }
+  ]
+}

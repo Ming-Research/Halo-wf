@@ -46,6 +46,9 @@ fn kind(value: Value) -> r: u8 pure {
     Builtin(..) => {
       return 5_u8;
     }
+    Thread(..) => {
+      return 7_u8;
+    }
   }
 }
 
