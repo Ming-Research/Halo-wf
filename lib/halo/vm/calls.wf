@@ -282,6 +282,35 @@ fn enter_lua(vm: &Vm, stack: &Box<Slots<Value>>, h: u32, func: u64, argc: u64, w
   return Step::Error();
 }
 
+fn lua_callee(vm: &Vm, stack: &Box<Slots<Value>>, func: u64) -> r: Option<u32> reads(vm), reads(stack) {
+  doc "Returns the closure handle in slot func when it names a live closure whose callee is a Lua prototype, the one case for which prepare does nothing but call enter_lua, so a call instruction can enter it directly as luaD_precall does a Lua function; every other value returns None and goes through prepare.";
+  if func < stack^.inner.len {
+    let v = stack^.inner[func];
+    match func_of(v: v) {
+      Lua(h: callee_handle) => {
+        let hi = cvt::<u32, u64>(callee_handle);
+        if hi < vm^.heap.closures.inner.len {
+          if vm^.heap.closures.inner[hi].live {
+            let callee = vm^.heap.closures.inner[hi].payload.callee;
+            match callee {
+              Lua(..) => {
+                return Some<u32>(value: callee_handle);
+              }
+              Native(..) => {
+              }
+            }
+          }
+        }
+      }
+      Native(..) => {
+      }
+      Other() => {
+      }
+    }
+  }
+  return None<u32>();
+}
+
 fn prepare<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, stack: &Box<Slots<Value>>, env: &E, func: u64, argc: u64, wanted: i64, return_pc: u64, base: u64, kbase: u64, tail: Bool) -> r: Step reads(code), reads(consts), writes(vm), writes(stack), writes(env) {
   doc "Prepares Lua, native and protected calls while retaining the invoking Lua frame through native tail calls.";
   let fslot = func;

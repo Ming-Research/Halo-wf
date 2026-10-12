@@ -23,6 +23,7 @@ on:
     paths:
       - .github/workflows/fib-profile.yml
       - research/experiments/halo-bench/**
+      - lib/halo/**
 
 defaults:
   run:
@@ -269,7 +270,7 @@ jobs:
             callgrind_annotate --inclusive=no "$out/callgrind/$side.out" > "$out/callgrind/$side-annotate.txt" 2>&1 || true
           done
           python3 -I "$out/callgrind/annotate.py" "$out/callgrind/halo.out" "$out/halo" "$calls" 12 "$out/callgrind" halo \
-            'enter_lua$' 'push_frame$' '\.prepare' '\.finish$' 'close_upvalues' 'ensure_stack' 'native_binding' 'pop_frame' || echo "halo annotation failed"
+            'enter_lua$' 'push_frame$' '\.prepare' '\.finish$' 'close_upvalues' 'ensure_stack' 'native_binding' 'lua_callee' 'pop_frame' || echo "halo annotation failed"
           python3 -I "$out/callgrind/annotate.py" "$out/callgrind/puc.out" "$out/lua" "$calls" 6 "$out/callgrind" puc \
             '^luaV_execute$' '^luaD_precall$' '^luaD_poscall$' '^luaF_close$' '^luaV_lessthan$' || echo "puc annotation failed"
           nm "$out/halo" > "$out/halo-symbols.txt"
