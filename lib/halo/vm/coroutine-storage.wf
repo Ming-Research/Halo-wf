@@ -17,7 +17,8 @@ fn coroutine_reset(vm: &Vm, stack: &Box<Slots<Value>>) -> r: unit writes(vm), wr
       set vm^.suspended = False();
     }
     close_upvalues(vm: vm, stack: stack, level: 0_u64);
-    let restored = coroutine_exchange(vm: vm, stack: stack, target: vm^.main_thread);
+    let main_handle = vm^.main_thread;
+    let restored = coroutine_exchange(vm: vm, stack: stack, target: main_handle);
   }
   let index = 0_u64;
   loop {
