@@ -1,0 +1,37 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "bulk",
+      "bytes": "0.1"
+    },
+    {
+      "type": "bulk",
+      "bytes": "0.3333333333333333"
+    },
+    {
+      "type": "bulk",
+      "bytes": "100000000000000000"
+    },
+    {
+      "type": "bulk",
+      "bytes": "9223372036854776000"
+    },
+    {
+      "type": "bulk",
+      "bytes": "1e-7"
+    },
+    {
+      "type": "bulk",
+      "bytes": "nan"
+    },
+    {
+      "type": "bulk",
+      "bytes": "inf"
+    },
+    {
+      "type": "bulk",
+      "bytes": "3"
+    }
+  ]
+}

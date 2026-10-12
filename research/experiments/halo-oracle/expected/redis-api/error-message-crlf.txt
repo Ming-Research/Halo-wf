@@ -1,0 +1,4 @@
+{
+  "type": "error",
+  "bytes": "ERR user_script:9: a  b script: 6ec68347f57771f847a78b0a36c94db6d598d646, on @user_script:9."
+}

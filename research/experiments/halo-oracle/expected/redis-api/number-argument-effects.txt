@@ -1,0 +1,33 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "status",
+      "bytes": "OK"
+    },
+    {
+      "type": "bulk",
+      "bytes": "true"
+    },
+    {
+      "type": "bulk",
+      "bytes": "number"
+    },
+    {
+      "type": "integer",
+      "value": 100000000000000000
+    },
+    {
+      "type": "bulk",
+      "bytes": "100000000000000001"
+    },
+    {
+      "type": "bulk",
+      "bytes": "0.1"
+    },
+    {
+      "type": "bulk",
+      "bytes": "0.1"
+    }
+  ]
+}
