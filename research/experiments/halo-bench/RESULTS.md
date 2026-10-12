@@ -5251,16 +5251,20 @@ lm-bl-int-table-forward-rise. The upgrade to the release that contains
 ### Question, recorded before it runs
 
 The pin moves from `wf-7062f3ac4ac7` (Whitefoot main `7062f3ac4`,
-specification v0.127) to `wf-d837678c6905` (main `d837678c6`, v0.129). In
-between: Whitefoot#357, which per-field copies and in-place loop reads
-without forced inlining, and which restored concat's copy loop in its
+specification v0.127) to `wf-d837678c6905` (main `d837678c6`, v0.129).
+Among the 130 commits in between:
+[Whitefoot#357](https://github.com/Ming-Research/Whitefoot/pull/357),
+which keeps per-field copies and in-place loop reads without forced
+inlining, and which restored concat's copy loop in its
 third experiment release (`wf-exp-ce22645f11a0`: concat 0.980 against
 `wf-78223721f77d` and 0.942 against `wf-7062f3ac4ac7`, recorded in
-[the previous upgrade's outcome](#whitefoot-wf-7062f3ac4ac7-upgrade)); Whitefoot#351, enum tags sized by
+[the previous upgrade's outcome](#whitefoot-wf-7062f3ac4ac7-upgrade));
+[Whitefoot#351](https://github.com/Ming-Research/Whitefoot/pull/351), enum tags sized by
 variant count, which narrows Halo's `Cell`; growth that keeps facts about
 length and filled elements (v0.128); and `&r^` on a range reference refused
 (v0.129). The gate passes on the new release with the source unchanged
-(check run 38196808155), so both releases build the same source.
+([check run 38196808155](https://github.com/Ming-Research/Halo-wf/actions/runs/38196808155)),
+so both releases build the same source.
 
 Comparison, on the 14900K with every timed process on CPU 2: one, three
 and six interleaved full-LTO pairs over the seven kernels (binary-trees at
@@ -5283,7 +5287,7 @@ measured.
 
 ### Result
 
-Run 38199380223 on the 14900K (CPU 2, governor `performance`, clang 22.1.8),
+[Run 38199380223](https://github.com/Ming-Research/Halo-wf/actions/runs/38199380223) on the 14900K (CPU 2, governor `performance`, clang 22.1.8),
 source `58174ff`, artifact `halo-bench-d837678`. Medians of six
 interleaved full-LTO pairs; a ratio below one means the new release is
 faster.
@@ -5298,13 +5302,17 @@ faster.
 | sort | 1.005 | 0.995 | 0.980 |
 | binary-trees | 1.000 | 0.992 | 0.802 |
 
-Both criteria hold. Concat is 5.2% faster than under `wf-7062f3ac4ac7`, its
-range 1.7% on the new side and 1.9% on the old, beyond the twin's 0.1%,
-and 1.8% faster than under `wf-78223721f77d`, so #357 recovers the 3.2%
-regression with some to spare. No kernel is slower than under
-`wf-7062f3ac4ac7`; apart from concat, the ratios are within each kernel's
-larger range and the twin's difference, so the release changes them by no
-measurable amount.
+Both criteria hold. Concat is 5.2% faster than under `wf-7062f3ac4ac7`,
+beyond its larger range (1.9%) and the twin's difference (0.1%), with every
+new run below every old one; against `wf-78223721f77d` its median is 1.8%
+lower but within its larger range (2.7%), so concat is not slower than
+before the regression and no gain over that release is established. #357
+thus recovers the 3.2% regression. No kernel is slower than under
+`wf-7062f3ac4ac7`. Loop is 0.75% faster, beyond its larger range (0.08%)
+and the twin's difference (0.04%), with every new run below every old one
+at one, three and six pairs. Fib, string-key, sort and binary-trees have
+lower medians within their larger range or the twin's difference, and
+integer-table is unchanged, so no other gain is established.
 
 Blocked store forwards, thousands, three runs per side:
 
@@ -5313,11 +5321,17 @@ Blocked store forwards, thousands, three runs per side:
 | fib | 8,213–8,221 | 8,176–8,202 | 14,590–14,704 |
 | integer-table | 1,875–1,889 | 2,425–2,455 | 21,203–21,204 |
 
-Fib's count is unchanged. Integer-table's is about 30% above
-`wf-7062f3ac4ac7` (the experiment release measured 10%) with an unchanged
-time (1.000); it remains 88% below `wf-78223721f77d`. Whitefoot tracks the
-rise as lm-bl-int-table-forward-rise. `--check-module pkg::vm` took
-3.10–3.14 s against 3.22–3.23 s.
+Fib's count is 0.3% lower, every new run below every old one, so
+essentially unchanged. Integer-table's is 28–31% above `wf-7062f3ac4ac7` in
+this run, with an unchanged time (1.000), and 88% below `wf-78223721f77d`.
+The same `wf-7062f3ac4ac7` build counted 2.08–2.33 million in the
+experiment-release run and 2.24–2.39 million at its adoption, against
+1.88–1.89 million here, and the new release's 2.43–2.46 million is below
+the experiment release's 2.52–2.55 million; so the rise against
+`wf-7062f3ac4ac7` cannot be compared across runs, and this run does not show
+it grew. Whitefoot tracks the rise as lm-bl-int-table-forward-rise.
+`--check-module pkg::vm` took 3.10–3.14 s with the new release against
+3.22–3.23 s with `wf-7062f3ac4ac7`.
 
 ### Outcome
 
