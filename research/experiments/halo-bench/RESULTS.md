@@ -5539,3 +5539,96 @@ Permute 16% and concat 15%, LuaJIT List 17.5% (two launches at 0.188 s,
 four at 0.226 s). No conclusion above rests on a cell whose ratio
 sits within its range of the threshold it is compared with, except List in
 stage 2, which is set aside as stated.
+
+## Entering a Lua callee directly from the call instructions
+
+### Criterion, recorded before the change
+
+Fib is Halo's largest gap to PUC Lua 5.1.5: 1.80 times its time on the
+14900K ([fastest-interpreter baseline](#fastest-interpreter-baseline)).
+Callgrind on a hosted x86-64 runner
+([run 38236457893](https://github.com/Ming-Research/Halo-wf/actions/runs/38236457893),
+artifact `halo-fib-profile`: branch `f11e9b3ed340`, `wf-d837678c6905`,
+clang 22.1.8, full LTO, fib(32), 7,049,155 Lua calls of fib) counts 862.5
+executed instructions per Lua call in Halo against 403.0 in PUC. Of Halo's,
+448 lie on the call path: the `Call` arm 113, `prepare` 69,
+`native_binding` 25, `enter_lua` 190, `push_frame` 40 and `ensure_stack`
+11; PUC's `luaD_precall` executes 91. For a Lua callee, `prepare` checks
+the function slot's bound, reads the value, calls `native_binding`, which
+checks the closure slab's bound, the live bit and the callee kind only to
+answer that the closure has no native binding, and then calls `enter_lua`,
+which checks the same three things again. `prepare` takes twelve
+parameters and returns its `Step` through memory, so the `Call` arm pushes
+seven arguments on the machine stack, and it saves six registers around a
+664-byte frame; on this path it does nothing else.
+
+Change: `Call` and `TailCall` classify the callee once. A live closure
+whose callee kind is a Lua prototype goes straight to `enter_lua`, with the
+arguments `prepare` would pass it; every other value (native functions,
+closures bound to a native, values reached through `__call`, `pcall`,
+dead or invalid handles, a function slot outside the stack) goes to
+`prepare` unchanged. This is the split of PUC's `luaD_precall` (a Lua
+function against everything else) and applies to every Lua call.
+`enter_lua` keeps its own closure checks, so the slab's bound, live bit and
+callee kind are still checked twice on this path: removing that repetition
+is a separate change, already measured with the prototype copy in
+[one closure lookup](#one-closure-lookup-and-the-prototype-fields-a-call-reads),
+and one change per measurement keeps this run's result attributable to the
+route. The budget charge and the collector safepoint stay before the
+classification, where they are today, and `prepare` does no other work for
+a Lua callee before `enter_lua`.
+
+How it differs from the two reverted call changes:
+
+- [One closure lookup](#one-closure-lookup-and-the-prototype-fields-a-call-reads)
+  kept every call going through `prepare` and `native_binding` and changed
+  `enter_lua`: one closure check instead of two and the prototype's fields
+  read in place instead of a 40-byte copy (`enter_lua` 452 to 409 static
+  instructions, `prepare` 15 more). Fib was 1.2% faster (ratio 0.988,
+  ranges 2.02% and 5.84%, twin 0.995), inside its noise. This change leaves
+  `enter_lua` as it is and removes `prepare` and `native_binding` from a Lua
+  callee's path: 94 executed instructions per call by the count above.
+- The [fixed-arity Lua entry](#14900k-repeat-with-wf-e1708490c384) also
+  routed `Call` around `prepare`, through a second, vararg-free copy of
+  `enter_lua`'s frame setup. On the 14900K with `wf-e1708490c384`, before
+  the dispatch became `loop { match }`, it made fib 1.7% faster (ratio
+  0.983, ranges 1.65% and 2.00%) against a 10% criterion, and sort 1.09%
+  slower, beyond its larger range (0.98%); no instruction count showed what
+  it removed. This change routes to the unchanged `enter_lua`, so the only
+  difference from its base is which function the call instructions call,
+  and the callgrind count checks that the run tests it. Its 1.7% is the
+  prior objection to this proposal: if the route alone again stays below
+  3%, the instructions `prepare` executes are not where fib's time goes on
+  the 14900K, and the call frame's store-forwarding stall, which Whitefoot
+  is fixing, remains the candidate.
+
+Comparison: the criterion proposed in
+[the call path on the 14900K](#the-call-path-on-the-14900k) and applied in
+[one closure lookup](#one-closure-lookup-and-the-prototype-fields-a-call-reads),
+"a **fib(34) median at least 3% below its control**, also beyond the larger
+control/candidate relative min–max range and the control twin's median
+difference from 1", in "six interleaved full-LTO pairs of the same benchmark
+source on the 14900K, with a twin of the control". Here: this branch's base
+against the branch with the change, both built by `wf-d837678c6905`, with a
+twin of the base, every timed process on CPU 2, one, three and six pairs
+over the seven kernels as `run.py` runs them (binary-trees at depth 14, fib
+at its kernel's N = 30, as one closure lookup ran it); and callgrind of
+fib(32) on a hosted runner by the same temporary profile workflow, before
+(862.5 instructions per Lua call, above) and after.
+
+Expected: callgrind counts about 80 to 90 fewer executed instructions per
+Lua call of fib (the 94 of `prepare` and `native_binding`, less about 10
+for the new classification, while `enter_lua`'s eight arguments take fewer
+stores than `prepare`'s twelve), about a tenth of Halo's 862.5; fib at
+least 3% faster on the 14900K.
+
+Kept only if: fib's median falls at least 3%, by more than both ranges and
+the twin's difference; no other kernel is slower beyond its larger range
+and the twin's difference; `--check-module pkg::vm` takes at most 1.25
+times as long; and `make check` passes on the measured revision, with its
+ordinary and collector-stress oracle comparisons and its root controls.
+Otherwise the change is reverted with its measurements kept. If callgrind
+still counts `prepare` or `native_binding` once per Lua call of fib, the run
+does not test the change and is reported as such; if it counts fewer than
+70 instructions saved per Lua call, the reading above was wrong and is
+corrected before the timing is interpreted.
