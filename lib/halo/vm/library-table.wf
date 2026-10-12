@@ -23,7 +23,7 @@ const library_table_lib_text_7: Array<u8, 22> = " in table for 'concat'";
 const table_foreach_invalid_key: Array<u8, 21> = "invalid key to 'next'";
 
 fn table_foreach_run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, stack: &Box<Slots<Value>>, env: &E, context: u64) -> r: HostOutcome reads(code), reads(consts), writes(vm), writes(stack), writes(env) {
-  doc "Lua 5.1 foreach traverses raw next order. The library context roots the table, callback in comparator, and last visited foreach_key. A non-nil key means a callback result at frame.func must be consumed before advancing; callback failures bypass this continuation. Save the key before a kind-4 callback so nested calls, host waits and budget suspension resume without repeating a visit. Context phase remains reserved for error propagation, which a caught callback error can also change.";
+  doc "Lua 5.1 foreach traverses raw next order. The library context roots the table, callback in comparator, and last visited foreach_key. A non-nil key means a callback result at frame.func must be consumed before advancing; callback failures bypass this continuation. Save the key before a kind-4 callback so nested calls, host waits and budget suspension resume without repeating a visit. Context phase remains reserved for error propagation, which a caught callback error can also change. An invalid key is raised as ltablib.c foreach's lua_next raises it, by luaH_next with foreach current, so it is marked native_raise and takes no location; it returns Raised at once, whether foreach was entered or resumed after a parked callback, so the location step of this call consumes the mark.";
   loop {
     if context >= vm^.library_contexts.inner.len {
       break;
@@ -69,8 +69,8 @@ fn table_foreach_run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Sl
         }
       }
       Err(..) => {
-        library_raw_error(vm: vm);
-        return lib_failure(vm: vm, text: &table_foreach_invalid_key[0_u64..21_u64]);
+        let ignored = raise_native_text(vm: vm, text: &table_foreach_invalid_key[0_u64..21_u64]);
+        return HostOutcome::Raised();
       }
     }
   }

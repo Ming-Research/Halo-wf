@@ -1,7 +1,7 @@
 # Moving the reference to Redis 7.2.16
 
-Status: recorded on Redis 7.2.16; Halo's test host is being brought to the
-recorded replies (see Result). Board item `firn-req-halo-oracle-72`, under
+Status: recorded on Redis 7.2.16; Halo's test host matches every recorded
+script (gate run 38322824590 at 070d29e passes all eight jobs; see Result). Board item `firn-req-halo-oracle-72`, under
 `halo-compat`.
 
 ## Question

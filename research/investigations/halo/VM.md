@@ -347,7 +347,7 @@ coding agent.
   strings math sort errors`, with I/O, coroutine, load and pattern sections
   removed by a recorded script, pass completely.
 - F2: the [oracle corpus](../../experiments/halo-oracle/) replies equal
-  Redis 7.0.15's, error texts included, except outputs depending on `pairs`
+  Redis 7.2.16's, error texts included, except outputs depending on `pairs`
   order over non-sequence keys, which the harness sorts.
 - F3: every corpus script under budgets 1, 7 and 1000 gives the unbudgeted
   reply; a `Stop` before the first write leaves the store unchanged.
@@ -404,7 +404,7 @@ H1, H2 and H4 are now design-tree decisions awaiting the owner
 (`design/halo/heap/tables.md`, `design/halo/calls.md`, `design/halo.md`);
 H3 is a Whitefoot checker gap kept in Whitefoot's `docs/todo.md`.
 
-- H4. The platform reference is Redis 7.0.15 on x86-64 Linux with glibc,
+- H4. The platform reference is Redis 7.2.16 on x86-64 Linux with glibc,
   firn's own reference (it already prints a negative NaN as `-nan`, as
   glibc does). The number library formats NaN with its sign accordingly.
   The oracle and codec corpora now run against that platform; the number

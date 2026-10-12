@@ -7,7 +7,7 @@ Halo's `make check-core` compares the corpus through the `oracle` target;
 recording reference replies remains the job of
 [oracle-reference.yml](../../../.github/workflows/oracle-reference.yml).
 
-There are 164 scripts: 71 `lua-core`, 38 `redis-api`, 6 `apps`, 13 `libs`,
+There are 165 scripts: 71 `lua-core`, 39 `redis-api`, 6 `apps`, 13 `libs`,
 and 36 `coroutines`.
 The scripts, replies and runner belong here until the oracle is replaced or
 Halo/firn scripting is retired. Each case is consumed by `run.sh`; the table
@@ -31,8 +31,9 @@ Keys used by setup commands are declared in `KEYS`. `-- error: true` marks
 an intentional top-level RESP error; errors caught by Lua remain normal
 successful EVAL replies. A top-level error without that marker, or a missing
 error with it, fails the runner.
-A `-- differs:` line, followed by `-- 7.0.15:` and `-- 7.2.16:` lines, records a
-known difference between those releases and the reply each is expected to give;
+A `-- differs:` line, followed by lines that begin `-- 7.0.15` and `-- 7.2.16`
+(some with a colon), records a known difference between those releases and the
+reply each is expected to give;
 both runners ignore these lines, and the replies in `expected/` decide. `-- needs: COMMAND` identifies a command
 absent from [firn's command list](https://github.com/Ming-Research/Whitefoot/blob/c3c604fdf73970822975b5666c9386d5cf10c024/apps/firn/README.md).
 
@@ -170,8 +171,8 @@ reference, not portable-language promises for every case.
   addresses, samples wall time, or returns an expiry countdown. Application
   scripts use a fixed window timestamp and long expiry values (60 seconds).
 
-Fifteen cases intentionally return top-level errors, marked by `-- error: true`
-in their script headers: three in `lua-core`, eleven in `redis-api`, and one
+Sixteen cases intentionally return top-level errors, marked by `-- error: true`
+in their script headers: three in `lua-core`, twelve in `redis-api`, and one
 in `coroutines`.
 Redis 7.2.16 reports the global-write refusal as "Attempt to modify a readonly
 table". No script was dropped; there were no unexpected top-level rejections.
@@ -338,8 +339,9 @@ report rather than being counted as detected by a probe alone.
 | redis-api | [error-message-crlf](scripts/redis-api/error-message-crlf.lua) | A top-level runtime error whose message holds CR LF; 7.0.15 breaks the RESP framing, 7.2.16 replaces them with spaces. |
 | redis-api | [error-message-newline](scripts/redis-api/error-message-newline.lua) | A top-level runtime error whose message holds LF; 7.0.15 breaks the RESP framing, 7.2.16 replaces it with a space. |
 | redis-api | [error-reply](scripts/redis-api/error-reply.lua) | redis.error_reply constructs a RESP error reply. |
-| redis-api | [error-reply-newline](scripts/redis-api/error-reply-newline.lua) | Control: redis.error_reply with a newline is sent as one line with a space, in both releases. |
+| redis-api | [error-reply-newline](scripts/redis-api/error-reply-newline.lua) | redis.error_reply with a newline: 7.2.16 sends the one line "ERR a b" (the line break becomes a space and the text gains an ERR code); 7.0.15 is read from the source as "a b" without the code, unverified. |
 | redis-api | [error-rethrow-line](scripts/redis-api/error-rethrow-line.lua) | A redis.call error caught by xpcall and raised with error(e,0) is located at the rethrow. |
+| redis-api | [foreach-invalid-key](scripts/redis-api/foreach-invalid-key.lua) | table.foreach resuming after its function removed the visited key and grew the table past a rehash raises "invalid key to 'next'" without a script location, as next does with the same key. |
 | redis-api | [global-read](scripts/redis-api/global-read.lua) | Redis refuses access to an undeclared global. |
 | redis-api | [global-write](scripts/redis-api/global-write.lua) | Redis refuses assignment to an undeclared global. |
 | redis-api | [keys-argv-writable](scripts/redis-api/keys-argv-writable.lua) | KEYS and ARGV stay writable under the read-only globals: element assignment and table.insert append to both. |

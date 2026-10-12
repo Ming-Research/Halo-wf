@@ -152,7 +152,7 @@ adds one 24-byte entry closure. This catches a setter that immediately rewrites
 the current threshold, and a collector that reports the new threshold but keeps
 using the old one or never schedules another collection.
 
-The Redis error/SHA-1 comparison uses Redis 7.0.15's local `script_lua.c`
+The Redis error/SHA-1 comparison uses Redis 7.2.16's `script_lua.c`
 and `eval.c` as the formatting reference: command errors are tables, Lua
 errors are strings, and the EVAL wrapper adds source/line and the SHA-1 of
 the unchanged script body. SHA-1 is checked independently against Python's
