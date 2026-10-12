@@ -80,7 +80,7 @@ fn switch_source(source: &[u8], budget: u64, stress: Bool) -> r: Bool reads(sour
 }
 
 fn switch_lua_probe(budget: u64, stress: Bool) -> r: u8 pure {
-  doc "Codes 1-12 select independent Lua observations: counted transfers, open captures across owners, original table errors, tail calls, protected and native yield boundaries, exact depth 199/200, sequential depth release, and transfers under sort, index, gsub, xpcall and pcall error lookup. Expectations follow the recorded coroutine oracle; public coroutine registration remains outside this probe.";
+  doc "Codes 1-12 select independent Lua observations: counted transfers, open captures across owners, original table errors, tail calls, protected and native yield boundaries, exact depth 199/200, sequential depth release, and transfers under sort, index, gsub, xpcall and pcall error lookup. Expectations follow the recorded coroutine oracle; the public-library observations run alongside these private transfer controls.";
   let values_ok = switch_source(source: &switch_values_source[0_u64..571_u64], budget: budget, stress: stress);
   if bnot(values_ok) {
     return 1_u8;
@@ -690,6 +690,14 @@ fn switch_probe() -> r: u8 pure {
       if slice == 2_u64 {
         set budget = 1000_u64;
       }
+      let public_code = switch_public_probe(budget: budget, stress: stress);
+      if public_code != 0_u8 {
+        return public_code;
+      }
+      let wrap_gc_code = switch_wrap_gc_probe(budget: budget, stress: stress);
+      if wrap_gc_code != 0_u8 {
+        return wrap_gc_code;
+      }
       let lua_code = switch_lua_probe(budget: budget, stress: stress);
       if lua_code != 0_u8 {
         return lua_code;
@@ -1078,4 +1086,176 @@ fn switch_stopped_capture(engine: &Engine) -> r: Bool reads(engine) {
     }
   }
   return False();
+}
+
+fn switch_public_probe(budget: u64, stress: Bool) -> r: u8 pure {
+  doc "Codes 47-50 guard public registration and all status/running states, wrap counted and tail transfers, direct wrapper error locations and values, and create/wrap/resume/status argument validation. The recorded coroutine oracle and PUC lbaselib.c luaB_auxwrap supply expectations; lua_isstring includes numeric errors and luaL_where always adds the direct Lua caller location.";
+  let passed_47 = switch_source(source: &switch_public_status_source[0_u64..1007_u64], budget: budget, stress: stress);
+  if bnot(passed_47) {
+    return 47_u8;
+  }
+  let passed_48 = switch_source(source: &switch_public_wrap_values_source[0_u64..809_u64], budget: budget, stress: stress);
+  if bnot(passed_48) {
+    return 48_u8;
+  }
+  let passed_49 = switch_source(source: &switch_public_wrap_errors_source[0_u64..1372_u64], budget: budget, stress: stress);
+  if bnot(passed_49) {
+    return 49_u8;
+  }
+  let passed_50 = switch_source(source: &switch_public_arguments_source[0_u64..915_u64], budget: budget, stress: stress);
+  if bnot(passed_50) {
+    return 50_u8;
+  }
+  return 0_u8;
+}
+
+const switch_public_status_source: Array<u8, 1007> = "assert(type(coroutine)=='table'); for _,name in ipairs({'create','resume','yield','status','wrap','running'}) do assert(type(coroutine[name])=='function') end; assert(select('#',coroutine.running())==1 and coroutine.running()==nil); local parent,child; parent=coroutine.create(function() assert(coroutine.running()==parent and coroutine.status(parent)=='running'); child=coroutine.create(function() assert(coroutine.running()==child and coroutine.status(child)=='running' and coroutine.status(parent)=='normal'); return 17 end); local ok,v=coroutine.resume(child); assert(ok and v==17 and coroutine.status(child)=='dead'); coroutine.yield(23); assert(coroutine.running()==parent); return 29 end); assert(type(parent)=='thread' and coroutine.status(parent)=='suspended'); local ok,v=coroutine.resume(parent); assert(ok and v==23 and coroutine.status(parent)=='suspended' and coroutine.running()==nil); local yes,w=coroutine.resume(parent); assert(yes and w==29 and coroutine.status(parent)=='dead'); return 1";
+
+const switch_public_wrap_values_source: Array<u8, 809> = "local function pack(...) return {n=select('#',...),...} end; local function y(...) return coroutine.yield(...) end; local wrapped=coroutine.wrap(function(...) local a=pack(...); assert(a.n==4 and a[1]==11 and a[2]==nil and a[3]==13 and a[4]==nil); local b=pack(y(21,nil,23,nil)); assert(b.n==4 and b[1]==31 and b[2]==nil and b[3]==33 and b[4]==nil); return 41,nil,43,nil end); assert(type(wrapped)=='function'); local function tail(...) return wrapped(...) end; local a=pack(tail(11,nil,13,nil)); assert(a.n==4 and a[1]==21 and a[2]==nil and a[3]==23 and a[4]==nil); local b=pack(tail(31,nil,33,nil)); assert(b.n==4 and b[1]==41 and b[2]==nil and b[3]==43 and b[4]==nil); local empty=coroutine.wrap(function() coroutine.yield(); return end); assert(select('#',empty())==0 and select('#',empty())==0); return 1";
+
+const switch_public_wrap_errors_source: Array<u8, 1372> = "local located=coroutine.wrap(function()\n  error('body')\nend)\nlocal ok,e=pcall(function()\n  local result=located()\nend)\nassert(not ok and e=='switch_probe:5: switch_probe:2: body')\nlocal zero=coroutine.wrap(function() error('plain',0) end)\nok,e=pcall(function()\n  local result=zero()\nend)\nassert(not ok and e=='switch_probe:10: plain')\nlocal prelocated=coroutine.wrap(function() error('user_script:99: existing',0) end)\nok,e=pcall(function()\n  local result=prelocated()\nend)\nassert(not ok and e=='switch_probe:15: user_script:99: existing')\nlocal numeric=coroutine.wrap(function() error(17,0) end)\nok,e=pcall(function()\n  local result=numeric()\nend)\nassert(not ok and e=='switch_probe:20: 17')\nlocal marker={tag=23}; local tables=coroutine.wrap(function() error(marker,0) end)\nok,e=pcall(function() local result=tables() end)\nassert(not ok and e==marker)\nlocal bare=coroutine.wrap(function() error('bare',0) end)\nok,e=pcall(bare); assert(not ok and e=='bare')\nok,e=pcall(bare); assert(not ok and e=='cannot resume dead coroutine')\nok,e=pcall(function()\n  local result=bare()\nend)\nassert(not ok and e=='switch_probe:30: cannot resume dead coroutine')\nlocal protected=coroutine.wrap(function() return pcall(function() coroutine.yield() end) end)\nlocal caught,boundary=protected(); assert(not caught and boundary=='attempt to yield across metamethod/C-call boundary')\nreturn 1";
+
+const switch_public_arguments_source: Array<u8, 915> = "local function rejected(fn,expected,...) local ok,e=pcall(fn,...); assert(not ok and e==expected) end; local lua_error=\"bad argument #1 to '?' (Lua function expected)\"; local thread_error=\"bad argument #1 to '?' (coroutine expected)\"; local callable=setmetatable({},{__call=function() end}); local native=string.gmatch('a','a'); for _,fn in ipairs({coroutine.create,coroutine.wrap}) do rejected(fn,lua_error); rejected(fn,lua_error,nil); rejected(fn,lua_error,7); rejected(fn,lua_error,type); rejected(fn,lua_error,native); rejected(fn,lua_error,callable) end; for _,fn in ipairs({coroutine.resume,coroutine.status}) do rejected(fn,thread_error); rejected(fn,thread_error,nil); rejected(fn,thread_error,7); rejected(fn,thread_error,function() end) end; local co=coroutine.create(function() return 17 end); assert(coroutine.status(co,99)=='suspended'); local ok,v=coroutine.resume(co); assert(ok and v==17); return 1";
+
+const switch_wrap_gc_source: Array<u8, 759> = "wrap_phase=(wrap_phase or 0)+1; if wrap_phase==1 then held_wrap=coroutine.wrap(function(v) local captured={value=v}; local sent=coroutine.yield(23); return captured.value+sent end); assert(held_wrap(11)==23); wrap_wait=true; while wrap_wait do end; assert(held_wrap(31)==42); elseif wrap_phase==2 then local ok,e=pcall(held_wrap); assert(not ok and e=='cannot resume dead coroutine'); elseif wrap_phase==3 then held_wrap=nil; elseif wrap_phase==4 then held_wrap=coroutine.wrap(function(v) local captured={value=v}; local sent=coroutine.yield(47); return captured.value+sent end); assert(held_wrap(41)==47); wrap_wait=true; while wrap_wait do end; assert(held_wrap(53)==94); elseif wrap_phase==5 then held_wrap=nil; else error('unexpected phase') end; return 1";
+
+const switch_wrap_wait_name: Array<u8, 9> = "wrap_wait";
+
+fn switch_wrap_child(engine: &Engine) -> r: u32 reads(engine) {
+  let length = engine^.vm.heap.threads.inner.len;
+  for (index in 0_u64..length) {
+    if index < engine^.vm.heap.threads.inner.len {
+      if engine^.vm.heap.threads.inner[index].live {
+        let handle = cvt::<u64, u32>(index);
+        if handle != engine^.vm.main_thread {
+          return handle;
+        }
+      }
+    }
+  }
+  return no_handle;
+}
+
+fn switch_wrap_gc_probe(budget: u64, stress: Bool) -> r: u8 pure {
+  doc "Codes 51-55 isolate an escaped public wrap closure as the only child-thread root. In the first and fourth runs, a main-thread wait loop exposes a Budget checkpoint after the child yields with a captured table; a forced next-safepoint collection precedes releasing the loop and resuming the child within the same run. Across cached-script starts only dead wrappers persist: a forced sweep must retain their children until the wrappers are dropped, then reclaim and reuse the child slot with different captures. Existing Thread and closed-upvalue missing-edge controls cover the composed edges; this probe proves the public wrapper installs them.";
+  let engine = halo::embed::new_engine(limit: 67108864_u64);
+  let env = Probe(mode: 0_u8, calls: 0_u64);
+  halo::embed::set_gc_stress(engine: &engine, enabled: stress);
+  let compiled = halo::embed::compile(engine: &engine, chunk_name: &switch_chunk_name[0_u64..13_u64], source: &switch_wrap_gc_source[0_u64..759_u64]);
+  let script = match move compiled {
+    Err(..) => {
+      return 51_u8;
+    }
+    Ok(value: found_script) => {
+      give found_script;
+    }
+  }
+  let first_child = no_handle;
+  for (phase in 0_u64..5_u64) {
+    let started = halo::embed::start::<SwitchProbeHost>(engine: &engine, env: &env, script: script, budget: budget);
+    let current = started;
+    let initial_capture = phase == 0_u64;
+    let reused_capture = phase == 3_u64;
+    let needs_capture = bor(initial_capture, reused_capture);
+    if needs_capture {
+      let observed = False();
+      for (slice in 0_u64..20000_u64) {
+        let suspended_code = outcome_code(outcome: current);
+        if suspended_code != 2_u8 {
+          return 52_u8;
+        }
+        if engine.vm.budget != 0_u64 {
+          return 52_u8;
+        }
+        if engine.vm.native_entries != 0_u32 {
+          return 52_u8;
+        }
+        let wait_key = halo::embed::intern(engine: &engine, bytes: &switch_wrap_wait_name[0_u64..9_u64]);
+        let globals = Value::Tab(h: engine.vm.globals);
+        let wait_value = halo::embed::table_get(engine: &engine, table: globals, key: wait_key);
+        let waiting = halo::embed::truthy(value: wait_value);
+        if waiting {
+          if engine.vm.current_thread != engine.vm.main_thread {
+            return 52_u8;
+          }
+          let before = halo::embed::collection_count(engine: &engine);
+          halo::embed::collect_at_next_safepoint(engine: &engine);
+          set current = halo::embed::resume::<SwitchProbeHost>(engine: &engine, env: &env, budget: 1_u64);
+          let collected_code = outcome_code(outcome: current);
+          if collected_code != 2_u8 {
+            return 53_u8;
+          }
+          let after = halo::embed::collection_count(engine: &engine);
+          if after <= before {
+            return 53_u8;
+          }
+          let suspended_stats = halo::embed::last_collection(engine: &engine);
+          if suspended_stats.threads.live_objects != 2_u64 {
+            return 54_u8;
+          }
+          let no = Value::False();
+          let released_wait = thread_global(engine: &engine, name: &switch_wrap_wait_name[0_u64..9_u64], value: no);
+          if bnot(released_wait) {
+            return 53_u8;
+          }
+          set observed = True();
+          break;
+        }
+        set current = halo::embed::resume::<SwitchProbeHost>(engine: &engine, env: &env, budget: budget);
+      }
+      if bnot(observed) {
+        return 53_u8;
+      }
+    }
+    let settled = switch_settle(engine: &engine, env: &env, outcome: current, budget: budget);
+    let code = outcome_code(outcome: settled);
+    if code != 0_u8 {
+      return 52_u8;
+    }
+    let correct = returned(engine: &engine, expected: 1.0_f64);
+    if bnot(correct) {
+      return 52_u8;
+    }
+    if engine.result_count != 1_u64 {
+      return 52_u8;
+    }
+    if engine.vm.current_thread != engine.vm.main_thread {
+      return 52_u8;
+    }
+    let collected = gc_probe_collect(engine: &engine, env: &env, keep: stress);
+    if bnot(collected) {
+      return 53_u8;
+    }
+    let stats = halo::embed::last_collection(engine: &engine);
+    let first_release = phase == 2_u64;
+    let last_release = phase == 4_u64;
+    let released = bor(first_release, last_release);
+    if released {
+      if stats.threads.live_objects != 1_u64 {
+        return 54_u8;
+      }
+      let children = switch_live_children(engine: &engine);
+      if children != 0_u64 {
+        return 54_u8;
+      }
+    } else {
+      if stats.threads.live_objects != 2_u64 {
+        return 54_u8;
+      }
+      let children = switch_live_children(engine: &engine);
+      if children != 1_u64 {
+        return 54_u8;
+      }
+      let child = switch_wrap_child(engine: &engine);
+      if child == no_handle {
+        return 55_u8;
+      }
+      if phase == 0_u64 {
+        set first_child = child;
+      } else if child != first_child {
+        return 55_u8;
+      }
+    }
+  }
+  return 0_u8;
 }

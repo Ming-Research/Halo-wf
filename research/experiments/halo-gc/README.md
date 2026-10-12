@@ -180,16 +180,32 @@ after restoration while the active stack changes. Switching must preserve
 this authority invariant when it is introduced. The switching stage adds the resumer and request edges below.
 
 
-Switching observations in `switch-probe.wf` use private create/resume/yield
-IDs installed only by the embedding probe; they do not register the public
-coroutine library. They exercise counted transfers and nil holes, cross-owner
-captures, tail calls, original error values, callback parking, boundary and
-depth limits, shared budgets, pending and immediate host results, host stops,
-reset. Those execution fixtures run at budgets 1, 7 and 1000, ordinarily and
+Switching observations in `switch-probe.wf` retain the create/resume/yield
+probe aliases for the established controls; those aliases use the same IDs
+as the public coroutine table. They exercise counted transfers and nil holes,
+cross-owner captures, tail calls, original error values, callback parking,
+boundary and depth limits, shared budgets, pending and immediate host results,
+host stops and reset. Those execution fixtures run at budgets 1, 7 and 1000, ordinarily and
 under collector stress. The budget-identity observation runs at 1 and 7
 because a slice of 1000 need not stop in every owner. Separate logical storage
 exhaustion/recovery probes run at budget 1 without collector stress, lowering
 the heap limit after the initial checkpoint and requiring a due collection.
+
+Public-library observations 47–50 check registration, every status and running
+identity, counted and tail wrap transfers, argument rejection and error values.
+Direct Lua wrapper calls must prefix even an already located string; numeric
+errors become strings, while table identity survives. Native `pcall` callers
+add no wrapper location. These expectations follow the recorded coroutine
+replies and Redis 7.0.15's bundled PUC `luaB_auxwrap` and `luaL_where`.
+
+Observations 51–55 pause main while a wrapper's child is suspended and force
+an ordinary safepoint collection before resuming it within that same start.
+Only dead wrappers are carried across starts, where their child identity must
+remain alive until the wrapper is dropped and collected. A later wrapper must
+reuse the reclaimed slot without inheriting its old captures. These observations
+run at budgets 1, 7 and 1000, ordinarily and under collector stress. They exercise
+the existing closure-to-closed-capture-to-thread edges; no new collector edge
+or separate missing-edge control is introduced by public wrap registration.
 
 Seven additional controls use `switch_roots`, with fresh isolated heaps and
 an empty frame window where needed. A zero-mutant baseline must pass; each

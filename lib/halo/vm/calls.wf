@@ -333,6 +333,10 @@ fn prepare_inner<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<
     let codec_config = 0_u64;
     match view {
       Lua(h: closure_handle) => {
+        let wrapped = coroutine_is_wrapper(vm: vm, handle: closure_handle);
+        if wrapped {
+          return coroutine_prepare(code: code, consts: consts, vm: vm, stack: stack, id: builtin_coroutine_wrapaux, callable: v, func: fslot, argc: nargs, wanted: nr, return_pc: return_pc, base: base, kbase: kbase, tail: tailing);
+        }
         match native_binding(vm: vm, handle: closure_handle) {
           Some(value: native_record) => {
             set view = FuncView::Native(id: native_record.id);
@@ -352,8 +356,8 @@ fn prepare_inner<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<
         return enter_lua(vm: vm, stack: stack, h: bound_h_2, func: fslot, argc: nargs, wanted: nr, return_pc: return_pc, tail: tailing);
       }
       Native(id: bound_id_1) => {
-        let coroutine_first = bound_id_1 >= 150_u32;
-        let coroutine_last = bound_id_1 <= 152_u32;
+        let coroutine_first = bound_id_1 >= builtin_coroutine_create;
+        let coroutine_last = bound_id_1 <= builtin_coroutine_running;
         if band(coroutine_first, coroutine_last) {
           return coroutine_prepare(code: code, consts: consts, vm: vm, stack: stack, id: bound_id_1, callable: v, func: fslot, argc: nargs, wanted: nr, return_pc: return_pc, base: base, kbase: kbase, tail: tailing);
         }

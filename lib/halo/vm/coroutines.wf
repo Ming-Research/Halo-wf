@@ -16,6 +16,14 @@ const coroutine_dead: Array<u8, 28> = "cannot resume dead coroutine";
 
 const coroutine_boundary: Array<u8, 50> = "attempt to yield across metamethod/C-call boundary";
 
+const coroutine_status_suspended: Array<u8, 9> = "suspended";
+
+const coroutine_status_running: Array<u8, 7> = "running";
+
+const coroutine_status_normal: Array<u8, 6> = "normal";
+
+const coroutine_status_dead: Array<u8, 4> = "dead";
+
 const coroutine_overflow: Array<u8, 16> = "C stack overflow";
 
 fn coroutine_swap_boxes(vm: &Vm, stack: &Box<Slots<Value>>, h: u32) -> r: unit writes(vm), writes(stack) {
@@ -202,6 +210,103 @@ fn coroutine_create(vm: &Vm, entry_value: Value) -> r: Value writes(vm) {
   }
 }
 
+fn coroutine_is_wrapper(vm: &Vm, handle: u32) -> r: Bool reads(vm) {
+  let index = cvt::<u32, u64>(handle);
+  if index < vm^.heap.closures.inner.len {
+    if vm^.heap.closures.inner[index].live {
+      let callee = vm^.heap.closures.inner[index].payload.callee;
+      match callee {
+        Native(id: native_id) => {
+          return native_id == builtin_coroutine_wrapaux;
+        }
+        Lua(..) => {
+        }
+      }
+    }
+  }
+  return False();
+}
+
+fn coroutine_wrapper_thread(vm: &Vm, callable: Value) -> r: Value reads(vm) {
+  doc "Reads the wrapper's one closed thread capture from the original callable, before native binding discards closure identity.";
+  match func_of(v: callable) {
+    Lua(h: closure_handle) => {
+      let index = cvt::<u32, u64>(closure_handle);
+      if index < vm^.heap.closures.inner.len {
+        if vm^.heap.closures.inner[index].live {
+          if vm^.heap.closures.inner[index].payload.upvals.inner.len == 1_u64 {
+            let captured = vm^.heap.closures.inner[index].payload.upvals.inner[0_u64];
+            let capture_index = cvt::<u32, u64>(captured);
+            if capture_index < vm^.heap.upvalues.inner.len {
+              if vm^.heap.upvalues.inner[capture_index].live {
+                let payload = vm^.heap.upvalues.inner[capture_index].payload;
+                match payload {
+                  Closed(v: captured_value) => {
+                    return captured_value;
+                  }
+                  Open(..) => {
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    Native(..) => {
+    }
+    Other() => {
+    }
+  }
+  return Value::Nil();
+}
+
+fn coroutine_wrap(vm: &Vm, thread: Value) -> r: Value writes(vm) {
+  let payload = pkg::heap::Upval::Closed(v: thread);
+  match pkg::heap::new_upvalue(heap: &vm^.heap, value: payload) {
+    Some(value: capture_handle) => {
+      let captured = array_filled::<u32, 1>(value: capture_handle);
+      return pkg::heap::new_native_closure(heap: &vm^.heap, id: builtin_coroutine_wrapaux, upvals: &captured[0_u64..1_u64]);
+    }
+    None() => {
+      return Value::Nil();
+    }
+  }
+}
+
+fn coroutine_wrap_error(vm: &Vm, call: CoroutineCall, message: Value) -> r: unit writes(vm) {
+  doc "Lua's auxiliary wrapper coerces numeric errors to strings and prefixes strings at its immediate Lua caller even when the child supplied a location. A native caller has no prefix; other errors retain identity.";
+  let text = coerce_string(vm: vm, v: message);
+  set vm^.error = text;
+  let caller = lib_call_has_lua_caller(vm: vm);
+  if caller {
+    match text {
+      Str(..) => {
+        let pc = call.return_pc -sat 1_u64;
+        let located = error_location(vm: vm, pc: pc, level: 1_u64, message: text);
+        set vm^.error = located;
+      }
+      Nil() => {
+      }
+      False() => {
+      }
+      True() => {
+      }
+      Num(..) => {
+      }
+      Tab(..) => {
+      }
+      Fun(..) => {
+      }
+      Builtin(..) => {
+      }
+      Thread(..) => {
+      }
+    }
+  }
+  return unit;
+}
+
 fn coroutine_finish_call(vm: &Vm, stack: &Box<Slots<Value>>, call: CoroutineCall, count: u64) -> r: Step writes(vm), writes(stack) {
   doc "Like native completion, a tail call retains its invoking frame until the transfer returns its explicit result count.";
   set vm^.activation = call.activation;
@@ -219,6 +324,10 @@ fn coroutine_finish_call(vm: &Vm, stack: &Box<Slots<Value>>, call: CoroutineCall
 
 fn coroutine_reject_resume(vm: &Vm, stack: &Box<Slots<Value>>, call: CoroutineCall, text: &[u8]) -> r: Step reads(text), writes(vm), writes(stack) {
   let message = pkg::heap::intern(heap: &vm^.heap, bytes: text);
+  if call.wrapping {
+    coroutine_wrap_error(vm: vm, call: call, message: message);
+    return Step::Error();
+  }
   let second = call.func +sat 1_u64;
   let room = second +sat 1_u64;
   ensure_stack(stack: stack, size: room);
@@ -232,11 +341,13 @@ fn coroutine_reject_resume(vm: &Vm, stack: &Box<Slots<Value>>, call: CoroutineCa
 }
 
 fn coroutine_prepare(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, stack: &Box<Slots<Value>>, id: u32, callable: Value, func: u64, argc: u64, wanted: i64, return_pc: u64, base: u64, kbase: u64, tail: Bool) -> r: Step reads(code), reads(consts), writes(vm), writes(stack) {
-  doc "Private create, resume and yield entries only record transfers; native wrappers always return with their original execution installed.";
-  let no = False();
-  let call = CoroutineCall(child: no_handle, func: func, argc: argc, wanted: wanted, return_pc: return_pc, base: base, kbase: kbase, tail: tail, activation: vm^.activation, top: vm^.top, wrapping: no);
+  doc "Public coroutine calls and the captured wrapper entry share deferred transfers; native callers always return with their original execution installed.";
+  let wrapping = id == builtin_coroutine_wrapaux;
+  let call = CoroutineCall(child: no_handle, func: func, argc: argc, wanted: wanted, return_pc: return_pc, base: base, kbase: kbase, tail: tail, activation: vm^.activation, top: vm^.top, wrapping: wrapping);
   let pc = return_pc -sat 1_u64;
-  if id == 150_u32 {
+  let creating = id == builtin_coroutine_create;
+  let making_wrapper = id == builtin_coroutine_wrap;
+  if bor(creating, making_wrapper) {
     let entry_value = argument(stack: stack, func: func, argc: argc, index: 0_u64);
     let accepted = coroutine_lua_entry(vm: vm, value: entry_value);
     if bnot(accepted) {
@@ -249,12 +360,30 @@ fn coroutine_prepare(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &V
       let ignored = raise_text(vm: vm, text: &collection_memory_error[0_u64..17_u64]);
       return Step::Error();
     }
+    if making_wrapper {
+      set created = coroutine_wrap(vm: vm, thread: created);
+      if is_nil(v: created) {
+        let ignored = raise_text(vm: vm, text: &collection_memory_error[0_u64..17_u64]);
+        return Step::Error();
+      }
+    }
     if func < stack^.inner.len {
       set stack^.inner[func] = created;
     }
     return coroutine_finish_call(vm: vm, stack: stack, call: call, count: 1_u64);
   }
-  if id == 152_u32 {
+  if id == builtin_coroutine_running {
+    let running_value = Value::Nil();
+    if vm^.current_thread != vm^.main_thread {
+      let current = vm^.current_thread;
+      set running_value = Value::Thread(h: current);
+    }
+    if func < stack^.inner.len {
+      set stack^.inner[func] = running_value;
+    }
+    return coroutine_finish_call(vm: vm, stack: stack, call: call, count: 1_u64);
+  }
+  if id == builtin_coroutine_yield {
     let depth = coroutine_depth(vm: vm);
     let main = vm^.current_thread == vm^.main_thread;
     let crossed = depth > vm^.c_depth;
@@ -268,6 +397,9 @@ fn coroutine_prepare(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &V
     return Step::Budget();
   }
   let value = argument(stack: stack, func: func, argc: argc, index: 0_u64);
+  if wrapping {
+    set value = coroutine_wrapper_thread(vm: vm, callable: callable);
+  }
   let child = no_handle;
   match value {
     Thread(h: thread_handle) => {
@@ -299,6 +431,24 @@ fn coroutine_prepare(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &V
     let ignored = lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, text: &coroutine_expected[0_u64..18_u64]);
     library_call_error_location(vm: vm, id: id, pc: pc);
     return Step::Error();
+  }
+  if id == builtin_coroutine_status {
+    let status = 0_u8;
+    if index < vm^.heap.threads.inner.len {
+      set status = vm^.heap.threads.inner[index].status;
+    }
+    let status_value = pkg::heap::intern(heap: &vm^.heap, bytes: &coroutine_status_suspended[0_u64..9_u64]);
+    if status == 1_u8 {
+      set status_value = pkg::heap::intern(heap: &vm^.heap, bytes: &coroutine_status_running[0_u64..7_u64]);
+    } else if status == 2_u8 {
+      set status_value = pkg::heap::intern(heap: &vm^.heap, bytes: &coroutine_status_normal[0_u64..6_u64]);
+    } else if status == 3_u8 {
+      set status_value = pkg::heap::intern(heap: &vm^.heap, bytes: &coroutine_status_dead[0_u64..4_u64]);
+    }
+    if func < stack^.inner.len {
+      set stack^.inner[func] = status_value;
+    }
+    return coroutine_finish_call(vm: vm, stack: stack, call: call, count: 1_u64);
   }
   set call.child = child;
   if child == vm^.current_thread {
@@ -372,6 +522,10 @@ fn coroutine_transfer(vm: &Vm, stack: &Box<Slots<Value>>) -> r: Step writes(vm),
   let entry_value = vm^.heap.threads.inner[child_index].entry_function;
   let count = call.argc -sat 1_u64;
   let source = call.func +sat 2_u64;
+  if call.wrapping {
+    set count = call.argc;
+    set source = call.func +sat 1_u64;
+  }
   let dest = 1_u64;
   let yielded = vm^.heap.threads.inner[child_index].payload.yield_call;
   if started {
@@ -472,6 +626,9 @@ fn coroutine_deliver(vm: &Vm, stack: &Box<Slots<Value>>, source: u64, count: u64
   let original_error = vm^.error;
   let call = vm^.heap.threads.inner[parent_index].payload.resume_call;
   let total = count +sat 1_u64;
+  if call.wrapping {
+    set total = count;
+  }
   if failed {
     set total = 2_u64;
   }
@@ -504,7 +661,9 @@ fn coroutine_deliver(vm: &Vm, stack: &Box<Slots<Value>>, source: u64, count: u64
   }
   set vm^.resume_call = pkg::execution::coroutine_call_empty();
   let dest = call.func +sat 1_u64;
-  if call.func < stack^.inner.len {
+  if call.wrapping {
+    set dest = call.func;
+  } else if call.func < stack^.inner.len {
     let success = bnot(failed);
     set stack^.inner[call.func] = boolean(v: success);
   }
@@ -525,6 +684,13 @@ fn coroutine_deliver(vm: &Vm, stack: &Box<Slots<Value>>, source: u64, count: u64
       let ignored = raise_text(vm: vm, text: &collection_memory_error[0_u64..17_u64]);
       return unwind(vm: vm, stack: stack);
     }
+  }
+  let wrapped_error = band(call.wrapping, failed);
+  if wrapped_error {
+    coroutine_wrap_error(vm: vm, call: call, message: original_error);
+    let pc = call.return_pc -sat 1_u64;
+    note_raise(vm: vm, pc: pc);
+    return unwind(vm: vm, stack: stack);
   }
   let step = coroutine_finish_call(vm: vm, stack: stack, call: call, count: total);
   let charged = coroutine_refresh_storage(vm: vm, stack: stack);
