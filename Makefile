@@ -118,8 +118,8 @@ oracle: $(E2E_TEST)
 # The collector's removed-root controls (research/experiments/halo-gc): the
 # local root cases pass with the oracle's test program, and fail once a sole
 # root is hidden or one marking call is removed and rebuilt in a copy. `roots`
-# runs all of it; `roots-base` runs the classifier self-test and the controls
-# that need the oracle's test program, and `roots-mutant-<label>` builds one
+# runs all of it; `roots-base` runs the self-tests (classifier and
+# selection) and the controls that need the oracle's test program, and `roots-mutant-<label>` builds one
 # mutant in a copy and checks that its control fails by a detected result.
 # Each check is in exactly one of `roots-base` and the mutant targets.
 ROOTS_CONTROLS = WHITEFOOTC=$(WHITEFOOTC) sh $(ROOT)/research/experiments/halo-gc/controls.sh
