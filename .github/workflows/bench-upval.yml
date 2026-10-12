@@ -43,6 +43,9 @@ jobs:
           sh research/experiments/halo-oracle/fetch-redis.sh "$PWD/build/redis"
           lua="$PWD/build/redis/redis-7.0.15/deps/lua/src/lua"
           # Same compiler on both sides; only the source differs.
+          # The self-hosted runner keeps .git between jobs; drop a registration a
+          # previous job left for build/base-src.
+          git worktree prune
           git worktree add --detach "$PWD/build/base-src" "$BASE"
           (cd build/base-src && "$wfc" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-base")
           cp "$out/halo-base" "$out/halo-base-twin"
