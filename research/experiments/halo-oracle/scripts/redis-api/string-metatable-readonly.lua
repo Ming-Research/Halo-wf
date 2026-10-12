@@ -2,9 +2,9 @@
 -- KEYS: []
 -- ARGV: []
 -- expects: No pre-existing keys.
--- differs: Redis 7.0.15 and 7.2.16 differ in the sandbox. Both replies below are from reading the source and unverified.
+-- differs: Redis 7.0.15 and 7.2.16 differ in the sandbox. The 7.2.16 reply is recorded in expected/ (oracle-reference run 38230247230); the 7.0.15 reply is from reading the source and unverified.
 -- 7.0.15 allows all three writes: each pcall succeeds, the marker key is left set (value 1), and the script removes it afterwards so later scripts see an unchanged string metatable.
--- 7.2.16 (readonly string metatable, CVE-2025-46818) refuses each write with "Attempt to modify a readonly table" (assumed also for setmetatable, unverified), so the marker key is absent; type(mt.__index) is table in both.
+-- 7.2.16 (readonly string metatable, CVE-2025-46818) refuses each write with "Attempt to modify a readonly table" (setmetatable too; the message of the assignment also carries the script location), so the marker key is absent; type(mt.__index) is table in both.
 local mt = getmetatable("")
 local key = "halo_oracle_marker"
 local function result(ok, v)

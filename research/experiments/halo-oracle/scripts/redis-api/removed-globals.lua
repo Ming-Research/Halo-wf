@@ -2,7 +2,7 @@
 -- KEYS: []
 -- ARGV: []
 -- expects: No pre-existing keys.
--- differs: Redis 7.0.15 and 7.2.16 differ in the sandbox. Both replies below are from reading the source and unverified.
+-- differs: Redis 7.0.15 and 7.2.16 differ in the sandbox. The 7.2.16 reply is recorded in expected/ (oracle-reference run 38230247230); the 7.0.15 reply is from reading the source and unverified.
 -- 7.0.15 lets scripts read all three: each pcall succeeds with type function, and rawget finds a function.
 -- 7.2.16 removes them: each read raises "Script attempted to access nonexistent global variable" with the name, and rawget finds nil.
 local reads = {
