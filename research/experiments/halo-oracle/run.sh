@@ -16,11 +16,11 @@ import time
 ROOT = Path(sys.argv[1])
 parser = argparse.ArgumentParser(description="Generate or compare Halo's typed Redis EVAL oracle.")
 mode = parser.add_mutually_exclusive_group()
-mode.add_argument('--generate', action='store_true', help='write replies from a fresh Redis 7.0.15 (default)')
+mode.add_argument('--generate', action='store_true', help='write replies from a fresh Redis 7.2.16 (default)')
 mode.add_argument('--check', action='store_true', help='compare replies with expected files; never rewrite them')
 parser.add_argument('--port', type=int, help='compare an existing server; requires --check')
 parser.add_argument('--host', default='127.0.0.1', help='existing server host (default: 127.0.0.1)')
-parser.add_argument('--server', default='/private/tmp/wf-redis-7.0.15/src/redis-server')
+parser.add_argument('--server', default='/private/tmp/wf-redis-7.2.16/src/redis-server')
 parser.add_argument('--output', type=Path, help='generation directory (default: expected/)')
 parser.add_argument('--expected', type=Path, default=ROOT / 'expected', help='comparison directory')
 parser.add_argument('--filter', help='one group or group/name, without .lua, for a small sample')
@@ -121,8 +121,8 @@ def successful(reply, context):
 
 def start_server(scratch):
     version = subprocess.check_output([args.server, '--version'], text=True)
-    if not version.startswith('Redis server v=7.0.15 '):
-        raise RuntimeError(f'Requires Redis 7.0.15, got {version.strip()}')
+    if not version.startswith('Redis server v=7.2.16 '):
+        raise RuntimeError(f'Requires Redis 7.2.16, got {version.strip()}')
     # The small bind/start race is handled by retrying with a new ephemeral port.
     for _ in range(10):
         with socket.socket() as probe:

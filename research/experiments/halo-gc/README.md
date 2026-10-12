@@ -131,7 +131,7 @@ coroutines/ --budgets 1,7,1000 --gc-stress --case-timeout 60`; the runner's
 default per-case limit stays 900 seconds, and the shorter limit only bounds a
 mutant that loops (a timeout is never a detection). Before any omission, that same
 comparison must pass with every edge present; newly added scripts therefore
-need their Redis 7.0.15 recordings before this experiment can run.
+need their Redis 7.2.16 recordings before this experiment can run.
 
 Owner ruling `halo-card-coroutine-gc-validation`, option A, requires every
 coroutine-edge mutant to change at least one coroutine oracle reply under

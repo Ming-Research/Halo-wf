@@ -316,7 +316,7 @@ fn coroutine_finish_call(vm: &Vm, stack: &Box<Slots<Value>>, call: CoroutineCall
       return finish(vm: vm, stack: stack, frame: old, src: call.func, count: count);
     }
   }
-  let frame = Frame(func: call.func, base: call.base, return_pc: call.return_pc, kbase: call.kbase, closure: no_handle, nresults: call.wanted, activation: call.activation, flags: 0_u8, varbase: 0_u64, varcount: 0_u64, frame_top: call.top);
+  let frame = Frame(func: call.func, base: call.base, return_pc: call.return_pc, kbase: call.kbase, closure: no_handle, tailcalls: 0_u32, nresults: call.wanted, activation: call.activation, flags: 0_u8, varbase: 0_u64, varcount: 0_u64, frame_top: call.top);
   return finish(vm: vm, stack: stack, frame: frame, src: call.func, count: count);
 }
 
@@ -350,7 +350,7 @@ fn coroutine_prepare(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &V
     let accepted = coroutine_lua_entry(vm: vm, value: entry_value);
     if bnot(accepted) {
       let ignored = lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, text: &coroutine_lua_expected[0_u64..21_u64]);
-      library_call_error_location(vm: vm, id: id, pc: pc);
+      library_call_error_location(vm: vm, pc: pc);
       return Step::Error();
     }
     let created = coroutine_create(vm: vm, entry_value: entry_value);
@@ -427,7 +427,7 @@ fn coroutine_prepare(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &V
   }
   if bnot(live) {
     let ignored = lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, text: &coroutine_expected[0_u64..18_u64]);
-    library_call_error_location(vm: vm, id: id, pc: pc);
+    library_call_error_location(vm: vm, pc: pc);
     return Step::Error();
   }
   if id == builtin_coroutine_status {

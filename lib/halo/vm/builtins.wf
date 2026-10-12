@@ -130,12 +130,65 @@ fn argument(stack: &Box<Slots<Value>>, func: u64, argc: u64, index: u64) -> r: V
   return Value::Nil();
 }
 
+fn library_level(vm: &Vm, opener: u32, index: u64) -> r: Bool reads(vm) {
+  doc "Whether the callback that opened activation opener + 1 stands for a native call level, as lua_getstack counts a C function's CallInfo. A library callback plan (kind 4: sort, gsub, foreach, tostring, xpcall) runs inside the library function, which has no frame record; the post-catch pcall lookup retains pcall's own frame flagged native, which already counts that level. VM metamethod and iterator plans (kinds 0 through 3) add no level, as luaV calls them straight from the Lua frame. index is the count of frame records not yet walked.";
+  let position = vm^.callbacks.inner.len;
+  loop {
+    if position == 0_u64 {
+      break;
+    }
+    set position = position - 1_u64;
+    if position < vm^.callbacks.inner.len {
+      let record = vm^.callbacks.inner[position];
+      if record.activation == opener {
+        if record.plan.kind != 4_u8 {
+          return False();
+        }
+        if index > 0_u64 {
+          let below = index - 1_u64;
+          if below < vm^.frames.inner.len {
+            let retained = vm^.frames.inner[below];
+            if retained.activation == opener {
+              if retained.flags == native_flag {
+                return False();
+              }
+            }
+          }
+        }
+        return True();
+      }
+    }
+  }
+  return False();
+}
+
 fn error_location(vm: &Vm, pc: u64, level: u64, message: Value) -> r: Value writes(vm) {
-  doc "Prefixes message with chunk:line: as luaL_where does, the chunk's display name coming from the running script. Missing line information leaves the original value intact.";
+  doc "Prefixes message with chunk:line: as luaL_where does, the chunk's display name coming from the running script. Missing line information leaves the original value intact. Levels count as lua_getstack counts CallInfo: each frame record is one level, a protected or native one without a location, and each library function between a nested activation and its caller is one more level without a location. A Lua frame that tail calls replaced also stands for each call it replaced, lua_getstack subtracting ci->tailcalls past it; a level that lands on a replaced call is a lost tail call, which has no location.";
   let remaining = level;
   let index = vm^.frames.inner.len;
   let location = pc;
+  let activation = vm^.activation;
   loop {
+    let lowest = 0_u32;
+    if index > 0_u64 {
+      let next_index = index - 1_u64;
+      if next_index < vm^.frames.inner.len {
+        set lowest = vm^.frames.inner[next_index].activation;
+      }
+    }
+    loop {
+      if activation <= lowest {
+        break;
+      }
+      set activation = activation -sat 1_u32;
+      let native_level = library_level(vm: vm, opener: activation, index: index);
+      if native_level {
+        if remaining == 1_u64 {
+          return message;
+        }
+        set remaining = remaining -sat 1_u64;
+      }
+    }
     if index == 0_u64 {
       return message;
     }
@@ -154,7 +207,12 @@ fn error_location(vm: &Vm, pc: u64, level: u64, message: Value) -> r: Value writ
         if remaining == 1_u64 {
           break;
         }
-        set remaining = remaining -sat 1_u64;
+        let deeper = remaining -sat 1_u64;
+        let replaced = cvt::<u32, u64>(frame.tailcalls);
+        if deeper <= replaced {
+          return message;
+        }
+        set remaining = deeper - replaced;
         set location = frame.return_pc -sat 1_u64;
       }
     }
@@ -222,22 +280,11 @@ fn error_location(vm: &Vm, pc: u64, level: u64, message: Value) -> r: Value writ
 fn builtin<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, env: &E, vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: u32, pc: u64) -> r: HostOutcome reads(code), reads(consts), writes(env), writes(vm), writes(stack) contract {
   ensures stack^.inner.len == entry(stack)^.inner.len;
 } {
-  doc "Dispatches native builtins, preserving the Lua call cell for argument errors and explicit error levels.";
+  doc "Dispatches native builtins, preserving the Lua call cell for argument errors and explicit error levels. A raised outcome takes its error-location step in the caller, prepare, once for every builtin. setmetatable refuses a protected metatable with luaL_error before the read-only test, as lbaselib.c luaB_setmetatable checks __metatable before lua_setmetatable.";
   let length = stack^.inner.len;
   if id >= 8_u32 {
     let outcome = library_dispatch::<Host<E>>(code: code, consts: consts, env: env, vm: vm, stack: stack, func: func, argc: argc, id: id, pc: pc);
     resize_stack(stack: stack, size: length);
-    match outcome {
-      Raised() => {
-        library_call_error_location(vm: vm, id: id, pc: pc);
-      }
-      Returned(..) => {
-      }
-      Stop() => {
-      }
-      Pending() => {
-      }
-    }
     return outcome;
   }
   let a = argument(stack: stack, func: func, argc: argc, index: 0_u64);
@@ -263,7 +310,7 @@ fn builtin<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
           }
           Not() => {
             let rejected = lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 2_u64, argc: argc, value: b, expected: &builtin_expected_2_number[0_u64..6_u64]);
-            library_call_error_location(vm: vm, id: id, pc: pc);
+            library_call_error_location(vm: vm, pc: pc);
             return rejected;
           }
         }
@@ -409,14 +456,14 @@ fn builtin<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
     if argc < 2_u64 {
       return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 2_u64, text: &builtins_text_19[0_u64..21_u64]);
     }
-    if is_readonly(vm: vm, v: a) {
-      let ignored = raise_text(vm: vm, text: &text_0[0_u64..34_u64]);
-      return HostOutcome::Raised();
-    }
     let protected = metamethod(vm: vm, v: a, name: &builtins_text_21[0_u64..11_u64]);
     let atom12 = is_nil(v: protected);
     if bnot(atom12) {
       let ignored = raise_text(vm: vm, text: &builtins_text_22[0_u64..35_u64]);
+      return HostOutcome::Raised();
+    }
+    if is_readonly(vm: vm, v: a) {
+      let ignored = raise_native_text(vm: vm, text: &text_0[0_u64..34_u64]);
       return HostOutcome::Raised();
     }
     let i = cvt::<u32, u64>(h);

@@ -2,12 +2,15 @@
 
 ## Question
 
-Halo implements Lua 5.1 as Redis 7.0.15's scripting sandbox exposes it,
-less the functions below. Which of them do real Redis scripts call? The
+Halo implements Lua 5.1 as Redis 7.2.16's scripting sandbox exposes it
+(the reference since [REDIS-72](REDIS-72.md)), less the functions below. Which of them do real Redis scripts call? The
 answer selects which Halo implements next; a function no surveyed script
 calls stays unimplemented, with this survey as its ground, until a host
 reports a script that needs it.
 
+This survey and the sandbox description below were made against Redis
+7.0.15, the reference then; 7.2.16 no longer shows `getfenv`, `setfenv` and
+`newproxy`, which changes no result, since no surveyed script calls them.
 Redis 7.0.15 loads Lua's base, table, string, math and debug libraries with
 `cjson`, `struct`, `cmsgpack` and `bit`, keeps the globals on its allow
 lists, removes `dofile`, `loadfile` and `print`, and sets `debug` to nil

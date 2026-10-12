@@ -35,17 +35,18 @@ GATE_PARTS := core $(EXTENDED_PARTS) reference
 
 .PHONY: check check-core check-extended check-reference \
 	check-roots-base $(ROOTS_MUTANT_CHECKS) check-hosts-vm check-hosts-lib-json \
-	oracle roots roots-base $(ROOTS_MUTANT_TARGETS) hosts hosts-vm hosts-lib json \
+	oracle double-text roots roots-base $(ROOTS_MUTANT_TARGETS) hosts hosts-vm hosts-lib json \
 	reference-lua number msgpack design-lint design-ready gate-parts FORCE
 
 # `make check` runs three groups: the core (the embedding probe, the oracle
-# corpus, the design lint and gate-parts), the extended checks that need no
-# reference build (the collector's root controls, the research hosts, the JSON
-# package) and the checks against Redis 7.0.15's bundled Lua built from source
-# (the number library, the MessagePack package). `check` and `check-extended`
-# are made of their parts, so they run exactly what CI's jobs run.
+# corpus, the double texts, the design lint and gate-parts), the extended
+# checks that need no reference build (the collector's root controls and the
+# host's protection controls, the research hosts, the JSON package) and the
+# checks against Redis 7.2.16's bundled Lua built from source (the number
+# library, the MessagePack package). `check` and `check-extended` are made of
+# their parts, so they run exactly what CI's jobs run.
 check: $(GATE_PARTS:%=check-%)
-check-core: compiler oracle design-lint gate-parts
+check-core: compiler oracle double-text design-lint gate-parts
 check-extended: $(EXTENDED_PARTS:%=check-%)
 check-reference: compiler number msgpack
 
@@ -84,7 +85,7 @@ gate-parts:
 # program that runs scripts through pkg::embed and an in-memory host, and its
 # runner compares every script of research/experiments/halo-oracle at
 # budgets 1, 7 and 1000, in ordinary and collector-stress modes, byte for
-# byte with Redis 7.0.15's recorded replies. The same program's embedding
+# byte with Redis 7.2.16's recorded replies. The same program's embedding
 # probe, run with three arguments, checks the engine lifecycle, budget
 # continuation, host outcomes and collector roots, and exits with the number
 # of the first failed observation. In each mode the runner first checks the
@@ -115,13 +116,27 @@ oracle: $(E2E_TEST)
 	$(E2E_RUN) --gc-stress --report $(E2E)/stress.md --actual $(E2E)/stress || status=1; \
 	exit $$status
 
+# The double texts (research/experiments/redis-double-text): the same test
+# program writes each of the 18,235 doubles that redis-server 7.2.16 wrote in a
+# measured table, as a double reply and as a redis.call argument, with the test
+# host's rules and the fpconv package (lib/fpconv), and the runner requires
+# every text byte for byte. It first requires the table's pinned row count and
+# digest, and shows that the table rejects an exact-shortest formatter.
+double-text: $(E2E_TEST)
+	@cd $(ROOT) && $(PY) -B research/experiments/redis-double-text/check.py --binary $(E2E_TEST)
+
 # The collector's removed-root controls (research/experiments/halo-gc): the
 # local root cases pass with the oracle's test program, and fail once a sole
-# root is hidden or one marking call is removed and rebuilt in a copy. `roots`
-# runs all of it; `roots-base` runs the self-tests (classifier and
-# selection) and the controls that need the oracle's test program, and `roots-mutant-<label>` builds one
-# mutant in a copy and checks that its control fails by a detected result.
-# Each check is in exactly one of `roots-base` and the mutant targets.
+# root is hidden or one marking call is removed and rebuilt in a copy. The
+# same script runs the test host's protection controls: the global-write,
+# string-metatable-readonly and readonly-library-tables oracle scripts fail
+# once the host leaves the globals table or the string metatable writable, or
+# marks only those two and no table reachable from them. `roots` runs all of
+# it; `roots-base` runs the self-tests (classifier and selection), the
+# controls that need the oracle's test program and the protection controls,
+# and `roots-mutant-<label>` builds one mutant in a copy and checks that its
+# control fails by a detected result. Each check is in exactly one of
+# `roots-base` and the mutant targets.
 ROOTS_CONTROLS = WHITEFOOTC=$(WHITEFOOTC) sh $(ROOT)/research/experiments/halo-gc/controls.sh
 roots: $(E2E_TEST)
 	@ROOTS_PART=all $(ROOTS_CONTROLS) $(E2E_TEST) $(BUILD)/halo-roots
@@ -160,9 +175,9 @@ json: $(PIN) $(WHITEFOOTC) FORCE
 	@cd $(ROOT) && $(PY) -B research/experiments/json/run.py --compiler $(WHITEFOOTC) --incremental \
 		--binary $(BUILD)/json/check --build --samples $(JSON_SAMPLES)
 
-# Redis 7.0.15's bundled Lua, built from its verified source with Redis's own
+# Redis 7.2.16's bundled Lua, built from its verified source with Redis's own
 # deps Makefile, is the reference of the number and MessagePack comparisons.
-REFERENCE_LUA := $(BUILD)/redis/redis-7.0.15/deps/lua/src
+REFERENCE_LUA := $(BUILD)/redis/redis-7.2.16/deps/lua/src
 reference-lua:
 	@sh $(ROOT)/research/experiments/halo-oracle/fetch-redis.sh $(BUILD)/redis
 

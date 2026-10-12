@@ -125,6 +125,18 @@ call while retaining reads of the pool: deleting the entire loop first
 failed EFF-2 at compilation (exit 1, 2.77 s), an unused `reads(consts)`
 effect; that compilation result is not counted as runtime discrimination.
 
+Since the test host bounds its walk that makes the library tables read-only
+(each table's traversal stops at its first repeated key and the host exits
+4), the constants mutant fails every run instead of the cases above: 0/375
+passed at budgets 1, 7 and 1000 in
+[run 38314517395](https://github.com/Ming-Research/Halo-wf/actions/runs/38314517395),
+and 0/369 before the two added scripts. With constants unmarked, the setup
+chunk's `KEYS` and `ARGV` strings are freed and their slots reused, so the
+globals table holds two nodes for one key before any script runs; the log
+prints no per-case reason, so that every run stops at setup rests on this
+account. The control still detects the omission but no longer separates
+scripts.
+
 | Constants mutant case | Failure at budgets 1, 7 and 1000 |
 | --- | --- |
 | `apps/hash-cas` | Setup runtime error; native exit 4 |

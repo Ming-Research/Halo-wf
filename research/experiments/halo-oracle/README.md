@@ -1,13 +1,13 @@
 # Halo correctness oracle
 
-This corpus records the exact RESP2 replies of Redis 7.0.15 for small Lua 5.1
+This corpus records the exact RESP2 replies of Redis 7.2.16 for small Lua 5.1
 `EVAL` scripts. It supplies independent expected behavior for the Lua engine
 and its firn bindings described in [Halo's design](../../investigations/halo/DESIGN.md).
 Halo's `make check-core` compares the corpus through the `oracle` target;
 recording reference replies remains the job of
 [oracle-reference.yml](../../../.github/workflows/oracle-reference.yml).
 
-There are 145 scripts: 68 `lua-core`, 23 `redis-api`, 6 `apps`, 12 `libs`,
+There are 165 scripts: 71 `lua-core`, 39 `redis-api`, 6 `apps`, 13 `libs`,
 and 36 `coroutines`.
 The scripts, replies and runner belong here until the oracle is replaced or
 Halo/firn scripting is retired. Each case is consumed by `run.sh`; the table
@@ -19,7 +19,7 @@ The `coroutines` group is comparison 1 of the
 ## Layout and invocation
 
 - `scripts/<group>/<name>.lua`: one observation or small related set per file.
-- `expected/<group>/<name>.txt`: the typed reply produced by Redis 7.0.15.
+- `expected/<group>/<name>.txt`: the typed reply produced by Redis 7.2.16.
 - `run.sh`: POSIX shell entry point with an embedded Python 3 standard-library
   RESP2 client. Python handles binary replies independently of Whitefoot;
   there is no redis-cli display-mode or locale ambiguity.
@@ -30,7 +30,11 @@ command arrays give the exact pre-existing-key setup, executed in order.
 Keys used by setup commands are declared in `KEYS`. `-- error: true` marks
 an intentional top-level RESP error; errors caught by Lua remain normal
 successful EVAL replies. A top-level error without that marker, or a missing
-error with it, fails the runner. `-- needs: COMMAND` identifies a command
+error with it, fails the runner.
+A `-- differs:` line, followed by lines that begin `-- 7.0.15` and `-- 7.2.16`
+(some with a colon), records a known difference between those releases and the
+reply each is expected to give;
+both runners ignore these lines, and the replies in `expected/` decide. `-- needs: COMMAND` identifies a command
 absent from [firn's command list](https://github.com/Ming-Research/Whitefoot/blob/c3c604fdf73970822975b5666c9386d5cf10c024/apps/firn/README.md).
 
 From the repository root, regenerate and then compare without rewriting:
@@ -46,17 +50,17 @@ Compiler cache, `--no-cache` and `--full-lto` options belong to the
 [Halo comparison runner](../halo-e2e/README.md), not this RESP2 client.
 It uses a local TCP connection, so omit it from runs that prohibit network access.
 
-The default server is `/private/tmp/wf-redis-7.0.15/src/redis-server`, a
+The default server is `/private/tmp/wf-redis-7.2.16/src/redis-server`, a
 macOS build; the reference replies are recorded on x86-64 Linux by
 [oracle-reference.yml](../../../.github/workflows/oracle-reference.yml),
-which builds Redis 7.0.15 from source and keeps the new replies and their
+which builds Redis 7.2.16 from source and keeps the new replies and their
 difference from `expected/` as an artifact for review. The replies in
 `expected/` are that recording; the first one changed only
 `lua-core/nonfinite`, whose `0/0` prints `-nan` on x86-64 (a negative default
 NaN, printed with its sign by glibc) where the earlier macOS arm64 recording
 printed `nan`.
 Python 3 and that executable are the only dependencies. `--server PATH`
-can select another Redis 7.0.15 executable; its reported version is checked.
+can select another Redis 7.2.16 executable; its reported version is checked.
 The runner starts it on a free loopback port with `--save '' --appendonly no`,
 keeps all server files in a directory under the system's temporary
 directory, outside the repository, flushes the database before and after each case, and stops
@@ -135,7 +139,7 @@ one string type. It is RESP2 throughout; there is no HELLO 3 negotiation.
 
 ## Determinism and platform limits
 
-The pinned reference is recorded with Redis 7.0.15 on x86-64 Linux with
+The pinned reference is recorded with Redis 7.2.16 on x86-64 Linux with
 glibc, as described above. The replies are exact observations of that
 reference, not portable-language promises for every case.
 
@@ -151,14 +155,14 @@ reference, not portable-language promises for every case.
   5.1's boundary property. The language does not uniquely define `#` for
   every table with holes; the chosen result can differ with implementation
   and allocation layout.
-- `math-random` is **deterministic** here. Redis 7.0.15 replaces Lua's libc
+- `math-random` is **deterministic** here. Redis 7.2.16 replaces Lua's libc
   random functions with `redisLrand48`/`redisSrand48`, a 48-bit generator.
   Its initial state corresponds to seed `0x1234abcd` (305441741); Redis 7
   does not reset it on every EVAL. The script explicitly restores that
   seed, samples all three random forms, then seeds 12345 twice to check
   reproducibility. The numeric generator is intended to agree across
   architectures; its returned fractional values also exercise `%.14g`.
-  This behavior is evidenced by Redis 7.0.15 `src/rand.c` and
+  This behavior is evidenced by `src/rand.c` and
   `src/script_lua.c` in the reference source distribution.
 - `next-pairs` sorts its observations, avoiding unspecified hash iteration
   order; `table-growth-order` records the unsorted order on purpose, with
@@ -167,10 +171,10 @@ reference, not portable-language promises for every case.
   addresses, samples wall time, or returns an expiry countdown. Application
   scripts use a fixed window timestamp and long expiry values (60 seconds).
 
-Twelve cases intentionally return top-level errors, marked by `-- error: true`
-in their script headers: three in `lua-core`, eight in `redis-api`, and one
+Sixteen cases intentionally return top-level errors, marked by `-- error: true`
+in their script headers: three in `lua-core`, twelve in `redis-api`, and one
 in `coroutines`.
-Redis 7.0.15 reports the global-write refusal as "Attempt to modify a readonly
+Redis 7.2.16 reports the global-write refusal as "Attempt to modify a readonly
 table". No script was dropped; there were no unexpected top-level rejections.
 Two complete generations must agree before treating a changed corpus as a
 reproducible reference. Cross-platform differences should be investigated,
@@ -243,6 +247,7 @@ report rather than being counted as detected by a probe alone.
 | coroutines | [yield-outside](scripts/coroutines/yield-outside.lua) | Yield outside a coroutine raises an error caught by pcall. |
 | libs | [bit-logical](scripts/libs/bit-logical.lua) | bit.band, bor and bxor use signed 32-bit results. |
 | libs | [bit-shifts-hex](scripts/libs/bit-shifts-hex.lua) | Shifts mask counts and tohex formats signed values as hex. |
+| libs | [bit-tohex-extrema](scripts/libs/bit-tohex-extrema.lua) | bit.tohex with digit counts at the signed 32-bit extremes; 7.0.15 overflows, 7.2.16 does not. |
 | libs | [cjson-arrays-nested](scripts/libs/cjson-arrays-nested.lua) | JSON arrays encode and nested object values decode without relying on object order. |
 | libs | [cjson-instance-methods](scripts/libs/cjson-instance-methods.lua) | Methods of a cjson.new() instance, called through the table and after extraction, beside a string.gmatch iterator. |
 | libs | [cjson-invalid](scripts/libs/cjson-invalid.lua) | Malformed JSON raises an error caught by pcall. |
@@ -257,6 +262,7 @@ report rather than being counted as detected by a probe alone.
 | lua-core | [array-holes](scripts/lua-core/array-holes.lua) | Lua 5.1 length selects a boundary for arrays with holes. |
 | lua-core | [assert](scripts/lua-core/assert.lua) | assert returns all successful arguments and raises a chosen message. |
 | lua-core | [call-kinds](scripts/lua-core/call-kinds.lua) | Ordinary calls reach native functions, native iterators and vararg Lua functions; number and nil callees raise errors checked apart from the variable description. |
+| lua-core | [callback-error-levels](scripts/lua-core/callback-error-levels.lua) | error levels count each native function (pcall, sort, gsub) between Lua frames as a level without a location; metamethods (__index, __add) add no level; a level past the top adds no location. |
 | lua-core | [concat-numbers](scripts/lua-core/concat-numbers.lua) | Concatenation coerces numbers with Lua number formatting. |
 | lua-core | [counter-closure](scripts/lua-core/counter-closure.lua) | Separate counter closures retain independent upvalue state. |
 | lua-core | [embedded-zero](scripts/lua-core/embedded-zero.lua) | Embedded NUL survives length, slicing, byte lookup and RESP bulk. |
@@ -318,29 +324,47 @@ report rather than being counted as detected by a probe alone.
 | lua-core | [table-parts](scripts/lua-core/table-parts.lua) | Array and hash entries coexist; hash entries do not add array length. |
 | lua-core | [table-sort](scripts/lua-core/table-sort.lua) | Default and custom comparator sort numbers into opposite orders. |
 | lua-core | [table-sort-order](scripts/lua-core/table-sort-order.lua) | Default auxsort permutation for duplicate numbers, signed zeros, strings with NUL, NaN, hash-backed indices and short arrays. |
+| lua-core | [tail-call-error-levels](scripts/lua-core/tail-call-error-levels.lua) | error levels count each call a Lua-to-Lua tail call replaced as a level without a location, one to three per frame and around sort comparators and pcall; a tail call into error or pcall keeps the calling frame. |
 | lua-core | [tail-recursion](scripts/lua-core/tail-recursion.lua) | Proper tail calls allow deep recursion without growing call stack. |
+| lua-core | [unpack-overflow-range](scripts/lua-core/unpack-overflow-range.lua) | unpack refuses ranges too long for an int with the too-many-results error; 7.0.15 overflows for three of four ranges. |
 | lua-core | [unpack-select-varargs](scripts/lua-core/unpack-select-varargs.lua) | unpack ranges and select preserve vararg count including nil. |
 | lua-core | [version-global](scripts/lua-core/version-global.lua) | The base library exposes _VERSION as the string Lua 5.1. |
 | redis-api | [call-error](scripts/redis-api/call-error.lua) | redis.call raises command errors to the EVAL reply. |
 | redis-api | [call-error-in-callback](scripts/redis-api/call-error-in-callback.lua) | A redis.call error inside a sort comparator ends the script with an error reply. |
 | redis-api | [call-in-callback](scripts/redis-api/call-in-callback.lua) | redis.call and redis.pcall return to sort, gsub and __tostring callbacks; pcall inside a comparator catches a redis.call error. |
 | redis-api | [call-success](scripts/redis-api/call-success.lua) | redis.call returns successful write and read replies. |
+| redis-api | [double-reply-table](scripts/redis-api/double-reply-table.lua) | Returned {double=x} tables become bulk strings with the host's double text; 7.2.16 writes fpconv's Grisu2 digits, which read back exactly but are not always the shortest, where 7.0.15 printed %.17g. |
+| redis-api | [double-score-reply](scripts/redis-api/double-score-reply.lua) | ZADD with a number score, then ZSCORE and WITHSCORES, reply with the host's double text (0.1 versus 0.10000000000000001). |
 | redis-api | [error-after-call-in-callback-line](scripts/redis-api/error-after-call-in-callback-line.lua) | A gsub error after a replacement that called redis.call returns is located at the gsub call. |
+| redis-api | [error-message-crlf](scripts/redis-api/error-message-crlf.lua) | A top-level runtime error whose message holds CR LF; 7.0.15 breaks the RESP framing, 7.2.16 replaces them with spaces. |
+| redis-api | [error-message-newline](scripts/redis-api/error-message-newline.lua) | A top-level runtime error whose message holds LF; 7.0.15 breaks the RESP framing, 7.2.16 replaces it with a space. |
 | redis-api | [error-reply](scripts/redis-api/error-reply.lua) | redis.error_reply constructs a RESP error reply. |
+| redis-api | [error-reply-newline](scripts/redis-api/error-reply-newline.lua) | redis.error_reply with a newline: 7.2.16 sends the one line "ERR a b" (the line break becomes a space and the text gains an ERR code); 7.0.15 is read from the source as "a b" without the code, unverified. |
 | redis-api | [error-rethrow-line](scripts/redis-api/error-rethrow-line.lua) | A redis.call error caught by xpcall and raised with error(e,0) is located at the rethrow. |
+| redis-api | [foreach-invalid-key](scripts/redis-api/foreach-invalid-key.lua) | table.foreach resuming after its function removed the visited key and grew the table past a rehash raises "invalid key to 'next'" without a script location, as next does with the same key. |
 | redis-api | [global-read](scripts/redis-api/global-read.lua) | Redis refuses access to an undeclared global. |
 | redis-api | [global-write](scripts/redis-api/global-write.lua) | Redis refuses assignment to an undeclared global. |
+| redis-api | [keys-argv-writable](scripts/redis-api/keys-argv-writable.lua) | KEYS and ARGV stay writable under the read-only globals: element assignment and table.insert append to both. |
+| redis-api | [library-error-location](scripts/redis-api/library-error-location.lua) | A library's own error after a callback keeps its script location although the callback caught a rawset refusal (sort, gsub, __tostring, each with a control); next's invalid key error carries none. |
 | redis-api | [log-keys-argv](scripts/redis-api/log-keys-argv.lua) | redis.log is allowed; KEYS and ARGV remain ordered strings. |
 | redis-api | [lua-arrays](scripts/redis-api/lua-arrays.lua) | Nested array conversion stops at first nil and ignores hash entries. |
 | redis-api | [lua-nil](scripts/redis-api/lua-nil.lua) | A top-level Lua nil becomes a RESP nil bulk. |
 | redis-api | [lua-scalars](scripts/redis-api/lua-scalars.lua) | Lua numbers truncate toward zero; true is one and false is nil. |
+| redis-api | [number-argument-effects](scripts/redis-api/number-argument-effects.lua) | A number argument stored by SET is read back by INCR, and INCRBYFLOAT reads a fractional one; 7.0.15 and 7.2.16 format the argument differently. |
+| redis-api | [number-argument-format](scripts/redis-api/number-argument-format.lua) | ECHO returns number arguments as the host formats them: %.17g in 7.0.15, integers and fpconv's Grisu2 digits in 7.2.16. |
 | redis-api | [pcall-keeps-other-errors](scripts/redis-api/pcall-keeps-other-errors.lua) | pcall preserves error tables whose err field is neither string nor number, and nil and false errors. |
 | redis-api | [pcall-outside-comparator](scripts/redis-api/pcall-outside-comparator.lua) | A redis.call error from a sort comparator caught by pcall around sort is the err string. |
 | redis-api | [pcall-success-error](scripts/redis-api/pcall-success-error.lua) | redis.pcall returns successes and error tables without raising. |
 | redis-api | [pcall-unwraps-err](scripts/redis-api/pcall-unwraps-err.lua) | pcall unwraps string and numeric err fields; xpcall's handler still sees the table. |
+| redis-api | [readonly-library-tables](scripts/redis-api/readonly-library-tables.lua) | Writes to the library tables reachable from the globals and to an existing key of the string metatable, with each refusal's location. |
+| redis-api | [readonly-rawset-error](scripts/redis-api/readonly-rawset-error.lua) | An uncaught rawset refusal on a library table, raised inside the library function, reaches the EVAL error reply without a script location. |
+| redis-api | [redis-version](scripts/redis-api/redis-version.lua) | redis.REDIS_VERSION and redis.REDIS_VERSION_NUM, which name the reference release. |
+| redis-api | [removed-globals](scripts/redis-api/removed-globals.lua) | getfenv, setfenv and newproxy are readable in 7.0.15 and absent from the 7.2.16 sandbox. |
 | redis-api | [resp-error-raised](scripts/redis-api/resp-error-raised.lua) | A Redis error caught by Lua pcall is a string rather than a reply table. |
 | redis-api | [resp-values](scripts/redis-api/resp-values.lua) | Integer, bulk, missing bulk, array and status replies become Lua values. |
 | redis-api | [return-error-table](scripts/redis-api/return-error-table.lua) | A returned err field becomes a RESP error. |
 | redis-api | [return-status-table](scripts/redis-api/return-status-table.lua) | A returned ok field becomes a RESP status. |
+| redis-api | [set-repl-no-argument](scripts/redis-api/set-repl-no-argument.lua) | redis.set_repl with no arguments raises an error whose text changed between releases. |
 | redis-api | [sha1hex](scripts/redis-api/sha1hex.lua) | redis.sha1hex hashes empty, ASCII and embedded NUL byte strings. |
 | redis-api | [status-reply](scripts/redis-api/status-reply.lua) | redis.status_reply constructs a RESP status reply. |
+| redis-api | [string-metatable-readonly](scripts/redis-api/string-metatable-readonly.lua) | Writes to the string metatable (assignment, rawset, setmetatable) succeed in 7.0.15 and are refused as a readonly table in 7.2.16. |

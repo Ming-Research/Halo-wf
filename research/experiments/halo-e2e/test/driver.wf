@@ -167,6 +167,43 @@ fn json_bytes(vm: &Vm, value: Value, out: &Box<Slots<u8>>, sanitize: Bool, error
   return unit;
 }
 
+fn reply_error_text(vm: &Vm, value: Value) -> r: Value writes(vm) {
+  doc "The err field of a returned error table as Redis 7.2.16's luaReplyToRedisReply sends it through addReplyErrorFormatEx with -%s: the text ends at its first NUL and loses carriage returns and line feeds at its end (the leading minus sign keeps its start); json_bytes's sanitizing then turns the remaining ones into spaces.";
+  let bytes = box_slots_new::<u8>(capacity: 0_u64);
+  value_bytes(vm: vm, v: value, out: &bytes);
+  let n = bytes.inner.len;
+  let end = n;
+  for (i in 0_u64..n) {
+    if i < bytes.inner.len {
+      if bytes.inner[i] == 0_u8 {
+        set end = i;
+        break;
+      }
+    }
+  }
+  loop {
+    if end == 0_u64 {
+      break;
+    }
+    let before = end - 1_u64;
+    if before >= bytes.inner.len {
+      break;
+    }
+    let tail = bytes.inner[before];
+    let cr = tail == 13_u8;
+    let lf = tail == 10_u8;
+    if bor(cr, lf) {
+      set end = before;
+    } else {
+      break;
+    }
+  }
+  if end <= bytes.inner.len {
+    return literal(vm: vm, text: &bytes.inner[0_u64..end]);
+  }
+  return value;
+}
+
 fn nil_reply(out: &Box<Slots<u8>>) -> r: unit writes(out) {
   text_bytes(out: out, bytes: &s_34[0_u64..28_u64]);
   return unit;
@@ -207,21 +244,33 @@ fn reply(vm: &Vm, value: Value, out: &Box<Slots<u8>>, depth: u64) -> r: unit wri
     Tab(..) => {
       let errkey_v47 = literal(vm: vm, text: &s_30[0_u64..3_u64]);
       let okkey_v48 = literal(vm: vm, text: &s_5[0_u64..2_u64]);
+      let doublekey = literal(vm: vm, text: &double_field[0_u64..6_u64]);
       let err_v49 = get(vm: vm, table: value, key: errkey_v47);
       let ok_v50 = get(vm: vm, table: value, key: okkey_v48);
+      let double_v = get(vm: vm, table: value, key: doublekey);
       let error_v51 = is_string(v: err_v49);
       let status_v52 = is_string(v: ok_v50);
+      let double_kind = kind(v: double_v);
+      let double_reply = double_kind == 2_u8;
       if error_v51 {
         text_bytes(out: out, bytes: &s_39[0_u64..24_u64]);
         let yes_v53 = True();
         let keep = False();
-        json_bytes(vm: vm, value: err_v49, out: out, sanitize: yes_v53, error: keep);
+        let error_text = reply_error_text(vm: vm, value: err_v49);
+        json_bytes(vm: vm, value: error_text, out: out, sanitize: yes_v53, error: keep);
         push(out: out, byte: 125_u8);
       } else if status_v52 {
         text_bytes(out: out, bytes: &s_40[0_u64..25_u64]);
         let yes_v54 = True();
         let no_v55 = False();
         json_bytes(vm: vm, value: ok_v50, out: out, sanitize: yes_v54, error: no_v55);
+        push(out: out, byte: 125_u8);
+      } else if double_reply {
+        text_bytes(out: out, bytes: &s_38[0_u64..23_u64]);
+        let double_number = number(vm: vm, v: double_v);
+        let double_bytes = double_text(vm: vm, x: double_number);
+        let plain = False();
+        json_bytes(vm: vm, value: double_bytes, out: out, sanitize: plain, error: plain);
         push(out: out, byte: 125_u8);
       } else {
         text_bytes(out: out, bytes: &s_41[0_u64..25_u64]);
@@ -255,29 +304,6 @@ fn reply(vm: &Vm, value: Value, out: &Box<Slots<u8>>, depth: u64) -> r: unit wri
     }
   }
   return unit;
-}
-
-fn readonly_message(vm: &Vm, value: Value) -> r: Bool reads(vm) {
-  match halo::heap::string_of(heap: &vm^.heap, value: value) {
-    None() => {
-      return False();
-    }
-    Some(value: view) => {
-      let h = cvt::<u32, u64>(view.handle);
-      if h < vm^.heap.strings.inner.len {
-        if vm^.heap.strings.inner[h].payload.bytes.inner.len == 34_u64 {
-          for (i in 0_u64..34_u64) {
-            let b = vm^.heap.strings.inner[h].payload.bytes.inner[i];
-            if b != readonly_error[i] {
-              return False();
-            }
-          }
-          return True();
-        }
-      }
-    }
-  }
-  return False();
 }
 
 fn callback_line(vm: &Vm) -> r: u64 reads(vm) {
@@ -373,7 +399,7 @@ fn serve_call(engine: &Engine, env: &Env, budget: u64) -> r: Outcome writes(engi
 
 fn install_host(engine: &Engine, env: &Env) -> r: unit writes(engine), writes(env) {
   let vm_v64 = &engine^.vm;
-  let redis_v65 = halo::heap::new_table(heap: &vm_v64^.heap, asize: 0_u32, hsize: 8_u32);
+  let redis_v65 = halo::heap::new_table(heap: &vm_v64^.heap, asize: 0_u32, hsize: 16_u32);
   let k_v66 = literal(vm: vm_v64, text: &s_43[0_u64..4_u64]);
   let v_v67 = Value::Builtin(id: 4096_u32);
   raw(vm: vm_v64, table: redis_v65, key: k_v66, value: v_v67);
@@ -392,6 +418,30 @@ fn install_host(engine: &Engine, env: &Env) -> r: unit writes(engine), writes(en
   let sha_key = literal(vm: vm_v64, text: &sha_name[0_u64..7_u64]);
   let sha_builtin = Value::Builtin(id: 4102_u32);
   raw(vm: vm_v64, table: redis_v65, key: sha_key, value: sha_builtin);
+  let repl_key = literal(vm: vm_v64, text: &set_repl_name[0_u64..8_u64]);
+  let repl_builtin = Value::Builtin(id: 4103_u32);
+  raw(vm: vm_v64, table: redis_v65, key: repl_key, value: repl_builtin);
+  let none_key = literal(vm: vm_v64, text: &repl_none_name[0_u64..9_u64]);
+  let none_flags = num(x: 0.0_f64);
+  raw(vm: vm_v64, table: redis_v65, key: none_key, value: none_flags);
+  let aof_key = literal(vm: vm_v64, text: &repl_aof_name[0_u64..8_u64]);
+  let aof_flags = num(x: 1.0_f64);
+  raw(vm: vm_v64, table: redis_v65, key: aof_key, value: aof_flags);
+  let slave_key = literal(vm: vm_v64, text: &repl_slave_name[0_u64..10_u64]);
+  let slave_flags = num(x: 2.0_f64);
+  raw(vm: vm_v64, table: redis_v65, key: slave_key, value: slave_flags);
+  let replica_key = literal(vm: vm_v64, text: &repl_replica_name[0_u64..12_u64]);
+  let replica_flags = num(x: 2.0_f64);
+  raw(vm: vm_v64, table: redis_v65, key: replica_key, value: replica_flags);
+  let all_key = literal(vm: vm_v64, text: &repl_all_name[0_u64..8_u64]);
+  let all_flags = num(x: 3.0_f64);
+  raw(vm: vm_v64, table: redis_v65, key: all_key, value: all_flags);
+  let version_key = literal(vm: vm_v64, text: &version_name[0_u64..13_u64]);
+  let version_value = literal(vm: vm_v64, text: &version_text[0_u64..6_u64]);
+  raw(vm: vm_v64, table: redis_v65, key: version_key, value: version_value);
+  let version_num_key = literal(vm: vm_v64, text: &version_num_name[0_u64..17_u64]);
+  let version_num = num(x: 4.5928e5_f64);
+  raw(vm: vm_v64, table: redis_v65, key: version_num_key, value: version_num);
   let k_v76 = literal(vm: vm_v64, text: &s_48[0_u64..10_u64]);
   let v_v77 = num(x: 2.0_f64);
   raw(vm: vm_v64, table: redis_v65, key: k_v76, value: v_v77);
@@ -409,24 +459,180 @@ fn install_host(engine: &Engine, env: &Env) -> r: unit writes(engine), writes(en
   return unit;
 }
 
-fn protect(engine: &Engine) -> r: unit writes(engine) {
-  let vm_v85 = &engine^.vm;
-  let meta_v86 = halo::heap::new_table(heap: &vm_v85^.heap, asize: 0_u32, hsize: 1_u32);
-  let index_v87 = literal(vm: vm_v85, text: &s_50[0_u64..7_u64]);
-  let v_v88 = Value::Builtin(id: 4101_u32);
-  raw(vm: vm_v85, table: meta_v86, key: index_v87, value: v_v88);
-  match halo::value::tab_of(v: meta_v86) {
-    NoHandle() => {
+fn push_value(out: &Box<Slots<Value>>, value: Value) -> r: unit writes(out) {
+  let cap = out^.inner.cap;
+  if out^.inner.len == cap {
+    let twice = cap +sat cap;
+    let target = imax(twice, 16_u64);
+    if target > cap {
+      grow(cell: out, capacity: target);
     }
-    Handle(h: mh_v89) => {
-      let g_v90 = cvt::<u32, u64>(vm_v85^.globals);
-      if g_v90 < vm_v85^.heap.tables.inner.len {
-        set vm_v85^.heap.tables.inner[g_v90].payload.meta = mh_v89;
-        set vm_v85^.heap.tables.inner[g_v90].payload.read_only = True();
+  }
+  if out^.inner.len < out^.inner.cap {
+    place_back(window: &out^.inner, value: value);
+  }
+  return unit;
+}
+
+fn protect_reachable(engine: &Engine, root: Value, seen: Value, recurse: Bool) -> r: Bool writes(engine) {
+  doc "Marks root and every table reachable from it through table values and metatables read-only, as Redis 7.2.16's luaSetTableProtectionRecursively does. Each table is expanded once, only after it is recorded in seen, a host table whose keys are the tables already marked, which stops cycles such as _G._G and is shared between walks. Keys are not followed, as Redis follows only values. Each table's traversal records the keys table_next returned in a fresh host table and stops at the first repeat, so the walk ends after at most one step per stored key even when a table's hash invariants are broken, as when the collector has freed a key still in use; the repeat is refused. A false recurse marks only root, as a negative control. False when a call is refused or a traversal repeats a key.";
+  let ok = True();
+  let pending = box_slots_new::<Value>(capacity: 0_u64);
+  push_value(out: &pending, value: root);
+  let yes = Value::True();
+  loop {
+    if pending.inner.len == 0_u64 {
+      break;
+    }
+    let t = take_back(window: &pending.inner);
+    let marked = halo::embed::table_get(engine: engine, table: seen, key: t);
+    if halo::embed::truthy(value: marked) {
+      continue;
+    }
+    match halo::embed::table_set(engine: engine, table: seen, key: t, value: yes) {
+      Ok(..) => {
+      }
+      Err(..) => {
+        set ok = False();
+        continue;
+      }
+    }
+    match halo::embed::set_read_only(engine: engine, table: t) {
+      Ok(..) => {
+      }
+      Err(..) => {
+        set ok = False();
+      }
+    }
+    if bnot(recurse) {
+      continue;
+    }
+    let key = Value::Nil();
+    let returned = halo::embed::new_table(engine: engine, asize: 0_u32, hsize: 0_u32);
+    loop {
+      match halo::embed::table_next(engine: engine, table: t, key: key) {
+        Err(..) => {
+          set ok = False();
+          break;
+        }
+        Ok(value: next) => {
+          match next {
+            None() => {
+              break;
+            }
+            Some(value: pair) => {
+              set key = pair.key;
+              let repeated = halo::embed::table_get(engine: engine, table: returned, key: key);
+              if halo::embed::truthy(value: repeated) {
+                set ok = False();
+                break;
+              }
+              match halo::embed::table_set(engine: engine, table: returned, key: key, value: yes) {
+                Ok(..) => {
+                }
+                Err(..) => {
+                  set ok = False();
+                  break;
+                }
+              }
+              let tag = halo::embed::kind(value: pair.val);
+              if tag == 4_u8 {
+                push_value(out: &pending, value: pair.val);
+              }
+            }
+          }
+        }
+      }
+    }
+    let meta = halo::embed::metatable_of(engine: engine, value: t);
+    let meta_tag = halo::embed::kind(value: meta);
+    if meta_tag == 4_u8 {
+      push_value(out: &pending, value: meta);
+    }
+  }
+  return ok;
+}
+
+fn protect(engine: &Engine, globals_read_only: Bool, strings_read_only: Bool, recurse: Bool) -> r: Bool writes(engine) {
+  doc "Protects the script environment as Redis 7.2.16's scriptingInit does, through the embedding interface: globals get an __index that rejects undeclared names, then the globals table and every table reachable from it, metatables included, become read-only, then so do the metatables of the basic types (only strings have one) and the tables reachable from them. KEYS and ARGV are left out of the walk and stay writable, as Redis installs them per call after protecting the environment. A false flag skips the walk from the globals, or the walk from the basic types' metatables, or (recurse) every step of both walks past their roots, as a negative control. False when a call is refused.";
+  let ok = True();
+  let rejecting_v85 = halo::embed::new_table(engine: engine, asize: 0_u32, hsize: 1_u32);
+  let index_v87 = halo::embed::intern(engine: engine, bytes: &s_50[0_u64..7_u64]);
+  let v_v88 = Value::Builtin(id: 4101_u32);
+  let globals_v89 = Value::Tab(h: engine^.vm.globals);
+  match halo::embed::table_set(engine: engine, table: rejecting_v85, key: index_v87, value: v_v88) {
+    Ok(..) => {
+    }
+    Err(..) => {
+      set ok = False();
+    }
+  }
+  match halo::embed::set_metatable(engine: engine, table: globals_v89, meta: rejecting_v85) {
+    Ok(..) => {
+    }
+    Err(..) => {
+      set ok = False();
+    }
+  }
+  let nil = Value::Nil();
+  let keys_key = halo::embed::intern(engine: engine, bytes: &keys_name[0_u64..4_u64]);
+  let argv_key = halo::embed::intern(engine: engine, bytes: &argv_name[0_u64..4_u64]);
+  let keys = halo::embed::table_get(engine: engine, table: globals_v89, key: keys_key);
+  let argv = halo::embed::table_get(engine: engine, table: globals_v89, key: argv_key);
+  match halo::embed::table_set(engine: engine, table: globals_v89, key: keys_key, value: nil) {
+    Ok(..) => {
+    }
+    Err(..) => {
+      set ok = False();
+    }
+  }
+  match halo::embed::table_set(engine: engine, table: globals_v89, key: argv_key, value: nil) {
+    Ok(..) => {
+    }
+    Err(..) => {
+      set ok = False();
+    }
+  }
+  let seen = halo::embed::new_table(engine: engine, asize: 0_u32, hsize: 0_u32);
+  if globals_read_only {
+    let walked = protect_reachable(engine: engine, root: globals_v89, seen: seen, recurse: recurse);
+    if bnot(walked) {
+      set ok = False();
+    }
+  }
+  if strings_read_only {
+    let samples = array_filled::<Value, 5>(value: nil);
+    set samples[1_u64] = Value::False();
+    set samples[2_u64] = num(x: 0.0_f64);
+    set samples[3_u64] = index_v87;
+    set samples[4_u64] = v_v88;
+    for (i in 0_u64..5_u64) {
+      let sample = samples[i];
+      let meta = halo::embed::metatable_of(engine: engine, value: sample);
+      let tag = halo::embed::kind(value: meta);
+      if tag == 4_u8 {
+        let walked = protect_reachable(engine: engine, root: meta, seen: seen, recurse: recurse);
+        if bnot(walked) {
+          set ok = False();
+        }
       }
     }
   }
-  return unit;
+  match halo::embed::table_set(engine: engine, table: globals_v89, key: keys_key, value: keys) {
+    Ok(..) => {
+    }
+    Err(..) => {
+      set ok = False();
+    }
+  }
+  match halo::embed::table_set(engine: engine, table: globals_v89, key: argv_key, value: argv) {
+    Ok(..) => {
+    }
+    Err(..) => {
+      set ok = False();
+    }
+  }
+  return ok;
 }
 
 fn read_source(factory: &HandleFactory, input: &InputStream, source: &Box<Slots<u8>>) -> success: Bool writes(factory), writes(input), writes(source) waits {
@@ -470,7 +676,11 @@ fn main(inputs: Inputs) -> status: ExitStatus pure waits {
   let omit_suspended_root = False();
   let isolate_frames = False();
   let recover = False();
+  let globals_read_only = True();
+  let strings_read_only = True();
+  let readonly_recursion = True();
   let omit_refresh = 0_u8;
+  let double_text_mode = False();
   let positional = 0_u64;
   for (index in 1_u64..modes) {
     if argument_is(args: &args_v99, index: index, text: &stress_option[0_u64..11_u64]) {
@@ -483,12 +693,20 @@ fn main(inputs: Inputs) -> status: ExitStatus pure waits {
       set isolate_frames = True();
     } else if argument_is(args: &args_v99, index: index, text: &recovery_option[0_u64..17_u64]) {
       set recover = True();
+    } else if argument_is(args: &args_v99, index: index, text: &global_readonly_option[0_u64..22_u64]) {
+      set globals_read_only = False();
+    } else if argument_is(args: &args_v99, index: index, text: &string_readonly_option[0_u64..22_u64]) {
+      set strings_read_only = False();
+    } else if argument_is(args: &args_v99, index: index, text: &recursion_readonly_option[0_u64..25_u64]) {
+      set readonly_recursion = False();
     } else if argument_is(args: &args_v99, index: index, text: &pin_refresh_option[0_u64..18_u64]) {
       set omit_refresh = 1_u8;
     } else if argument_is(args: &args_v99, index: index, text: &compile_refresh_option[0_u64..22_u64]) {
       set omit_refresh = 2_u8;
     } else if argument_is(args: &args_v99, index: index, text: &unpin_refresh_option[0_u64..20_u64]) {
       set omit_refresh = 3_u8;
+    } else if argument_is(args: &args_v99, index: index, text: &double_text_option[0_u64..13_u64]) {
+      set double_text_mode = True();
     } else {
       set positional = positional +sat 1_u64;
     }
@@ -499,6 +717,23 @@ fn main(inputs: Inputs) -> status: ExitStatus pure waits {
   }
   if positional > 2_u64 {
     return smoke();
+  }
+  if double_text_mode {
+    let records = box_slots_new::<u8>(capacity: 0_u64);
+    let loaded = read_source(factory: &factory_v103, input: &input_v104, source: &records);
+    if bnot(loaded) {
+      return std::process::exit_status(code: 2_u8);
+    }
+    let lines = box_slots_new::<u8>(capacity: 0_u64);
+    let whole = double_text_lines(records: &records, out: &lines);
+    if bnot(whole) {
+      return std::process::exit_status(code: 2_u8);
+    }
+    let sent = write_bytes(factory: &factory_v103, output: &output_v101, bytes: &lines);
+    if bnot(sent) {
+      return std::process::exit_status(code: 2_u8);
+    }
+    return std::process::exit_status(code: 0_u8);
   }
   let source_v109 = box_slots_new::<u8>(capacity: 0_u64);
   let read_v110 = read_source(factory: &factory_v103, input: &input_v104, source: &source_v109);
@@ -556,7 +791,10 @@ fn main(inputs: Inputs) -> status: ExitStatus pure waits {
       }
     }
   }
-  protect(engine: &engine_v114);
+  let protected_env = protect(engine: &engine_v114, globals_read_only: globals_read_only, strings_read_only: strings_read_only, recurse: readonly_recursion);
+  if bnot(protected_env) {
+    return std::process::exit_status(code: 4_u8);
+  }
   let primary_start = split_v112 + 1_u64;
   let primary_end = n_v111;
   let passes = 1_u64;
@@ -608,9 +846,7 @@ fn main(inputs: Inputs) -> status: ExitStatus pure waits {
               }
               Error() => {
                 let line = halo::embed::error_line(engine: &engine_v114);
-                let error_v133 = halo::embed::error_value(engine: &engine_v114);
-                let locate = readonly_message(vm: &engine_v114.vm, value: error_v133);
-                let formatted = format_redis_error(engine: &engine_v114, source: &source_v109.inner[start_v124..end_v124], line: line, locate: locate);
+                let formatted = format_redis_error(engine: &engine_v114, source: &source_v109.inner[start_v124..end_v124], line: line);
                 let formatted_len = formatted.inner.len;
                 let error_reply = literal(vm: &engine_v114.vm, text: &formatted.inner[0_u64..formatted_len]);
                 text_bytes(out: &out_v118, bytes: &s_39[0_u64..24_u64]);
@@ -669,6 +905,18 @@ const suspended_option: Array<u8, 19> = "--collect-suspended";
 const recovery_option: Array<u8, 17> = "--memory-recovery";
 
 const stress_option: Array<u8, 11> = "--gc-stress";
+
+const global_readonly_option: Array<u8, 22> = "--omit-global-readonly";
+
+const string_readonly_option: Array<u8, 22> = "--omit-string-readonly";
+
+const recursion_readonly_option: Array<u8, 25> = "--omit-readonly-recursion";
+
+const keys_name: Array<u8, 4> = "KEYS";
+
+const argv_name: Array<u8, 4> = "ARGV";
+
+const double_text_option: Array<u8, 13> = "--double-text";
 
 const stats_prefix: Array<u8, 15> = "{\"collections\":";
 

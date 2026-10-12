@@ -104,6 +104,12 @@ public fn table_next(engine: &Engine, table: Value, key: Value) -> r: Result<Opt
 
 public fn set_global(engine: &Engine, name: &[u8], value: Value) -> r: Result<unit, TableError> reads(name), writes(engine) doc "Host assignment to globals, bypassing readonly protection.";
 
+public fn set_metatable(engine: &Engine, table: Value, meta: Value) -> r: Result<unit, TableError> writes(engine) doc "Host assignment of a table's metatable, bypassing read_only and __metatable as table_set bypasses them; meta nil clears it. InvalidTable when table is not a live table or meta is neither a live table nor nil. The metatable lives as long as the table; call while the engine is idle or suspended.";
+
+public fn metatable_of(engine: &Engine, value: Value) -> r: Value reads(engine) doc "The metatable getmetatable reads before consulting __metatable: a table's own, the shared string metatable for a string, otherwise nil.";
+
+public fn set_read_only(engine: &Engine, table: Value) -> r: Result<unit, TableError> writes(engine) doc "Marks a table read-only for good: script assignment, rawset and setmetatable on it raise Attempt to modify a readonly table, while table_set, set_global and set_metatable still write it. The host decides which tables to protect. InvalidTable when table is not a live table.";
+
 public fn error_value(engine: &Engine) -> r: Value reads(engine) doc "Returns the original Lua error object.";
 
 public fn format_error(engine: &Engine, line: u64) -> r: Box<Slots<u8>> reads(engine) doc "Locates the error as luaL_where does, chunk:LINE: msg, with the chunk name the script was compiled under and a host-supplied line; a message already located in that chunk is kept as it is, a non-string error reads (error object is not a string), and zero means no known line.";

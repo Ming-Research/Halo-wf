@@ -1,0 +1,53 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "bulk",
+      "bytes": "getfenv"
+    },
+    {
+      "type": "bulk",
+      "bytes": "false"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:9: Script attempted to access nonexistent global variable 'getfenv'"
+    },
+    {
+      "type": "bulk",
+      "bytes": "nil"
+    },
+    {
+      "type": "bulk",
+      "bytes": "setfenv"
+    },
+    {
+      "type": "bulk",
+      "bytes": "false"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:10: Script attempted to access nonexistent global variable 'setfenv'"
+    },
+    {
+      "type": "bulk",
+      "bytes": "nil"
+    },
+    {
+      "type": "bulk",
+      "bytes": "newproxy"
+    },
+    {
+      "type": "bulk",
+      "bytes": "false"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:11: Script attempted to access nonexistent global variable 'newproxy'"
+    },
+    {
+      "type": "bulk",
+      "bytes": "nil"
+    }
+  ]
+}

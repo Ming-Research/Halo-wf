@@ -1,17 +1,21 @@
-# Records the oracle corpus on the reference platform: Redis 7.0.15, built
+# Records the oracle corpus on the reference platform: Redis 7.2.16, built
 # from source with its bundled Lua, on x86-64 Linux with glibc (AGENTS.md,
 # "The reference"). It compares the stored replies with that server, then
-# records every reply again and keeps both results and their difference as
-# an artifact; a person reviews the difference and commits the replies.
+# records every reply again, and the table of double texts
+# (research/experiments/redis-double-text), and keeps the results and their
+# differences from the committed files as an artifact; a person reviews the
+# differences and commits the replies and the table.
 #
-# A change to the corpus, its runner or this file runs it, as does a manual
-# dispatch on the default branch. It never writes to the repository.
+# A change to the corpus, the table, their recorders or this file runs it, as
+# does a manual dispatch on the default branch. It never writes to the
+# repository.
 name: oracle-reference
 
 on:
   push:
     paths:
       - research/experiments/halo-oracle/**
+      - research/experiments/redis-double-text/**
       - .github/workflows/oracle-reference.yml
   workflow_dispatch:
 
@@ -33,18 +37,18 @@ jobs:
 
       # The release tarball is checked against the hash Redis publishes in its
       # redis-hashes repository, an independent source.
-      - name: Build Redis 7.0.15 from source
+      - name: Build Redis 7.2.16 from source
         run: |
           set -o pipefail
           mkdir -p build/redis && cd build/redis
-          curl -fsSL --retry 3 -o redis-7.0.15.tar.gz https://download.redis.io/releases/redis-7.0.15.tar.gz
+          curl -fsSL --retry 3 -o redis-7.2.16.tar.gz https://download.redis.io/releases/redis-7.2.16.tar.gz
           expected=$(curl -fsSL --retry 3 https://raw.githubusercontent.com/redis/redis-hashes/master/README \
-            | awk '$2 == "redis-7.0.15.tar.gz" && $3 == "sha256" { print $4 }')
+            | awk '$2 == "redis-7.2.16.tar.gz" && $3 == "sha256" { print $4 }')
           test -n "$expected"
-          echo "$expected  redis-7.0.15.tar.gz" | sha256sum -c -
-          tar -xzf redis-7.0.15.tar.gz
-          make -C redis-7.0.15 -j"$(nproc)" > make.log 2>&1 || { tail -50 make.log; exit 1; }
-          redis-7.0.15/src/redis-server --version
+          echo "$expected  redis-7.2.16.tar.gz" | sha256sum -c -
+          tar -xzf redis-7.2.16.tar.gz
+          make -C redis-7.2.16 -j"$(nproc)" > make.log 2>&1 || { tail -50 make.log; exit 1; }
+          redis-7.2.16/src/redis-server --version
           uname -m
           ldd --version | head -1
 
@@ -55,16 +59,26 @@ jobs:
           mkdir -p build/oracle
           status=0
           research/experiments/halo-oracle/run.sh --check \
-            --server "$PWD/build/redis/redis-7.0.15/src/redis-server" 2>&1 | tee build/oracle/check.log || status=$?
+            --server "$PWD/build/redis/redis-7.2.16/src/redis-server" 2>&1 | tee build/oracle/check.log || status=$?
           echo "comparison exit status: $status" | tee -a build/oracle/check.log
 
       - name: Record every reply again
         run: |
           research/experiments/halo-oracle/run.sh --generate \
-            --server "$PWD/build/redis/redis-7.0.15/src/redis-server" --output "$PWD/build/oracle/expected"
+            --server "$PWD/build/redis/redis-7.2.16/src/redis-server" --output "$PWD/build/oracle/expected"
           diff -r research/experiments/halo-oracle/expected build/oracle/expected > build/oracle/expected.diff || true
           echo "files that differ: $(grep -c '^diff -r' build/oracle/expected.diff || true)"
           cat build/oracle/expected.diff
+
+      - name: Record the double-text table again
+        run: |
+          python3 -B research/experiments/redis-double-text/record.py \
+            --server "$PWD/build/redis/redis-7.2.16/src/redis-server" \
+            --output "$PWD/build/oracle/redis-double-text/redis-7.2.16.tsv"
+          diff research/experiments/redis-double-text/redis-7.2.16.tsv \
+            build/oracle/redis-double-text/redis-7.2.16.tsv > build/oracle/redis-double-text/table.diff || true
+          echo "table lines that differ: $(grep -c '^[<>]' build/oracle/redis-double-text/table.diff || true)"
+          head -200 build/oracle/redis-double-text/table.diff
 
       - uses: actions/upload-artifact@v4
         if: always()

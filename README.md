@@ -30,10 +30,12 @@ a host binds it by path:
 - [lib/json](lib/json/): a pull decoder and a structured writer for JSON.
 - [lib/msgpack](lib/msgpack/): a pull decoder and an append writer for
   MessagePack.
+- [lib/fpconv](lib/fpconv/): a port of fpconv's Grisu2 `dtoa`, the
+  conversion Redis writes a double with; hosts share it.
 
 ## Compatibility target
 
-Halo's behavior is judged against Redis 7.0.15 and its bundled Lua 5.1 (PUC
+Halo's behavior is judged against Redis 7.2.16 and its bundled Lua 5.1 (PUC
 Lua 5.1.5 with Redis's patches) on x86-64 Linux with glibc. The oracle corpus
 in [research/experiments/halo-oracle](research/experiments/halo-oracle/)
 records that reference's exact replies to scripts covering Lua 5.1's core
@@ -56,8 +58,9 @@ make check
 
 `make check` is the gate every change to `main` passes in CI: it builds the
 end-to-end test program and compares the oracle corpus at three execution
-budgets, with the collector run normally and at every safepoint, and runs the
-collector's root controls, the research hosts and the number, JSON and
+budgets, with the collector run normally and at every safepoint, compares the
+test host's double texts with a table measured on redis-server 7.2.16, and runs
+the collector's root controls, the research hosts and the number, JSON and
 MessagePack comparisons. CI runs these checks as eight parallel jobs, split
 along the Makefile's `check-*` targets so that no job builds more than three
 Whitefoot programs, nor more than one end-to-end test program; `make check`

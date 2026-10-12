@@ -1,0 +1,173 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "bulk",
+      "bytes": "direct/0:m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "direct/1:user_script:13: m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "direct/2:user_script:14: m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "direct/3:m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "direct/4:user_script:8: m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "direct/5:user_script:33: m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "direct/50:m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "pcall/0:m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "pcall/1:user_script:16: m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "pcall/2:m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "pcall/3:user_script:8: m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "pcall/4:user_script:34: m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "pcall/5:m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "pcall/50:m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "sort/0:m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "sort/1:user_script:18: m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "sort/2:m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "sort/3:user_script:19: m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "sort/4:m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "sort/5:user_script:8: m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "sort/50:m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "gsub/0:m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "gsub/1:user_script:22: m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "gsub/2:m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "gsub/3:user_script:23: m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "gsub/4:m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "gsub/5:user_script:8: m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "gsub/50:m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "index/0:m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "index/1:user_script:26: m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "index/2:user_script:27: m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "index/3:m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "index/4:user_script:8: m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "index/5:user_script:37: m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "index/50:m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "add/0:m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "add/1:user_script:30: m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "add/2:user_script:31: m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "add/3:m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "add/4:user_script:8: m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "add/5:user_script:38: m"
+    },
+    {
+      "type": "bulk",
+      "bytes": "add/50:m"
+    }
+  ]
+}

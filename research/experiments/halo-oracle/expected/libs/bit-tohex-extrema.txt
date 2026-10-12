@@ -1,0 +1,17 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "bulk",
+      "bytes": "000000FF"
+    },
+    {
+      "type": "bulk",
+      "bytes": "000000FF"
+    },
+    {
+      "type": "bulk",
+      "bytes": "DEADBEEF"
+    }
+  ]
+}

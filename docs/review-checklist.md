@@ -1,6 +1,6 @@
 # Review checklist
 
-- **C1 — Reference.** Expected results come from Redis 7.0.15's recorded
+- **C1 — Reference.** Expected results come from Redis 7.2.16's recorded
   replies on x86-64 Linux, PUC Lua 5.1, or the JSON and MessagePack
   specifications.
 - **C2 — Lua and the host.** The change implements Lua 5.1's rule as the

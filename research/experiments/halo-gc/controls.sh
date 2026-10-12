@@ -4,7 +4,12 @@
 # root is hidden from the collector or one marking call is removed: a root of
 # mark_roots (lib/halo/vm/collect.wf) or an execution field of
 # mark_thread_contents (lib/halo/heap/gc.wf), which traces the installed
-# execution after collect_if_due parks it in its thread cell. An expected failure must be detected:
+# execution after collect_if_due parks it in its thread cell. The same harness
+# runs the test host's protection controls: the oracle scripts global-write,
+# string-metatable-readonly and readonly-library-tables pass, and fail once the
+# host leaves the globals table or the shared string metatable writable, or
+# marks only those two tables and none reachable from them. An expected
+# failure must be detected:
 # every FAIL line must be a reply difference (any reason halo-e2e/run.py's
 # reason() gives, or a budget-dependent reply) or the engine's own setup
 # compile (3), setup runtime (4), budget (5) or host-stop (6) exit; a crash by
@@ -17,8 +22,9 @@
 # ROOTS_PART selects what runs, so CI can run the parts as parallel jobs. Every
 # check belongs to exactly one part, and the default runs all of them:
 #   all (default)    every part, in the order below
-#   base             the self-tests (run once, in this part) and the four
-#                    non-mutant controls; needs the built e2e test program
+#   base             the self-tests (run once, in this part), the four
+#                    non-mutant root controls and the six protection
+#                    controls; needs the built e2e test program
 #   mutant-<label>   one mutant's build and its control, for each label of
 #                    `mutants` below; it builds its own program and takes only
 #                    the scratch directory:
@@ -35,7 +41,7 @@ set -u
 mutants="open-upvalues frame-closure constants"
 parts=base
 for m in $mutants; do parts="$parts mutant-$m"; done
-base_controls=4
+base_controls=10
 mutant_controls=1
 
 part=${ROOTS_PART:-all}
@@ -215,6 +221,12 @@ if runs base; then
   expect 0 frame-sole-root compare --binary "$binary" --cases "$cases" --filter gc/frame-closure --budgets 1 --gc-stress --isolate-frames
   expect 0 parked-sole-root compare --binary "$binary" --cases "$cases" --filter gc/suspended-stack --budgets 1 --gc-stress --collect-suspended
   expect 1 parked-root-hidden compare --binary "$binary" --cases "$cases" --filter gc/suspended-stack --budgets 1 --gc-stress --collect-suspended --omit-suspended-root
+  expect 0 globals-read-only compare --binary "$binary" --filter redis-api/global-write --budgets 1,7,1000
+  expect 1 globals-writable compare --binary "$binary" --filter redis-api/global-write --budgets 1,7,1000 --omit-global-readonly
+  expect 0 string-metatable-read-only compare --binary "$binary" --filter redis-api/string-metatable-readonly --budgets 1,7,1000
+  expect 1 string-metatable-writable compare --binary "$binary" --filter redis-api/string-metatable-readonly --budgets 1,7,1000 --omit-string-readonly
+  expect 0 library-tables-read-only compare --binary "$binary" --filter redis-api/readonly-library-tables --budgets 1,7,1000
+  expect 1 library-tables-writable compare --binary "$binary" --filter redis-api/readonly-library-tables --budgets 1,7,1000 --omit-readonly-recursion
 fi
 
 # One mutant part: build the mutant without the given marking call, then run

@@ -210,6 +210,9 @@ def main():
     parser.add_argument('--verify-memory', action='store_true', help='check 64 MiB exhaustion and a following script on the same engine')
     parser.add_argument('--isolate-frames', action='store_true', help='remove redundant frame function-slot aliases at budget checkpoints for sole-root testing')
     parser.add_argument('--omit-suspended-root', action='store_true', help='negative control: hide the parked snapshot only during the suspended collection probe')
+    parser.add_argument('--omit-global-readonly', action='store_true', help='negative control: skip the read-only walk from the globals table')
+    parser.add_argument('--omit-string-readonly', action='store_true', help='negative control: skip the read-only walk from the shared string metatable')
+    parser.add_argument('--omit-readonly-recursion', action='store_true', help='negative control: mark only the walks\' roots, the globals table and the string metatable, read-only')
     parser.add_argument('--collect-suspended', action='store_true', help='probe collection while callback stack is parked, before resume')
     parser.add_argument('--gc-stress', action='store_true', help='force full collection at every collector safepoint')
     parser.add_argument('--cases', type=Path, default=ORACLE, help='case root with scripts/GROUP/*.lua and expected/GROUP/*.txt')
@@ -241,7 +244,8 @@ def main():
         if required != present:
             raise ValueError('missing or surplus baseline files')
     source_files = sorted((ROOT / 'lib/halo').rglob('*.wf')) + sorted((ROOT / 'lib/halo').rglob('*.wfm'))
-    source_files += [ROOT / 'lib/halo/modules.wfg', HERE / 'modules.wfg', HERE / 'run.py', HERE.parent / 'compiler_cache.py']
+    source_files += sorted((ROOT / 'lib/fpconv').rglob('*.wf')) + sorted((ROOT / 'lib/fpconv').rglob('*.wfm'))
+    source_files += [ROOT / 'lib/halo/modules.wfg', ROOT / 'lib/fpconv/modules.wfg', HERE / 'modules.wfg', HERE / 'run.py', HERE.parent / 'compiler_cache.py']
     source_files += sorted((HERE / 'test').glob('*'))
     source_files += cases + [case_root / 'expected' / p.relative_to(case_root / 'scripts').with_suffix('.txt') for p in cases]
     digest = hashlib.sha256()
@@ -250,8 +254,9 @@ def main():
     revision = subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True, capture_output=True, check=True).stdout.strip()
     report = ['# Halo end-to-end comparison', '',
               f'Local parent revision: `{revision}`. Source digest: `{digest.hexdigest()}`.',
-              f'GC stress: {args.gc_stress}; suspended checkpoint probe: {args.collect_suspended}; frame alias isolation: {args.isolate_frames}; parked root omitted: {args.omit_suspended_root}; case timeout: {args.case_timeout} seconds.',
-              'The digest includes every Halo module, the graph, host and runner; it identifies uncommitted source bytes too.', '']
+              f'GC stress: {args.gc_stress}; suspended checkpoint probe: {args.collect_suspended}; frame alias isolation: {args.isolate_frames}; parked root omitted: {args.omit_suspended_root}; '
+              f'globals writable: {args.omit_global_readonly}; string metatable writable: {args.omit_string_readonly}; reachable tables writable: {args.omit_readonly_recursion}; case timeout: {args.case_timeout} seconds.',
+              'The digest includes every Halo and fpconv module, the graph, host and runner; it identifies uncommitted source bytes too.', '']
     with tempfile.TemporaryDirectory(prefix='halo-e2e-', dir=args.scratch_root) as temporary:
         scratch = Path(temporary)
         binary = args.binary.resolve() if args.binary else scratch / 'test'
@@ -291,6 +296,12 @@ def main():
                     extra += ['--collect-suspended']
                 if args.omit_suspended_root:
                     extra += ['--omit-suspended-root']
+                if args.omit_global_readonly:
+                    extra += ['--omit-global-readonly']
+                if args.omit_string_readonly:
+                    extra += ['--omit-string-readonly']
+                if args.omit_readonly_recursion:
+                    extra += ['--omit-readonly-recursion']
                 collections = None
                 try:
                     result, seconds = run([str(binary)] + extra, timeout=args.case_timeout, input=fixture(source))
@@ -330,7 +341,7 @@ def main():
         for case, budget, status, seconds, collections, why in rows:
             report += [f'| {case} | {budget} | {status} | {seconds:.4f} | {collections} | {why.replace("|", "&#124;").replace(chr(0), "<NUL>")} |']
         report += ['', 'No scripts or expected replies were changed. No network or Redis server was used.',
-                   ('The reference is the stored Redis 7.0.15 RESP2 corpus.' if case_root == ORACLE.resolve()
+                   ('The reference is the stored Redis 7.2.16 RESP2 corpus.' if case_root == ORACLE.resolve()
                     else 'The reference is the selected local cases and their independently stated expected replies.'),
                    'Budget comparisons use fresh stores. They compare replies; atomic kill/restart and host Stop store preservation require separate checks.', '']
         text = '\n'.join(report)

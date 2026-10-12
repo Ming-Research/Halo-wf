@@ -56,17 +56,395 @@ fn arg(stack: &Box<Slots<Value>>, func: u64, argc: u64, index: u64) -> r: Value 
   return Value::Nil();
 }
 
-fn string_arg(vm: &Vm, v: Value) -> r: Value writes(vm) {
+fn whole_integer(x: f64) -> r: Option<i64> pure {
+  doc "Redis 7.2.16's double2ll: an integral value no larger in magnitude than LLONG_MAX/2 (2^62 as a double) as its integer, otherwise None. NaN gives None and negative zero gives 0, as in Redis.";
+  if flt(x, -4.611686018427388e18_f64) {
+    return None<i64>();
+  }
+  if fgt(x, 4.611686018427388e18_f64) {
+    return None<i64>();
+  }
+  let whole = ftrunc(x);
+  if fne(whole, x) {
+    return None<i64>();
+  }
+  if cvt.defined::<f64, i64>(whole) {
+    let integer = cvt::<f64, i64>(whole);
+    return Some<i64>(value: integer);
+  }
+  return None<i64>();
+}
+
+fn fpconv_text(out: &Box<Slots<u8>>, x: f64) -> r: unit writes(out) {
+  doc "Appends fpconv_dtoa's text of x, written by the fpconv package: the minus of a set sign bit first, a NaN's included.";
+  let bytes = array_filled::<u8, 32>(value: 0_u8);
+  let count = fpconv::dtoa::format_double(value: x, out: &bytes[0_u64..32_u64]);
+  text_bytes(out: out, bytes: &bytes[0_u64..count]);
+  return unit;
+}
+
+fn append_argument_text(out: &Box<Slots<u8>>, x: f64) -> r: unit writes(out) {
+  doc "Appends the text a Lua number becomes as a redis.call argument, after Redis 7.2.16's luaArgsToRedisArgv: an integer when double2ll accepts it, otherwise fpconv_dtoa's text with no other rule, so a negative NaN keeps its sign (0/0 is -nan on the reference platform).";
+  match whole_integer(x: x) {
+    Some(value: integer) => {
+      append_integer(out: out, value: integer);
+      return unit;
+    }
+    None() => {
+    }
+  }
+  fpconv_text(out: out, x: x);
+  return unit;
+}
+
+fn append_double_text(out: &Box<Slots<u8>>, x: f64) -> r: unit writes(out) {
+  doc "Appends a RESP2 double reply's text, after Redis 7.2.16's d2string, which writes three cases itself before its integer rule and fpconv_dtoa: nan for every NaN whatever its sign, inf or -inf for an infinity, and 0 or -0 for a zero by its sign. Any other value is written as a redis.call argument's text.";
+  if fne(x, x) {
+    text_bytes(out: out, bytes: &nan_word[0_u64..3_u64]);
+    return unit;
+  }
+  let zero = feq(x, 0.0_f64);
+  let magnitude = fabs(x);
+  let infinite = fgt(magnitude, 1.7976931348623157e308_f64);
+  let edge = bor(zero, infinite);
+  if edge {
+    let value_bits = reinterpret::<f64, u64>(x);
+    let sign_bit = ishr.wrap(value_bits, 63_u32);
+    if sign_bit == 1_u64 {
+      push(out: out, byte: 45_u8);
+    }
+    if zero {
+      push(out: out, byte: 48_u8);
+    } else {
+      text_bytes(out: out, bytes: &inf_word[0_u64..3_u64]);
+    }
+    return unit;
+  }
+  append_argument_text(out: out, x: x);
+  return unit;
+}
+
+fn argument_text(vm: &Vm, x: f64) -> r: Value writes(vm) {
+  doc "A Lua number's text as a redis.call argument (see append_argument_text).";
+  let bytes = box_slots_new::<u8>(capacity: 0_u64);
+  append_argument_text(out: &bytes, x: x);
+  let length = bytes.inner.len;
+  return literal(vm: vm, text: &bytes.inner[0_u64..length]);
+}
+
+fn double_text(vm: &Vm, x: f64) -> r: Value writes(vm) {
+  doc "A RESP2 double reply's text (see append_double_text).";
+  let bytes = box_slots_new::<u8>(capacity: 0_u64);
+  append_double_text(out: &bytes, x: x);
+  let length = bytes.inner.len;
+  return literal(vm: vm, text: &bytes.inner[0_u64..length]);
+}
+
+fn double_text_lines(records: &Box<Slots<u8>>, out: &Box<Slots<u8>>) -> whole: Bool reads(records), writes(out) {
+  doc "The --double-text mode: for each 8-byte little-endian binary64 bit pattern in records, one line holding its RESP2 double reply text, a tab and its redis.call argument text. False when records do not divide into 8-byte patterns.";
+  let total = records^.inner.len;
+  let leftover = total % 8_u64;
+  if leftover != 0_u64 {
+    return False();
+  }
+  let patterns = total / 8_u64;
+  for (pattern in 0_u64..patterns) {
+    let first = pattern *wrap 8_u64;
+    let pattern_bits = 0_u64;
+    for (offset in 0_u64..8_u64) {
+      let position = first +wrap offset;
+      if position < records^.inner.len {
+        let byte = records^.inner[position];
+        let wide = cvt::<u8, u64>(byte);
+        let distance = offset *wrap 8_u64;
+        let amount = cvt.wrap::<u64, u32>(distance);
+        let part = ishl.wrap(wide, amount);
+        set pattern_bits = ior(pattern_bits, part);
+      }
+    }
+    let x = reinterpret::<u64, f64>(pattern_bits);
+    append_double_text(out: out, x: x);
+    push(out: out, byte: 9_u8);
+    append_argument_text(out: out, x: x);
+    push(out: out, byte: 10_u8);
+  }
+  return True();
+}
+
+fn incrbyfloat_text(vm: &Vm, x: f64) -> r: Value writes(vm) {
+  doc "Stands in for the value INCRBYFLOAT stores and replies. Redis 7.2.16 adds in long double and writes the sum with ld2string's human mode: %.17Lf with trailing zeros and a trailing point removed, -0 written 0. This adds in double and writes the argument text: when both precisions give the same integral sum within double2ll's range the digits agree; other sums can differ (0 + 0.1 agrees as 0.1; 1e17 + 1 does not, since long double keeps the 1). Exact text needs long double arithmetic and ld2string's fixed-point digits, which the fpconv package's conversion of a double does not provide.";
+  return argument_text(vm: vm, x: x);
+}
+
+fn lua_string(vm: &Vm, v: Value) -> r: Value writes(vm) {
+  doc "lua_tolstring's conversion, as redis.sha1hex reads its argument: a number becomes Lua's %.14g text, anything else is returned unchanged.";
   match num_of(v: v) {
-    Is(x: n_v5) => {
-      let bytes_v6 = array_filled::<u8, 32>(value: 0_u8);
-      let count_v7 = halo::number::format_number(value: n_v5, out: &bytes_v6[0_u64..32_u64]);
-      return literal(vm: vm, text: &bytes_v6[0_u64..count_v7]);
+    Is(x: lua_number) => {
+      let digits = array_filled::<u8, 32>(value: 0_u8);
+      let written = halo::number::format_number(value: lua_number, out: &digits[0_u64..32_u64]);
+      return literal(vm: vm, text: &digits[0_u64..written]);
     }
     Not() => {
       return v;
     }
   }
+}
+
+fn string_arg(vm: &Vm, v: Value) -> r: Value writes(vm) {
+  doc "A redis.call argument as the command receives it: a number in Redis 7.2.16's argument text, a string unchanged.";
+  match num_of(v: v) {
+    Is(x: n_v5) => {
+      return argument_text(vm: vm, x: n_v5);
+    }
+    Not() => {
+      return v;
+    }
+  }
+}
+
+fn space_byte(b: u8) -> r: Bool pure {
+  doc "C isspace in the C locale: space, tab, line feed, vertical tab, form feed, carriage return.";
+  if b == 32_u8 {
+    return True();
+  }
+  let low = b >= 9_u8;
+  let high = b <= 13_u8;
+  return band(low, high);
+}
+
+fn float_value(vm: &Vm, v: Value) -> r: Option<f64> reads(vm) {
+  doc "Redis 7.2.16's string2ld as INCRBYFLOAT reads its operands: strtold syntax over the whole string, refusing an empty string, a NUL, leading or trailing whitespace and NaN. Two differences remain: Redis reads into long double, this into a double, and so also accepts values past the double range as infinities that Redis refuses or keeps.";
+  match halo::heap::string_of(heap: &vm^.heap, value: v) {
+    None() => {
+    }
+    Some(value: view) => {
+      let h = cvt::<u32, u64>(view.handle);
+      if h < vm^.heap.strings.inner.len {
+        let n = vm^.heap.strings.inner[h].payload.bytes.inner.len;
+        if n > 0_u64 {
+          for (i in 0_u64..n) {
+            if i < vm^.heap.strings.inner[h].payload.bytes.inner.len {
+              if vm^.heap.strings.inner[h].payload.bytes.inner[i] == 0_u8 {
+                return None<f64>();
+              }
+            }
+          }
+          let first = vm^.heap.strings.inner[h].payload.bytes.inner[0_u64];
+          let last_at = n - 1_u64;
+          let last = vm^.heap.strings.inner[h].payload.bytes.inner[last_at];
+          let leading = space_byte(b: first);
+          let trailing = space_byte(b: last);
+          if bor(leading, trailing) {
+            return None<f64>();
+          }
+          match halo::number::str2number(bytes: &vm^.heap.strings.inner[h].payload.bytes.inner[0_u64..n]) {
+            Some(value: x) => {
+              if feq(x, x) {
+                return Some<f64>(value: x);
+              }
+            }
+            None() => {
+            }
+          }
+        }
+      }
+    }
+  }
+  return None<f64>();
+}
+
+fn member_less(vm: &Vm, a: Value, b: Value) -> r: Bool reads(vm) {
+  doc "Byte order of two sorted-set members, as Redis's sdscmp: the first differing byte, then the shorter first.";
+  match halo::heap::string_of(heap: &vm^.heap, value: a) {
+    None() => {
+    }
+    Some(value: view_a) => {
+      match halo::heap::string_of(heap: &vm^.heap, value: b) {
+        None() => {
+        }
+        Some(value: view_b) => {
+          let ha = cvt::<u32, u64>(view_a.handle);
+          let hb = cvt::<u32, u64>(view_b.handle);
+          if ha < vm^.heap.strings.inner.len {
+            if hb < vm^.heap.strings.inner.len {
+              let na = vm^.heap.strings.inner[ha].payload.bytes.inner.len;
+              let nb = vm^.heap.strings.inner[hb].payload.bytes.inner.len;
+              let shorter = imin(na, nb);
+              for (i in 0_u64..shorter) {
+                if i < vm^.heap.strings.inner[ha].payload.bytes.inner.len {
+                  if i < vm^.heap.strings.inner[hb].payload.bytes.inner.len {
+                    let ba = vm^.heap.strings.inner[ha].payload.bytes.inner[i];
+                    let bb = vm^.heap.strings.inner[hb].payload.bytes.inner[i];
+                    if ba != bb {
+                      return ba < bb;
+                    }
+                  }
+                }
+              }
+              return na < nb;
+            }
+          }
+        }
+      }
+    }
+  }
+  return False();
+}
+
+fn zset_before(vm: &Vm, table: Value, a: Value, b: Value) -> r: Bool reads(vm) {
+  doc "Sorted-set order: the lower score first, then the lower member in byte order.";
+  let va = get(vm: vm, table: table, key: a);
+  let vb = get(vm: vm, table: table, key: b);
+  let sa = number(vm: vm, v: va);
+  let sb = number(vm: vm, v: vb);
+  if flt(sa, sb) {
+    return True();
+  }
+  if flt(sb, sa) {
+    return False();
+  }
+  return member_less(vm: vm, a: a, b: b);
+}
+
+fn sort_members(vm: &Vm, table: Value, members: &Box<Slots<Value>>) -> r: unit reads(vm), writes(members) {
+  doc "Insertion sort of a sorted set's members into sorted-set order.";
+  let count = members^.inner.len;
+  if count < 2_u64 {
+    return unit;
+  }
+  for (i in 1_u64..count) {
+    let j = i;
+    loop {
+      if j == 0_u64 {
+        break;
+      }
+      let prev = j - 1_u64;
+      if j >= members^.inner.len {
+        break;
+      }
+      let left = members^.inner[prev];
+      let right = members^.inner[j];
+      if zset_before(vm: vm, table: table, a: right, b: left) {
+        set members^.inner[prev] = right;
+        set members^.inner[j] = left;
+        set j = prev;
+      } else {
+        break;
+      }
+    }
+  }
+  return unit;
+}
+
+fn reply_arguments_valid(argc: u64, v: Value) -> r: Bool pure {
+  doc "redis.error_reply and redis.status_reply take exactly one argument of string type (lua_type, so a number is refused).";
+  if argc != 1_u64 {
+    return False();
+  }
+  return is_string(v: v);
+}
+
+fn error_reply_table(vm: &Vm, argc: u64, v: Value) -> r: Value writes(vm) {
+  doc "Redis 7.2.16's redis.error_reply: with wrong arguments, the error table for ERR wrong number or type of arguments; otherwise luaPushErrorBuff of the string with a leading minus sign ensured. The text ends at its first NUL; after one leading minus sign, the bytes before the first space are the error code and the rest the message, or ERR is the code and all of it the message when there is no space; the message loses carriage returns and line feeds at both ends; the err field is the code, a space and the message.";
+  let valid = reply_arguments_valid(argc: argc, v: v);
+  if bnot(valid) {
+    let refusal = literal(vm: vm, text: &reply_arguments[0_u64..37_u64]);
+    return reply_table(vm: vm, field: &s_30[0_u64..3_u64], v: refusal);
+  }
+  let text = box_slots_new::<u8>(capacity: 0_u64);
+  value_bytes(vm: vm, v: v, out: &text);
+  let n = text.inner.len;
+  let end = n;
+  for (i in 0_u64..n) {
+    if i < text.inner.len {
+      if text.inner[i] == 0_u8 {
+        set end = i;
+        break;
+      }
+    }
+  }
+  let start = 0_u64;
+  if end > 0_u64 {
+    if text.inner.len > 0_u64 {
+      if text.inner[0_u64] == 45_u8 {
+        set start = 1_u64;
+      }
+    }
+  }
+  let space = end;
+  for (j in start..end) {
+    if j < text.inner.len {
+      if text.inner[j] == 32_u8 {
+        set space = j;
+        break;
+      }
+    }
+  }
+  let out = box_slots_new::<u8>(capacity: 0_u64);
+  let first = start;
+  if space < end {
+    if start <= space {
+      if space <= text.inner.len {
+        text_bytes(out: &out, bytes: &text.inner[start..space]);
+      }
+    }
+    push(out: &out, byte: 32_u8);
+    set first = space +sat 1_u64;
+  } else {
+    text_bytes(out: &out, bytes: &redis_err[0_u64..4_u64]);
+  }
+  let last = end;
+  loop {
+    if first >= last {
+      break;
+    }
+    if first >= text.inner.len {
+      break;
+    }
+    let lead = text.inner[first];
+    let lead_cr = lead == 13_u8;
+    let lead_lf = lead == 10_u8;
+    if bor(lead_cr, lead_lf) {
+      set first = first +sat 1_u64;
+    } else {
+      break;
+    }
+  }
+  loop {
+    if last <= first {
+      break;
+    }
+    let before = last - 1_u64;
+    if before >= text.inner.len {
+      break;
+    }
+    let tail = text.inner[before];
+    let tail_cr = tail == 13_u8;
+    let tail_lf = tail == 10_u8;
+    if bor(tail_cr, tail_lf) {
+      set last = before;
+    } else {
+      break;
+    }
+  }
+  if first < last {
+    if last <= text.inner.len {
+      text_bytes(out: &out, bytes: &text.inner[first..last]);
+    }
+  }
+  let count = out.inner.len;
+  let message = literal(vm: vm, text: &out.inner[0_u64..count]);
+  return reply_table(vm: vm, field: &s_30[0_u64..3_u64], v: message);
+}
+
+fn status_reply_table(vm: &Vm, argc: u64, v: Value) -> r: Value writes(vm) {
+  doc "Redis 7.2.16's redis.status_reply: the error table for ERR wrong number or type of arguments, or a table whose ok field is the string unchanged.";
+  let valid = reply_arguments_valid(argc: argc, v: v);
+  if bnot(valid) {
+    let refusal = literal(vm: vm, text: &reply_arguments[0_u64..37_u64]);
+    return reply_table(vm: vm, field: &s_30[0_u64..3_u64], v: refusal);
+  }
+  return reply_table(vm: vm, field: &s_5[0_u64..2_u64], v: v);
 }
 
 fn number(vm: &Vm, v: Value) -> r: f64 reads(vm) {
@@ -199,10 +577,10 @@ fn table_count(vm: &Vm, table: Value) -> r: u64 reads(vm) {
   return count_v24;
 }
 
-fn integer_string(vm: &Vm, value: i64) -> r: Value writes(vm) {
-  let bytes_v27 = box_slots_new::<u8>(capacity: 0_u64);
+fn append_integer(out: &Box<Slots<u8>>, value: i64) -> r: unit writes(out) {
+  doc "Appends an integer in decimal, with a minus sign when negative.";
   if value < 0_i64 {
-    push(out: &bytes_v27, byte: 45_u8);
+    push(out: out, byte: 45_u8);
   }
   let mag_v28 = 0_u64;
   if value < 0_i64 {
@@ -213,7 +591,13 @@ fn integer_string(vm: &Vm, value: i64) -> r: Value writes(vm) {
   } else {
     set mag_v28 = cvt::<i64, u64>(value);
   }
-  decimal(out: &bytes_v27, n: mag_v28);
+  decimal(out: out, n: mag_v28);
+  return unit;
+}
+
+fn integer_string(vm: &Vm, value: i64) -> r: Value writes(vm) {
+  let bytes_v27 = box_slots_new::<u8>(capacity: 0_u64);
+  append_integer(out: &bytes_v27, value: value);
   let n_v32 = bytes_v27.inner.len;
   return literal(vm: vm, text: &bytes_v27.inner[0_u64..n_v32]);
 }
@@ -364,6 +748,51 @@ fn command(env: &Env, vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64) 
     set_kind(env: env, vm: vm, key: key_v54, k: 1.0_f64);
     let x_v70 = cvt.nearest::<i64, f64>(next_v68);
     return num(x: x_v70);
+  }
+  if equals_text(vm: vm, value: cmd_v49, text: &echo_name[0_u64..4_u64]) {
+    if argc != 2_u64 {
+      return wrong_args(env: env, vm: vm);
+    }
+    return key_v54;
+  }
+  if equals_text(vm: vm, value: cmd_v49, text: &incrbyfloat_name[0_u64..11_u64]) {
+    if argc != 3_u64 {
+      return wrong_args(env: env, vm: vm);
+    }
+    let valid_float = type_is(vm: vm, types: env^.types, key: key_v54, expected: 1.0_f64);
+    if bnot(valid_float) {
+      return wrong_type(env: env, vm: vm);
+    }
+    let current = 0.0_f64;
+    if bnot(absent_v60) {
+      match float_value(vm: vm, v: old_v59) {
+        None() => {
+          return fail(env: env, vm: vm, text: &not_float[0_u64..30_u64]);
+        }
+        Some(value: stored_float) => {
+          set current = stored_float;
+        }
+      }
+    }
+    let increment = 0.0_f64;
+    match float_value(vm: vm, v: a_v56) {
+      None() => {
+        return fail(env: env, vm: vm, text: &not_float[0_u64..30_u64]);
+      }
+      Some(value: given_float) => {
+        set increment = given_float;
+      }
+    }
+    let sum = fadd.strict(current, increment);
+    let sum_size = fabs(sum);
+    let sum_finite = fle(sum_size, 1.7976931348623157e308_f64);
+    if bnot(sum_finite) {
+      return fail(env: env, vm: vm, text: &float_overflow[0_u64..43_u64]);
+    }
+    let sum_text = incrbyfloat_text(vm: vm, x: sum);
+    raw(vm: vm, table: env^.db, key: key_v54, value: sum_text);
+    set_kind(env: env, vm: vm, key: key_v54, k: 1.0_f64);
+    return sum_text;
   }
   let del_v71 = equals_text(vm: vm, value: cmd_v49, text: &s_12[0_u64..3_u64]);
   let exists_v72 = equals_text(vm: vm, value: cmd_v49, text: &s_13[0_u64..6_u64]);
@@ -655,7 +1084,9 @@ fn command(env: &Env, vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64) 
   let either_0_v179 = bor(za_v175, zc_v176);
   let either_1_v180 = bor(either_0_v179, zs_v177);
   let either_2_v181 = bor(either_1_v180, zr_v178);
-  if either_2_v181 {
+  let zrange = equals_text(vm: vm, value: cmd_v49, text: &zrange_name[0_u64..6_u64]);
+  let either_3 = bor(either_2_v181, zrange);
+  if either_3 {
     if za_v175 {
       if argc < 4_u64 {
         return wrong_args(env: env, vm: vm);
@@ -680,6 +1111,21 @@ fn command(env: &Env, vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64) 
         return wrong_args(env: env, vm: vm);
       }
     }
+    if zrange {
+      if argc < 4_u64 {
+        return wrong_args(env: env, vm: vm);
+      }
+      if argc > 5_u64 {
+        return fail(env: env, vm: vm, text: &s_28[0_u64..41_u64]);
+      }
+      if argc == 5_u64 {
+        let option = arg(stack: stack, func: func, argc: argc, index: 4_u64);
+        let scores_option = equals_text(vm: vm, value: option, text: &withscores_name[0_u64..10_u64]);
+        if bnot(scores_option) {
+          return fail(env: env, vm: vm, text: &s_28[0_u64..41_u64]);
+        }
+      }
+    }
     let valid_v183 = type_is(vm: vm, types: env^.types, key: key_v54, expected: 4.0_f64);
     if bnot(valid_v183) {
       return wrong_type(env: env, vm: vm);
@@ -697,6 +1143,9 @@ fn command(env: &Env, vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64) 
         }
         let score_v187 = arg(stack: stack, func: func, argc: argc, index: i_v186);
         let score_v188 = number(vm: vm, v: score_v187);
+        if feq(score_v188, 0.0_f64) {
+          set score_v188 = 0.0_f64;
+        }
         let score_v189 = num(x: score_v188);
         let next_v190 = i_v186 +sat 1_u64;
         let member_v191 = arg(stack: stack, func: func, argc: argc, index: next_v190);
@@ -725,7 +1174,92 @@ fn command(env: &Env, vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64) 
       if missing_v199 {
         return Value::False();
       }
-      return string_arg(vm: vm, v: v_v198);
+      let score_value = number(vm: vm, v: v_v198);
+      return double_text(vm: vm, x: score_value);
+    }
+    if zrange {
+      let range_start = 0_i64;
+      let range_stop = 0_i64;
+      match parse_integer(vm: vm, value: a_v56) {
+        None() => {
+          return fail(env: env, vm: vm, text: &s_10[0_u64..43_u64]);
+        }
+        Some(value: given_start) => {
+          set range_start = given_start;
+        }
+      }
+      match parse_integer(vm: vm, value: b_v58) {
+        None() => {
+          return fail(env: env, vm: vm, text: &s_10[0_u64..43_u64]);
+        }
+        Some(value: given_stop) => {
+          set range_stop = given_stop;
+        }
+      }
+      let with_scores = argc == 5_u64;
+      let total = table_count(vm: vm, table: t_v184);
+      let members = box_slots_new::<Value>(capacity: total);
+      let member_key = Value::Nil();
+      loop {
+        match halo::heap::table_next(heap: &vm^.heap, t: t_v184, key: member_key) {
+          Err(..) => {
+            break;
+          }
+          Ok(value: member_next) => {
+            match member_next {
+              None() => {
+                break;
+              }
+              Some(value: member_pair) => {
+                set member_key = member_pair.key;
+                if members.inner.len < members.inner.cap {
+                  place_back(window: &members.inner, value: member_pair.key);
+                }
+              }
+            }
+          }
+        }
+      }
+      sort_members(vm: vm, table: t_v184, members: &members);
+      let member_count = members.inner.len;
+      let size = cvt.nearest::<u64, f64>(member_count);
+      let first_rank = cvt.nearest::<i64, f64>(range_start);
+      let last_rank = cvt.nearest::<i64, f64>(range_stop);
+      if flt(first_rank, 0.0_f64) {
+        set first_rank = fadd.strict(size, first_rank);
+      }
+      if flt(last_rank, 0.0_f64) {
+        set last_rank = fadd.strict(size, last_rank);
+      }
+      if flt(first_rank, 0.0_f64) {
+        set first_rank = 0.0_f64;
+      }
+      let ranked = halo::heap::new_table(heap: &vm^.heap, asize: 0_u32, hsize: 0_u32);
+      let slot = 1_u64;
+      for (rank in 0_u64..member_count) {
+        let at = cvt.nearest::<u64, f64>(rank);
+        let from_first = fle(first_rank, at);
+        let to_last = fle(at, last_rank);
+        if band(from_first, to_last) {
+          if rank < members.inner.len {
+            let member = members.inner[rank];
+            let member_slot = cvt.nearest::<u64, f64>(slot);
+            let member_index = num(x: member_slot);
+            raw(vm: vm, table: ranked, key: member_index, value: member);
+            set slot = slot +sat 1_u64;
+            if with_scores {
+              let stored_score = get(vm: vm, table: t_v184, key: member);
+              let score_number = number(vm: vm, v: stored_score);
+              let score_text = double_text(vm: vm, x: score_number);
+              let score_slot = cvt.nearest::<u64, f64>(slot);
+              let score_index = num(x: score_slot);
+              raw(vm: vm, table: ranked, key: score_index, value: score_text);
+              set slot = slot +sat 1_u64;
+            }
+          }
+        }
+      }
+      return ranked;
     }
     let lo_v200 = number(vm: vm, v: a_v56);
     let hi_v201 = number(vm: vm, v: b_v58);
@@ -777,7 +1311,7 @@ fn host_call(env: &Env, vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64
       return HostOutcome::Raised();
     }
     let input = arg(stack: stack, func: func, argc: argc, index: 0_u64);
-    let coerced = string_arg(vm: vm, v: input);
+    let coerced = lua_string(vm: vm, v: input);
     let bytes = box_slots_new::<u8>(capacity: 0_u64);
     value_bytes(vm: vm, v: coerced, out: &bytes);
     let n = bytes.inner.len;
@@ -789,6 +1323,27 @@ fn host_call(env: &Env, vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64
     return HostOutcome::Returned(count: 1_u64);
   }
   if id == 4100_u32 {
+    return HostOutcome::Returned(count: 0_u64);
+  }
+  if id == 4103_u32 {
+    if argc != 1_u64 {
+      let repl_arity = literal(vm: vm, text: &set_repl_arity[0_u64..43_u64]);
+      let arity_error = reply_table(vm: vm, field: &s_30[0_u64..3_u64], v: repl_arity);
+      set vm^.error = arity_error;
+      return HostOutcome::Raised();
+    }
+    let flag_value = arg(stack: stack, func: func, argc: argc, index: 0_u64);
+    let flag_number = number(vm: vm, v: flag_value);
+    let flag_whole = ftrunc(flag_number);
+    let flag_low = fle(0.0_f64, flag_whole);
+    let flag_high = fle(flag_whole, 3.0_f64);
+    let flag_valid = band(flag_low, flag_high);
+    if bnot(flag_valid) {
+      let repl_flags = literal(vm: vm, text: &set_repl_flags[0_u64..81_u64]);
+      let flags_error = reply_table(vm: vm, field: &s_30[0_u64..3_u64], v: repl_flags);
+      set vm^.error = flags_error;
+      return HostOutcome::Raised();
+    }
     return HostOutcome::Returned(count: 0_u64);
   }
   if id == 4101_u32 {
@@ -817,9 +1372,9 @@ fn host_call(env: &Env, vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64
   let value_v216 = Value::Nil();
   let v_v220 = arg(stack: stack, func: func, argc: argc, index: 0_u64);
   if id == 4098_u32 {
-    set value_v216 = reply_table(vm: vm, field: &s_5[0_u64..2_u64], v: v_v220);
+    set value_v216 = status_reply_table(vm: vm, argc: argc, v: v_v220);
   } else if id == 4099_u32 {
-    set value_v216 = reply_table(vm: vm, field: &s_30[0_u64..3_u64], v: v_v220);
+    set value_v216 = error_reply_table(vm: vm, argc: argc, v: v_v220);
   } else {
     let e_v221 = literal(vm: vm, text: &s_31[0_u64..25_u64]);
     set vm^.error = e_v221;

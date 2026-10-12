@@ -1,0 +1,4 @@
+{
+  "type": "error",
+  "bytes": "ERR Attempt to modify a readonly table script: 54b532eb7ad80df7b07fb67ed17734a356073906, on @user_script:6."
+}

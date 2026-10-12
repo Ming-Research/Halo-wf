@@ -2,13 +2,14 @@
 
 Halo is a Lua 5.1 engine written in Whitefoot with an embedding interface
 (`lib/halo`), with the JSON and MessagePack packages its codec libraries bind
-(`lib/json`, `lib/msgpack`). Firn-wf hosts it to run Redis scripts.
+(`lib/json`, `lib/msgpack`), and the port of the double-to-text conversion
+Redis's replies use (`lib/fpconv`). Firn-wf hosts it to run Redis scripts.
 
 ## Goal and first priorities
 
 Halo shows what Whitefoot gives a dynamic-language runtime and exposes what it
 lacks. Firn runs its Redis scripts on Halo, so Halo also does what Firn's
-scripts need, with replies identical to the reference's (Redis 7.0.15, see
+scripts need, with replies identical to the reference's (Redis 7.2.16, see
 Reference); that is Firn's need, not Halo's own goal: it carries the
 priority Firn gives it and, at equal priority, goes ahead of Halo's own
 goal. Halo's own goal, as the owner set it on 2026-10-12: Halo becomes the
@@ -26,7 +27,7 @@ When priorities conflict:
 
 ## Reference
 
-- The reference is Redis 7.0.15 with its bundled Lua 5.1 (PUC Lua 5.1.5 with
+- The reference is Redis 7.2.16 with its bundled Lua 5.1 (PUC Lua 5.1.5 with
   Redis's patches) on x86-64 Linux with glibc. `research/experiments/halo-oracle`
   holds its recorded replies, which `.github/workflows/oracle-reference.yml`
   records on that platform; PUC's sources and Lua 5.1's test suite are
@@ -55,14 +56,15 @@ The upgrade's benchmark is
 - Halo's performance comparisons build both sides with full LTO.
 - `make check`, the gate, is three groups (Makefile): core (the embedding
   probe, every oracle script at budgets 1, 7 and 1000, ordinary and under
-  collector stress, the design lint, and `gate-parts`, which checks that CI's
-  jobs and the root controls' parts match the Makefile's), extended (the
-  collector's root controls, the research hosts, the JSON package) and
-  reference (the number library and the MessagePack package against Redis
-  7.0.15's bundled Lua built from source). CI runs it on every push as eight
-  parallel jobs, each check in exactly one, so that no job builds more than
-  three Whitefoot programs, nor more than one end-to-end test program: core,
-  reference, the extended group's six parts (`check-roots-base`, one
+  collector stress, the test host's double text against the table recorded on
+  Redis, the design lint, and `gate-parts`, which checks that CI's jobs and
+  the root controls' parts match the Makefile's), extended (the collector's
+  root controls, the research hosts, the JSON package) and reference (the
+  number library and the MessagePack package against Redis 7.2.16's bundled
+  Lua built from source). CI runs it on every push as eight parallel jobs,
+  each check in exactly one, so that no job builds more than three Whitefoot
+  programs, nor more than one end-to-end test program: core, reference, the
+  extended group's six parts (`check-roots-base`, one
   `check-roots-mutant-<label>` per collector mutant, `check-hosts-vm` and
   `check-hosts-lib-json`; `.github/workflows/check.yml`). It needs git, curl,
   Python 3, a C compiler, both submodules (`git clone --recurse-submodules`)

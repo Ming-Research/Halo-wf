@@ -1,0 +1,21 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "bulk",
+      "bytes": "false:too many results to unpack"
+    },
+    {
+      "type": "bulk",
+      "bytes": "false:too many results to unpack"
+    },
+    {
+      "type": "bulk",
+      "bytes": "false:too many results to unpack"
+    },
+    {
+      "type": "bulk",
+      "bytes": "false:too many results to unpack"
+    }
+  ]
+}

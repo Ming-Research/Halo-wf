@@ -6,6 +6,7 @@ public struct Frame {
   public return_pc: u64;
   public kbase: u64;
   public closure: u32;
+  public tailcalls: u32;
   public nresults: i64;
   public activation: u32;
   public flags: u8;

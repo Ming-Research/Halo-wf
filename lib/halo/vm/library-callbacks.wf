@@ -254,7 +254,7 @@ fn resume_library<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots
       match local_outcome_28 {
         Raised() => {
           let local_call_pc_31 = local_context_27.frame.return_pc -sat 1_u64;
-          library_call_error_location(vm: vm, id: local_context_27.id, pc: local_call_pc_31);
+          library_call_error_location(vm: vm, pc: local_call_pc_31);
         }
         Returned(..) => {
         }

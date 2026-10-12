@@ -13,7 +13,7 @@ Reused binaries must have been built with the corresponding mode.
 
 This explicitly invoked experiment runs the unchanged Halo oracle scripts through
 `pkg::embed` and an in-memory Whitefoot Redis test host. It compares typed RESP2
-JSON with the existing Redis 7.0.15 observations; it never regenerates them.
+JSON with the stored reference observations (Redis 7.2.16); it never regenerates them.
 The runner owns fixture transport, JSON formatting and comparison, not Lua
 execution. The Whitefoot host owns commands and both reply conversions.
 
@@ -63,16 +63,31 @@ of the Whitefoot implementation, not as a compiler or Lua interpreter.
 
 The preparation chunk installs KEYS/ARGV from the JSON header and executes setup
 commands through the same test host. A NUL separates it from the unchanged script
-bytes on stdin. Global protection is applied afterward: raw host assignment
-bypasses readonly, while script writes raise and absent reads call a rejecting
-`__index`. The VM installs its slice-1 library; this host adds Redis members.
+bytes on stdin. Protection is applied afterward through the embedding's
+`set_metatable`, `metatable_of`, `table_next` and `set_read_only`: absent
+global reads call a rejecting `__index`, and the globals table, every table
+reachable from it and from the shared string metatable, metatables included,
+become read-only, except KEYS and ARGV (see GAPS.md). Raw host assignment bypasses read-only, while script
+writes raise. The VM installs its slice-1 library; this host adds Redis
+members.
 
 The `smoke` entry and `test` executable with three arguments run the embedding
 probe (stdin is unused): cache, flush, reset, budget resumption, host outcomes,
 and forced collection of pins and cached constants, including pin/compile/unpin
 changes between suspended budget checkpoints, the chunk name runtime errors
 are located in, and host calls left pending: completed, failed into a `pcall`
-inside a library callback, and refused by `resume`. A nonzero exit is the
+inside a library callback, and refused by `resume`. Its protection
+observations (exits 177–211, one exit per observation) set, read and clear a
+table's metatable, read the string metatable, refuse a non-table argument with
+`InvalidTable`, and check that a script's assignment of a new key into a
+read-only table raises the located message while a host write still succeeds
+(177–193). On that read-only table, `set_metatable` still writes and replaces
+a metatable whose `__metatable` field refuses scripts, `metatable_of` reads the
+metatable rather than that field, and a script's `setmetatable` raises the
+located protected-metatable error before the read-only refusal (194–202).
+`set_read_only` and `set_metatable` refuse a handle past the heap's table
+slots and one the collector reclaimed, as the table and as the metatable,
+with `InvalidTable` (203–211). A nonzero exit is the
 probe's numbered failed observation; `make check` runs it before the oracle
 comparison. Its cjson lifecycle observations (exits 120–145) keep an extracted
 encoder in a global table while discarded instances lose their buffers, slots
@@ -137,7 +152,7 @@ adds one 24-byte entry closure. This catches a setter that immediately rewrites
 the current threshold, and a collector that reports the new threshold but keeps
 using the old one or never schedules another collection.
 
-The Redis error/SHA-1 comparison uses Redis 7.0.15's local `script_lua.c`
+The Redis error/SHA-1 comparison uses Redis 7.2.16's `script_lua.c`
 and `eval.c` as the formatting reference: command errors are tables, Lua
 errors are strings, and the EVAL wrapper adds source/line and the SHA-1 of
 the unchanged script body. SHA-1 is checked independently against Python's
@@ -181,6 +196,23 @@ are recorded in the F4 experiment.
 negative control at budget 1: the harness hides the snapshot during collection
 and restores it before resume. The suspended-stack comparison is expected to
 fail with the original expected reply unchanged. Ordinary runs omit this flag.
+
+`--omit-global-readonly`, `--omit-string-readonly` and
+`--omit-readonly-recursion` are the host's protection controls: the host skips
+the walk from the globals table, which leaves it and the tables reached only
+from it writable, or the walk from the shared string metatable, or marks only
+the two walks' roots, the globals table and the string metatable, and no table
+reachable from them. `make roots-base` (CI's roots-base job, and part of
+`make roots`) runs `redis-api/global-write`,
+`redis-api/string-metatable-readonly` and `redis-api/readonly-library-tables`
+with and without the matching flag; each must pass without it and fail by a
+reply difference with it.
+
+The executable's `--double-text` mode runs no script: it reads 8-byte
+little-endian binary64 bit patterns from stdin and prints, per pattern, the
+host's RESP2 double reply text, a tab and its `redis.call` argument text.
+`make check` compares them with the doubles measured on redis-server 7.2.16
+([fpconv package](../../../lib/fpconv/README.md#check)).
 
 `--scratch-root DIR` keeps temporary build and fixture files under an existing
 chosen directory. The cost-repair runs use the benchmark's `target/` so all

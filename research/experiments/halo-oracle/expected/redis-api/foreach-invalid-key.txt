@@ -1,0 +1,17 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "bulk",
+      "bytes": "invalid key to 'next'"
+    },
+    {
+      "type": "integer",
+      "value": 1
+    },
+    {
+      "type": "bulk",
+      "bytes": "invalid key to 'next'"
+    }
+  ]
+}

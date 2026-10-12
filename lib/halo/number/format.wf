@@ -118,7 +118,7 @@ fn text_decimal(text: &NumberText, decimal: &Decimal) -> result: unit reads(deci
 }
 
 fn number_text(value: f64) -> text: NumberText pure {
-  doc "Lua 5.1's %.14g text as glibc prints it on Linux, Redis 7.0.15's deployment reference: every special value and zero carries its sign, so a negative NaN is -nan; or the exact decimal expansion rounded to 14 significant digits with ties to even.";
+  doc "Lua 5.1's %.14g text as glibc prints it on Linux, Redis 7.2.16's deployment reference: every special value and zero carries its sign, so a negative NaN is -nan; or the exact decimal expansion rounded to 14 significant digits with ties to even.";
   let bytes = array_filled::<u8, 32>(value: 0_u8);
   let written = NumberText(bytes: bytes, length: 0_u64);
   let bits = reinterpret::<f64, u64>(value);

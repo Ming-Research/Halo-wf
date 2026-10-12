@@ -1,13 +1,15 @@
 # Coroutines in Halo
 
-Status: implemented on the work branch; comparisons 1 and 2 passed and
-comparison 3 is exploratory (Results below); the design-tree change is
-proposed and awaits the owner. The owner has ruled on the nine collector
-edges whose omission changed no reply (Results below). Two coroutine oracle
-scripts added after the validated revision are recorded on Redis 7.0.15 and
-pass the gate, and the rerun of the collector controls confirmed the
-prediction one of them was written for (Results below). Board items
-`halo-coroutine-study` (this study) and `halo-coroutines` (the implementation).
+Status: merged to main with the owner's approval of the design-tree change
+(Ming-Research/Halo-wf#48); comparisons 1 and 2 passed and comparison 3 is
+exploratory (Results below). The owner has ruled on the nine collector edges
+whose omission changed no reply (Results below). The coroutine oracle
+scripts were recorded on Redis 7.0.15; when Halo's reference moved to Redis
+7.2.16, a fresh recording of the whole corpus on 7.2.16 differed in no file
+([oracle-reference run 38318062985](https://github.com/Ming-Research/Halo-wf/actions/runs/38318062985)),
+so the question below, asked of 7.0.15, holds for 7.2.16 as recorded. Board
+items `halo-coroutine-study` (this study) and `halo-coroutines` (the
+implementation).
 
 ## Question
 

@@ -9,7 +9,7 @@ alias ThreadEdgeSort = halo::execution::SortFrame;
 alias ThreadEdgePattern = halo::execution::PatternSubFrame;
 
 fn thread_edge_frame(closure: u32, top: u64) -> r: ThreadEdgeFrame pure {
-  return ThreadEdgeFrame(func: 0_u64, base: 0_u64, return_pc: 0_u64, kbase: 0_u64, closure: closure, nresults: 0_i64, activation: 0_u32, flags: 0_u8, varbase: 0_u64, varcount: 0_u64, frame_top: top);
+  return ThreadEdgeFrame(func: 0_u64, base: 0_u64, return_pc: 0_u64, kbase: 0_u64, closure: closure, tailcalls: 0_u32, nresults: 0_i64, activation: 0_u32, flags: 0_u8, varbase: 0_u64, varcount: 0_u64, frame_top: top);
 }
 
 fn thread_edge_closure(heap: &ThreadEdgeHeap, target: Value) -> r: Option<u32> writes(heap) {

@@ -1,0 +1,29 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "bulk",
+      "bytes": "halo-oracle:keys:changed"
+    },
+    {
+      "type": "bulk",
+      "bytes": "halo-oracle:appended"
+    },
+    {
+      "type": "bulk",
+      "bytes": "first:changed"
+    },
+    {
+      "type": "bulk",
+      "bytes": "appended"
+    },
+    {
+      "type": "integer",
+      "value": 2
+    },
+    {
+      "type": "integer",
+      "value": 2
+    }
+  ]
+}
