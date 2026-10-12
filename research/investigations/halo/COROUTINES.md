@@ -4,8 +4,9 @@ Status: implemented on the work branch; comparisons 1 and 2 passed and
 comparison 3 is exploratory (Results below); the design-tree change is
 proposed and awaits the owner. The owner has ruled on the nine collector
 edges whose omission changed no reply (Results below). Two coroutine oracle
-scripts added after the validated revision await their recording, a gate run
-and a rerun of the collector controls. Board items
+scripts added after the validated revision are recorded on Redis 7.0.15
+(Results below); their gate run and a rerun of the collector controls are
+pending. Board items
 `halo-coroutine-study` (this study) and `halo-coroutines` (the implementation).
 
 ## Question
@@ -297,8 +298,11 @@ exercise one path. The control therefore expects 242, and
 ### Collections at run exits
 
 While a coroutine is installed, the driver collects at each exit from the
-dispatch loop when reconciling the coroutine's buffer charges puts the heap
-over its limit (`drive` in `lib/halo/vm/calls.wf`). That collection marks the
+dispatch loop when, after it reconciles the coroutine's buffer charges, the
+heap is over its limit, whether buffer growth or garbage allocated since the
+last safepoint put it there (`drive` in `lib/halo/vm/calls.wf`); the
+collections `gc-error-over-limit` and `gc-stopped-high-register` depend on
+are of the second kind. That collection marks the
 installed stack up to the largest of the current top, every frame's top and
 a pending transfer's extent, and the whole stack when no frame remains.
 Reading each exit for a live value outside those bounds found none:
