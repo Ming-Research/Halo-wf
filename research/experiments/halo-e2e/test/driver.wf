@@ -460,7 +460,7 @@ fn install_host(engine: &Engine, env: &Env) -> r: unit writes(engine), writes(en
   let version_value = literal(vm: vm_v64, text: &version_text[0_u64..6_u64]);
   raw(vm: vm_v64, table: redis_v65, key: version_key, value: version_value);
   let version_num_key = literal(vm: vm_v64, text: &version_num_name[0_u64..17_u64]);
-  let version_num = num(x: 459280.0_f64);
+  let version_num = num(x: 4.5928e5_f64);
   raw(vm: vm_v64, table: redis_v65, key: version_num_key, value: version_num);
   let k_v76 = literal(vm: vm_v64, text: &s_48[0_u64..10_u64]);
   let v_v77 = num(x: 2.0_f64);

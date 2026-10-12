@@ -58,10 +58,10 @@ fn arg(stack: &Box<Slots<Value>>, func: u64, argc: u64, index: u64) -> r: Value 
 
 fn whole_integer(x: f64) -> r: Option<i64> pure {
   doc "Redis 7.2.16's double2ll: an integral value no larger in magnitude than LLONG_MAX/2 (2^62 as a double) as its integer, otherwise None. NaN gives None and negative zero gives 0, as in Redis.";
-  if flt(x, -4.611686018427387904e18_f64) {
+  if flt(x, -4.611686018427388e18_f64) {
     return None<i64>();
   }
-  if fgt(x, 4.611686018427387904e18_f64) {
+  if fgt(x, 4.611686018427388e18_f64) {
     return None<i64>();
   }
   let whole = ftrunc(x);
