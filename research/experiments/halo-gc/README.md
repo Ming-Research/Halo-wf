@@ -105,6 +105,25 @@ checks dynamic top, the maximum frame window and the first dead stack slot.
 These probes stay while the coroutine implementation needs their evidence;
 remove them when maintained tests supersede the same observations.
 
+The small-limit storage fixture uses `return 1` for its exact-one-collection
+baseline: its measured loop has additional backedge safepoints under stress.
+It then starts that loop with budget zero and creates the globally rooted
+thread after the checkpoint, so reset cannot retire the measured owner.
+Growing its reserved stack by 2048 logical bytes must force collection and
+produce exactly `not enough memory`; removing the limit must let the same
+cached loop return one. Setup failures have separate observation codes:
+
+| Exit | Failed check |
+| --- | --- |
+| 217 | Measured loop compilation |
+| 198 | Idle baseline result or exact-one collection |
+| 199 | Zero-budget loop checkpoint |
+| 196 | Thread allocation |
+| 197 | Global-root injection |
+
+Observations 218–220 retain their storage-growth, limit, error, collection,
+live-charge and recovery checks.
+
 `thread-controls.sh`, called by `controls.sh` when `THREAD_ROOT_MUTANTS` is
 set, deletes one marking or closing operation in a copied tree and builds the ordinary probe
 entry with the pinned compiler. Native exit must equal that edge's observation
@@ -204,9 +223,7 @@ wrapper's temporarily shortened stack. At budget 1000, deep foreach fixtures
 first require an open capture containing 23 only in that snapshot; omitting
 restoration would close it incorrectly. At smaller budgets the native frames
 have already unwound, so recovery is checked against the current authoritative
-storage. The original small-limit thread probe
-now grows storage after start has reset and paused; resume reaches its same
-limit assertion without a second start retiring the storage being measured.
+storage.
 
 No results are claimed by these authored controls. Their actual failures and
 the restored positive observations must be recorded from CI before treating
