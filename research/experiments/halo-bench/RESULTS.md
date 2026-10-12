@@ -5498,7 +5498,10 @@ Read against the directions recorded before the run:
   kernels: List, Towers and Sieve take places 2 to 4, above four of the
   five failing kernels, and NBody (1.23) is below every failing kernel. By
   the direction recorded before the run, the next attributions therefore
-  come from the AWFY profiles (List, Towers, Sieve) as well as fib's.
+  come from the AWFY profiles (List, Towers, Sieve) rather than the
+  kernels, with one departure: fib, the largest ratio (1.80), stays among
+  them, since its known cause, the call frame's store-forwarding stall, is
+  already being fixed in Whitefoot and its effect must be measured.
 - Stage 2. LuaJIT `-joff` is more than 3 times faster than Halo on 8 of 13
   workloads (fib 3.32, binary-trees 3.18, List 3.29, NBody 3.88, Permute
   3.89, Queens 3.76, Sieve 3.74, Towers 4.33); List's distance from 3 (10%)
@@ -5508,7 +5511,8 @@ Read against the directions recorded before the run:
   change. The next bullet contradicts that reading: PUC 5.4.9 and Luau
   keep 16-byte tagged values, the size of Halo's
   ([values](../../../design/halo/values.md)), and are still 1.96 and 2.26
-  times faster by geometric mean (Luau above 3 times on four workloads),
+  times faster by geometric mean (Luau above 3 times on three workloads
+  clear of the noise; List, at 3.02, is inside Luau's 3.04% range there),
   so narrower values cannot be what most of that gap needs. The
   directions did not foresee every comparison interpreter being far
   ahead. This run does not challenge the 16-byte value decision; the

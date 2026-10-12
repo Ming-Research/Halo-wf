@@ -97,9 +97,16 @@ RESULTS.md and are removed when those comparisons no longer need reproduction.
 ## Fastest-interpreter baseline
 
 The question, method and result are in
-[RESULTS.md](RESULTS.md#fastest-interpreter-baseline). Three files serve it
+[RESULTS.md](RESULTS.md#fastest-interpreter-baseline). Four files serve it
 beside the P1 runner, and are removed with it when that yardstick is no
 longer repeated:
+
+- `fastest-baseline-2026-10-12.json` is the recorded run: every launch,
+  the engines' digests, the manifests and CPU 2's state, kept while later
+  comparisons repeat this run against it. Its AWFY bundle digests are of
+  the bundles as generated at `9bff3d9`; `awfy.py` later changed only a
+  header comment, so bundles generated since differ in those digests while
+  the upstream per-file digests still match.
 
 - `awfy.py` fetches are-we-fast-yet's Lua port at its pinned commit (MIT,
   the notice in each file; NBody from the Computer Language Benchmarks Game
