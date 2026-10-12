@@ -36,7 +36,7 @@ if [ "$code" != 0 ]; then cat "$out/baseline.log"; exit 1; fi
 
 status=0
 selected=0
-while IFS='|' read -r label want entry file line; do
+while IFS='|' read -r label want entry file line replacement; do
   case ",$selection," in
     *,all,*|*,"$label",*) ;;
     *) continue ;;
@@ -48,12 +48,18 @@ while IFS='|' read -r label want entry file line; do
   cp "$root/lib/halo/vm/collect.wf" "$tree/lib/halo/vm/collect.wf"
   source=$root/$file
   target=$tree/$file
-  grep -vF "$line" "$source" > "$target"
-  removed=$(( $(wc -l < "$source") - $(wc -l < "$target") ))
-  if [ "$removed" != 1 ]; then
-    echo "thread roots $label: removed $removed lines (want 1)"
+  # An omission whose deletion would leave a declared write effect unused
+  # (EFF-2) names a replacement statement that keeps the effect instead.
+  matches=$(grep -cF "$line" "$source")
+  if [ "$matches" != 1 ]; then
+    echo "thread roots $label: matched $matches lines (want 1)"
     status=1
     continue
+  fi
+  if [ -n "$replacement" ]; then
+    LINE=$line REPLACEMENT=$replacement awk '{ i = index($0, ENVIRON["LINE"]); if (i > 0) print substr($0, 1, i - 1) ENVIRON["REPLACEMENT"]; else print }' "$source" > "$target"
+  else
+    grep -vF "$line" "$source" > "$target"
   fi
   if ! build "$label" "$entry"; then status=1; continue; fi
   timeout 60 "$out/test" > "$out/$label.log" 2>&1
@@ -83,7 +89,7 @@ stopped|235|thread_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: stopped_valu
 main|213|thread_roots|lib/halo/vm/collect.wf|pkg::heap::gc_mark(heap: &vm^.heap, v: main);
 inactive-open-list|240|upvalue_roots|lib/halo/heap/gc.wf|gc_mark_upvalue(heap: heap, h: upvalue);
 captured-value|241|upvalue_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: captured);
-owner-close|242|upvalue_roots|lib/halo/heap/threads.wf|set heap^.upvalues.inner[ui].payload = Upval::Closed(v: held);
+owner-close|242|upvalue_roots|lib/halo/heap/threads.wf|set heap^.upvalues.inner[ui].payload = Upval::Closed(v: held);|set heap^.upvalues.inner[ui].live = heap^.upvalues.inner[ui].live;
 explicit-close|243|upvalue_roots|lib/halo/heap/threads.wf|close_thread_upvalues(heap: heap, h: h);
 EDGES
 if [ "$selected" = 0 ]; then echo "thread roots: selection names no edge"; exit 1; fi
