@@ -125,16 +125,39 @@ Observations 218–220 retain their storage-growth, limit, error, collection,
 live-charge and recovery checks.
 
 `thread-controls.sh`, called by `controls.sh` when `THREAD_ROOT_MUTANTS` is
-set, deletes one marking or closing operation in a copied tree and builds the ordinary probe
-entry with the pinned compiler. Native exit must equal that edge's observation
-number; compilation refusal, timeout, signal or another observation is not
-accepted. Every case starts from the original sources. Logs record actual
-build and native exit codes. A zero-mutant baseline must pass first. The
-compiler provides no source-mutator command, so this uses the established
-copy/delete/build control instead of adding a test path to production code.
+set, omits one marking or closing operation in a copied tree. It builds the
+ordinary `test` entry and runs the unchanged e2e runner with `--filter
+coroutines/ --budgets 1,7,1000 --gc-stress`. Before any omission, that same
+comparison must pass with every edge present; newly added scripts therefore
+need their Redis 7.0.15 recordings before this experiment can run.
 
-Run in CI. First select the single `stack` omission and inspect its build
-duration before selecting further names or `all` (29 omissions):
+Owner ruling `halo-card-coroutine-gc-validation`, option A, requires every
+coroutine-edge mutant to change at least one coroutine oracle reply under
+collector stress. An unchanged comparison is reported as `survived` and fails
+the control. A differing canonical reply or native signal crash is
+`detected`. Compiler refusal, missing recordings, malformed transport or
+statistics, zero stress collections, timeouts and harness exceptions are
+`inconclusive` or `build-failed`, never detections by themselves. A completed
+comparison with at least one qualifying difference still detects the mutant
+when other cases have unqualified failures. The classifier's positive
+and negative samples run in CI before baseline compilation; they include a changed
+reply, a signal crash, transport/setup exits and a semantic failure mixed
+with a zero collection count. The existing isolated observations still
+run for their original 29 rows and must retain their specific native exits.
+They are additional evidence and do not satisfy the oracle requirement.
+
+Every mutation starts from original sources. The copied runner and copied
+recordings make each report's source digest describe that mutation; read-only
+access to the original git metadata supplies its parent revision. Reports
+also hash the executable and compiler. `summary.tsv` records build, oracle
+and probe exit codes, classifications and elapsed whole seconds. Per-edge
+omission diffs, compiler diagnostics, oracle reports, native outputs and typed
+actual replies are retained. The compiler provides no source-mutator command,
+so this uses the established copy/delete/build control rather than adding a
+production test path.
+
+Run in CI. First select the single `stack` omission and inspect its build and
+comparison durations before selecting further names or `all` (44 rows):
 
 ```sh
 THREAD_ROOT_MUTANTS=stack make roots
@@ -144,16 +167,41 @@ THREAD_ROOT_MUTANTS=all make roots
 
 The temporary `coroutine-thread-controls.yml` workflow selects `stack` on a
 branch push; its manual `edges` input selects a bounded later batch. It keeps
-build diagnostics and native outputs as an artifact. Remove this workflow
-before the branch is ready, after recording the controls' CI evidence.
+the diagnostics above as an artifact. The supplied cost estimate is about
+20 seconds per mutant build; the first selected edge builds both its e2e
+entry and its established isolated probe, in addition to baseline builds.
+The harness records their actual costs separately. No local timing is claimed.
+Remove this workflow before the branch is ready, after recording CI evidence.
 
 Names are `thread`, `stack`, `frame`, `open-list`, `library-table`,
 `library-comparator`, `library-error`, `library-key`, `library-frame`, `sort-a`,
 `sort-b`, `sort-pivot`, `pattern-source`, `pattern-pattern`,
 `pattern-replacement`, `error`, `stopped`, and `main`; comma-separated names
-select a bounded batch. The library/sort/pattern fields are tested separately
-so removing one cannot pass because another field holds the same value.
+select a bounded batch. The isolated probes give each library/sort/pattern
+field a distinct sole-root target; oracle scripts may retain aliases.
 `open-list` uses a closed capture to isolate the original handle edge.
+
+The additional oracle-only rows are `active-stack`, `active-frame`, `active-open-list`,
+`active-library-table`, `active-library-comparator`, `active-library-error`,
+`active-library-key`, `active-sort-a`, `active-sort-b`, `active-sort-pivot`,
+`active-pattern-source`, `active-pattern-pattern`, `active-pattern-replacement`,
+`active-error` and `active-stopped`. They omit the corresponding installed-VM
+mark in `vm/collect.wf`; the original library/sort/pattern/error/stopped rows
+omit the saved-thread mark in `heap/gc.wf`. They have no invented isolated
+probe observation. `open-list` and `inactive-open-list` deliberately name the
+same omission with different established probes; their oracle comparison is
+the same experiment.
+
+Some omissions may be observationally redundant under the public interface.
+In particular, `gc_sweep` closes unreachable owners before `free_thread`, so
+omitting only the latter's `explicit-close` cannot leave a script-visible
+capture open. `coroutine_transfer` clears the pending request before saving
+the resumer, making the saved-transfer child and argument guards inactive
+in ordinary switching. A newly created thread also holds its entry closure
+in stack slot zero. These are validation-contract gaps, not detections: the
+rows remain selected by `all`, unchanged replies fail, and the isolated
+probes do not waive the owner's oracle criterion. CI must distinguish further
+redundancy from missing discriminating cases; no all-edge success is claimed.
 
 Owner-qualified observations in `upvalue-probe.wf` additionally check reads
 and writes against active, inactive and suspended stacks; capture reuse and

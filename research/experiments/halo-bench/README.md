@@ -13,7 +13,7 @@ are recorded in [RESULTS.md](RESULTS.md). The later cost-repair experiment
 below evaluates embedding roots
 and the collector predicate separately from those candidates.
 
-The eight `kernels/*.lua` are standalone Lua 5.1 scripts printing one numeric
+The nine `kernels/*.lua` are standalone Lua 5.1 scripts printing one numeric
 checksum. Integer-table fills and then reads every entry. String-key rotates
 four present keys; concat rotates four short interned results. Sort uses the
 Park–Miller generator (seed 42, multiplier 48271, modulus 2147483647), whose
@@ -25,8 +25,19 @@ owning chunk remains live throughout the loop, so both accesses use an open
 upvalue. Its checksum is independently `sum(i, i=1..N) = N*(N+1)/2`, or
 `500000500000` at the default `N = 1000000`. It adds the open read/write workload
 for [the coroutine study's comparison 2](../../investigations/halo/COROUTINES.md#comparison-recorded-before-measuring);
-the existing seven contain no captured assignment. These files and the host serve P1;
-remove them when this baseline is superseded without needing reproduction.
+the existing seven contain no captured assignment.
+
+Producer-consumer creates one coroutine that yields each integer from 1 to
+`N`; its consumer resumes it `N` times and sums the received values. A final
+resume checks successful termination with no result and status `dead`, so the
+workload contains `N` yields and `N+1` resumes. Its independent checksum is
+`N*(N+1)/2`, or `5000050000` at the default `N = 100000`. This is
+[the coroutine study's comparison 3](../../investigations/halo/COROUTINES.md#comparison-recorded-before-measuring):
+an exploratory switch-cost comparison against PUC under the same full-LTO
+conditions, reported with a profile and no performance threshold. No P1
+performance threshold is applied to producer-consumer.
+These files and the host serve P1 and the coroutine comparisons; remove them
+when those experiments are superseded without needing reproduction.
 
 The native `host/` installs only numeric `print`, uses `pkg::embed` with a
 2 GiB logical live-heap limit, normal GC, and budget 2^64−1 (the VM’s unlimited sentinel, which skips decrements).
@@ -65,6 +76,14 @@ Select `--kernels captured-assignment --runs 1` for its initial CI sample;
 `--scale captured-assignment=N` changes the same source on both engines.
 Its output follows the ordinary PUC checksum validation below, including the
 independent PUC launch with `--before-binary` for comparison 2.
+
+For comparison 3, begin in CI with
+`--kernels producer-consumer --runs 1 --scale producer-consumer=1000`
+(checksum `500500`), then inspect its duration
+before selecting a larger scale or more interleaved pairs. Omit `--scale` for
+the default workload. The producer-consumer checksum uses the same validation
+against PUC as the other kernels; no threshold is applied to its reported
+ratio. Measure and profile it on the 14900K through CI as the study requires.
 
 Wall time surrounds each process launch through exit (source reading, engine
 creation/compilation, execution, collection and teardown included). PUC reads

@@ -7,8 +7,8 @@ Halo's `make check-core` compares the corpus through the `oracle` target;
 recording reference replies remains the job of
 [oracle-reference.yml](../../../.github/workflows/oracle-reference.yml).
 
-There are 124 scripts: 68 `lua-core`, 23 `redis-api`, 6 `apps`, 12 `libs`,
-and 15 `coroutines`.
+There are 135 scripts: 68 `lua-core`, 23 `redis-api`, 6 `apps`, 12 `libs`,
+and 26 `coroutines`.
 The scripts, replies and runner belong here until the oracle is replaced or
 Halo/firn scripting is retired. Each case is consumed by `run.sh`; the table
 below is the index of the observations it protects.
@@ -176,6 +176,16 @@ Two complete generations must agree before treating a changed corpus as a
 reproducible reference. Cross-platform differences should be investigated,
 not automatically used to overwrite this baseline.
 
+The coroutine `gc-*` cases are Lua-visible lifetime observations for the
+[thread omission controls](../halo-gc/README.md). They deliberately allocate
+while executions or captures are parked; collection is forced by Halo's
+`--gc-stress` runner, without inserting a reference-only `collectgarbage`
+call. Their target descriptions identify the intended discrimination, not a
+claim that each individual omission has already changed a reply. Some saved
+fields have alternate retaining paths or are not live at a script-visible
+collection point; a surviving mutant must remain visible in the control
+report rather than being counted as detected by a probe alone.
+
 ## Script index
 
 | Group | Script | Purpose |
@@ -188,16 +198,27 @@ not automatically used to overwrite this baseline.
 | apps | [sliding-window](scripts/apps/sliding-window.lua) | Sorted-set limiter removes old scores and counts a fixed-time window. |
 | coroutines | [argument-errors](scripts/coroutines/argument-errors.lua) | create with a non-function and resume with a non-coroutine raise errors caught by pcall. |
 | coroutines | [budget-long-generator](scripts/coroutines/budget-long-generator.lua) | A loop inside a coroutine and thousands of yields exercise budget suspension and resumption. |
+| coroutines | [direct-wrap-errors](scripts/coroutines/direct-wrap-errors.lua) | Direct Lua wrapper calls add caller locations to string and numeric errors, preserve table errors and locate dead-wrapper refusal. |
 | coroutines | [errors-in-coroutine](scripts/coroutines/errors-in-coroutine.lua) | resume and inner pcall catch located strings, level-zero errors, identity-preserving tables and Redis command errors; redis.pcall returns replies. |
+| coroutines | [gc-callback-roots](scripts/coroutines/gc-callback-roots.lua) | Nested resumes park foreach, sort, gsub and xpcall while children allocate; dynamic keys, tables, strings, callbacks and errors survive. |
+| coroutines | [gc-escaped-owner](scripts/coroutines/gc-escaped-owner.lua) | Escaped reads and writes survive an unreachable suspended owner and later thread-slot reuse; targets captured-value and owner-close omissions. |
+| coroutines | [gc-open-recapture](scripts/coroutines/gc-open-recapture.lua) | A discarded closure leaves an open capture that a suspended owner later recaptures and writes; targets open-list and inactive-open-list omissions. |
+| coroutines | [gc-thread-roots](scripts/coroutines/gc-thread-roots.lua) | An unstarted thread retains a private entry capture, and normal parents retain private locals during nested child allocation. |
+| coroutines | [gc-transfer-values](scripts/coroutines/gc-transfer-values.lua) | Tail resume and yield carry 20 fresh table values and a trailing nil beyond the caller's fixed registers. |
 | coroutines | [generator-values](scripts/coroutines/generator-values.lua) | create, resume and yield exchange multiple values in both directions, counting nil holes. |
+| coroutines | [main-open-capture](scripts/coroutines/main-open-capture.lua) | Children write a main-chunk local through the same open capture while main is their normal resumer. |
+| coroutines | [mixed-resume-depth](scripts/coroutines/mixed-resume-depth.lua) | pcall, sort, gsub and protected callback combinations inserted at resume depths 190 and 197 expose their contribution to the C-depth limit. |
 | coroutines | [nested-resume-depth](scripts/coroutines/nested-resume-depth.lua) | Nested resumes reach the reference's own limit and report the reached depth and caught error text. |
 | coroutines | [redis-call-in-coroutine](scripts/coroutines/redis-call-in-coroutine.lua) | Redis reads and writes inside a coroutine survive yields and target declared keys. |
+| coroutines | [redis-resumer-callbacks](scripts/coroutines/redis-resumer-callbacks.lua) | Children resumed by sort and gsub callbacks perform Redis success, caught and uncaught command failure, redis.pcall and yield/return. |
 | coroutines | [results-as-eval-reply](scripts/coroutines/results-as-eval-reply.lua) | A coroutine's returned values become the script's direct EVAL reply. |
 | coroutines | [resume-state-errors](scripts/coroutines/resume-state-errors.lua) | Resuming dead, running and normal coroutines records failure results and exact messages. |
 | coroutines | [shared-upvalues-across](scripts/coroutines/shared-upvalues-across.lua) | Main and another coroutine read and write a shared closure's upvalue while its creator is suspended and after it dies. |
 | coroutines | [status-all](scripts/coroutines/status-all.lua) | suspended, running, normal and dead statuses accompany running's main-thread nil and coroutine identity. |
+| coroutines | [tail-transfers](scripts/coroutines/tail-transfers.lua) | Tail yield and tail resume preserve success flags, counted nil holes and trailing nils on suspension and completion. |
 | coroutines | [top-level-error](scripts/coroutines/top-level-error.lua) | An error returned by resume is rethrown as an intentional top-level EVAL error. |
 | coroutines | [wrap-errors](scripts/coroutines/wrap-errors.lua) | wrap exchanges values and propagates coroutine errors to the caller's pcall. |
+| coroutines | [wrap-own-status](scripts/coroutines/wrap-own-status.lua) | A wrapper sees itself running, its child sees it normal, and its caller sees its identity suspended then dead. |
 | coroutines | [yield-across-resumer-callbacks](scripts/coroutines/yield-across-resumer-callbacks.lua) | Yields across resume called from a resumer's pcall, sort comparator, __index and gsub callback record continuation results. |
 | coroutines | [yield-boundaries](scripts/coroutines/yield-boundaries.lua) | Yield attempts inside five metamethods, a __call handler, pcall, xpcall, sort, gsub, foreach and a generic-for iterator record resume results. |
 | coroutines | [yield-outside](scripts/coroutines/yield-outside.lua) | Yield outside a coroutine raises an error caught by pcall. |

@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       edges:
-        description: Comma-separated edges or all; inspect the stack sample before selecting a larger batch
+        description: Comma-separated edges or all; inspect stack build and oracle timings before selecting a larger batch
         required: true
         default: stack
 
@@ -18,25 +18,30 @@ concurrency:
 jobs:
   controls:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: true
       - name: Install the pinned compiler and host toolchain
         run: make toolchain
-      - name: Compile the baseline and selected missing-edge controls
+      - name: Compare selected missing-edge mutants with coroutine recordings and isolated probes
         env:
           THREAD_ROOT_MUTANTS: ${{ inputs.edges || 'stack' }}
         run: |
           release=$(sed -n 's/^release = //p' whitefoot.pin)
           export WHITEFOOTC="$GITHUB_WORKSPACE/build/whitefoot/$release/whitefootc"
           sh research/experiments/halo-gc/thread-controls.sh build/thread-controls
-      - name: Keep control diagnostics and native outputs
+      - name: Keep timings, omissions, oracle replies and control diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coroutine-thread-controls
-          path: build/thread-controls/*.log
+          path: |
+            build/thread-controls/*.log
+            build/thread-controls/*.md
+            build/thread-controls/*.tsv
+            build/thread-controls/*.diff
+            build/thread-controls/actual-*
           if-no-files-found: warn
           retention-days: 14
