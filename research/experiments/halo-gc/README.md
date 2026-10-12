@@ -174,10 +174,10 @@ THREAD_ROOT_MUTANTS=all make roots
 ```
 
 The recorded runs came from a temporary workflow on the coroutine branch,
-kept at [`319bf27`](https://github.com/Ming-Research/Halo-wf/blob/319bf27/.github/workflows/coroutine-thread-controls.yml):
+last kept at [`a032018`](https://github.com/Ming-Research/Halo-wf/blob/a032018/.github/workflows/coroutine-thread-controls.yml):
 it ran the command above on a hosted runner with a selected batch and kept
 the diagnostics above as an artifact. A full run of all 25 controls took
-about 55 minutes there; a repetition after a change to thread marking runs
+55 to 67 minutes there; a repetition after a change to thread marking runs
 the same command.
 
 Names are `thread`, `stack`, `frame`, `open-list`, `library-table`,
@@ -245,9 +245,11 @@ collection at its later stop (246 collections at budget 1 against 245 at 7
 and 1000) finds the whole stack installed. `gc-stopped-high-register` puts the
 table about 80 slots above the coroutine stack's entry length and drops 40 MiB
 before the callback's first loop, so at budget 1 the over-limit collection runs
-at that first stop while only the copy holds the table. The `stopped` row is
-expected to change its reply; the controls have not been rerun since, so this
-is a prediction until they are. Rows that still change no reply remain
+at that first stop while only the copy holds the table. The rerun of all 25
+rows (CI run 38235190313, source `a032018`) confirmed that the `stopped` row
+now changes this script's reply: it detected 22 rows (19 by a changed reply,
+3 in setup) and left the three rows above unchanged, each observed by its
+probe. Rows that still change no reply remain
 selected by `all` and are reported as such; no all-edge detection is claimed.
 
 Owner-qualified observations in `upvalue-probe.wf` additionally check reads

@@ -4,9 +4,9 @@ Status: implemented on the work branch; comparisons 1 and 2 passed and
 comparison 3 is exploratory (Results below); the design-tree change is
 proposed and awaits the owner. The owner has ruled on the nine collector
 edges whose omission changed no reply (Results below). Two coroutine oracle
-scripts added after the validated revision are recorded on Redis 7.0.15
-(Results below); their gate run and a rerun of the collector controls are
-pending. Board items
+scripts added after the validated revision are recorded on Redis 7.0.15 and
+pass the gate, and the rerun of the collector controls confirmed the
+prediction one of them was written for (Results below). Board items
 `halo-coroutine-study` (this study) and `halo-coroutines` (the implementation).
 
 ## Question
@@ -181,7 +181,9 @@ the 34 coroutine scripts among them: 429 of 429 runs (143 scripts at budgets
 scripts added after that revision, `refused-resume-state` and
 `gc-stopped-high-register` (both below), were recorded on Redis 7.0.15 by
 oracle-reference run 38234229680, each reply as predicted from PUC 5.1.5's
-source; their gate run is pending.
+source. The gate run 38235190315 at source `a032018` passed every oracle
+script, the 36 coroutine scripts among them: 435 of 435 runs (145 scripts at
+budgets 1, 7 and 1000), both ordinary and under collector stress.
 
 A resume refused at the nested-resume limit. In PUC Lua 5.1.5, `lua_resume`
 refuses a resume past the C-depth limit through `resume_error`, which sets
@@ -284,10 +286,14 @@ new `gc-stopped-high-register` puts the table about 80 slots above the
 coroutine stack's length at callback entry and drops 40 MiB before the
 callback's first loop, so at budget 1 the over-limit collection runs at that
 first stop while only the copy holds the table, and decoy tables made after
-the stop would reuse the table's slot if it were freed. The prediction is
-that the stopped control now changes this script's reply; it holds only once
-the controls are rerun with the script recorded. The probes accepted by the
-owner then cover three edges.
+the stop would reuse the table's slot if it were freed. The prediction was
+that the stopped control now changes this script's reply. The rerun of all 25
+controls (run 38235190313, source `a032018`) confirmed it: without the mark,
+`gc-stopped-high-register` replies differently under stress at budget 1. That
+run detected 22 controls, 19 by a changed reply and 3 in setup (thread, stack,
+main), and left pattern-replacement, transfer-child and transfer-arguments
+unchanged, each observed by its isolated probe; every probe gave its expected
+exit. The probes accepted by the owner now cover those three edges.
 
 With the sweep's separate close removed, deleting the close in `free_thread`
 (explicit-close) makes the upvalue probe fail at its owner-close check (exit
