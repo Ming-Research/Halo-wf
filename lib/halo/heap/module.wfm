@@ -98,7 +98,7 @@ public struct ThreadCell {
   public accounted_bytes: u64;
   public status: u8;
   public started: Bool;
-  public entry: Value;
+  public entry_function: Value;
   public resumer: u32;
 }
 

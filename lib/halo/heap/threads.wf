@@ -89,7 +89,7 @@ fn alloc_thread(heap: &Heap, payload: Execution) -> r: Option<u32> writes(heap) 
   let live = True();
   let unstarted = False();
   let entry_value = Value::Nil();
-  let cell = ThreadCell(live: live, mark: 0_u32, next_free: no_handle, payload: move payload, accounted_bytes: amount, status: 0_u8, started: unstarted, entry: entry_value, resumer: no_handle);
+  let cell = ThreadCell(live: live, mark: 0_u32, next_free: no_handle, payload: move payload, accounted_bytes: amount, status: 0_u8, started: unstarted, entry_function: entry_value, resumer: no_handle);
   if i < heap^.threads.inner.len {
     let next = heap^.threads.inner[i].next_free;
     set heap^.threads_free = next;
@@ -128,7 +128,7 @@ fn retire_thread(heap: &Heap, owner: u32) -> r: unit writes(heap) {
     if heap^.threads.inner[i].live {
       let empty = pkg::execution::empty();
       set heap^.threads.inner[i].payload = move empty;
-      set heap^.threads.inner[i].entry = Value::Nil();
+      set heap^.threads.inner[i].entry_function = Value::Nil();
       set heap^.threads.inner[i].resumer = no_handle;
       set heap^.threads.inner[i].status = 3_u8;
       set heap^.threads.inner[i].started = True();
@@ -148,7 +148,7 @@ fn free_thread(heap: &Heap, h: u32) -> r: unit writes(heap) {
       let empty = pkg::execution::empty();
       set heap^.threads.inner[i].payload = move empty;
       set heap^.threads.inner[i].accounted_bytes = 0_u64;
-      set heap^.threads.inner[i].entry = Value::Nil();
+      set heap^.threads.inner[i].entry_function = Value::Nil();
       set heap^.threads.inner[i].resumer = no_handle;
       set heap^.threads.inner[i].status = 3_u8;
       set heap^.threads.inner[i].live = False();

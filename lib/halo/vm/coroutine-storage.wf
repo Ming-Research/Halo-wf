@@ -34,7 +34,7 @@ fn coroutine_reset(vm: &Vm, stack: &Box<Slots<pkg::value::Value>>) -> r: unit wr
     set vm^.heap.threads.inner[main_index].status = 1_u8;
     set vm^.heap.threads.inner[main_index].started = True();
     set vm^.heap.threads.inner[main_index].resumer = pkg::heap::no_handle;
-    set vm^.heap.threads.inner[main_index].entry = pkg::value::Value::Nil();
+    set vm^.heap.threads.inner[main_index].entry_function = pkg::value::Value::Nil();
   }
   let empty_call = pkg::execution::coroutine_call_empty();
   set vm^.transfer_kind = 0_u8;

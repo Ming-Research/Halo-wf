@@ -192,7 +192,7 @@ fn coroutine_create(vm: &Vm, entry_value: Value) -> r: Value writes(vm) {
     Some(value: thread_handle) => {
       let index = cvt::<u32, u64>(thread_handle);
       if index < vm^.heap.threads.inner.len {
-        set vm^.heap.threads.inner[index].entry = entry_value;
+        set vm^.heap.threads.inner[index].entry_function = entry_value;
       }
       return Value::Thread(h: thread_handle);
     }
@@ -369,7 +369,7 @@ fn coroutine_transfer(vm: &Vm, stack: &Box<Slots<Value>>) -> r: Step writes(vm),
   let depth = coroutine_depth(vm: vm);
   let baseline = depth +sat 1_u32;
   let started = vm^.heap.threads.inner[child_index].started;
-  let entry_value = vm^.heap.threads.inner[child_index].entry;
+  let entry_value = vm^.heap.threads.inner[child_index].entry_function;
   let count = call.argc -sat 1_u64;
   let source = call.func +sat 2_u64;
   let dest = 1_u64;
@@ -407,7 +407,7 @@ fn coroutine_transfer(vm: &Vm, stack: &Box<Slots<Value>>) -> r: Step writes(vm),
   }
   if child_index < vm^.heap.threads.inner.len {
     set vm^.heap.threads.inner[child_index].started = True();
-    set vm^.heap.threads.inner[child_index].entry = Value::Nil();
+    set vm^.heap.threads.inner[child_index].entry_function = Value::Nil();
   }
   if stack^.inner.len > 0_u64 {
     set stack^.inner[0_u64] = entry_value;
@@ -489,7 +489,7 @@ fn coroutine_deliver(vm: &Vm, stack: &Box<Slots<Value>>, source: u64, count: u64
     set vm^.heap.threads.inner[child_index].resumer = no_handle;
     if terminal {
       set vm^.heap.threads.inner[child_index].status = 3_u8;
-      set vm^.heap.threads.inner[child_index].entry = Value::Nil();
+      set vm^.heap.threads.inner[child_index].entry_function = Value::Nil();
     } else {
       set vm^.heap.threads.inner[child_index].status = 0_u8;
     }

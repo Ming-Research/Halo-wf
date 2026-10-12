@@ -209,7 +209,7 @@ fn thread_stack_limit(execution: &Execution) -> r: u64 reads(execution) {
 fn mark_thread_contents(heap: &Heap, ti: u64) -> r: unit writes(heap) {
   doc "Traces only a reached thread's owned execution; rechecks slab and buffer bounds after marking writes the heap.";
   if ti < heap^.threads.inner.len {
-    let entry_value = heap^.threads.inner[ti].entry;
+    let entry_value = heap^.threads.inner[ti].entry_function;
     let resumer_handle = heap^.threads.inner[ti].resumer;
     let resumer_value = Value::Thread(h: resumer_handle);
     gc_mark(heap: heap, v: entry_value);

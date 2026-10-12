@@ -523,7 +523,7 @@ fn switch_edge_saved(edge: u8) -> r: Bool pure {
       }
       Some(value: entry_handle) => {
         if root_index < heap.threads.inner.len {
-          set heap.threads.inner[root_index].entry = Value::Fun(h: entry_handle);
+          set heap.threads.inner[root_index].entry_function = Value::Fun(h: entry_handle);
         } else {
           return False();
         }
