@@ -1126,9 +1126,11 @@ fn switch_wrap_child(engine: &Engine) -> r: u32 reads(engine) {
   for (index in 0_u64..length) {
     if index < engine^.vm.heap.threads.inner.len {
       if engine^.vm.heap.threads.inner[index].live {
-        let handle = cvt::<u64, u32>(index);
-        if handle != engine^.vm.main_thread {
-          return handle;
+        if index < 4294967295_u64 {
+          let handle = cvt::<u64, u32>(index);
+          if handle != engine^.vm.main_thread {
+            return handle;
+          }
         }
       }
     }
