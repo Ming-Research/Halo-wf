@@ -64,9 +64,10 @@ of the Whitefoot implementation, not as a compiler or Lua interpreter.
 The preparation chunk installs KEYS/ARGV from the JSON header and executes setup
 commands through the same test host. A NUL separates it from the unchanged script
 bytes on stdin. Protection is applied afterward through the embedding's
-`set_metatable`, `metatable_of` and `set_read_only`: the globals table and the
-shared string metatable become read-only, and absent global reads call a
-rejecting `__index`. Raw host assignment bypasses read-only, while script
+`set_metatable`, `metatable_of`, `table_next` and `set_read_only`: absent
+global reads call a rejecting `__index`, and the globals table, every table
+reachable from it and from the shared string metatable, metatables included,
+become read-only, except KEYS and ARGV (see GAPS.md). Raw host assignment bypasses read-only, while script
 writes raise. The VM installs its slice-1 library; this host adds Redis
 members.
 
@@ -186,8 +187,9 @@ and restores it before resume. The suspended-stack comparison is expected to
 fail with the original expected reply unchanged. Ordinary runs omit this flag.
 
 `--omit-global-readonly` and `--omit-string-readonly` are the host's
-protection controls: the host leaves the globals table or the shared string
-metatable writable. `make roots` runs `redis-api/global-write` and
+protection controls: the host skips the walk from the globals table, which
+leaves it and the tables reached only from it writable, or the walk from the
+shared string metatable. `make roots` runs `redis-api/global-write` and
 `redis-api/string-metatable-readonly` with and without them; each must pass
 without its flag and fail by a reply difference with it.
 

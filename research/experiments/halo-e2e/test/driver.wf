@@ -303,29 +303,6 @@ fn reply(vm: &Vm, value: Value, out: &Box<Slots<u8>>, depth: u64) -> r: unit wri
   return unit;
 }
 
-fn readonly_message(vm: &Vm, value: Value) -> r: Bool reads(vm) {
-  match halo::heap::string_of(heap: &vm^.heap, value: value) {
-    None() => {
-      return False();
-    }
-    Some(value: view) => {
-      let h = cvt::<u32, u64>(view.handle);
-      if h < vm^.heap.strings.inner.len {
-        if vm^.heap.strings.inner[h].payload.bytes.inner.len == 34_u64 {
-          for (i in 0_u64..34_u64) {
-            let b = vm^.heap.strings.inner[h].payload.bytes.inner[i];
-            if b != readonly_error[i] {
-              return False();
-            }
-          }
-          return True();
-        }
-      }
-    }
-  }
-  return False();
-}
-
 fn callback_line(vm: &Vm) -> r: u64 reads(vm) {
   doc "Global slow paths keep their continuation PC; the undeclared-global message uses the lookup's line. The line of an error that ends a script comes from halo::embed::error_line.";
   let pc = vm^.callback_plan.pc;
@@ -479,8 +456,84 @@ fn install_host(engine: &Engine, env: &Env) -> r: unit writes(engine), writes(en
   return unit;
 }
 
+fn push_value(out: &Box<Slots<Value>>, value: Value) -> r: unit writes(out) {
+  let cap = out^.inner.cap;
+  if out^.inner.len == cap {
+    let twice = cap +sat cap;
+    let target = imax(twice, 16_u64);
+    if target > cap {
+      grow(cell: out, capacity: target);
+    }
+  }
+  if out^.inner.len < out^.inner.cap {
+    place_back(window: &out^.inner, value: value);
+  }
+  return unit;
+}
+
+fn protect_reachable(engine: &Engine, root: Value, seen: Value) -> r: Bool writes(engine) {
+  doc "Marks root and every table reachable from it through table values and metatables read-only, as Redis 7.2.16's luaSetTableProtectionRecursively does. Each table is marked once: seen is a host table whose keys are the tables already marked, which stops cycles such as _G._G and is shared between walks. Keys are not followed, as Redis follows only values. False when a call is refused.";
+  let ok = True();
+  let pending = box_slots_new::<Value>(capacity: 0_u64);
+  push_value(out: &pending, value: root);
+  let yes = Value::True();
+  loop {
+    if pending.inner.len == 0_u64 {
+      break;
+    }
+    let t = take_back(window: &pending.inner);
+    let marked = halo::embed::table_get(engine: engine, table: seen, key: t);
+    if halo::embed::truthy(value: marked) {
+      continue;
+    }
+    match halo::embed::table_set(engine: engine, table: seen, key: t, value: yes) {
+      Ok(..) => {
+      }
+      Err(..) => {
+        set ok = False();
+      }
+    }
+    match halo::embed::set_read_only(engine: engine, table: t) {
+      Ok(..) => {
+      }
+      Err(..) => {
+        set ok = False();
+      }
+    }
+    let key = Value::Nil();
+    loop {
+      match halo::embed::table_next(engine: engine, table: t, key: key) {
+        Err(..) => {
+          set ok = False();
+          break;
+        }
+        Ok(value: next) => {
+          match next {
+            None() => {
+              break;
+            }
+            Some(value: pair) => {
+              set key = pair.key;
+              let tag = halo::embed::kind(value: pair.val);
+              if tag == 4_u8 {
+                push_value(out: &pending, value: pair.val);
+              }
+            }
+          }
+        }
+      }
+    }
+    let meta = halo::embed::metatable_of(engine: engine, value: t);
+    let meta_tag = halo::embed::kind(value: meta);
+    if meta_tag == 4_u8 {
+      push_value(out: &pending, value: meta);
+    }
+  }
+  return ok;
+}
+
 fn protect(engine: &Engine, globals_read_only: Bool, strings_read_only: Bool) -> r: Bool writes(engine) {
-  doc "Protects the script environment as Redis 7.2.16 does, through the embedding interface: globals get an __index that rejects undeclared names and become read-only, and the shared string metatable becomes read-only. A false flag leaves that table writable, as a negative control. False when a call is refused.";
+  doc "Protects the script environment as Redis 7.2.16's scriptingInit does, through the embedding interface: globals get an __index that rejects undeclared names, then the globals table and every table reachable from it, metatables included, become read-only, then so do the metatables of the basic types (only strings have one) and the tables reachable from them. KEYS and ARGV are left out of the walk and stay writable, as Redis installs them per call after protecting the environment. A false flag skips the walk from the globals, or the walk from the basic types' metatables, as a negative control. False when a call is refused.";
   let ok = True();
   let rejecting_v85 = halo::embed::new_table(engine: engine, asize: 0_u32, hsize: 1_u32);
   let index_v87 = halo::embed::intern(engine: engine, bytes: &s_50[0_u64..7_u64]);
@@ -500,23 +553,62 @@ fn protect(engine: &Engine, globals_read_only: Bool, strings_read_only: Bool) ->
       set ok = False();
     }
   }
+  let nil = Value::Nil();
+  let keys_key = halo::embed::intern(engine: engine, bytes: &keys_name[0_u64..4_u64]);
+  let argv_key = halo::embed::intern(engine: engine, bytes: &argv_name[0_u64..4_u64]);
+  let keys = halo::embed::table_get(engine: engine, table: globals_v89, key: keys_key);
+  let argv = halo::embed::table_get(engine: engine, table: globals_v89, key: argv_key);
+  match halo::embed::table_set(engine: engine, table: globals_v89, key: keys_key, value: nil) {
+    Ok(..) => {
+    }
+    Err(..) => {
+      set ok = False();
+    }
+  }
+  match halo::embed::table_set(engine: engine, table: globals_v89, key: argv_key, value: nil) {
+    Ok(..) => {
+    }
+    Err(..) => {
+      set ok = False();
+    }
+  }
+  let seen = halo::embed::new_table(engine: engine, asize: 0_u32, hsize: 0_u32);
   if globals_read_only {
-    match halo::embed::set_read_only(engine: engine, table: globals_v89) {
-      Ok(..) => {
-      }
-      Err(..) => {
-        set ok = False();
-      }
+    let walked = protect_reachable(engine: engine, root: globals_v89, seen: seen);
+    if bnot(walked) {
+      set ok = False();
     }
   }
   if strings_read_only {
-    let strings_v90 = halo::embed::metatable_of(engine: engine, value: index_v87);
-    match halo::embed::set_read_only(engine: engine, table: strings_v90) {
-      Ok(..) => {
+    let samples = array_filled::<Value, 5>(value: nil);
+    set samples[1_u64] = Value::False();
+    set samples[2_u64] = num(x: 0.0_f64);
+    set samples[3_u64] = index_v87;
+    set samples[4_u64] = v_v88;
+    for (i in 0_u64..5_u64) {
+      let sample = samples[i];
+      let meta = halo::embed::metatable_of(engine: engine, value: sample);
+      let tag = halo::embed::kind(value: meta);
+      if tag == 4_u8 {
+        let walked = protect_reachable(engine: engine, root: meta, seen: seen);
+        if bnot(walked) {
+          set ok = False();
+        }
       }
-      Err(..) => {
-        set ok = False();
-      }
+    }
+  }
+  match halo::embed::table_set(engine: engine, table: globals_v89, key: keys_key, value: keys) {
+    Ok(..) => {
+    }
+    Err(..) => {
+      set ok = False();
+    }
+  }
+  match halo::embed::table_set(engine: engine, table: globals_v89, key: argv_key, value: argv) {
+    Ok(..) => {
+    }
+    Err(..) => {
+      set ok = False();
     }
   }
   return ok;
@@ -710,9 +802,7 @@ fn main(inputs: Inputs) -> status: ExitStatus pure waits {
               }
               Error() => {
                 let line = halo::embed::error_line(engine: &engine_v114);
-                let error_v133 = halo::embed::error_value(engine: &engine_v114);
-                let locate = readonly_message(vm: &engine_v114.vm, value: error_v133);
-                let formatted = format_redis_error(engine: &engine_v114, source: &source_v109.inner[start_v124..end_v124], line: line, locate: locate);
+                let formatted = format_redis_error(engine: &engine_v114, source: &source_v109.inner[start_v124..end_v124], line: line);
                 let formatted_len = formatted.inner.len;
                 let error_reply = literal(vm: &engine_v114.vm, text: &formatted.inner[0_u64..formatted_len]);
                 text_bytes(out: &out_v118, bytes: &s_39[0_u64..24_u64]);
@@ -775,6 +865,10 @@ const stress_option: Array<u8, 11> = "--gc-stress";
 const global_readonly_option: Array<u8, 22> = "--omit-global-readonly";
 
 const string_readonly_option: Array<u8, 22> = "--omit-string-readonly";
+
+const keys_name: Array<u8, 4> = "KEYS";
+
+const argv_name: Array<u8, 4> = "ARGV";
 
 const stats_prefix: Array<u8, 15> = "{\"collections\":";
 

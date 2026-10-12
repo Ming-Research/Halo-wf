@@ -211,8 +211,8 @@ parameters were (the two forms compile identically), the arm64
 argument-register budget (E0: one more costs 8%). The budget counter lives in `vm`, decremented only at `ForLoop`,
 `TForLoop`, a backward `Jmp`, `Call` and `TailCall`; at zero the handler
 saves `pc`, `base` and `kbase` in `vm` and returns `Outcome::Budget`.
-Each handler implements the common case (both operands numbers; a table
-with an in-range integer key or a present string key and no metatable
+Each handler implements the common case (both operands numbers; a table,
+writable for a store, with an in-range integer key or a present string key and no metatable
 involved) and otherwise calls the one shared slow executor, which performs
 coercion, metamethods, hash misses, `__index` chains and readonly refusal
 and writes the destination slot itself; it returns `Err` after raising

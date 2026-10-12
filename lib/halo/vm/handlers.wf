@@ -465,8 +465,14 @@ fn instruction_set_table_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: 
   let value = stack^.inner[rval];
   let old = table_get(heap: &vm^.heap, t: t, key: key);
   let atom37 = is_nil(v: old);
-  if bnot(atom37) {
-    set ok = raw_assign(vm: vm, t: t, key: key, v: value);
+  let direct = bnot(atom37);
+  if direct {
+    if is_readonly(vm: vm, v: t) {
+      set direct = False();
+    }
+  }
+  if direct {
+    set ok = writable_assign(vm: vm, t: t, key: key, v: value);
   } else {
     let operation = SlowOp::Set();
     let nil = Value::Nil();
@@ -513,8 +519,14 @@ fn instruction_set_table_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: 
   let value = consts^.inner[kval];
   let old = table_get(heap: &vm^.heap, t: t, key: key);
   let atom40 = is_nil(v: old);
-  if bnot(atom40) {
-    set ok = raw_assign(vm: vm, t: t, key: key, v: value);
+  let direct = bnot(atom40);
+  if direct {
+    if is_readonly(vm: vm, v: t) {
+      set direct = False();
+    }
+  }
+  if direct {
+    set ok = writable_assign(vm: vm, t: t, key: key, v: value);
   } else {
     let operation = SlowOp::Set();
     let nil = Value::Nil();
@@ -561,8 +573,14 @@ fn instruction_set_table_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: 
   let value = stack^.inner[rval];
   let old = table_get(heap: &vm^.heap, t: t, key: key);
   let atom43 = is_nil(v: old);
-  if bnot(atom43) {
-    set ok = raw_assign(vm: vm, t: t, key: key, v: value);
+  let direct = bnot(atom43);
+  if direct {
+    if is_readonly(vm: vm, v: t) {
+      set direct = False();
+    }
+  }
+  if direct {
+    set ok = writable_assign(vm: vm, t: t, key: key, v: value);
   } else {
     let operation = SlowOp::Set();
     let nil = Value::Nil();
@@ -610,8 +628,14 @@ fn instruction_set_table_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: 
   let value = consts^.inner[kval];
   let old = table_get(heap: &vm^.heap, t: t, key: key);
   let atom46 = is_nil(v: old);
-  if bnot(atom46) {
-    set ok = raw_assign(vm: vm, t: t, key: key, v: value);
+  let direct = bnot(atom46);
+  if direct {
+    if is_readonly(vm: vm, v: t) {
+      set direct = False();
+    }
+  }
+  if direct {
+    set ok = writable_assign(vm: vm, t: t, key: key, v: value);
   } else {
     let operation = SlowOp::Set();
     let nil = Value::Nil();
@@ -4030,7 +4054,7 @@ fn fast_instruction_set_table_rr(code: &Box<Slots<Cell>>, consts: &Box<Slots<Val
   ensures when Ok(value: cursor): cursor.pc < code^.inner.len;
   ensures when Ok(value: cursor): base + 256_u64 <= stack^.inner.len;
 } {
-  doc "Stores register operands directly for present keys or plain writable tables, otherwise defers to the full handler.";
+  doc "Stores register operands directly for present keys of writable tables or missing keys of plain writable tables, otherwise defers to the full handler, which locates a read-only refusal.";
   let n = code^.inner.len;
   let next = pc + 1_u64;
   let ok = True();
@@ -4043,11 +4067,16 @@ fn fast_instruction_set_table_rr(code: &Box<Slots<Cell>>, consts: &Box<Slots<Val
   let old = table_get(heap: &vm^.heap, t: t, key: key);
   let atom37 = is_nil(v: old);
   if bnot(atom37) {
-    set ok = raw_assign(vm: vm, t: t, key: key, v: value);
+    if is_readonly(vm: vm, v: t) {
+      let handled = False();
+      let cursor = FastCursor(pc: pc, handled: handled);
+      return Ok<FastCursor, Step>(value: cursor);
+    }
+    set ok = writable_assign(vm: vm, t: t, key: key, v: value);
   } else {
     let insertable = fast_table_can_insert(vm: vm, t: t, key: key);
     if insertable {
-      set ok = raw_assign(vm: vm, t: t, key: key, v: value);
+      set ok = writable_assign(vm: vm, t: t, key: key, v: value);
     } else {
       let handled = False();
       let cursor = FastCursor(pc: pc, handled: handled);
@@ -4084,7 +4113,7 @@ fn fast_instruction_set_table_kr(code: &Box<Slots<Cell>>, consts: &Box<Slots<Val
   ensures when Ok(value: cursor): cursor.pc < code^.inner.len;
   ensures when Ok(value: cursor): base + 256_u64 <= stack^.inner.len;
 } {
-  doc "Stores a constant key and register value directly for present keys or plain writable tables, otherwise defers to the full handler.";
+  doc "Stores a constant key and register value directly for present keys of writable tables or missing keys of plain writable tables, otherwise defers to the full handler, which locates a read-only refusal.";
   let n = code^.inner.len;
   let next = pc + 1_u64;
   let ok = True();
@@ -4098,11 +4127,16 @@ fn fast_instruction_set_table_kr(code: &Box<Slots<Cell>>, consts: &Box<Slots<Val
   let old = table_get(heap: &vm^.heap, t: t, key: key);
   let atom43 = is_nil(v: old);
   if bnot(atom43) {
-    set ok = raw_assign(vm: vm, t: t, key: key, v: value);
+    if is_readonly(vm: vm, v: t) {
+      let handled = False();
+      let cursor = FastCursor(pc: pc, handled: handled);
+      return Ok<FastCursor, Step>(value: cursor);
+    }
+    set ok = writable_assign(vm: vm, t: t, key: key, v: value);
   } else {
     let insertable = fast_table_can_insert(vm: vm, t: t, key: key);
     if insertable {
-      set ok = raw_assign(vm: vm, t: t, key: key, v: value);
+      set ok = writable_assign(vm: vm, t: t, key: key, v: value);
     } else {
       let handled = False();
       let cursor = FastCursor(pc: pc, handled: handled);
