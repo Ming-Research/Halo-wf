@@ -1,7 +1,9 @@
 # Coroutines in Halo
 
-Status: approved as an experiment; nothing here is implemented or measured
-yet. Board item `halo-coroutine-study`.
+Status: implemented on the work branch; comparisons 1 and 2 passed and
+comparison 3 is exploratory (Results below); the design-tree change is
+proposed and awaits the owner, as does the ruling on the nine collector
+edges only isolated probes observe. Board items `halo-coroutine-study` (this study) and `halo-coroutines` (the implementation).
 
 ## Question
 
