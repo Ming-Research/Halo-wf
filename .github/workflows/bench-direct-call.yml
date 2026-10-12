@@ -15,7 +15,7 @@ on:
       - .github/workflows/bench-direct-call.yml
 
 env:
-  BASE: 4f12102
+  BASE: f45edc6
 
 defaults:
   run:
