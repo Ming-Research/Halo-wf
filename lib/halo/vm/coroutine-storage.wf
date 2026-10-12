@@ -1,4 +1,7 @@
-fn coroutine_refresh_storage(vm: &Vm, stack: &Box<Slots<pkg::value::Value>>) -> r: Bool reads(stack), writes(vm) {
+alias Value = pkg::value::Value;
+alias no_handle = pkg::heap::no_handle;
+
+fn coroutine_refresh_storage(vm: &Vm, stack: &Box<Slots<Value>>) -> r: Bool reads(stack), writes(vm) {
   if vm^.current_thread == vm^.main_thread {
     return True();
   }
@@ -6,7 +9,7 @@ fn coroutine_refresh_storage(vm: &Vm, stack: &Box<Slots<pkg::value::Value>>) -> 
   return pkg::heap::refresh_thread_bytes(heap: &vm^.heap, h: vm^.current_thread, amount: amount);
 }
 
-fn coroutine_reset(vm: &Vm, stack: &Box<Slots<pkg::value::Value>>) -> r: unit writes(vm), writes(stack) {
+fn coroutine_reset(vm: &Vm, stack: &Box<Slots<Value>>) -> r: unit writes(vm), writes(stack) {
   doc "A new start ends every coroutine from the previous start, even a reachable or host-stopped child. Close installed captures before returning ownership to main, then terminate every other thread; reachable identity cells await ordinary collection.";
   if vm^.current_thread != vm^.main_thread {
     if bor(vm^.suspended, vm^.host_stopped) {
@@ -33,8 +36,8 @@ fn coroutine_reset(vm: &Vm, stack: &Box<Slots<pkg::value::Value>>) -> r: unit wr
   if main_index < vm^.heap.threads.inner.len {
     set vm^.heap.threads.inner[main_index].status = 1_u8;
     set vm^.heap.threads.inner[main_index].started = True();
-    set vm^.heap.threads.inner[main_index].resumer = pkg::heap::no_handle;
-    set vm^.heap.threads.inner[main_index].entry_function = pkg::value::Value::Nil();
+    set vm^.heap.threads.inner[main_index].resumer = no_handle;
+    set vm^.heap.threads.inner[main_index].entry_function = Value::Nil();
   }
   let empty_call = pkg::execution::coroutine_call_empty();
   set vm^.transfer_kind = 0_u8;

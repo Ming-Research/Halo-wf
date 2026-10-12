@@ -748,6 +748,15 @@ fn switch_host_call(env: &Probe, vm: &halo::vm::Vm, stack: &Box<Slots<Value>>, f
     let second = func +sat 1_u64;
     let third = func +sat 2_u64;
     let fourth = func +sat 3_u64;
+    if func >= stack^.inner.len {
+      return halo::vm::HostOutcome::Stop();
+    }
+    if second >= stack^.inner.len {
+      return halo::vm::HostOutcome::Stop();
+    }
+    if third >= stack^.inner.len {
+      return halo::vm::HostOutcome::Stop();
+    }
     if fourth < stack^.inner.len {
       set stack^.inner[func] = Value::Num(n: 73.0_f64);
       set stack^.inner[second] = Value::Nil();
