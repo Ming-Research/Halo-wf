@@ -8,11 +8,12 @@ Halo is a Lua 5.1 engine written in Whitefoot with an embedding interface
 
 Halo shows what Whitefoot gives a dynamic-language runtime and exposes what it
 lacks. Firn runs its Redis scripts on Halo, so Halo also does what Firn's
-scripts need, with replies identical to the reference's; that is Firn's
-need, not Halo's own goal, and it comes first, at the priority Firn gives
-it. Halo's own goal, as the owner set it on 2026-10-12: Halo becomes the
-fastest Lua interpreter, in stages: first faster than PUC
-Lua 5.1.5, ideally before the next Whitefoot release, then faster than the
+scripts need, with replies identical to the reference's (Redis 7.0.15, see
+Reference); that is Firn's need, not Halo's own goal: it carries the
+priority Firn gives it and, at equal priority, goes ahead of Halo's own
+goal. Halo's own goal, as the owner set it on 2026-10-12: Halo becomes the
+fastest Lua interpreter, in stages: first faster than PUC Lua 5.1.5,
+ideally before the next Whitefoot release, then faster than the
 fastest current interpreters (PUC Lua 5.4, LuaJIT 2.1's interpreter and
 Luau's interpreter). The current yardstick for both stages is
 [the fastest-interpreter baseline](research/experiments/halo-bench/RESULTS.md#fastest-interpreter-baseline).
