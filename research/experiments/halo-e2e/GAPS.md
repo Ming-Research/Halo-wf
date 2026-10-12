@@ -148,7 +148,10 @@ table reachable from it through table values and metatables, such as the
 `string`, `math` and `redis` tables and the rejecting metatable, become
 read-only (`luaSetTableProtectionRecursively`); then so do the metatables of
 the basic types, of which only strings have one, and what they reach
-(`luaSetTableProtectionForBasicTypes`). The walk marks each table once.
+(`luaSetTableProtectionForBasicTypes`). The walk marks each table once and
+stops a table's traversal at the first key `table_next` returns twice, so it
+ends even on a table whose hash invariants a collector fault has broken; the
+host then exits with its setup-runtime status (4).
 KEYS and ARGV, which the preparation chunk has already set, are taken out of
 the globals during the walk and put back after it, so they stay writable as
 Redis's per-call KEYS and ARGV do (`luaCallFunction` installs them after

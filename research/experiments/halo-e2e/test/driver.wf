@@ -472,7 +472,7 @@ fn push_value(out: &Box<Slots<Value>>, value: Value) -> r: unit writes(out) {
 }
 
 fn protect_reachable(engine: &Engine, root: Value, seen: Value) -> r: Bool writes(engine) {
-  doc "Marks root and every table reachable from it through table values and metatables read-only, as Redis 7.2.16's luaSetTableProtectionRecursively does. Each table is marked once: seen is a host table whose keys are the tables already marked, which stops cycles such as _G._G and is shared between walks. Keys are not followed, as Redis follows only values. False when a call is refused.";
+  doc "Marks root and every table reachable from it through table values and metatables read-only, as Redis 7.2.16's luaSetTableProtectionRecursively does. Each table is expanded once, only after it is recorded in seen, a host table whose keys are the tables already marked, which stops cycles such as _G._G and is shared between walks. Keys are not followed, as Redis follows only values. Each table's traversal records the keys table_next returned in a fresh host table and stops at the first repeat, so the walk ends after at most one step per stored key even when a table's hash invariants are broken, as when the collector has freed a key still in use; the repeat is refused. False when a call is refused or a traversal repeats a key.";
   let ok = True();
   let pending = box_slots_new::<Value>(capacity: 0_u64);
   push_value(out: &pending, value: root);
@@ -491,6 +491,7 @@ fn protect_reachable(engine: &Engine, root: Value, seen: Value) -> r: Bool write
       }
       Err(..) => {
         set ok = False();
+        continue;
       }
     }
     match halo::embed::set_read_only(engine: engine, table: t) {
@@ -501,6 +502,7 @@ fn protect_reachable(engine: &Engine, root: Value, seen: Value) -> r: Bool write
       }
     }
     let key = Value::Nil();
+    let returned = halo::embed::new_table(engine: engine, asize: 0_u32, hsize: 0_u32);
     loop {
       match halo::embed::table_next(engine: engine, table: t, key: key) {
         Err(..) => {
@@ -514,6 +516,19 @@ fn protect_reachable(engine: &Engine, root: Value, seen: Value) -> r: Bool write
             }
             Some(value: pair) => {
               set key = pair.key;
+              let repeated = halo::embed::table_get(engine: engine, table: returned, key: key);
+              if halo::embed::truthy(value: repeated) {
+                set ok = False();
+                break;
+              }
+              match halo::embed::table_set(engine: engine, table: returned, key: key, value: yes) {
+                Ok(..) => {
+                }
+                Err(..) => {
+                  set ok = False();
+                  break;
+                }
+              }
               let tag = halo::embed::kind(value: pair.val);
               if tag == 4_u8 {
                 push_value(out: &pending, value: pair.val);
