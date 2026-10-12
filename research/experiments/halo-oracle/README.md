@@ -7,7 +7,7 @@ Halo's `make check-core` compares the corpus through the `oracle` target;
 recording reference replies remains the job of
 [oracle-reference.yml](../../../.github/workflows/oracle-reference.yml).
 
-There are 121 scripts: 69 `lua-core`, 34 `redis-api`, 6 `apps`, and 12 `libs`.
+There are 122 scripts: 69 `lua-core`, 35 `redis-api`, 6 `apps`, and 12 `libs`.
 The scripts, replies and runner belong here until the oracle is replaced or
 Halo/firn scripting is retired. Each case is consumed by `run.sh`; the table
 below is the index of the observations it protects.
@@ -299,3 +299,4 @@ not automatically used to overwrite this baseline.
 | redis-api | [sha1hex](scripts/redis-api/sha1hex.lua) | redis.sha1hex hashes empty, ASCII and embedded NUL byte strings. |
 | redis-api | [status-reply](scripts/redis-api/status-reply.lua) | redis.status_reply constructs a RESP status reply. |
 | redis-api | [string-metatable-readonly](scripts/redis-api/string-metatable-readonly.lua) | Writes to the string metatable (assignment, rawset, setmetatable) succeed in 7.0.15 and are refused as a readonly table in 7.2.16. |
+| redis-api | [readonly-library-tables](scripts/redis-api/readonly-library-tables.lua) | Writes to the library tables reachable from the globals and to an existing key of the string metatable, with each refusal's location. |
