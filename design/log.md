@@ -4,6 +4,14 @@ Newest first. One entry per approved change of the tree: a dated title,
 `Nodes:` naming every node changed, `Owner-approved:` and `Summary:`; the
 owner-wide instructions' *Log format* owns the form.
 
+## 2026-10-12 Halo provides Lua 5.1's coroutine library
+
+Nodes: halo, halo/calls/coroutines, halo/heap, halo/heap/collector-validation, halo/heap/execution-marking, halo/values
+
+Owner-approved: 2026-10-12 on the WF status board, card "Approve the coroutine branch's changes to the design tree?" under item "Coroutines implemented as one execution state per coroutine, swapped whole into the interpreter, reviewed and merged into main": chose option A, "approve: these changes to the design tree become decisions, and the coroutine branch (head commit 0d3fc88) can enter the merge process". The swap length restatement in halo/calls/coroutines was chosen earlier on its own card (option A, an exception to the rule against routing around a Whitefoot gap, its removal tracked on the board), and the probe acceptance in halo/heap/collector-validation follows the owner's ruling on the first run's nine unchanged edges.
+
+Summary: Coroutines were excluded because the survey found no script calling them; the owner reopened them as an experiment on what Whitefoot gives and lacks for several execution stacks swapped through one interpreter and traced by the collector, and Firn asked for them. Each coroutine owns its stack, frames, open upvalues, library continuations and checkpoints in a thread cell, and resume, yield, return and error swap those buffers whole within one dispatch loop, so a switch uses no native call level and no machine stack; an open upvalue carries its owner. A start or reset ends every coroutine of the previous run. The collector traces every execution through its thread cell, the installed one parked for marking as a switch saves it; execution buffers count toward the byte limit by capacity, the main execution's installed buffers excepted so scripts without coroutines keep their accounting; the driver collects at each run exit when the reconciled bytes exceed the limit. Thread joins the value kinds. Each collector edge coroutines add is validated by a missing-edge control that must change a recorded coroutine reply under stress; the rerun of all 25 detected 22 and left three observed by their isolated probes, as accepted. The comparisons recorded before measuring passed: every coroutine oracle script byte-identical with Redis 7.0.15 at budgets 1, 7 and 1000, ordinary and stressed, and no halo-bench kernel slower than main on the 14900K beyond its noise bounds (`research/investigations/halo/COROUTINES.md`).
+
 ## 2026-10-09 Halo's collector is forced and observed only through the embedding API
 
 Nodes: halo/heap/collector-validation
