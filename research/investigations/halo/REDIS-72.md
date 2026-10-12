@@ -136,26 +136,29 @@ both modes:
 | `error-reply-newline` | The test host stored `error_reply`'s text unchanged instead of applying `luaPushErrorBuff`'s code rule. | This change. |
 | `set-repl-no-argument` | The test host had no `redis.set_repl`. | This change. |
 | `redis-version` | The test host had no `REDIS_VERSION` or `REDIS_VERSION_NUM`. | This change. |
-| `number-argument-format`, `number-argument-effects`, `double-score-reply` | The test host had no ECHO, INCRBYFLOAT or ZRANGE; behind that, number text. | Commands: this change. Number text: `wf-need-halo-oracle-72`. |
-| `double-reply-table` | The test host did not convert a `{double=x}` table; behind that, number text. | Conversion: this change. Number text: `wf-need-halo-oracle-72`. |
+| `number-argument-format`, `number-argument-effects`, `double-score-reply` | The test host had no ECHO, INCRBYFLOAT or ZRANGE; behind that, number text. | Commands: this change. Number text: the fpconv package (`halo-redis-double-text`). |
+| `double-reply-table` | The test host did not convert a `{double=x}` table; behind that, number text. | Conversion: this change. Number text: the fpconv package (`halo-redis-double-text`). |
 | `string-metatable-readonly` | The string metatable is not read-only, and the embedding interface gives the host no way to reach or mark it. | `halo-embed-protect`. |
 
-"Number text" is the digits of a finite, non-integral number: Redis 7.2.16
-writes the shortest digits that read back exactly, Whitefoot's standard
-library cannot produce them yet, and the test host writes Lua's %.14g text
-instead. The two agree for 0.1 and differ for 1/3. After this change the
-test host follows Redis 7.2.16's other number rules (integers within
-LLONG_MAX/2, nan, inf, zeros), so by reading:
-
-- `number-argument-format` still differs in 5 of 16 items (1/3, 1e-5, 1e-7,
-  2^63, 5e-324), all number text.
-- `double-reply-table` still differs in 3 of 8 items (1/3, 2^63, 1e-7), all
-  number text.
-- `number-argument-effects` and `double-score-reply` are expected to pass,
-  because their only fractional value is 0.1. They do not test the
-  shortest-digit rule, and the first does not test INCRBYFLOAT's long double
-  sum, which the host computes in double.
-- `string-metatable-readonly` still fails until `halo-embed-protect`.
+"Number text" is the digits of a finite number outside Redis's integer rule
+(an integral value no larger in magnitude than LLONG_MAX/2, 2^62, is written
+as an integer). Redis 7.2.16 writes them with fpconv's Grisu2, which has no
+exact fallback, so A1 and A2's "shortest round-trip digits" is not exact: on
+Whitefoot CI run 38236089638, 355 of 16,922 nonzero values outside the
+integer rule that redis-server 7.2.16 wrote had other digits than the exact
+shortest (1e23 is 99999999999999990000000), and every one matched a
+reconstruction of `fpconv_dtoa`. Before the fpconv package the test host
+wrote Lua's %.14g text instead, which agrees for 0.1 and differs for 1/3. It
+now follows Redis 7.2.16's other number rules (the integer rule, nan, inf,
+zeros) and writes number text with the fpconv package (`lib/fpconv`, a port
+of `fpconv_dtoa`), and the gate compares its texts with a table recorded on
+redis-server 7.2.16 ([fpconv README](../../../lib/fpconv/README.md#oracle-table)).
+[Gate run 38310472546](https://github.com/Ming-Research/Halo-wf/actions/runs/38310472546)
+on 475f545 (the pure port, with the table of 18,235 rows) passed `double-reply-table`, `number-argument-format`,
+`number-argument-effects` and `double-score-reply` at budgets 1, 7 and 1000,
+ordinary and under collector stress. `number-argument-effects` does not test
+INCRBYFLOAT's long double sum, which the host computes in double.
+`string-metatable-readonly` still fails until `halo-embed-protect`.
 
 The reference check group (`REFERENCE_LUA`, the number library and the
 MessagePack package against Redis's bundled Lua) now builds 7.2.16's Lua;

@@ -4,6 +4,14 @@ Newest first. One entry per approved change of the tree: a dated title,
 `Nodes:` naming every node changed, `Owner-approved:` and `Summary:`; the
 owner-wide instructions' *Log format* owns the form.
 
+## 2026-10-12 Halo writes Redis 7.2.16's double texts through a ported fpconv package
+
+Nodes: halo/double-text
+
+Owner-approved: 2026-10-12 on the WF status board, card "Approve this design decision: the Halo repository provides a host-independent general package that ports Redis 7.2.16's double formatting function as is, uses it to write text byte-identical with Redis, and each host applies Redis's rules itself?" under item "The Halo repository provides one double-text writer byte-identical with Redis 7.2.16, shared by the test host and Firn": chose option A, "approve: the node becomes a decision, and the pull request can be marked ready once its gate is green and merged into the Redis 7.2.16 branch".
+
+Summary: Redis 7.2.16 writes doubles with Grisu2 without an exact fallback, so its digits are not always the shortest (1e23 becomes 99999999999999990000000; 355 of 16,922 measured non-integer values differ from the shortest form). Halo's `lib/fpconv` ports `fpconv_dtoa` as is, names no host and writes NaN's sign as the bit says; each host applies Redis's reply rules itself (`d2string` for double replies, the integer rule then the formatter for call arguments). The gate reproduces all 18,235 doubles recorded on redis-server 7.2.16 byte for byte in both forms, against a table whose row count and digest are pinned (`lib/fpconv/README.md`). Rejected: the standard library's shortest form, a copy per host, Redis's reply rules inside the package, and a NaN-sign parameter.
+
 ## 2026-10-12 Halo's reference moves from Redis 7.0.15 to Redis 7.2.16
 
 Nodes: halo
