@@ -5439,4 +5439,85 @@ result outside these is reported as measured.
 
 ### Result
 
-Not yet measured.
+Run on 2026-10-12 by `fastest-baseline.yml` on the 14900K (Ubuntu, CPU
+governor `performance` on all 32 CPUs, every timed process on CPU 2), source
+`9bff3d991b4a`, Halo built by `wf-d837678c6905` with full LTO through Ubuntu
+clang 22.1.8, the other interpreters with gcc/g++ 15.2.0 at the flags above;
+the run's JSON, manifests and logs are the run's `halo-fastest-baseline`
+artifact. Six rounds. Every interpreter agreed with PUC 5.1.5 on all 13
+workloads (no n/a). The job started on the 14900K without going through the
+machine's queue because the commit body mentioned the trigger; the runner
+has one slot, so no other CI job overlapped it. The trigger now requires
+`[bench]` at the start of the subject.
+
+Median seconds per launch; in parentheses Halo / interpreter, above 1 when Halo is slower.
+
+| Workload | Halo | puc-5.1.5 | puc-5.4.9 | luajit-2.1-joff | luau-0.742 | luau-0.742-O2 |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 0.0871 | 0.0484 (1.80) | 0.0328 (2.66) | 0.0262 (3.32) | 0.0304 (2.87) | 0.0304 (2.86) |
+| loop | 0.5019 | 0.3300 (1.52) | 0.2761 (1.82) | 0.2267 (2.21) | 0.2816 (1.78) | 0.2826 (1.78) |
+| integer-table | 0.3524 | 0.2563 (1.37) | 0.2071 (1.70) | 0.1212 (2.91) | 0.2904 (1.21) | 0.2890 (1.22) |
+| string-key | 0.0223 | 0.0267 (0.84) | 0.0120 (1.86) | 0.0112 (2.00) | 0.0163 (1.37) | 0.0163 (1.37) |
+| concat | 0.0729 | 0.0546 (1.34) | 0.0392 (1.86) | 0.0294 (2.48) | 0.0337 (2.16) | 0.0337 (2.16) |
+| sort | 0.1844 | 0.2918 (0.63) | 0.3172 (0.58) | 0.3056 (0.60) | 0.1245 (1.48) | 0.1245 (1.48) |
+| binary-trees | 1.2155 | 0.9072 (1.34) | 0.7049 (1.72) | 0.3823 (3.18) | 0.3831 (3.17) | 0.3944 (3.08) |
+| List | 0.7424 | 0.4358 (1.70) | 0.2762 (2.69) | 0.2256 (3.29) | 0.2458 (3.02) | 0.2455 (3.02) |
+| NBody | 0.8205 | 0.6692 (1.23) | 0.3546 (2.31) | 0.2115 (3.88) | 0.2616 (3.14) | 0.2615 (3.14) |
+| Permute | 0.5192 | 0.3653 (1.42) | 0.2223 (2.34) | 0.1336 (3.89) | 0.2053 (2.53) | 0.2050 (2.53) |
+| Queens | 0.6756 | 0.4643 (1.45) | 0.3087 (2.19) | 0.1796 (3.76) | 0.2593 (2.61) | 0.2597 (2.60) |
+| Sieve | 0.8562 | 0.5611 (1.53) | 0.2988 (2.87) | 0.2290 (3.74) | 0.3580 (2.39) | 0.3549 (2.41) |
+| Towers | 0.7165 | 0.4452 (1.61) | 0.3035 (2.36) | 0.1655 (4.33) | 0.2286 (3.13) | 0.2286 (3.13) |
+| geometric mean of Halo / interpreter | | 1.32 over 13 | 1.96 over 13 | 2.79 over 13 | 2.26 over 13 | 2.26 over 13 |
+
+Relative range (max-min)/median of each median above.
+
+| Workload | Halo | puc-5.1.5 | puc-5.4.9 | luajit-2.1-joff | luau-0.742 | luau-0.742-O2 |
+|---|---:|---:|---:|---:|---:|---:|
+| fib | 1.41% | 3.78% | 1.94% | 0.58% | 1.01% | 38.00% |
+| loop | 0.32% | 0.32% | 0.13% | 0.78% | 0.61% | 1.28% |
+| integer-table | 3.88% | 3.32% | 8.04% | 5.47% | 2.70% | 2.68% |
+| string-key | 6.35% | 3.11% | 4.06% | 1.99% | 2.86% | 0.66% |
+| concat | 7.02% | 8.61% | 14.65% | 1.56% | 1.68% | 0.79% |
+| sort | 2.22% | 0.72% | 1.78% | 0.86% | 0.43% | 1.60% |
+| binary-trees | 0.64% | 0.82% | 5.69% | 5.24% | 4.25% | 6.73% |
+| List | 0.32% | 3.62% | 6.42% | 17.51% | 3.04% | 0.99% |
+| NBody | 1.48% | 0.88% | 4.77% | 1.56% | 84.33% | 0.25% |
+| Permute | 1.05% | 0.18% | 15.98% | 2.25% | 7.19% | 0.42% |
+| Queens | 10.46% | 0.19% | 8.12% | 4.87% | 13.18% | 13.41% |
+| Sieve | 0.32% | 2.19% | 3.47% | 0.38% | 1.79% | 2.29% |
+| Towers | 1.26% | 0.74% | 5.79% | 2.41% | 1.60% | 0.96% |
+
+Read against the directions recorded before the run:
+
+- Stage 1. Halo is slower than PUC 5.1.5 on 11 of 13 workloads, by 1.23
+  (NBody) to 1.80 (fib) times, and faster on string-key (0.84) and sort
+  (0.63). Ranked: fib 1.80, List 1.70, Towers 1.61, Sieve 1.53, loop 1.52,
+  Queens 1.45, Permute 1.42, integer-table 1.37, binary-trees 1.34, concat
+  1.34, NBody 1.23. The six AWFY benchmarks (1.23 to 1.70) fall inside the
+  kernels' range (1.34 to 1.80, failing kernels only), so they do not by
+  themselves reorder the attribution work.
+- Stage 2. LuaJIT `-joff` is more than 3 times faster than Halo on 8 of 13
+  workloads (fib 3.32, binary-trees 3.18, List 3.29, NBody 3.88, Permute
+  3.89, Queens 3.76, Sieve 3.74, Towers 4.33); List's distance from 3 (10%)
+  is inside LuaJIT's 17.5% range there, which leaves 7 of 13 clear of the
+  noise, still the recorded threshold. By the direction recorded before the
+  run, stage 2 needs a value-representation change, not only code
+  generation and VM path fixes. This is a direction for a later
+  investigation, which states its own question; it does not change stage 1.
+- PUC 5.4.9 and Luau are not within 1.5 times of Halo on most workloads
+  (PUC 5.4.9 1.70 to 2.87 times faster on 12, slower only on sort; Luau
+  1.21 to 3.17 times faster on all 13), so
+  the gap is not specific to LuaJIT's hand-written assembly interpreter.
+- Luau `-O2` matches Luau `-O1` on every workload (within 3%); it adds
+  nothing to later runs.
+- The prior held: Halo 1.34 to 1.80 times PUC 5.1.5 on the five kernels
+  P1 still fails; PUC 5.4.9 1.48 times faster than PUC 5.1.5 by the
+  geometric means (1.96 / 1.32); LuaJIT `-joff` 2.1 times and Luau 1.7
+  times faster than PUC 5.1.5 by the same measure.
+
+Noise. Some ranges are wide: Luau `-O2` fib 38% and Luau NBody 84% (one
+slow launch each of six), Halo Queens 10.5% (two slow launches), PUC 5.4.9
+Permute 16% and concat 15%, LuaJIT List 17.5% (two launches at 0.188 s,
+four at 0.226 s). No conclusion above rests on a cell whose ratio
+sits within its range of the threshold it is compared with, except List in
+stage 2, which is set aside as stated.

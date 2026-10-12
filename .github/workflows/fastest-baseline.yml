@@ -4,7 +4,7 @@
 # 7.0.15, PUC Lua 5.4.9, LuaJIT 2.1 and Luau 0.742 at their pins
 # (interpreters.sh) and the are-we-fast-yet bundles (awfy.py). The hosted job
 # runs fastest.py's one-round sample mode as a smoke test. The 14900K job runs
-# only for a commit whose message contains [bench]: it rebuilds there and
+# only for a commit whose subject starts with [bench]: it rebuilds there and
 # runs the sample, then the full measurement, with every timed process on
 # CPU 2. Remove before the branch is ready.
 name: fastest-baseline
@@ -82,7 +82,7 @@ jobs:
 
   bench:
     needs: smoke
-    if: contains(github.event.head_commit.message, '[bench]')
+    if: startsWith(github.event.head_commit.message, '[bench]')
     runs-on: [self-hosted, 14900k]
     timeout-minutes: 120
     steps:

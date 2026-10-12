@@ -125,8 +125,8 @@ longer repeated:
   checks. `--sample` runs one round to time the run before `--rounds N`.
 
 `.github/workflows/fastest-baseline.yml` on the branch builds everything,
-runs the sample on a hosted runner, and, for a commit whose message
-contains `[bench]`, the sample and six rounds on the 14900K's CPU 2:
+runs the sample on a hosted runner, and, for a commit whose subject starts
+with `[bench]`, the sample and six rounds on the 14900K's CPU 2:
 
 ```sh
 python3 -B research/experiments/halo-bench/fastest.py --halo build/fastest/halo \
