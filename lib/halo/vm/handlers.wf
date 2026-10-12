@@ -7,6 +7,7 @@ alias table_get = pkg::heap::table_get;
 alias table_get_str = pkg::heap::table_get_str;
 alias str_of = pkg::value::str_of;
 alias tab_of = pkg::value::tab_of;
+alias CallbackPlan = pkg::execution::CallbackPlan;
 
 const dispatch_text_0: Array<u8, 16> = "invalid bytecode";
 

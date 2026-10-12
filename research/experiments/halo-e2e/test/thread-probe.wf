@@ -1,0 +1,693 @@
+alias ExitStatus = std::process::ExitStatus;
+alias Engine = halo::embed::Engine;
+alias Value = halo::value::Value;
+alias PatternSubFrame = halo::execution::PatternSubFrame;
+alias no_handle = halo::heap::no_handle;
+
+fn thread_storage_probe() -> r: u8 pure {
+  doc "Observations 201 and 202 detect nonempty counterpart owners, missing capacity coefficients or omitted pattern output reserve in logical execution accounting; the independent expected estimates are 512, 4532 and 4542 bytes.";
+  let execution = halo::execution::empty();
+  let empty_bytes = halo::execution::storage_bytes(execution: &execution);
+  if empty_bytes != 512_u64 {
+    return 201_u8;
+  }
+  if execution.stack.inner.cap != 0_u64 {
+    return 201_u8;
+  }
+  if execution.stopped_stack.inner.cap != 0_u64 {
+    return 201_u8;
+  }
+  if execution.frames.inner.cap != 0_u64 {
+    return 201_u8;
+  }
+  if execution.open_upvalues.inner.cap != 0_u64 {
+    return 201_u8;
+  }
+  if execution.callbacks.inner.cap != 0_u64 {
+    return 201_u8;
+  }
+  if execution.library_contexts.inner.cap != 0_u64 {
+    return 201_u8;
+  }
+  if execution.sort_frames.inner.cap != 0_u64 {
+    return 201_u8;
+  }
+  if execution.pattern_subs.inner.cap != 0_u64 {
+    return 201_u8;
+  }
+  grow(cell: &execution.stack, capacity: 2_u64);
+  grow(cell: &execution.stopped_stack, capacity: 3_u64);
+  grow(cell: &execution.frames, capacity: 4_u64);
+  grow(cell: &execution.open_upvalues, capacity: 5_u64);
+  grow(cell: &execution.callbacks, capacity: 6_u64);
+  grow(cell: &execution.library_contexts, capacity: 7_u64);
+  grow(cell: &execution.sort_frames, capacity: 8_u64);
+  grow(cell: &execution.pattern_subs, capacity: 9_u64);
+  let reserved_bytes = halo::execution::storage_bytes(execution: &execution);
+  if reserved_bytes != 4532_u64 {
+    return 202_u8;
+  }
+  let output = box_slots_new::<u8>(capacity: 10_u64);
+  let nil = Value::Nil();
+  let no = False();
+  let pattern = PatternSubFrame(context: 0_u64, source: nil, pattern: nil, replacement: nil, output: move output, start: 0_u64, end: 0_u64, count: 0_u64, maximum: 0_i64, anchor: no, phase: 0_u8);
+  if execution.pattern_subs.inner.len < execution.pattern_subs.inner.cap {
+    place_back(window: &execution.pattern_subs.inner, value: move pattern);
+  } else {
+    return 202_u8;
+  }
+  let output_bytes = halo::execution::storage_bytes(execution: &execution);
+  if output_bytes != 4542_u64 {
+    return 202_u8;
+  }
+  return 0_u8;
+}
+
+fn thread_accounting_probe() -> r: u8 pure {
+  doc "Observations 203 through 208 detect omitted thread charges, refresh of capacity growth or shrink, double charging, double free, failed free-list reuse, and accounting overflow that changes counters or cached charges. A 1024-byte limit must become due for a 1536-byte thread even with an empty stack length.";
+  let heap = halo::heap::heap_new(limit: 1024_u64);
+  let payload = halo::execution::empty();
+  let h = match halo::heap::alloc_thread(heap: &heap, payload: move payload) {
+    None() => {
+      return 203_u8;
+    }
+    Some(value: handle) => {
+      give handle;
+    }
+  }
+  if heap.bytes != 512_u64 {
+    return 203_u8;
+  }
+  if heap.bytes_since_gc != 512_u64 {
+    return 203_u8;
+  }
+  if halo::heap::gc_due(heap: &heap) {
+    return 203_u8;
+  }
+  let index = cvt::<u32, u64>(h);
+  if index < heap.threads.inner.len {
+    if heap.threads.inner[index].payload.stack.inner.cap <= 64_u64 {
+      grow(cell: &heap.threads.inner[index].payload.stack, capacity: 64_u64);
+    } else {
+      return 203_u8;
+    }
+  } else {
+    return 203_u8;
+  }
+  let growth_refreshed = halo::heap::refresh_thread_storage(heap: &heap, h: h);
+  let growth_failed = bnot(growth_refreshed);
+  if growth_failed {
+    return 204_u8;
+  }
+  if heap.bytes != 1536_u64 {
+    return 204_u8;
+  }
+  if heap.bytes_since_gc != 1536_u64 {
+    return 204_u8;
+  }
+  let limit_due = halo::heap::gc_due(heap: &heap);
+  let limit_missing = bnot(limit_due);
+  if limit_missing {
+    return 204_u8;
+  }
+  let repeated_refresh = halo::heap::refresh_thread_storage(heap: &heap, h: h);
+  let repeated_failed = bnot(repeated_refresh);
+  if repeated_failed {
+    return 205_u8;
+  }
+  if heap.bytes != 1536_u64 {
+    return 205_u8;
+  }
+  if heap.bytes_since_gc != 1536_u64 {
+    return 205_u8;
+  }
+  let replacement = halo::execution::empty();
+  if index < heap.threads.inner.len {
+    swap(first: &heap.threads.inner[index].payload, second: &replacement);
+  } else {
+    return 205_u8;
+  }
+  let shrink_refreshed = halo::heap::refresh_thread_storage(heap: &heap, h: h);
+  let shrink_failed = bnot(shrink_refreshed);
+  if shrink_failed {
+    return 205_u8;
+  }
+  if heap.bytes != 512_u64 {
+    return 205_u8;
+  }
+  if heap.bytes_since_gc != 1536_u64 {
+    return 205_u8;
+  }
+  halo::heap::free_thread(heap: &heap, h: h);
+  if heap.bytes != 0_u64 {
+    return 206_u8;
+  }
+  if heap.bytes_since_gc != 1536_u64 {
+    return 206_u8;
+  }
+  if heap.threads_free != h {
+    return 206_u8;
+  }
+  halo::heap::free_thread(heap: &heap, h: h);
+  if heap.bytes != 0_u64 {
+    return 206_u8;
+  }
+  if heap.threads_free != h {
+    return 206_u8;
+  }
+  if halo::heap::refresh_thread_storage(heap: &heap, h: h) {
+    return 206_u8;
+  }
+  let reused_payload = halo::execution::empty();
+  let reused = match halo::heap::alloc_thread(heap: &heap, payload: move reused_payload) {
+    None() => {
+      return 207_u8;
+    }
+    Some(value: handle) => {
+      give handle;
+    }
+  }
+  if reused != h {
+    return 207_u8;
+  }
+  if heap.threads.inner.len != 1_u64 {
+    return 207_u8;
+  }
+  if heap.threads_free != no_handle {
+    return 207_u8;
+  }
+  if heap.bytes != 512_u64 {
+    return 207_u8;
+  }
+  if heap.bytes_since_gc != 2048_u64 {
+    return 207_u8;
+  }
+  if index < heap.threads.inner.len {
+    if bnot(heap.threads.inner[index].live) {
+      return 207_u8;
+    }
+    if heap.threads.inner[index].accounted_bytes != 512_u64 {
+      return 207_u8;
+    }
+    if heap.threads.inner[index].payload.stack.inner.cap <= 1_u64 {
+      grow(cell: &heap.threads.inner[index].payload.stack, capacity: 1_u64);
+    } else {
+      return 207_u8;
+    }
+  } else {
+    return 207_u8;
+  }
+  set heap.bytes = 18446744073709551615_u64;
+  if halo::heap::refresh_thread_storage(heap: &heap, h: h) {
+    return 208_u8;
+  }
+  if heap.bytes != 18446744073709551615_u64 {
+    return 208_u8;
+  }
+  if heap.bytes_since_gc != 2048_u64 {
+    return 208_u8;
+  }
+  if index < heap.threads.inner.len {
+    if heap.threads.inner[index].accounted_bytes != 512_u64 {
+      return 208_u8;
+    }
+  } else {
+    return 208_u8;
+  }
+  let refused_payload = halo::execution::empty();
+  match halo::heap::alloc_thread(heap: &heap, payload: move refused_payload) {
+    None() => {
+    }
+    Some(..) => {
+      return 208_u8;
+    }
+  }
+  if heap.bytes != 18446744073709551615_u64 {
+    return 208_u8;
+  }
+  if heap.bytes_since_gc != 2048_u64 {
+    return 208_u8;
+  }
+  if heap.threads.inner.len != 1_u64 {
+    return 208_u8;
+  }
+  set heap.bytes = 512_u64;
+  set heap.bytes_since_gc = 18446744073709551615_u64;
+  let refreshed = halo::heap::refresh_thread_storage(heap: &heap, h: h);
+  if refreshed {
+    return 208_u8;
+  }
+  if heap.bytes != 512_u64 {
+    return 208_u8;
+  }
+  if heap.bytes_since_gc != 18446744073709551615_u64 {
+    return 208_u8;
+  }
+  if index < heap.threads.inner.len {
+    if heap.threads.inner[index].accounted_bytes != 512_u64 {
+      return 208_u8;
+    }
+  } else {
+    return 208_u8;
+  }
+  return 0_u8;
+}
+
+fn thread_heap_gc_probe() -> r: u8 pure {
+  doc "Observations 209 through 212 isolate a thread as the only root of a seven-byte string through its retained stack. Omitting the Thread gray edge or stack-value edge loses that string; sweeping a marked thread loses its 528-byte charge. Removing the sole thread root must reclaim exactly two objects and 559 bytes; a later empty sweep must still visit their freed slab slots.";
+  let heap = halo::heap::heap_new(limit: 0_u64);
+  let value = halo::heap::intern(heap: &heap, bytes: &thread_payload_text[0_u64..7_u64]);
+  let value_kind = halo::embed::kind(value: value);
+  if value_kind != 3_u8 {
+    return 209_u8;
+  }
+  let payload = halo::execution::empty();
+  grow(cell: &payload.stack, capacity: 1_u64);
+  if payload.stack.inner.len < payload.stack.inner.cap {
+    place_back(window: &payload.stack.inner, value: value);
+  } else {
+    return 209_u8;
+  }
+  set payload.top = 1_u64;
+  let h = match halo::heap::alloc_thread(heap: &heap, payload: move payload) {
+    None() => {
+      return 209_u8;
+    }
+    Some(value: handle) => {
+      give handle;
+    }
+  }
+  halo::heap::gc_begin(heap: &heap);
+  let root = Value::Thread(h: h);
+  halo::heap::gc_mark(heap: &heap, v: root);
+  halo::heap::gc_propagate(heap: &heap);
+  let retained = halo::heap::gc_sweep(heap: &heap);
+  if retained != 0_u64 {
+    return 210_u8;
+  }
+  let stats = heap.last_collection;
+  if stats.threads.live_objects != 1_u64 {
+    return 210_u8;
+  }
+  if stats.threads.live_bytes != 528_u64 {
+    return 210_u8;
+  }
+  if stats.threads.freed_objects != 0_u64 {
+    return 210_u8;
+  }
+  if stats.threads.freed_bytes != 0_u64 {
+    return 210_u8;
+  }
+  if stats.threads.slots_visited != 1_u64 {
+    return 210_u8;
+  }
+  if stats.strings.live_objects != 1_u64 {
+    return 210_u8;
+  }
+  if stats.strings.live_bytes != 31_u64 {
+    return 210_u8;
+  }
+  if stats.gray_pops != 1_u64 {
+    return 210_u8;
+  }
+  if heap.bytes != 559_u64 {
+    return 210_u8;
+  }
+  match halo::heap::string_of(heap: &heap, value: value) {
+    None() => {
+      return 210_u8;
+    }
+    Some(value: view) => {
+      if view.length != 7_u64 {
+        return 210_u8;
+      }
+    }
+  }
+  halo::heap::gc_begin(heap: &heap);
+  halo::heap::gc_propagate(heap: &heap);
+  let freed = halo::heap::gc_sweep(heap: &heap);
+  if freed != 2_u64 {
+    return 211_u8;
+  }
+  let released = heap.last_collection;
+  if released.threads.live_objects != 0_u64 {
+    return 211_u8;
+  }
+  if released.threads.live_bytes != 0_u64 {
+    return 211_u8;
+  }
+  if released.threads.freed_objects != 1_u64 {
+    return 211_u8;
+  }
+  if released.threads.freed_bytes != 528_u64 {
+    return 211_u8;
+  }
+  if released.strings.freed_objects != 1_u64 {
+    return 211_u8;
+  }
+  if released.strings.freed_bytes != 31_u64 {
+    return 211_u8;
+  }
+  if heap.bytes != 0_u64 {
+    return 211_u8;
+  }
+  if heap.threads_free != h {
+    return 211_u8;
+  }
+  let index = cvt::<u32, u64>(h);
+  if index < heap.threads.inner.len {
+    if heap.threads.inner[index].live {
+      return 211_u8;
+    }
+    if heap.threads.inner[index].accounted_bytes != 0_u64 {
+      return 211_u8;
+    }
+    if heap.threads.inner[index].payload.stack.inner.cap != 0_u64 {
+      return 211_u8;
+    }
+    if heap.threads.inner[index].payload.stack.inner.len != 0_u64 {
+      return 211_u8;
+    }
+  } else {
+    return 211_u8;
+  }
+  halo::heap::gc_begin(heap: &heap);
+  let again = halo::heap::gc_sweep(heap: &heap);
+  if again != 0_u64 {
+    return 212_u8;
+  }
+  let empty = heap.last_collection;
+  if empty.threads.slots_visited != 1_u64 {
+    return 212_u8;
+  }
+  if empty.threads.freed_objects != 0_u64 {
+    return 212_u8;
+  }
+  if empty.threads.freed_bytes != 0_u64 {
+    return 212_u8;
+  }
+  if empty.threads.live_objects != 0_u64 {
+    return 212_u8;
+  }
+  if empty.threads.live_bytes != 0_u64 {
+    return 212_u8;
+  }
+  if empty.strings.slots_visited != 1_u64 {
+    return 212_u8;
+  }
+  return 0_u8;
+}
+
+fn thread_main_live(engine: &Engine, expected: u32) -> r: Bool reads(engine) {
+  if expected == no_handle {
+    return False();
+  }
+  if engine^.vm.main_thread != expected {
+    return False();
+  }
+  if engine^.vm.current_thread != expected {
+    return False();
+  }
+  let index = cvt::<u32, u64>(expected);
+  if index < engine^.vm.heap.threads.inner.len {
+    return engine^.vm.heap.threads.inner[index].live;
+  }
+  return False();
+}
+
+fn thread_global(engine: &Engine, name: &[u8], value: Value) -> r: Bool reads(name), writes(engine) {
+  let assigned = halo::embed::set_global(engine: engine, name: name, value: value);
+  match assigned {
+    Ok(..) => {
+      return True();
+    }
+    Err(..) => {
+      return False();
+    }
+  }
+}
+
+fn thread_engine_probe(stress: Bool) -> r: u8 pure {
+  doc "Observations 213 through 216 detect loss or replacement of the intrinsic main-thread root across forced collection, reset and start before any Lua global refers to it. Host-only injection then exercises thread classification, identity formatting, truthiness, equality and distinct table keys for a live table and thread with the same numeric handle. Protected failures cover arithmetic, indexing, call, concatenation, length and gsub replacement rejection, detecting thread misclassification as a function or admitted replacement. The codec checks use Redis 7.0.15's cjson thread refusal and MessagePack nil encoding; cjson.null must remain userdata.";
+  let engine = halo::embed::new_engine(limit: 0_u64);
+  let env = Probe(mode: 0_u8, calls: 0_u64);
+  let main_handle = engine.vm.main_thread;
+  let initial_main_live = thread_main_live(engine: &engine, expected: main_handle);
+  let initial_main_missing = bnot(initial_main_live);
+  if initial_main_missing {
+    return 213_u8;
+  }
+  let collected = gc_probe_collect(engine: &engine, env: &env, keep: stress);
+  if bnot(collected) {
+    return 213_u8;
+  }
+  let collected_main_live = thread_main_live(engine: &engine, expected: main_handle);
+  let collected_main_missing = bnot(collected_main_live);
+  if collected_main_missing {
+    return 213_u8;
+  }
+  let stats = halo::embed::last_collection(engine: &engine);
+  if stats.threads.live_objects != 1_u64 {
+    return 213_u8;
+  }
+  if stats.threads.live_bytes != 512_u64 {
+    return 213_u8;
+  }
+  halo::embed::reset(engine: &engine);
+  let reset_main_live = thread_main_live(engine: &engine, expected: main_handle);
+  let reset_main_missing = bnot(reset_main_live);
+  if reset_main_missing {
+    return 214_u8;
+  }
+  let restarted = gc_probe_run(engine: &engine, env: &env, source: &gc_probe_idle[0_u64..8_u64]);
+  if bnot(restarted) {
+    return 214_u8;
+  }
+  let restarted_main_live = thread_main_live(engine: &engine, expected: main_handle);
+  let restarted_main_missing = bnot(restarted_main_live);
+  if restarted_main_missing {
+    return 214_u8;
+  }
+  let payload = halo::execution::empty();
+  let other = match halo::heap::alloc_thread(heap: &engine.vm.heap, payload: move payload) {
+    None() => {
+      return 215_u8;
+    }
+    Some(value: handle) => {
+      give handle;
+    }
+  }
+  if other == main_handle {
+    return 215_u8;
+  }
+  let peer_index = cvt::<u32, u64>(main_handle);
+  if peer_index < engine.vm.heap.tables.inner.len {
+    if bnot(engine.vm.heap.tables.inner[peer_index].live) {
+      return 215_u8;
+    }
+  } else {
+    return 215_u8;
+  }
+  let main_value = Value::Thread(h: main_handle);
+  let other_value = Value::Thread(h: other);
+  let peer_value = Value::Tab(h: main_handle);
+  let main_kind = halo::embed::kind(value: main_value);
+  if main_kind != 7_u8 {
+    return 215_u8;
+  }
+  let main_truthy = halo::embed::truthy(value: main_value);
+  if bnot(main_truthy) {
+    return 215_u8;
+  }
+  let injected_main = thread_global(engine: &engine, name: &thread_main_name[0_u64..11_u64], value: main_value);
+  if bnot(injected_main) {
+    return 215_u8;
+  }
+  let injected_other = thread_global(engine: &engine, name: &thread_other_name[0_u64..12_u64], value: other_value);
+  if bnot(injected_other) {
+    return 215_u8;
+  }
+  let injected_peer = thread_global(engine: &engine, name: &thread_peer_name[0_u64..11_u64], value: peer_value);
+  if bnot(injected_peer) {
+    return 215_u8;
+  }
+  let observed = gc_probe_run(engine: &engine, env: &env, source: &thread_value_source[0_u64..1600_u64]);
+  if bnot(observed) {
+    return 216_u8;
+  }
+  let observed_main_live = thread_main_live(engine: &engine, expected: main_handle);
+  let observed_main_missing = bnot(observed_main_live);
+  if observed_main_missing {
+    return 216_u8;
+  }
+  halo::embed::reset(engine: &engine);
+  let final_main_live = thread_main_live(engine: &engine, expected: main_handle);
+  let final_main_missing = bnot(final_main_live);
+  if final_main_missing {
+    return 216_u8;
+  }
+  return 0_u8;
+}
+
+fn thread_memory_error(engine: &Engine) -> r: Bool reads(engine) {
+  match halo::embed::string_of(engine: engine, value: engine^.vm.error) {
+    None() => {
+      return False();
+    }
+    Some(value: view) => {
+      if view.length != 17_u64 {
+        return False();
+      }
+      let h = cvt::<u32, u64>(view.handle);
+      for (i in 0_u64..17_u64) {
+        if h < engine^.vm.heap.strings.inner.len {
+          if i < engine^.vm.heap.strings.inner[h].payload.bytes.inner.len {
+            if engine^.vm.heap.strings.inner[h].payload.bytes.inner[i] != thread_memory_text[i] {
+              return False();
+            }
+          } else {
+            return False();
+          }
+        } else {
+          return False();
+        }
+      }
+      return True();
+    }
+  }
+}
+
+fn thread_limit_probe() -> r: u8 pure {
+  doc "Observation 217 checks loop compilation; 198 checks an independent idle chunk's return value and exactly one baseline collection; 199 checks the loop's zero-budget checkpoint; 196 checks thread allocation; 197 checks global injection. Observations 218 through 220 use a small logical limit to detect bypass through coroutine storage: after that checkpoint, growing a globally rooted thread by 2048 reserved bytes must force a safepoint collection and fail with exactly not enough memory while its live charge remains above the limit. Removing the limit must permit the same cached loop chunk to run again, so an unrelated execution error cannot pass this control.";
+  let engine = halo::embed::new_engine(limit: 0_u64);
+  let env = Probe(mode: 0_u8, calls: 0_u64);
+  let compiled = halo::embed::compile(engine: &engine, chunk_name: &gc_probe_name[0_u64..9_u64], source: &thread_limit_source[0_u64..43_u64]);
+  let script = match move compiled {
+    Err(..) => {
+      return 217_u8;
+    }
+    Ok(value: id) => {
+      give id;
+    }
+  }
+  let ordinary = False();
+  let baseline = gc_probe_collect(engine: &engine, env: &env, keep: ordinary);
+  if bnot(baseline) {
+    return 198_u8;
+  }
+  let checkpoint = halo::embed::start::<ProbeHost>(engine: &engine, env: &env, script: script, budget: 0_u64);
+  let checkpoint_code = outcome_code(outcome: checkpoint);
+  if checkpoint_code != 2_u8 {
+    return 199_u8;
+  }
+  let payload = halo::execution::empty();
+  let h = match halo::heap::alloc_thread(heap: &engine.vm.heap, payload: move payload) {
+    None() => {
+      return 196_u8;
+    }
+    Some(value: handle) => {
+      give handle;
+    }
+  }
+  let root = Value::Thread(h: h);
+  let injected = thread_global(engine: &engine, name: &thread_other_name[0_u64..12_u64], value: root);
+  if bnot(injected) {
+    return 197_u8;
+  }
+  let limit = engine.vm.heap.bytes +sat 1024_u64;
+  set engine.vm.heap.limit = limit;
+  let index = cvt::<u32, u64>(h);
+  if index < engine.vm.heap.threads.inner.len {
+    if engine.vm.heap.threads.inner[index].payload.stack.inner.cap <= 128_u64 {
+      grow(cell: &engine.vm.heap.threads.inner[index].payload.stack, capacity: 128_u64);
+    } else {
+      return 218_u8;
+    }
+  } else {
+    return 218_u8;
+  }
+  let storage_refreshed = halo::heap::refresh_thread_storage(heap: &engine.vm.heap, h: h);
+  let storage_failed = bnot(storage_refreshed);
+  if storage_failed {
+    return 218_u8;
+  }
+  let limit_due = halo::heap::gc_due(heap: &engine.vm.heap);
+  let limit_missing = bnot(limit_due);
+  if limit_missing {
+    return 218_u8;
+  }
+  let before = halo::embed::collection_count(engine: &engine);
+  let outcome = halo::embed::resume::<ProbeHost>(engine: &engine, env: &env, budget: 1000000_u64);
+  let failure_code = outcome_code(outcome: outcome);
+  if failure_code != 1_u8 {
+    return 219_u8;
+  }
+  let memory_error = thread_memory_error(engine: &engine);
+  let wrong_error = bnot(memory_error);
+  if wrong_error {
+    return 219_u8;
+  }
+  let after = halo::embed::collection_count(engine: &engine);
+  if after <= before {
+    return 219_u8;
+  }
+  if engine.vm.heap.bytes <= limit {
+    return 219_u8;
+  }
+  set engine.vm.heap.limit = 0_u64;
+  let recovered = gc_probe_run_cached(engine: &engine, env: &env, script: script);
+  if bnot(recovered) {
+    return 220_u8;
+  }
+  return 0_u8;
+}
+
+fn thread_probe() -> r: u8 pure {
+  let code = thread_storage_probe();
+  if code == 0_u8 {
+    set code = thread_accounting_probe();
+  }
+  if code == 0_u8 {
+    set code = thread_heap_gc_probe();
+  }
+  let ordinary = False();
+  let stress = True();
+  if code == 0_u8 {
+    set code = thread_engine_probe(stress: ordinary);
+  }
+  if code == 0_u8 {
+    set code = thread_engine_probe(stress: stress);
+  }
+  if code == 0_u8 {
+    set code = thread_limit_probe();
+  }
+  return code;
+}
+
+const thread_payload_text: Array<u8, 7> = "payload";
+
+const thread_main_name: Array<u8, 11> = "thread_main";
+
+const thread_other_name: Array<u8, 12> = "thread_other";
+
+const thread_peer_name: Array<u8, 11> = "thread_peer";
+
+const thread_memory_text: Array<u8, 17> = "not enough memory";
+
+const thread_value_source: Array<u8, 1600> = "assert(type(thread_main)=='thread' and type(thread_other)=='thread'); assert(thread_main and thread_other and thread_main==thread_main and thread_main~=thread_other and thread_main~=thread_peer); local a,b=tostring(thread_main),tostring(thread_other); assert(a==tostring(thread_main) and a~=b and string.match(a,'^thread: 0x[0-9a-f]+$') and string.match(b,'^thread: 0x[0-9a-f]+$')); local t={}; t[thread_main]=11; t[thread_other]=22; t[thread_peer]=33; assert(t[thread_main]==11 and t[thread_other]==22 and t[thread_peer]==33); assert(type(cjson.null)=='userdata' and cjson.encode(cjson.null)=='null'); local ok,e=pcall(cjson.encode,thread_main); assert(not ok and string.find(e,'thread',1,true) and string.find(e,'type not supported',1,true)); local nested=pcall(cjson.encode,{thread_other}); assert(not nested); assert(cmsgpack.pack(thread_main)==string.char(192)); assert(cmsgpack.pack({thread_other})==string.char(145,192)); local function fails(f,part) local ok,e=pcall(f); assert(not ok and string.find(e,part,1,true) and string.find(e,'thread',1,true)) end; fails(function() return thread_main+1 end,'arithmetic'); fails(function() return thread_main.x end,'index'); fails(function() return thread_main() end,'call'); fails(function() return thread_main..'' end,'concatenate'); fails(function() return #thread_main end,'length'); local go,ge=pcall(string.gsub,'a','a',thread_main); assert(not go and string.find(ge,'string/function/table expected',1,true)); local no,ne=pcall(string.gsub,'a','a',cjson.null); assert(not no and string.find(ne,'string/function/table expected',1,true)); return 1";
+
+fn thread_smoke() -> status: ExitStatus pure {
+  let code = thread_edges_probe();
+  if code == 0_u8 {
+    set code = thread_probe();
+  }
+  if code == 0_u8 {
+    set code = upvalue_probe();
+  }
+  if code == 0_u8 {
+    set code = switch_probe();
+  }
+  return std::process::exit_status(code: code);
+}
+
+const thread_limit_source: Array<u8, 43> = "local n=0; while n<2 do n=n+1 end; return 1";

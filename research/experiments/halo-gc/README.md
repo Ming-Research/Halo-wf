@@ -93,6 +93,262 @@ Lua reply. The ordinary stack otherwise keeps that same closure reachable,
 so a corpus pass alone cannot establish the separate frame-root path.
 This isolation is an experiment condition, never the default harness mode.
 
+## Thread payload controls
+
+Board item `halo-coroutine-study` adds isolated thread observations to the
+embedding smoke gate: allocation/free/reuse and capacity accounting, retained
+and unreachable cells, intrinsic main identity, classifiers and logical-limit
+failure/recovery. `thread-edges-probe.wf` gives each payload reference its own
+fresh heap, with only that edge retaining its target string, unrelated garbage
+that must be freed, and a second collection without the thread root. It also
+checks dynamic top, the maximum frame window and the first dead stack slot.
+These probes stay while the coroutine implementation needs their evidence;
+remove them when maintained tests supersede the same observations.
+
+The small-limit storage fixture uses `return 1` for its exact-one-collection
+baseline: its measured loop has additional backedge safepoints under stress.
+It then starts that loop with budget zero and creates the globally rooted
+thread after the checkpoint, so reset cannot retire the measured owner.
+Growing its reserved stack by 2048 logical bytes must force collection and
+produce exactly `not enough memory`; removing the limit must let the same
+cached loop return one. Setup failures have separate observation codes:
+
+| Exit | Failed check |
+| --- | --- |
+| 217 | Measured loop compilation |
+| 198 | Idle baseline result or exact-one collection |
+| 199 | Zero-budget loop checkpoint |
+| 196 | Thread allocation |
+| 197 | Global-root injection |
+
+Observations 218–220 retain their storage-growth, limit, error, collection,
+live-charge and recovery checks.
+
+`thread-controls.sh`, called by `controls.sh` when `THREAD_ROOT_MUTANTS` is
+set, omits one marking or closing operation in a copied tree. It builds the
+ordinary `test` entry and runs the unchanged e2e runner with `--filter
+coroutines/ --budgets 1,7,1000 --gc-stress --case-timeout 60`; the runner's
+default per-case limit stays 900 seconds, and the shorter limit only bounds a
+mutant that loops (a timeout is never a detection). Before any omission, that same
+comparison must pass with every edge present; newly added scripts therefore
+need their Redis 7.0.15 recordings before this experiment can run.
+
+Owner ruling `halo-card-coroutine-gc-validation`, option A, requires every
+coroutine-edge mutant to change at least one coroutine oracle reply under
+collector stress. An unchanged comparison is reported as `survived` and fails
+the control. A differing canonical reply or native signal crash is
+`detected`. A `fail-stop`, every case exiting natively with status 4 (a
+runtime error in the host's setup chunk) while the baseline passes every
+case, also counts as detected; the classifier accepts any exit 4, because the
+host does not print the setup error. Compiler refusal, missing recordings, malformed transport or
+statistics, zero stress collections, timeouts and harness exceptions are
+`inconclusive` or `build-failed`, never detections by themselves. A completed
+comparison with at least one qualifying difference still detects the mutant
+when other cases have unqualified failures. The classifier's positive
+and negative samples run in CI before baseline compilation; they include a changed
+reply, a signal crash, transport/setup exits and a semantic failure mixed
+with a zero collection count. The established isolated observations still
+run, 26 across 25 rows, and must retain their specific native exits. For an
+edge whose omission changes no reply, the owner accepted its isolated
+observation as the validation, with the reason no script observes the edge
+recorded ([collector validation](../../../design/halo/heap/collector-validation.md));
+for every other edge it is evidence beside the oracle result.
+
+Every mutation starts from original sources. The copied runner and copied
+recordings make each report's source digest describe that mutation; read-only
+access to the original git metadata supplies its parent revision. Reports
+also hash the executable and compiler. `summary.tsv` records build, oracle
+and probe exit codes, classifications and elapsed whole seconds. Per-edge
+omission diffs, compiler diagnostics, oracle reports, native outputs and typed
+actual replies are retained. The compiler provides no source-mutator command,
+so this uses the established copy/delete/build control rather than adding a
+production test path.
+
+Run in CI. First select the single `stack` omission and inspect its build and
+comparison durations before selecting further names or `all` (25 rows):
+
+```sh
+THREAD_ROOT_MUTANTS=stack make roots
+# After the sample establishes a practical batch size:
+THREAD_ROOT_MUTANTS=all make roots
+```
+
+The recorded runs came from a temporary workflow on the coroutine branch,
+last kept at [`a032018`](https://github.com/Ming-Research/Halo-wf/blob/a032018/.github/workflows/coroutine-thread-controls.yml):
+it ran the command above on a hosted runner with a selected batch and kept
+the diagnostics above as an artifact. A full run of all 25 controls took
+55 to 67 minutes there; a repetition after a change to thread marking runs
+the same command.
+
+Names are `thread`, `stack`, `frame`, `open-list`, `library-table`,
+`library-comparator`, `library-error`, `library-key`, `sort-a`,
+`sort-b`, `sort-pivot`, `pattern-source`, `pattern-pattern`,
+`pattern-replacement`, `error`, `stopped`, `main`, `current-thread`, and the
+upvalue and switching names below; comma-separated names select a bounded
+batch. The isolated probes give each library/sort/pattern field a distinct
+sole-root target; oracle scripts may retain aliases. `open-list` uses a closed
+capture to isolate the original handle edge, and also keeps the inactive-owner
+observation 240 from `upvalue_roots`.
+
+Each execution field has a single mark line. `collect_if_due` parks the
+installed execution in its thread cell for the mark phase, as a coroutine
+switch saves it, so `mark_thread_contents` in `heap/gc.wf` traces saved and
+installed executions alike; `vm/collect.wf` marks only main and current
+identities, globals, type metatables and constants. One omission therefore
+removes a field's mark for every execution, and the coroutine oracle sees
+both the running coroutine and the saved ones. A row may name extra runner
+options: `frame` runs with `--isolate-frames`, which removes the installed
+frames' function-slot aliases at budget checkpoints, and each distinct option
+set gets its own unmutated baseline.
+
+Some omissions may be observationally redundant under the public interface.
+The first full run left nine rows unchanged. The branch changed five of them:
+`gc-library-table-sole` and `gc-error-over-limit` are scripts whose replies
+depend on `library-table` and `error`; `gc-error-over-limit` reaches the
+driver's over-limit collection, which runs before a stopped copy is restored.
+The mark of a library context's function was deleted with its row, because
+every library context saves a native frame without a closure. `gc_sweep` no
+longer closes unreachable owners in a pass of its own before `free_thread`
+does, and a new thread no longer copies its entry closure into stack slot
+zero, so existing scripts observe `explicit-close` and `thread-entry`. That
+leaves 25 rows. The full rerun (CI run 38223742481, source `319bf27`)
+detected 18 by a changed coroutine reply, stopped 3 in setup (`thread`,
+`stack`, `main`, counted as detected) and left 4 unchanged. Read from the
+code, the three setup stops have one cause: under stress the engine's start
+collects before the setup chunk's first call, the omission leaves stack slot
+zero of the installed execution unmarked, so the chunk's main function, held
+only there, is freed and the call refuses it ("invalid Lua closure"). The
+collector's test of the installed cell's live flag is not what stops them;
+for `main` it would fire only at a later collection, which the setup chunk
+never reaches. Each of the four unchanged rows is observed by its isolated
+probe, and the owner accepted the probes for all four
+([collector validation](../../../design/halo/heap/collector-validation.md));
+three keep that acceptance:
+`pattern-replacement`, because gsub's replacement stays in its caller's
+argument registers for the whole call; `transfer-child` and
+`transfer-arguments`, because `coroutine_transfer` clears the pending request
+before saving the resumer, so those marks see a pending request only in the
+driver's over-limit collection between a request and its transfer, where the
+requesting call's registers also hold both (a wrapped child through the
+wrapper in the call's function register).
+
+The fourth, `stopped`, now has a script. Its mark is not a duplicate holder. When a callback first stops
+inside a native level, `park_suspended_stack` copies the whole stack, and the
+returning native levels (`callback_values`, `callback` and
+`library_dispatch`) truncate the live stack to their entry lengths, so the
+callback's slots at or above the outermost entry length are held only by the
+copy, while the collector marks the live stack only below that length.
+`gc-stopped-over-limit` missed this: at budget 1 its callback's first stop
+comes at its first call, before the table exists; afterwards the callback
+continues from its saved record without a native level, so the over-limit
+collection at its later stop (246 collections at budget 1 against 245 at 7
+and 1000) finds the whole stack installed. `gc-stopped-high-register` puts the
+table about 80 slots above the coroutine stack's entry length and drops 40 MiB
+before the callback's first loop, so at budget 1 the over-limit collection runs
+at that first stop while only the copy holds the table. The rerun of all 25
+rows (CI run 38235190313, source `a032018`) confirmed that the `stopped` row
+now changes this script's reply: it detected 22 rows (19 by a changed reply,
+3 in setup) and left the three rows above unchanged, each observed by its
+probe. Rows that still change no reply remain
+selected by `all` and are reported as such; no all-edge detection is claimed.
+
+Owner-qualified observations in `upvalue-probe.wf` additionally check reads
+and writes against active, inactive and suspended stacks; capture reuse and
+closing against the current owner; and escaped captures after owner collection
+and handle reuse. The new controls use the isolated `upvalue_roots` entry so
+older observations cannot mask their intended failures; `open-list` also
+expects 240 there, where an open capture outside the ordinary live stack
+extent loses its sole retained value:
+
+| Name | Omission | Expected exit | Failure observed |
+| --- | --- | --- | --- |
+| `captured-value` | Open capture's selected-value marking | 241 | An escaped closure loses its captured value although the closure survives. |
+| `owner-close` | Shared conversion from Open to Closed | 242 | A surviving capture still names an owner whose storage has been freed. |
+| `explicit-close` | Closing in `free_thread` | 242 | Explicit owner destruction leaves a capture open; with the sweep's separate close removed, the probe fails at its owner-close check before the explicit-close check (243), so the two checks exercise one path. |
+
+Collection closes an unreachable owner's captures only in `free_thread`,
+which sweeps threads after every other slab: each surviving open capture
+marked the value it selects, so closing copies only retained values, and a
+capture already swept is no longer live and is skipped. `owner-close`
+removes the conversion that this close shares with retiring a thread. Escaped
+captures retain their selected value without retaining the owner or unrelated
+slots. A suspended saved execution uses `stopped_stack`; otherwise it uses
+`stack`. `host_stopped` does not select authority because it can remain set
+after restoration while the active stack changes. Switching must preserve
+this authority invariant when it is introduced. The switching stage adds the resumer and request edges below.
+
+
+Switching observations in `switch-probe.wf` retain the create/resume/yield
+probe aliases for the established controls; those aliases use the same IDs
+as the public coroutine table. They exercise counted transfers and nil holes,
+cross-owner captures, tail calls, original error values, callback parking,
+boundary and depth limits, shared budgets, pending and immediate host results,
+host stops and reset. Those execution fixtures run at budgets 1, 7 and 1000, ordinarily and
+under collector stress. The budget-identity observation runs at 1 and 7
+because a slice of 1000 need not stop in every owner. Separate logical storage
+exhaustion/recovery probes run at budget 1 without collector stress, lowering
+the heap limit after the initial checkpoint and requiring a due collection.
+
+Public-library observations 47–50 check registration, every status and running
+identity, counted and tail wrap transfers, argument rejection and error values.
+Direct Lua wrapper calls must prefix even an already located string; numeric
+errors become strings, while table identity survives. Native `pcall` callers
+add no wrapper location. These expectations follow the recorded coroutine
+replies and Redis 7.0.15's bundled PUC `luaB_auxwrap` and `luaL_where`.
+
+Observations 51–55 pause main while a wrapper's child is suspended and force
+an ordinary safepoint collection before resuming it within that same start.
+Only dead wrappers are carried across starts, where their child identity must
+remain alive until the wrapper is dropped and collected. A later wrapper must
+reuse the reclaimed slot without inheriting its old captures. These observations
+run at budgets 1, 7 and 1000, ordinarily and under collector stress. They exercise
+the existing closure-to-closed-capture-to-thread edges; no new collector edge
+or separate missing-edge control is introduced by public wrap registration.
+
+Five additional controls use `switch_roots`, with fresh isolated heaps and
+an empty frame window where needed. A zero-mutant baseline must pass; each
+omission must produce its specific observation:
+
+| Name | Omission | Expected exit |
+| --- | --- | --- |
+| `thread-entry` | New thread's entry closure | 40 |
+| `resumer` | Child's waiting resumer | 41 |
+| `transfer-child` | Pending request's child | 42 |
+| `transfer-arguments` | Pending request's argument extent | 43 |
+| `current-thread` | Installed child identity | 46 |
+
+Observations 44 and 45 put the pending request in the installed execution;
+since collection parks it in its cell, they reach the same marking lines as
+42 and 43, which fail first under either omission. They remain positive
+observations of the parking.
+
+Argument extents extend the ordinary stack-root window so the same slots are
+marked and protected from dead-slot clearing. A separate marking call would
+retain an object while still allowing its pending argument slot to be cleared.
+Installed coroutine capacities use the same logical estimator as saved
+payloads; call preparation and the outer driver reconcile growth before heap
+limits or embedding suspension accept it. Main's installed storage retains
+its existing treatment; when main waits in its cell its saved buffers are
+charged, and restoring main releases that saved-storage charge.
+
+Reset/start terminates every non-main execution, closes captures and releases
+its buffers. A thread identity still reachable from a global or embedding pin
+remains a dead cell until ordinary collection, because recycling such a handle
+would make an old thread value alias a new coroutine. Host-stopped snapshots
+are restored before closing captures, including captures beyond a native
+wrapper's temporarily shortened stack. At budget 1000, deep foreach fixtures
+first require an open capture containing 23 only in that snapshot; omitting
+restoration would close it incorrectly. At smaller budgets the native frames
+have already unwound, so recovery is checked against the current authoritative
+storage.
+
+No results are claimed by these authored controls. Their actual failures and
+the restored positive observations must be recorded from CI before treating
+the new edges as validated. Main's installed VM/embedding buffers retain their
+existing accounting treatment at this stage; its empty counterpart cell is
+charged 512 logical bytes. Thread-owned payload buffers and pattern output
+reserve are charged by capacity, even when their live lengths are zero.
+
 The corrected comparison (source digest recorded by the runner) passed
 240/240 replies, with 20,450 collections per budget and no zero-count
 script. Memory exhaustion/recovery passed at all three budgets; the sampled

@@ -1,0 +1,70 @@
+alias Value = pkg::value::Value;
+
+fn empty() -> r: Execution pure contract {
+  ensures r.stack.inner.cap == 0_u64;
+  ensures r.stack.inner.len == 0_u64;
+  ensures r.frames.inner.cap == 0_u64;
+  ensures r.frames.inner.len == 0_u64;
+  ensures r.open_upvalues.inner.cap == 0_u64;
+  ensures r.open_upvalues.inner.len == 0_u64;
+  ensures r.pattern_subs.inner.cap == 0_u64;
+  ensures r.pattern_subs.inner.len == 0_u64;
+  ensures r.library_contexts.inner.cap == 0_u64;
+  ensures r.library_contexts.inner.len == 0_u64;
+  ensures r.sort_frames.inner.cap == 0_u64;
+  ensures r.sort_frames.inner.len == 0_u64;
+  ensures r.callbacks.inner.cap == 0_u64;
+  ensures r.callbacks.inner.len == 0_u64;
+  ensures r.stopped_stack.inner.cap == 0_u64;
+  ensures r.stopped_stack.inner.len == 0_u64;
+} {
+  let stack = box_slots_new::<Value>(capacity: 0_u64);
+  let frames = box_slots_new::<Frame>(capacity: 0_u64);
+  let open_upvalues = box_slots_new::<u32>(capacity: 0_u64);
+  let pattern_subs = box_slots_new::<PatternSubFrame>(capacity: 0_u64);
+  let library_contexts = box_slots_new::<LibraryContext>(capacity: 0_u64);
+  let sort_frames = box_slots_new::<SortFrame>(capacity: 0_u64);
+  let callbacks = box_slots_new::<CallbackFrame>(capacity: 0_u64);
+  let stopped_stack = box_slots_new::<Value>(capacity: 0_u64);
+  let no = False();
+  let nil = Value::Nil();
+  let plan = CallbackPlan(pc: 0_u64, base: 0_u64, kbase: 0_u64, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: no);
+  let pending = PendingCall(id: 0_u32, argc: 0_u64, func: 0_u64, wanted: 0_i64, return_pc: 0_u64, base: 0_u64, kbase: 0_u64, tail: no, activation: 0_u32, top: 0_u64);
+  let transfer = coroutine_call_empty();
+  return Execution(stack: move stack, frames: move frames, open_upvalues: move open_upvalues, pattern_subs: move pattern_subs, library_contexts: move library_contexts, sort_frames: move sort_frames, callbacks: move callbacks, stopped_stack: move stopped_stack, top: 0_u64, saved_pc: 0_u64, saved_base: 0_u64, saved_kbase: 0_u64, error: nil, activation: 0_u32, callback_plan: plan, suspended: no, pending: pending, call_pending: no, raise_pc: 0_u64, host_stopped: no, post_catch: 18446744073709551615_u64, cjson_active_config: 0_u64, transfer_kind: 0_u8, transfer: transfer, resume_call: transfer, yield_call: transfer, c_depth: 0_u32);
+}
+
+fn storage_bytes(execution: &Execution) -> r: u64 reads(execution) {
+  return storage_buffers(stack: &execution^.stack, stopped_stack: &execution^.stopped_stack, frames: &execution^.frames, open_upvalues: &execution^.open_upvalues, callbacks: &execution^.callbacks, library_contexts: &execution^.library_contexts, sort_frames: &execution^.sort_frames, pattern_subs: &execution^.pattern_subs);
+}
+
+fn storage_buffers(stack: &Box<Slots<Value>>, stopped_stack: &Box<Slots<Value>>, frames: &Box<Slots<Frame>>, open_upvalues: &Box<Slots<u32>>, callbacks: &Box<Slots<CallbackFrame>>, library_contexts: &Box<Slots<LibraryContext>>, sort_frames: &Box<Slots<SortFrame>>, pattern_subs: &Box<Slots<PatternSubFrame>>) -> r: u64 reads(stack), reads(stopped_stack), reads(frames), reads(open_upvalues), reads(callbacks), reads(library_contexts), reads(sort_frames), reads(pattern_subs) {
+  let bytes = 512_u64;
+  let charge_stack = stack^.inner.cap *sat 16_u64;
+  set bytes = bytes +sat charge_stack;
+  let charge_stopped_stack = stopped_stack^.inner.cap *sat 16_u64;
+  set bytes = bytes +sat charge_stopped_stack;
+  let charge_frames = frames^.inner.cap *sat 80_u64;
+  set bytes = bytes +sat charge_frames;
+  let charge_open_upvalues = open_upvalues^.inner.cap *sat 4_u64;
+  set bytes = bytes +sat charge_open_upvalues;
+  let charge_callbacks = callbacks^.inner.cap *sat 120_u64;
+  set bytes = bytes +sat charge_callbacks;
+  let charge_library_contexts = library_contexts^.inner.cap *sat 168_u64;
+  set bytes = bytes +sat charge_library_contexts;
+  let charge_sort_frames = sort_frames^.inner.cap *sat 96_u64;
+  set bytes = bytes +sat charge_sort_frames;
+  let charge_pattern_subs = pattern_subs^.inner.cap *sat 104_u64;
+  set bytes = bytes +sat charge_pattern_subs;
+  for (i in 0_u64..pattern_subs^.inner.len) {
+    if i < pattern_subs^.inner.len {
+      set bytes = bytes +sat pattern_subs^.inner[i].output.inner.cap;
+    }
+  }
+  return bytes;
+}
+
+fn coroutine_call_empty() -> r: CoroutineCall pure {
+  let no = False();
+  return CoroutineCall(child: 4294967295_u32, func: 0_u64, argc: 0_u64, wanted: 0_i64, return_pc: 0_u64, base: 0_u64, kbase: 0_u64, tail: no, activation: 0_u32, top: 0_u64, wrapping: no);
+}

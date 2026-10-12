@@ -1,0 +1,199 @@
+alias Execution = pkg::execution::Execution;
+alias Value = pkg::value::Value;
+
+fn thread_slot(heap: &Heap, owner: u32, slot: u64) -> r: Value reads(heap.threads) {
+  let ti = cvt::<u32, u64>(owner);
+  if ti < heap^.threads.inner.len {
+    if heap^.threads.inner[ti].live {
+      if heap^.threads.inner[ti].payload.suspended {
+        if slot < heap^.threads.inner[ti].payload.stopped_stack.inner.len {
+          return heap^.threads.inner[ti].payload.stopped_stack.inner[slot];
+        }
+      } else if slot < heap^.threads.inner[ti].payload.stack.inner.len {
+        return heap^.threads.inner[ti].payload.stack.inner[slot];
+      }
+    }
+  }
+  return Value::Nil();
+}
+
+fn set_thread_slot(heap: &Heap, owner: u32, slot: u64, v: Value) -> r: unit writes(heap.threads) {
+  let ti = cvt::<u32, u64>(owner);
+  if ti < heap^.threads.inner.len {
+    if heap^.threads.inner[ti].live {
+      if heap^.threads.inner[ti].payload.suspended {
+        if slot < heap^.threads.inner[ti].payload.stopped_stack.inner.len {
+          set heap^.threads.inner[ti].payload.stopped_stack.inner[slot] = v;
+        }
+      } else if slot < heap^.threads.inner[ti].payload.stack.inner.len {
+        set heap^.threads.inner[ti].payload.stack.inner[slot] = v;
+      }
+    }
+  }
+  return unit;
+}
+
+fn close_thread_upvalues(heap: &Heap, h: u32) -> r: unit writes(heap.upvalues), writes(heap.threads) {
+  doc "The owner's open list is authoritative. Close each still-live owned capture before removing its list entry; foreign owners and closed captures are left intact.";
+  let ti = cvt::<u32, u64>(h);
+  if ti < heap^.threads.inner.len {
+    if heap^.threads.inner[ti].live {
+      loop {
+        let count = heap^.threads.inner[ti].payload.open_upvalues.inner.len;
+        if count == 0_u64 {
+          return unit;
+        }
+        let last = count - 1_u64;
+        let handle = heap^.threads.inner[ti].payload.open_upvalues.inner[last];
+        let ui = cvt::<u32, u64>(handle);
+        if ui < heap^.upvalues.inner.len {
+          if heap^.upvalues.inner[ui].live {
+            let capture = heap^.upvalues.inner[ui].payload;
+            match capture {
+              Open(owner: capture_owner, slot: capture_slot) => {
+                if capture_owner == h {
+                  let held = thread_slot(heap: heap, owner: capture_owner, slot: capture_slot);
+                  set heap^.upvalues.inner[ui].payload = Upval::Closed(v: held);
+                }
+              }
+              Closed(v: held) => {
+              }
+            }
+          }
+        }
+        let removed = take_back(window: &heap^.threads.inner[ti].payload.open_upvalues.inner);
+      }
+    }
+  }
+  return unit;
+}
+
+fn alloc_thread(heap: &Heap, payload: Execution) -> r: Option<u32> writes(heap) {
+  doc "Allocates a thread through the same bounded slab/free-list protocol as closures, caching its execution storage charge.";
+  let amount = pkg::execution::storage_bytes(execution: &payload);
+  if amount == 18446744073709551615_u64 {
+    return None<u32>();
+  }
+  let h = heap^.threads_free;
+  let i = cvt::<u32, u64>(h);
+  let n = heap^.threads.inner.len;
+  if i >= n {
+    if n >= 4294967295_u64 {
+      return None<u32>();
+    }
+  }
+  if charge(heap: heap, amount: amount) {
+  } else {
+    return None<u32>();
+  }
+  let live = True();
+  let unstarted = False();
+  let entry_value = Value::Nil();
+  let cell = ThreadCell(live: live, mark: 0_u32, next_free: no_handle, payload: move payload, accounted_bytes: amount, status: 0_u8, started: unstarted, entry_function: entry_value, resumer: no_handle);
+  if i < heap^.threads.inner.len {
+    let next = heap^.threads.inner[i].next_free;
+    set heap^.threads_free = next;
+    set heap^.threads.inner[i] = move cell;
+    return Some<u32>(value: h);
+  } else if n < 4294967295_u64 {
+    let hnew = cvt::<u64, u32>(n);
+    let needed = n + 1_u64;
+    let oldcap = heap^.threads.inner.cap;
+    if needed > oldcap {
+      let capacity = needed;
+      if oldcap <= 2147483647_u64 {
+        let doubled = oldcap * 2_u64;
+        if doubled > capacity {
+          set capacity = doubled;
+        }
+      } else {
+        set capacity = 4294967295_u64;
+      }
+      grow(cell: &heap^.threads, capacity: capacity);
+    }
+    if heap^.threads.inner.len < heap^.threads.inner.cap {
+      place_back(window: &heap^.threads.inner, value: move cell);
+      return Some<u32>(value: hnew);
+    }
+  }
+  uncharge(heap: heap, amount: amount);
+  return None<u32>();
+}
+
+fn retire_thread(heap: &Heap, owner: u32) -> r: unit writes(heap) {
+  doc "Ends an execution while retaining its identity cell for reachable values or embedding pins. The collector alone recycles an unreachable identity.";
+  close_thread_upvalues(heap: heap, h: owner);
+  let i = cvt::<u32, u64>(owner);
+  if i < heap^.threads.inner.len {
+    if heap^.threads.inner[i].live {
+      let empty = pkg::execution::empty();
+      set heap^.threads.inner[i].payload = move empty;
+      set heap^.threads.inner[i].entry_function = Value::Nil();
+      set heap^.threads.inner[i].resumer = no_handle;
+      set heap^.threads.inner[i].status = 3_u8;
+      set heap^.threads.inner[i].started = True();
+      let reconciled = refresh_thread_storage(heap: heap, h: owner);
+    }
+  }
+  return unit;
+}
+
+fn free_thread(heap: &Heap, h: u32) -> r: unit writes(heap) {
+  doc "Closes captures before dropping every owned execution buffer and uncharges the last successful storage estimate, independently of subsequent capacity changes.";
+  close_thread_upvalues(heap: heap, h: h);
+  let i = cvt::<u32, u64>(h);
+  if i < heap^.threads.inner.len {
+    if heap^.threads.inner[i].live {
+      let amount = heap^.threads.inner[i].accounted_bytes;
+      let empty = pkg::execution::empty();
+      set heap^.threads.inner[i].payload = move empty;
+      set heap^.threads.inner[i].accounted_bytes = 0_u64;
+      set heap^.threads.inner[i].entry_function = Value::Nil();
+      set heap^.threads.inner[i].resumer = no_handle;
+      set heap^.threads.inner[i].status = 3_u8;
+      set heap^.threads.inner[i].live = False();
+      set heap^.threads.inner[i].next_free = heap^.threads_free;
+      set heap^.threads_free = h;
+      uncharge(heap: heap, amount: amount);
+    }
+  }
+  return unit;
+}
+
+fn refresh_thread_storage(heap: &Heap, h: u32) -> r: Bool writes(heap) {
+  let i = cvt::<u32, u64>(h);
+  if i < heap^.threads.inner.len {
+    let amount = pkg::execution::storage_bytes(execution: &heap^.threads.inner[i].payload);
+    return refresh_thread_bytes(heap: heap, h: h, amount: amount);
+  }
+  return False();
+}
+
+fn refresh_thread_bytes(heap: &Heap, h: u32, amount: u64) -> r: Bool writes(heap) {
+  doc "A failed growth charge leaves the accounting intact; its caller must handle exhaustion before any safepoint can accept the changed payload.";
+  let i = cvt::<u32, u64>(h);
+  if i < heap^.threads.inner.len {
+    if heap^.threads.inner[i].live {
+      let previous = heap^.threads.inner[i].accounted_bytes;
+      if amount == 18446744073709551615_u64 {
+        return False();
+      }
+      if amount > previous {
+        let growth = amount - previous;
+        let charged = charge(heap: heap, amount: growth);
+        let failed = bnot(charged);
+        if failed {
+          return False();
+        }
+      } else if amount < previous {
+        let shrink = previous - amount;
+        uncharge(heap: heap, amount: shrink);
+      }
+      if i < heap^.threads.inner.len {
+        set heap^.threads.inner[i].accounted_bytes = amount;
+        return True();
+      }
+    }
+  }
+  return False();
+}

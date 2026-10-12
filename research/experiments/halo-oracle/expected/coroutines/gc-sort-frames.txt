@@ -1,0 +1,55 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "integer",
+          "value": 1
+        },
+        {
+          "type": "bulk",
+          "bytes": "y"
+        },
+        {
+          "type": "bulk",
+          "bytes": "x"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "da,ba,db,cb,bc,ba,dc"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "bulk",
+          "bytes": "a"
+        },
+        {
+          "type": "bulk",
+          "bytes": "b"
+        },
+        {
+          "type": "bulk",
+          "bytes": "c"
+        },
+        {
+          "type": "bulk",
+          "bytes": "d"
+        }
+      ]
+    }
+  ]
+}
