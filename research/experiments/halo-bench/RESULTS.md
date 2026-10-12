@@ -5439,7 +5439,8 @@ result outside these is reported as measured.
 
 ### Result
 
-Run on 2026-10-12 by `fastest-baseline.yml` on the 14900K (Ubuntu, CPU
+Run on 2026-10-12 by the temporary workflow
+[`fastest-baseline.yml`](https://github.com/Ming-Research/Halo-wf/blob/8a86f9c/.github/workflows/fastest-baseline.yml) on the 14900K (Ubuntu, CPU
 governor `performance` on all 32 CPUs, every timed process on CPU 2), source
 `9bff3d991b4a`, Halo built by `wf-d837678c6905` with full LTO through Ubuntu
 clang 22.1.8, the other interpreters with gcc/g++ 15.2.0 at the flags above;

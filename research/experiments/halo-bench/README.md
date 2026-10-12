@@ -124,9 +124,11 @@ longer repeated:
   disagreeing cell instead of failing the run; it reuses `run.py`'s Halo
   checks. `--sample` runs one round to time the run before `--rounds N`.
 
-`.github/workflows/fastest-baseline.yml` on the branch builds everything,
-runs the sample on a hosted runner, and, for a commit whose subject starts
-with `[bench]`, the sample and six rounds on the 14900K's CPU 2:
+The recorded run came from a temporary workflow, kept at
+[`8a86f9c`](https://github.com/Ming-Research/Halo-wf/blob/8a86f9c/.github/workflows/fastest-baseline.yml): it built Halo's bench host with
+full LTO, ran `fetch-redis.sh`, `interpreters.sh` and `awfy.py`, then the
+sample and six rounds on the 14900K's CPU 2. A repetition runs the same
+steps; for example, the sample with two interpreters:
 
 ```sh
 python3 -B research/experiments/halo-bench/fastest.py --halo build/fastest/halo \
