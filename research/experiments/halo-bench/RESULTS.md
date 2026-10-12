@@ -5280,3 +5280,45 @@ Whitefoot tracks it as lm-bl-int-table-forward-rise, and it does not block
 this upgrade. The experiment release's ratios are predictions here, and
 the official release adds #351, so a difference from them is reported as
 measured.
+
+### Result
+
+Run 38199380223 on the 14900K (CPU 2, governor `performance`, clang 22.1.8),
+source `58174ff`, artifact `halo-bench-d837678`. Medians of six
+interleaved full-LTO pairs; a ratio below one means the new release is
+faster.
+
+| Kernel | Twin of `wf-7062f3ac4ac7` | New against `wf-7062f3ac4ac7` | New against `wf-78223721f77d` |
+| --- | ---: | ---: | ---: |
+| fib | 0.990 | 0.995 | 0.959 |
+| loop | 1.000 | 0.992 | 0.960 |
+| integer-table | 1.005 | 1.000 | 0.867 |
+| string-key | 1.002 | 0.987 | 0.935 |
+| concat | 1.001 | 0.948 | 0.982 |
+| sort | 1.005 | 0.995 | 0.980 |
+| binary-trees | 1.000 | 0.992 | 0.802 |
+
+Both criteria hold. Concat is 5.2% faster than under `wf-7062f3ac4ac7`, its
+range 1.7% on the new side and 1.9% on the old, beyond the twin's 0.1%,
+and 1.8% faster than under `wf-78223721f77d`, so #357 recovers the 3.2%
+regression with some to spare. No kernel is slower than under
+`wf-7062f3ac4ac7`; apart from concat, the ratios are within each kernel's
+larger range and the twin's difference, so the release changes them by no
+measurable amount.
+
+Blocked store forwards, thousands, three runs per side:
+
+| Kernel | `wf-7062f3ac4ac7` | `wf-d837678c6905` | `wf-78223721f77d` |
+| --- | --- | --- | --- |
+| fib | 8,213–8,221 | 8,176–8,202 | 14,590–14,704 |
+| integer-table | 1,875–1,889 | 2,425–2,455 | 21,203–21,204 |
+
+Fib's count is unchanged. Integer-table's is about 30% above
+`wf-7062f3ac4ac7` (the experiment release measured 10%) with an unchanged
+time (1.000); it remains 88% below `wf-78223721f77d`. Whitefoot tracks the
+rise as lm-bl-int-table-forward-rise. `--check-module pkg::vm` took
+3.10–3.14 s against 3.22–3.23 s.
+
+### Outcome
+
+The pin moves to `wf-d837678c6905`; status-board item halo-pin-357.
