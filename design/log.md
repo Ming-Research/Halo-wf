@@ -8,7 +8,7 @@ owner-wide instructions' *Log format* owns the form.
 
 Nodes: halo, halo/heap/collector-validation
 
-Owner-approved: 2026-10-12 on the WF status board, under item "Halo provides what Firn's Redis scripts need": card "Approve the three design-tree edits made when merging main: coroutines join the library scope, and the coroutine decision and collector validation name Redis 7.2.16 as the reference?", chose option A, "approve these three edits".
+Owner-approved: 2026-10-12 on the WF status board, under item "Halo's oracle is recorded on Redis 7.2.16 and the test host replies as 7.2.16 does (apart from number text and the string metatable)": card "Approve the three design-tree edits made when merging main: coroutines join the library scope, and the coroutine decision and collector validation name Redis 7.2.16 as the reference?", chose option A, "approve these three edits".
 
 Summary: Merging main into the Redis 7.2.16 branch joined two approved decisions: the library Decision follows Redis 7.2.16's sandbox and no longer excludes coroutines, which main added with the owner's approval; the coroutine Decision and the collector-validation node name Redis 7.2.16 as the reference. A fresh recording of the whole oracle corpus on Redis 7.2.16 differed in no file from the committed replies, 37 of which (the coroutine scripts and one `gsub` script) were recorded on Redis 7.0.15 ([oracle-reference run 38318062985](https://github.com/Ming-Research/Halo-wf/actions/runs/38318062985)).
 
