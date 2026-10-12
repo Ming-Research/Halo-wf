@@ -62,9 +62,13 @@ the table already holds, raises the located message, as the reference's
 `luaV_settable` does through `luaG_runerror`, whether a `pcall` catches it or
 not: the table-store instructions' direct path stores only into writable
 tables and leaves a read-only one to the slow executor, which locates the
-refusal. `rawset`, `setmetatable` and the table library raise it unlocated, as
-the reference's C functions do, and the formatter adds no prefix
-(`redis-api/readonly-library-tables`).
+refusal. `rawset`, `setmetatable` and the table library raise it unlocated
+even when a script line calls them directly, as the reference's `lua_rawset`,
+`lua_rawseti` and `lua_setmetatable` do through `luaG_runerror` while the C
+function is the current call: the VM marks such an error as raised by a
+native function, and the library call's luaL_error location skips a marked
+error. The formatter adds no prefix (`redis-api/readonly-library-tables`
+under `pcall`, `redis-api/readonly-rawset-error` uncaught).
 
 Ordinary redis.member calls in this experiment use the member lookup's line
 from the continuation. A native Call/TailCall does not retain its PC in the

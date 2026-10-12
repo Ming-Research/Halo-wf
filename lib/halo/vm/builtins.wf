@@ -224,7 +224,7 @@ fn builtin<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
     resize_stack(stack: stack, size: length);
     match outcome {
       Raised() => {
-        library_call_error_location(vm: vm, id: id, pc: pc);
+        library_call_error_location(vm: vm, pc: pc);
       }
       Returned(..) => {
       }
@@ -258,7 +258,7 @@ fn builtin<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
           }
           Not() => {
             let rejected = lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: 2_u64, argc: argc, value: b, expected: &builtin_expected_2_number[0_u64..6_u64]);
-            library_call_error_location(vm: vm, id: id, pc: pc);
+            library_call_error_location(vm: vm, pc: pc);
             return rejected;
           }
         }
@@ -405,7 +405,7 @@ fn builtin<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
       return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 2_u64, text: &builtins_text_19[0_u64..21_u64]);
     }
     if is_readonly(vm: vm, v: a) {
-      let ignored = raise_text(vm: vm, text: &text_0[0_u64..34_u64]);
+      let ignored = raise_native_text(vm: vm, text: &text_0[0_u64..34_u64]);
       return HostOutcome::Raised();
     }
     let protected = metamethod(vm: vm, v: a, name: &builtins_text_21[0_u64..11_u64]);

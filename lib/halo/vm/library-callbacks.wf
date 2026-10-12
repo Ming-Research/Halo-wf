@@ -212,7 +212,8 @@ fn xpcall_continue<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slot
 }
 
 fn resume_library<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, plan: CallbackPlan, failed: Bool) -> r: Step reads(code), reads(consts), writes(stack), writes(vm), writes(env) {
-  doc "Resumes a library after its callback, retaining the context across suspension and discarding it only on completion or propagated failure.";
+  doc "Resumes a library after its callback, retaining the context across suspension and discarding it only on completion or propagated failure. The library runs again as the current call, so an earlier native_raise mark no longer describes the error it may raise.";
+  set vm^.native_raise = False();
   let local_index_26 = plan.first;
   if local_index_26 < vm^.library_contexts.inner.len {
     let local_context_27 = vm^.library_contexts.inner[local_index_26];
@@ -250,7 +251,7 @@ fn resume_library<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots
       match local_outcome_28 {
         Raised() => {
           let local_call_pc_31 = local_context_27.frame.return_pc -sat 1_u64;
-          library_call_error_location(vm: vm, id: local_context_27.id, pc: local_call_pc_31);
+          library_call_error_location(vm: vm, pc: local_call_pc_31);
         }
         Returned(..) => {
         }
