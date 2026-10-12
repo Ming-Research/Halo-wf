@@ -3,6 +3,7 @@ alias TableError = pkg::heap::TableError;
 alias Pair = pkg::heap::Pair;
 alias StringView = pkg::heap::StringView;
 alias NumView = pkg::value::NumView;
+alias no_handle = pkg::heap::no_handle;
 
 fn intern(engine: &Engine, bytes: &[u8]) -> r: Value reads(bytes), writes(engine) {
   return pkg::heap::intern(heap: &engine^.vm.heap, bytes: bytes);
@@ -88,6 +89,71 @@ fn set_global(engine: &Engine, name: &[u8], value: Value) -> r: Result<unit, Tab
   let key = intern(engine: engine, bytes: name);
   let g = Value::Tab(h: engine^.vm.globals);
   return table_set(engine: engine, table: g, key: key, value: value);
+}
+
+fn live_table(engine: &Engine, h: u32) -> r: Bool reads(engine) {
+  let i = cvt::<u32, u64>(h);
+  if i < engine^.vm.heap.tables.inner.len {
+    return engine^.vm.heap.tables.inner[i].live;
+  }
+  return False();
+}
+
+fn set_metatable(engine: &Engine, table: Value, meta: Value) -> r: Result<unit, TableError> writes(engine) {
+  doc "Stores the handle as the setmetatable builtin does. The stop-the-world collector marks a table's metatable when it marks the table and runs only at a script's safepoints, so the store needs no barrier.";
+  let mh = no_handle;
+  let valid = False();
+  match pkg::value::tab_of(v: meta) {
+    Handle(h: given) => {
+      set mh = given;
+      set valid = live_table(engine: engine, h: given);
+    }
+    NoHandle() => {
+      let tag = kind(value: meta);
+      if tag == 0_u8 {
+        set valid = True();
+      }
+    }
+  }
+  if valid {
+    match pkg::value::tab_of(v: table) {
+      Handle(h: target) => {
+        let i = cvt::<u32, u64>(target);
+        if live_table(engine: engine, h: target) {
+          if i < engine^.vm.heap.tables.inner.len {
+            set engine^.vm.heap.tables.inner[i].payload.meta = mh;
+            return Ok<unit, TableError>(value: unit);
+          }
+        }
+      }
+      NoHandle() => {
+      }
+    }
+  }
+  let error = TableError::InvalidTable();
+  return Err<unit, TableError>(error: error);
+}
+
+fn metatable_of(engine: &Engine, value: Value) -> r: Value reads(engine) {
+  return pkg::vm::metatable(vm: &engine^.vm, v: value);
+}
+
+fn set_read_only(engine: &Engine, table: Value) -> r: Result<unit, TableError> writes(engine) {
+  match pkg::value::tab_of(v: table) {
+    Handle(h: sealed) => {
+      let i = cvt::<u32, u64>(sealed);
+      if live_table(engine: engine, h: sealed) {
+        if i < engine^.vm.heap.tables.inner.len {
+          set engine^.vm.heap.tables.inner[i].payload.read_only = True();
+          return Ok<unit, TableError>(value: unit);
+        }
+      }
+    }
+    NoHandle() => {
+    }
+  }
+  let error = TableError::InvalidTable();
+  return Err<unit, TableError>(error: error);
 }
 
 fn error_value(engine: &Engine) -> r: Value reads(engine) {

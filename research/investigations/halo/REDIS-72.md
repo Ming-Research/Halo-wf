@@ -138,7 +138,7 @@ both modes:
 | `redis-version` | The test host had no `REDIS_VERSION` or `REDIS_VERSION_NUM`. | This change. |
 | `number-argument-format`, `number-argument-effects`, `double-score-reply` | The test host had no ECHO, INCRBYFLOAT or ZRANGE; behind that, number text. | Commands: this change. Number text: the fpconv package (`halo-redis-double-text`). |
 | `double-reply-table` | The test host did not convert a `{double=x}` table; behind that, number text. | Conversion: this change. Number text: the fpconv package (`halo-redis-double-text`). |
-| `string-metatable-readonly` | The string metatable is not read-only, and the embedding interface gives the host no way to reach or mark it. | `halo-embed-protect`. |
+| `string-metatable-readonly` | The string metatable is not read-only, and the embedding interface gives the host no way to reach or mark it; behind that, a script assignment of a new key into a read-only table raised its message without the location Redis's Lua adds. | `halo-embed-protect`: the embedding's metatable and read-only functions, which the test host uses, and the located message. |
 
 "Number text" is the digits of a finite number outside Redis's integer rule
 (an integral value no larger in magnitude than LLONG_MAX/2, 2^62, is written
@@ -158,7 +158,11 @@ on 475f545 (the pure port, with the table of 18,235 rows) passed `double-reply-t
 `number-argument-effects` and `double-score-reply` at budgets 1, 7 and 1000,
 ordinary and under collector stress. `number-argument-effects` does not test
 INCRBYFLOAT's long double sum, which the host computes in double.
-`string-metatable-readonly` still fails until `halo-embed-protect`.
+`string-metatable-readonly` passes with `halo-embed-protect`, which marks
+the string metatable read-only through the embedding and locates the refused
+assignment (`user_script:14:`): it passes at budgets 1, 7 and 1000 in gate
+run [38308617162](https://github.com/Ming-Research/Halo-wf/actions/runs/38308617162)
+at fcab21e.
 
 The reference check group (`REFERENCE_LUA`, the number library and the
 MessagePack package against Redis's bundled Lua) now builds 7.2.16's Lua;

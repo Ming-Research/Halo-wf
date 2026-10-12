@@ -7,7 +7,7 @@ Halo's `make check-core` compares the corpus through the `oracle` target;
 recording reference replies remains the job of
 [oracle-reference.yml](../../../.github/workflows/oracle-reference.yml).
 
-There are 160 scripts: 71 `lua-core`, 34 `redis-api`, 6 `apps`, 13 `libs`,
+There are 164 scripts: 71 `lua-core`, 38 `redis-api`, 6 `apps`, 13 `libs`,
 and 36 `coroutines`.
 The scripts, replies and runner belong here until the oracle is replaced or
 Halo/firn scripting is retired. Each case is consumed by `run.sh`; the table
@@ -342,6 +342,8 @@ report rather than being counted as detected by a probe alone.
 | redis-api | [error-rethrow-line](scripts/redis-api/error-rethrow-line.lua) | A redis.call error caught by xpcall and raised with error(e,0) is located at the rethrow. |
 | redis-api | [global-read](scripts/redis-api/global-read.lua) | Redis refuses access to an undeclared global. |
 | redis-api | [global-write](scripts/redis-api/global-write.lua) | Redis refuses assignment to an undeclared global. |
+| redis-api | [keys-argv-writable](scripts/redis-api/keys-argv-writable.lua) | KEYS and ARGV stay writable under the read-only globals: element assignment and table.insert append to both. |
+| redis-api | [library-error-location](scripts/redis-api/library-error-location.lua) | A library's own error after a callback keeps its script location although the callback caught a rawset refusal (sort, gsub, __tostring, each with a control); next's invalid key error carries none. |
 | redis-api | [log-keys-argv](scripts/redis-api/log-keys-argv.lua) | redis.log is allowed; KEYS and ARGV remain ordered strings. |
 | redis-api | [lua-arrays](scripts/redis-api/lua-arrays.lua) | Nested array conversion stops at first nil and ignores hash entries. |
 | redis-api | [lua-nil](scripts/redis-api/lua-nil.lua) | A top-level Lua nil becomes a RESP nil bulk. |
@@ -352,6 +354,8 @@ report rather than being counted as detected by a probe alone.
 | redis-api | [pcall-outside-comparator](scripts/redis-api/pcall-outside-comparator.lua) | A redis.call error from a sort comparator caught by pcall around sort is the err string. |
 | redis-api | [pcall-success-error](scripts/redis-api/pcall-success-error.lua) | redis.pcall returns successes and error tables without raising. |
 | redis-api | [pcall-unwraps-err](scripts/redis-api/pcall-unwraps-err.lua) | pcall unwraps string and numeric err fields; xpcall's handler still sees the table. |
+| redis-api | [readonly-library-tables](scripts/redis-api/readonly-library-tables.lua) | Writes to the library tables reachable from the globals and to an existing key of the string metatable, with each refusal's location. |
+| redis-api | [readonly-rawset-error](scripts/redis-api/readonly-rawset-error.lua) | An uncaught rawset refusal on a library table, raised inside the library function, reaches the EVAL error reply without a script location. |
 | redis-api | [redis-version](scripts/redis-api/redis-version.lua) | redis.REDIS_VERSION and redis.REDIS_VERSION_NUM, which name the reference release. |
 | redis-api | [removed-globals](scripts/redis-api/removed-globals.lua) | getfenv, setfenv and newproxy are readable in 7.0.15 and absent from the 7.2.16 sandbox. |
 | redis-api | [resp-error-raised](scripts/redis-api/resp-error-raised.lua) | A Redis error caught by Lua pcall is a string rather than a reply table. |

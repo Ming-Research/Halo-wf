@@ -48,20 +48,31 @@ supporting that use. Corpus cases run independent engines and do not verify it.
 chunk name the script was compiled under and preserves a location already
 present in a string error. `error_value` keeps the original object. The caller
 supplies a known source line; zero means unknown. The test host's Redis
-formatter `format_redis_error(engine, source, line, locate)` in
+formatter `format_redis_error(engine, source, line)` in
 `test/redis-error.wf` composes the Redis 7 EVAL table/string distinction and
 script-body SHA-1 suffix. It
 uses an explicit caller-supplied line rather than treating a budget checkpoint
-as a failure location. `locate` requests the Lua prefix for a raw VM error;
-already located strings should pass false.
+as a failure location, and writes the VM's message as raised, located or not.
 
 Global read/write slow paths retain a continuation PC in `callback_plan`;
 the test host uses its previous instruction's line. A missing global's host
 callback adds Lua's prefix before raising, so a protected call sees it too.
-The current VM readonly refusal is an unlocated string; the terminal test
-host recognizes that message and requests a prefix from the formatter. This
-does not fix readonly errors caught inside Lua, and an explicit `error` with
-that identical message and level zero cannot be distinguished by this host.
+A script assignment into a read-only table, of a global, a new key or a key
+the table already holds, raises the located message, as the reference's
+`luaV_settable` does through `luaG_runerror`, whether a `pcall` catches it or
+not: the table-store instructions' direct path stores only into writable
+tables and leaves a read-only one to the slow executor, which locates the
+refusal. `rawset`, `setmetatable` and the table library raise it unlocated
+even when a script line calls them directly, as the reference's `lua_rawset`,
+`lua_rawseti` and `lua_setmetatable` do through `luaG_runerror` while the C
+function is the current call, and so does `next` with an invalid key, as
+`luaH_next` does: the native body marks such an error as it raises it and
+returns at once, and the error-location step that native call then takes
+consumes the mark and adds no location, so a refusal a callback catches
+cannot leave a library's own later `luaL_error` bare. The formatter adds no
+prefix (`redis-api/readonly-library-tables` under `pcall`,
+`redis-api/readonly-rawset-error` uncaught, `redis-api/library-error-location`
+for `next` and for library errors after a callback caught a refusal).
 
 Ordinary redis.member calls in this experiment use the member lookup's line
 from the continuation. A native Call/TailCall does not retain its PC in the
@@ -74,11 +85,7 @@ location parity. The formatter can accept their correct line once exported.
 The saved-member witness `local call=redis.call` on line 1, followed by
 `local x=1` on line 2 and `return call("GET","key","extra")` on line 3,
 currently reports `on @user_script:1` instead of the call's line 3.
-`return {pcall(function() missing_global=17 end)}` returns the raw readonly
-message without Lua's `user_script:1:` prefix. Conversely,
-`error("Attempt to modify a readonly table",0)` receives that prefix from
-the test host even though Lua level zero suppresses it. These observed
-witnesses distinguish corpus parity from general failure-location parity;
+These witnesses distinguish corpus parity from general failure-location parity;
 they require failure kind/PC information from the VM, outside the permitted
 file boundary of this change.
 The existing corpus's direct command/global errors exercise known locations;
@@ -139,3 +146,23 @@ REDIS_VERSION_NUM (7.2.16) are supplied by this host; set_repl checks its
 arguments as Redis 7.2.16 does and otherwise has no effect, since the host does
 not replicate; sha1hex uses the embedding's
 Whitefoot digest implementation.
+
+After the preparation chunk the host protects the script environment as
+Redis 7.2.16's `scriptingInit` does, through the embedding's `set_metatable`,
+`metatable_of`, `table_next` and `set_read_only`: the globals table gets an
+`__index` that rejects undeclared names; then the globals table and every
+table reachable from it through table values and metatables, such as the
+`string`, `math` and `redis` tables and the rejecting metatable, become
+read-only (`luaSetTableProtectionRecursively`); then so do the metatables of
+the basic types, of which only strings have one, and what they reach
+(`luaSetTableProtectionForBasicTypes`). The walk marks each table once and
+stops a table's traversal at the first key `table_next` returns twice, so it
+ends even on a table whose hash invariants a collector fault has broken; the
+host then exits with its setup-runtime status (4).
+KEYS and ARGV, which the preparation chunk has already set, are taken out of
+the globals during the walk and put back after it, so they stay writable as
+Redis's per-call KEYS and ARGV do (`luaCallFunction` installs them after
+protection). `redis-api/readonly-library-tables` records the result for the
+library tables and `redis-api/keys-argv-writable` for KEYS and ARGV; `make
+roots-base` checks that the first fails when the host marks only the walks'
+roots.

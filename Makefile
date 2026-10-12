@@ -40,10 +40,11 @@ GATE_PARTS := core $(EXTENDED_PARTS) reference
 
 # `make check` runs three groups: the core (the embedding probe, the oracle
 # corpus, the double texts, the design lint and gate-parts), the extended
-# checks that need no reference build (the collector's root controls, the
-# research hosts, the JSON package) and the checks against Redis 7.2.16's
-# bundled Lua built from source (the number library, the MessagePack package). `check` and `check-extended`
-# are made of their parts, so they run exactly what CI's jobs run.
+# checks that need no reference build (the collector's root controls and the
+# host's protection controls, the research hosts, the JSON package) and the
+# checks against Redis 7.2.16's bundled Lua built from source (the number
+# library, the MessagePack package). `check` and `check-extended` are made of
+# their parts, so they run exactly what CI's jobs run.
 check: $(GATE_PARTS:%=check-%)
 check-core: compiler oracle double-text design-lint gate-parts
 check-extended: $(EXTENDED_PARTS:%=check-%)
@@ -126,11 +127,16 @@ double-text: $(E2E_TEST)
 
 # The collector's removed-root controls (research/experiments/halo-gc): the
 # local root cases pass with the oracle's test program, and fail once a sole
-# root is hidden or one marking call is removed and rebuilt in a copy. `roots`
-# runs all of it; `roots-base` runs the self-tests (classifier and
-# selection) and the controls that need the oracle's test program, and `roots-mutant-<label>` builds one
-# mutant in a copy and checks that its control fails by a detected result.
-# Each check is in exactly one of `roots-base` and the mutant targets.
+# root is hidden or one marking call is removed and rebuilt in a copy. The
+# same script runs the test host's protection controls: the global-write,
+# string-metatable-readonly and readonly-library-tables oracle scripts fail
+# once the host leaves the globals table or the string metatable writable, or
+# marks only those two and no table reachable from them. `roots` runs all of
+# it; `roots-base` runs the self-tests (classifier and selection), the
+# controls that need the oracle's test program and the protection controls,
+# and `roots-mutant-<label>` builds one mutant in a copy and checks that its
+# control fails by a detected result. Each check is in exactly one of
+# `roots-base` and the mutant targets.
 ROOTS_CONTROLS = WHITEFOOTC=$(WHITEFOOTC) sh $(ROOT)/research/experiments/halo-gc/controls.sh
 roots: $(E2E_TEST)
 	@ROOTS_PART=all $(ROOTS_CONTROLS) $(E2E_TEST) $(BUILD)/halo-roots

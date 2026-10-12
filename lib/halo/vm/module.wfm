@@ -52,6 +52,7 @@ public struct Vm {
   public pending: PendingCall;
   public call_pending: Bool;
   public raise_pc: u64;
+  public native_raise: Bool;
   public pcall_field: Box<Slots<u8>>;
   public post_catch: u64;
   public debug_names: Box<Slots<u8>>;
@@ -270,6 +271,8 @@ public const library_builtin_count: u64 = 72_u64;
 public fn library_builtin(index: u64) -> r: Option<BuiltinBinding> pure doc "Stable slice 1 builtin-id table plus codec bindings at reserved indices 96..143. library 0 installs into globals; 1 string; 2 table; 3 math; 4 cjson; 5 cmsgpack; 6 bit; 7 struct; 8 coroutine. Name bytes are [0..length); IDs 0..7 are retained, 8..17 base, 32..44 string; 45 is the private gmatch closure dispatcher, 48..54 table, 64..91 math. Indices 66..71 install the six coroutine functions with IDs 150..155; 156 is their private native closure dispatcher and has no table binding. ipairsaux (17) is private to the iterator. math.huge and math.pi are numeric constants, installed separately with math.mod as an alias of math.fmod.";
 
 public fn install_libraries(vm: &Vm) -> r: unit writes(vm) doc "Installs the builtin-id table and _VERSION (Lua 5.1) into globals and creates string, table, math, cjson, cmsgpack, bit, struct and coroutine tables. Installs string.__index through the string type metatable; adds math.pi, math.huge and math.mod with the same builtin value as math.fmod. Host functions use IDs >=4096.";
+
+public fn metatable(vm: &Vm, v: Value) -> r: Value reads(vm) doc "The metatable lua_getmetatable returns, without __metatable: a live table's own, the type metatable of every other kind (only strings have one), or nil.";
 
 public struct CjsonConfig {
   public settings: Array<u64, 9>;

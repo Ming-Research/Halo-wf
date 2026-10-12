@@ -350,7 +350,7 @@ fn coroutine_prepare(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &V
     let accepted = coroutine_lua_entry(vm: vm, value: entry_value);
     if bnot(accepted) {
       let ignored = lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, text: &coroutine_lua_expected[0_u64..21_u64]);
-      library_call_error_location(vm: vm, id: id, pc: pc);
+      library_call_error_location(vm: vm, pc: pc);
       return Step::Error();
     }
     let created = coroutine_create(vm: vm, entry_value: entry_value);
@@ -427,7 +427,7 @@ fn coroutine_prepare(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &V
   }
   if bnot(live) {
     let ignored = lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, text: &coroutine_expected[0_u64..18_u64]);
-    library_call_error_location(vm: vm, id: id, pc: pc);
+    library_call_error_location(vm: vm, pc: pc);
     return Step::Error();
   }
   if id == builtin_coroutine_status {
