@@ -620,7 +620,7 @@ fn suspension(vm: &Vm) -> r: Outcome reads(vm) {
 }
 
 fn drive<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, step: Step) -> r: Outcome reads(script), writes(stack), writes(vm), writes(env) {
-  doc "Consumes coroutine transfers only after native callback entries return, restoring their complete parked stack before exchanging execution owners. Callback activation completions are resolved before a coroutine root returns to its resumer.";
+  doc "Consumes coroutine transfers only after native callback entries return, restoring their complete parked stack before exchanging execution owners. Callback activation completions are resolved before a coroutine root returns to its resumer. A completion that leaves the finishing coroutine installed found no live resumer to exchange with, which only a broken collector invariant produces; the run ends with an error instead of completing the same coroutine again.";
   let outcome = dispatch_step::<Host<E>>(code: &script^.code, consts: &script^.consts, stack: stack, vm: vm, env: env, step: step);
   loop {
     match outcome {
@@ -697,7 +697,12 @@ fn drive<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm,
         if vm^.callbacks.inner.len == 0_u64 {
           if vm^.current_thread != vm^.main_thread {
             let failed = False();
+            let finishing = vm^.current_thread;
             let completed = coroutine_complete(vm: vm, stack: stack, count: countv, failed: failed);
+            if vm^.current_thread == finishing {
+              let ignored = raise_text(vm: vm, text: &calls_text_resumer[0_u64..25_u64]);
+              return Outcome::Error();
+            }
             set outcome = dispatch_step::<Host<E>>(code: &script^.code, consts: &script^.consts, stack: stack, vm: vm, env: env, step: completed);
             continue;
           }
@@ -713,7 +718,12 @@ fn drive<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm,
         if vm^.callbacks.inner.len == 0_u64 {
           if vm^.current_thread != vm^.main_thread {
             let failed = True();
+            let finishing = vm^.current_thread;
             let completed = coroutine_complete(vm: vm, stack: stack, count: 0_u64, failed: failed);
+            if vm^.current_thread == finishing {
+              let ignored = raise_text(vm: vm, text: &calls_text_resumer[0_u64..25_u64]);
+              return Outcome::Error();
+            }
             set outcome = dispatch_step::<Host<E>>(code: &script^.code, consts: &script^.consts, stack: stack, vm: vm, env: env, step: completed);
             continue;
           }
@@ -855,6 +865,8 @@ fn fail_call<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: 
 }
 
 const calls_text_pending: Array<u8, 22> = "a host call is pending";
+
+const calls_text_resumer: Array<u8, 25> = "invalid coroutine resumer";
 
 const calls_text_no_call: Array<u8, 23> = "no host call is pending";
 

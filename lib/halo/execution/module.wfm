@@ -103,7 +103,7 @@ public struct CoroutineCall {
 }
 
 public struct Execution {
-  doc "Owned execution buffers and checkpoints. Installed execution still resides in Vm and Engine until a coroutine switch exchanges these owners; the heap cell retains its charged bytes while installed.";
+  doc "Owned execution buffers and checkpoints. Installed execution still resides in Vm and Engine until a coroutine switch exchanges these owners; the heap cell retains its charged bytes while installed. A collection parks the installed execution in its cell for the mark phase, so the heap traces every execution through this one record.";
   public stack: Box<Slots<Value>>;
   public frames: Box<Slots<Frame>>;
   public open_upvalues: Box<Slots<u32>>;

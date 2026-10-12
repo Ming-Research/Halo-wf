@@ -1,8 +1,10 @@
 #!/bin/sh
 # The collector's removed-root controls ("Local root witnesses" in README.md):
 # the local root cases pass with every root, and each fails once its sole
-# root is hidden from the collector or one marking call of mark_roots
-# (lib/halo/vm/collect.wf) is removed. An expected failure must be detected:
+# root is hidden from the collector or one marking call is removed: a root of
+# mark_roots (lib/halo/vm/collect.wf) or an execution field of
+# mark_thread_contents (lib/halo/heap/gc.wf), which traces the installed
+# execution after collect_if_due parks it in its thread cell. An expected failure must be detected:
 # every FAIL line must be a reply difference (any reason halo-e2e/run.py's
 # reason() gives, or a budget-dependent reply) or the engine's own setup
 # compile (3), setup runtime (4), budget (5) or host-stop (6) exit; a crash by
@@ -105,14 +107,14 @@ expect() {
 }
 
 mutant() {
-  label=$1; line=$2
+  label=$1; file=$2; line=$3
   tree=$out/tree-$label
   rm -rf "$tree"
   mkdir -p "$tree/research/experiments"
   cp -R "$root/lib" "$tree/lib"
   cp -R "$root/research/experiments/halo-e2e" "$tree/research/experiments/halo-e2e"
-  grep -vF "$line" "$root/lib/halo/vm/collect.wf" > "$tree/lib/halo/vm/collect.wf"
-  removed=$(( $(wc -l < "$root/lib/halo/vm/collect.wf") - $(wc -l < "$tree/lib/halo/vm/collect.wf") ))
+  grep -vF "$line" "$root/$file" > "$tree/$file"
+  removed=$(( $(wc -l < "$root/$file") - $(wc -l < "$tree/$file") ))
   if [ "$removed" != 1 ]; then
     echo "roots mutant $label: removed $removed lines, want 1"; status=1; return
   fi
@@ -125,9 +127,9 @@ expect 0 every-root compare --binary "$binary" --cases "$cases" --budgets 1,7,10
 expect 0 frame-sole-root compare --binary "$binary" --cases "$cases" --filter gc/frame-closure --budgets 1 --gc-stress --isolate-frames
 expect 0 parked-sole-root compare --binary "$binary" --cases "$cases" --filter gc/suspended-stack --budgets 1 --gc-stress --collect-suspended
 expect 1 parked-root-hidden compare --binary "$binary" --cases "$cases" --filter gc/suspended-stack --budgets 1 --gc-stress --collect-suspended --omit-suspended-root
-mutant open-upvalues 'pkg::heap::gc_mark_upvalue(heap: &vm^.heap, h: u);'
-mutant frame-closure 'pkg::heap::gc_mark(heap: &vm^.heap, v: f);'
-mutant constants 'pkg::heap::gc_mark(heap: &vm^.heap, v: k);'
+mutant open-upvalues lib/halo/heap/gc.wf 'gc_mark_upvalue(heap: heap, h: upvalue);'
+mutant frame-closure lib/halo/heap/gc.wf 'gc_mark(heap: heap, v: frame_function);'
+mutant constants lib/halo/vm/collect.wf 'pkg::heap::gc_mark(heap: &vm^.heap, v: k);'
 expect 1 open-upvalues-unmarked compare --binary "$out/mutant-open-upvalues" --cases "$cases" --filter gc/open-upvalues --budgets 1,7,1000 --gc-stress
 expect 1 frame-closure-unmarked compare --binary "$out/mutant-frame-closure" --cases "$cases" --filter gc/frame-closure --budgets 1 --gc-stress --isolate-frames
 expect 1 constants-unmarked compare --binary "$out/mutant-constants" --budgets 1,7,1000 --gc-stress

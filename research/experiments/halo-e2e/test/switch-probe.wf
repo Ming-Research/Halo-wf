@@ -640,7 +640,7 @@ fn switch_edge_active(argument: Bool) -> r: Bool pure {
 }
 
 fn switch_edges_probe() -> r: u8 pure {
-  doc "Missing-edge codes: 40 entry closure, 41 waiting resumer, 42 inactive request child, 43 inactive request argument, 44 active request child, 45 active request argument, 46 installed current identity. Each control also rejects retaining unrelated garbage or a target after its root is removed.";
+  doc "Missing-edge codes: 40 entry closure, 41 waiting resumer, 42 inactive request child, 43 inactive request argument, 44 active request child, 45 active request argument, 46 installed current identity. A collection parks the installed execution in its cell, so 44 and 45 reach the same marking lines as 42 and 43 and remain positive observations of that parking. Each control also rejects retaining unrelated garbage or a target after its root is removed.";
   for (index in 0_u64..4_u64) {
     let edge = cvt::<u64, u8>(index);
     let passed = switch_edge_saved(edge: edge);

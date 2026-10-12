@@ -144,8 +144,8 @@ comparison with at least one qualifying difference still detects the mutant
 when other cases have unqualified failures. The classifier's positive
 and negative samples run in CI before baseline compilation; they include a changed
 reply, a signal crash, transport/setup exits and a semantic failure mixed
-with a zero collection count. The existing isolated observations still
-run for their original 29 rows and must retain their specific native exits.
+with a zero collection count. The established isolated observations still
+run, 27 across 26 rows, and must retain their specific native exits.
 They are additional evidence and do not satisfy the oracle requirement.
 
 Every mutation starts from original sources. The copied runner and copied
@@ -159,7 +159,7 @@ so this uses the established copy/delete/build control rather than adding a
 production test path.
 
 Run in CI. First select the single `stack` omission and inspect its build and
-comparison durations before selecting further names or `all` (44 rows):
+comparison durations before selecting further names or `all` (26 rows):
 
 ```sh
 THREAD_ROOT_MUTANTS=stack make roots
@@ -178,28 +178,31 @@ Remove this workflow before the branch is ready, after recording CI evidence.
 Names are `thread`, `stack`, `frame`, `open-list`, `library-table`,
 `library-comparator`, `library-error`, `library-key`, `library-frame`, `sort-a`,
 `sort-b`, `sort-pivot`, `pattern-source`, `pattern-pattern`,
-`pattern-replacement`, `error`, `stopped`, and `main`; comma-separated names
-select a bounded batch. The isolated probes give each library/sort/pattern
-field a distinct sole-root target; oracle scripts may retain aliases.
-`open-list` uses a closed capture to isolate the original handle edge.
+`pattern-replacement`, `error`, `stopped`, `main`, `current-thread`, and the
+upvalue and switching names below; comma-separated names select a bounded
+batch. The isolated probes give each library/sort/pattern field a distinct
+sole-root target; oracle scripts may retain aliases. `open-list` uses a closed
+capture to isolate the original handle edge, and also keeps the inactive-owner
+observation 240 from `upvalue_roots`.
 
-The additional oracle-only rows are `active-stack`, `active-frame`, `active-open-list`,
-`active-library-table`, `active-library-comparator`, `active-library-error`,
-`active-library-key`, `active-sort-a`, `active-sort-b`, `active-sort-pivot`,
-`active-pattern-source`, `active-pattern-pattern`, `active-pattern-replacement`,
-`active-error` and `active-stopped`. They omit the corresponding installed-VM
-mark in `vm/collect.wf`; the original library/sort/pattern/error/stopped rows
-omit the saved-thread mark in `heap/gc.wf`. They have no invented isolated
-probe observation. `open-list` and `inactive-open-list` deliberately name the
-same omission with different established probes; their oracle comparison is
-the same experiment.
+Each execution field has a single mark line. `collect_if_due` parks the
+installed execution in its thread cell for the mark phase, as a coroutine
+switch saves it, so `mark_thread_contents` in `heap/gc.wf` traces saved and
+installed executions alike; `vm/collect.wf` marks only main and current
+identities, globals, type metatables and constants. One omission therefore
+removes a field's mark for every execution, and the coroutine oracle sees
+both the running coroutine and the saved ones. A row may name extra runner
+options: `frame` runs with `--isolate-frames`, which removes the installed
+frames' function-slot aliases at budget checkpoints, and each distinct option
+set gets its own unmutated baseline.
 
 Some omissions may be observationally redundant under the public interface.
 In particular, `gc_sweep` closes unreachable owners before `free_thread`, so
 omitting only the latter's `explicit-close` cannot leave a script-visible
 capture open. `coroutine_transfer` clears the pending request before saving
-the resumer, making the saved-transfer child and argument guards inactive
-in ordinary switching. A newly created thread also holds its entry closure
+the resumer, so the transfer child and argument marks see a pending request
+only in the driver's over-limit collection between a request and its
+transfer, which no script reaches below the test host's 64 MiB limit. A newly created thread also holds its entry closure
 in stack slot zero. These are validation-contract gaps, not detections: the
 rows remain selected by `all`, unchanged replies fail, and the isolated
 probes do not waive the owner's oracle criterion. CI must distinguish further
@@ -209,11 +212,12 @@ Owner-qualified observations in `upvalue-probe.wf` additionally check reads
 and writes against active, inactive and suspended stacks; capture reuse and
 closing against the current owner; and escaped captures after owner collection
 and handle reuse. The new controls use the isolated `upvalue_roots` entry so
-older observations cannot mask their intended failures:
+older observations cannot mask their intended failures; `open-list` also
+expects 240 there, where an open capture outside the ordinary live stack
+extent loses its sole retained value:
 
 | Name | Omission | Expected exit | Failure observed |
 | --- | --- | --- | --- |
-| `inactive-open-list` | Thread open-list handle marking | 240 | An open capture outside the ordinary live stack extent loses its sole retained value. |
 | `captured-value` | Open capture's selected-value marking | 241 | An escaped closure loses its captured value although the closure survives. |
 | `owner-close` | Shared conversion from Open to Closed | 242 | A surviving capture still names an owner whose storage has been freed. |
 | `explicit-close` | Closing in `free_thread` | 243 | Explicit owner destruction leaves a capture open. |
@@ -257,7 +261,7 @@ run at budgets 1, 7 and 1000, ordinarily and under collector stress. They exerci
 the existing closure-to-closed-capture-to-thread edges; no new collector edge
 or separate missing-edge control is introduced by public wrap registration.
 
-Seven additional controls use `switch_roots`, with fresh isolated heaps and
+Five additional controls use `switch_roots`, with fresh isolated heaps and
 an empty frame window where needed. A zero-mutant baseline must pass; each
 omission must produce its specific observation:
 
@@ -265,11 +269,14 @@ omission must produce its specific observation:
 | --- | --- | --- |
 | `thread-entry` | New thread's entry closure | 40 |
 | `resumer` | Child's waiting resumer | 41 |
-| `saved-transfer-child` | Inactive pending request's child | 42 |
-| `saved-transfer-arguments` | Inactive pending request's argument extent | 43 |
-| `active-transfer-child` | Active pending request's child | 44 |
-| `active-transfer-arguments` | Active pending request's argument extent | 45 |
+| `transfer-child` | Pending request's child | 42 |
+| `transfer-arguments` | Pending request's argument extent | 43 |
 | `current-thread` | Installed child identity | 46 |
+
+Observations 44 and 45 put the pending request in the installed execution;
+since collection parks it in its cell, they reach the same marking lines as
+42 and 43, which fail first under either omission. They remain positive
+observations of the parking.
 
 Argument extents extend the ordinary stack-root window so the same slots are
 marked and protected from dead-slot clearing. A separate marking call would

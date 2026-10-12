@@ -94,7 +94,7 @@ fn gc_mark(heap: &Heap, v: Value) -> r: unit writes(heap) {
 }
 
 fn gc_mark_upvalue(heap: &Heap, h: u32) -> r: unit writes(heap) {
-  doc "An escaped open capture retains only its captured value, not its inactive owner or unrelated stack slots. The VM marks installed active-stack values.";
+  doc "An escaped open capture retains only its captured value, not its owner or unrelated stack slots. A collection parks the installed execution in its cell, so its captures are read here like any other owner's.";
   let epoch = heap^.epoch;
   let i = cvt::<u32, u64>(h);
   if i < heap^.upvalues.inner.len {

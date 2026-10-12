@@ -2,89 +2,17 @@ alias Value = pkg::value::Value;
 alias Heap = pkg::heap::Heap;
 alias no_handle = pkg::heap::no_handle;
 
-fn stack_limit(vm: &Vm, stack: &Box<Slots<Value>>) -> r: u64 reads(vm), reads(stack) {
-  doc "The highest frame_top or dynamic result top, capped at stack length; open call arguments and multires values above a frame's fixed registers remain live.";
-  let len = stack^.inner.len;
-  let n = vm^.frames.inner.len;
-  if n == 0_u64 {
-    return len;
-  }
-  let limit = vm^.top;
-  let i = 0_u64;
-  loop {
-    if i < vm^.frames.inner.len {
-      let t = vm^.frames.inner[i].frame_top;
-      if t > limit {
-        set limit = t;
-      }
-      set i = i +wrap 1_u64;
-    } else {
-      break;
-    }
-  }
-  if vm^.transfer_kind != 0_u8 {
-    let transfer_first = vm^.transfer.func +sat 1_u64;
-    let transfer_extent = transfer_first +sat vm^.transfer.argc;
-    if transfer_extent > limit {
-      set limit = transfer_extent;
-    }
-  }
-  if limit > len {
-    return len;
-  }
-  return limit;
-}
-
-fn mark_roots(vm: &Vm, stack: &Box<Slots<Value>>, consts: &Box<Slots<Value>>, limit: u64) -> r: unit reads(stack), reads(consts), writes(vm) {
-  doc "Marks main and current identities, a requested child, the live stack including counted transfer arguments, frame closures, open upvalues, globals, type metatables, constants, errors and parked storage. Installed execution is traced here; saved owners and the resumer chain are traced through thread edges.";
+fn mark_roots(vm: &Vm, consts: &Box<Slots<Value>>) -> r: unit reads(consts), writes(vm) {
+  doc "Marks main and current identities, globals, type metatables and constants. Every execution, the installed one included, is traced through its thread cell by the heap's one execution marker, so the installed record has no marking of its own.";
   let main = Value::Thread(h: vm^.main_thread);
   pkg::heap::gc_mark(heap: &vm^.heap, v: main);
   if vm^.current_thread != vm^.main_thread {
     let current = Value::Thread(h: vm^.current_thread);
     pkg::heap::gc_mark(heap: &vm^.heap, v: current);
   }
-  if vm^.transfer_kind == 1_u8 {
-    let transfer_child = Value::Thread(h: vm^.transfer.child);
-    pkg::heap::gc_mark(heap: &vm^.heap, v: transfer_child);
-  }
-  let i = 0_u64;
-  loop {
-    if i < limit {
-      if i < stack^.inner.len {
-        let v = stack^.inner[i];
-        pkg::heap::gc_mark(heap: &vm^.heap, v: v);
-      }
-      set i = i +wrap 1_u64;
-    } else {
-      break;
-    }
-  }
-  set i = 0_u64;
-  loop {
-    if i < vm^.frames.inner.len {
-      let c = vm^.frames.inner[i].closure;
-      if c != no_handle {
-        let f = Value::Fun(h: c);
-        pkg::heap::gc_mark(heap: &vm^.heap, v: f);
-      }
-      set i = i +wrap 1_u64;
-    } else {
-      break;
-    }
-  }
-  set i = 0_u64;
-  loop {
-    if i < vm^.open_upvalues.inner.len {
-      let u = vm^.open_upvalues.inner[i];
-      pkg::heap::gc_mark_upvalue(heap: &vm^.heap, h: u);
-      set i = i +wrap 1_u64;
-    } else {
-      break;
-    }
-  }
   let g = Value::Tab(h: vm^.globals);
   pkg::heap::gc_mark(heap: &vm^.heap, v: g);
-  set i = 0_u64;
+  let i = 0_u64;
   loop {
     if i < 8_u64 {
       let m = vm^.type_metatables[i];
@@ -107,55 +35,37 @@ fn mark_roots(vm: &Vm, stack: &Box<Slots<Value>>, consts: &Box<Slots<Value>>, li
       break;
     }
   }
-  let library_count = vm^.library_contexts.inner.len;
-  for (index in 0_u64..library_count) {
-    if index < vm^.library_contexts.inner.len {
-      let context = vm^.library_contexts.inner[index];
-      pkg::heap::gc_mark(heap: &vm^.heap, v: context.table);
-      pkg::heap::gc_mark(heap: &vm^.heap, v: context.comparator);
-      pkg::heap::gc_mark(heap: &vm^.heap, v: context.saved_error);
-      pkg::heap::gc_mark(heap: &vm^.heap, v: context.foreach_key);
+  return unit;
+}
+
+fn park_for_marking(vm: &Vm, stack: &Box<Slots<Value>>) -> r: u64 writes(vm), writes(stack) {
+  doc "Saves the installed execution into its thread cell as a coroutine switch does, exchanging buffers with the cell's installed-time counterparts, and returns the stack extent the heap's marker retains. The caller has checked that the installed cell is live: main and current are always marked, so only a main thread whose allocation failed for lack of memory lacks one, and that collection ends with the memory error instead.";
+  let installed = vm^.current_thread;
+  coroutine_save_scalars(vm: vm, h: installed);
+  coroutine_swap_boxes(vm: vm, stack: stack, h: installed);
+  let index = cvt::<u32, u64>(installed);
+  if index < vm^.heap.threads.inner.len {
+    if vm^.heap.threads.inner[index].live {
+      return pkg::heap::thread_stack_limit(execution: &vm^.heap.threads.inner[index].payload);
     }
   }
-  let sort_count = vm^.sort_frames.inner.len;
-  for (index in 0_u64..sort_count) {
-    if index < vm^.sort_frames.inner.len {
-      let frame = vm^.sort_frames.inner[index];
-      pkg::heap::gc_mark(heap: &vm^.heap, v: frame.a);
-      pkg::heap::gc_mark(heap: &vm^.heap, v: frame.b);
-      pkg::heap::gc_mark(heap: &vm^.heap, v: frame.pivot);
-    }
-  }
-  let substitution_count = vm^.pattern_subs.inner.len;
-  for (index in 0_u64..substitution_count) {
-    if index < vm^.pattern_subs.inner.len {
-      let source = vm^.pattern_subs.inner[index].source;
-      let pattern = vm^.pattern_subs.inner[index].pattern;
-      let replacement = vm^.pattern_subs.inner[index].replacement;
-      pkg::heap::gc_mark(heap: &vm^.heap, v: source);
-      pkg::heap::gc_mark(heap: &vm^.heap, v: pattern);
-      pkg::heap::gc_mark(heap: &vm^.heap, v: replacement);
-    }
-  }
-  let e = vm^.error;
-  pkg::heap::gc_mark(heap: &vm^.heap, v: e);
-  set i = 0_u64;
-  loop {
-    if i < vm^.stopped_stack.inner.len {
-      let sv = vm^.stopped_stack.inner[i];
-      pkg::heap::gc_mark(heap: &vm^.heap, v: sv);
-      set i = i +wrap 1_u64;
-    } else {
-      break;
-    }
-  }
+  return stack^.inner.len;
+}
+
+fn unpark_after_marking(vm: &Vm, stack: &Box<Slots<Value>>, length: u64) -> r: unit writes(vm), writes(stack) contract {
+  ensures stack^.inner.len == length;
+} {
+  doc "Reinstalls the buffers park_for_marking moved, returning the cell its own counterparts. The saved scalars stay in the cell until the next switch or collection overwrites them; nothing reads them while the thread is installed. length restates the unchanged stack length for callers' contracts.";
+  let installed = vm^.current_thread;
+  coroutine_swap_boxes(vm: vm, stack: stack, h: installed);
+  resize_stack(stack: stack, size: length);
   return unit;
 }
 
 fn collect_if_due(vm: &Vm, stack: &Box<Slots<Value>>, consts: &Box<Slots<Value>>) -> r: Bool reads(consts), writes(vm), writes(stack) contract {
   ensures stack^.inner.len == entry(stack)^.inner.len;
 } {
-  doc "Call sites gate the slow path with the same stress/limit/allocation predicate as heap.gc_due; this check also preserves the helper's standalone behavior. A safepoint: at a loop back-edge or call every live value is in a stack slot or a root, so a due collection marks the roots, clears the stack above the live part as Lua 5.1's traversestack does, and sweeps.";
+  doc "Call sites gate the slow path with the same stress/limit/allocation predicate as heap.gc_due; this check also preserves the helper's standalone behavior. A safepoint: at a loop back-edge or call every live value is in a stack slot or a root, so a due collection parks the installed execution in its thread cell, marks the roots so that the heap traces every execution alike, reinstalls it, clears the stack above the live part as Lua 5.1's traversestack does, and sweeps.";
   let accounted = coroutine_refresh_storage(vm: vm, stack: stack);
   if bnot(accounted) {
     return raise_text(vm: vm, text: &collection_memory_error[0_u64..17_u64]);
@@ -164,10 +74,19 @@ fn collect_if_due(vm: &Vm, stack: &Box<Slots<Value>>, consts: &Box<Slots<Value>>
   if bnot(due) {
     return True();
   }
-  let limit = stack_limit(vm: vm, stack: stack);
+  let installed_index = cvt::<u32, u64>(vm^.current_thread);
+  if installed_index >= vm^.heap.threads.inner.len {
+    return raise_text(vm: vm, text: &collection_memory_error[0_u64..17_u64]);
+  }
+  if bnot(vm^.heap.threads.inner[installed_index].live) {
+    return raise_text(vm: vm, text: &collection_memory_error[0_u64..17_u64]);
+  }
+  let length = stack^.inner.len;
   pkg::heap::gc_begin(heap: &vm^.heap);
-  mark_roots(vm: vm, stack: stack, consts: consts, limit: limit);
+  let limit = park_for_marking(vm: vm, stack: stack);
+  mark_roots(vm: vm, consts: consts);
   pkg::heap::gc_propagate(heap: &vm^.heap);
+  unpark_after_marking(vm: vm, stack: stack, length: length);
   let j = limit;
   loop {
     if j < stack^.inner.len {

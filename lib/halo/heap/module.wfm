@@ -153,7 +153,9 @@ public fn gc_begin(heap: &Heap) -> r: unit writes(heap.epoch), writes(heap.gray_
 
 public fn gc_mark(heap: &Heap, v: Value) -> r: unit writes(heap) doc "Marks the object a value names in the current epoch; a table, closure or thread joins the gray stack to have its references marked.";
 
-public fn gc_mark_upvalue(heap: &Heap, h: u32) -> r: unit writes(heap) doc "Marks an upvalue cell and its captured value. An open capture reads its inactive owner's authoritative saved slot without rooting the owner; installed execution is traced by the VM's stack roots.";
+public fn gc_mark_upvalue(heap: &Heap, h: u32) -> r: unit writes(heap) doc "Marks an upvalue cell and its captured value. An open capture reads its owner's saved slot without rooting the owner; a collection parks the installed execution in its cell for the mark phase, so every owner is read the same way.";
+
+public fn thread_stack_limit(execution: &Execution) -> r: u64 reads(execution) doc "The stack extent a collection retains for an execution: dynamic results, every frame's registers and counted transfer arguments, capped at stack length; without frames the entire stored stack. The VM clears the installed stack above it after marking.";
 
 public fn gc_propagate(heap: &Heap) -> r: unit writes(heap) doc "Marks everything reachable from the gray stack until it is empty: a table's array values, node keys and values and metatable; a closure's upvalues; a thread's retained execution roots.";
 
@@ -183,7 +185,7 @@ public fn alloc_thread(heap: &Heap, payload: Execution) -> r: Option<u32> writes
 
 public fn free_thread(heap: &Heap, h: u32) -> r: unit writes(heap) doc "Closes the thread's owned open captures before releasing its execution storage using its cached charge, then links the cell onto threads_free; repeated frees do nothing.";
 
-public fn thread_slot(heap: &Heap, owner: u32, slot: u64) -> r: Value reads(heap.threads) doc "Reads an inactive owner's saved slot, using stopped_stack while suspended and stack otherwise. Invalid, dead or out-of-range owners/slots return Nil. Installed execution has empty counterparts and is read directly through the VM's supplied stack.";
+public fn thread_slot(heap: &Heap, owner: u32, slot: u64) -> r: Value reads(heap.threads) doc "Reads an inactive owner's saved slot, using stopped_stack while suspended and stack otherwise. Invalid, dead or out-of-range owners/slots return Nil. Installed execution has empty counterparts and is read directly through the VM's supplied stack, except while a collection parks it in its cell for the mark phase.";
 
 public fn set_thread_slot(heap: &Heap, owner: u32, slot: u64, v: Value) -> r: unit writes(heap.threads) doc "Writes an inactive owner's authoritative saved slot without changing storage extent or charge; invalid, dead or out-of-range owners/slots do nothing. Installed execution writes its supplied stack directly.";
 

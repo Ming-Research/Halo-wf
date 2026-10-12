@@ -103,12 +103,16 @@ build() {
   if [ "$build_code" != 0 ]; then cat "$out/build-$build_label.log"; return 1; fi
 }
 
+# A row's oracle flags are extra run.py options; each distinct set gets its
+# own unmutated baseline before any omission is built.
 compare() {
   compare_label=$1
+  compare_flags=$2
   compare_started=$(date +%s)
+  # shellcheck disable=SC2086
   GIT_DIR="$source_git" python3 -B "$tree/research/experiments/halo-e2e/run.py" \
     --compiler "$wfc" --binary "$out/oracle-test" --scratch-root "$out" \
-    --filter coroutines/ --budgets 1,7,1000 --gc-stress --case-timeout 60 \
+    --filter coroutines/ --budgets 1,7,1000 --gc-stress --case-timeout 60 $compare_flags \
     --actual "$out/actual-$compare_label" --report "$out/oracle-$compare_label.md" \
     > "$out/oracle-$compare_label.log" 2>&1
   compare_code=$?
@@ -117,12 +121,65 @@ compare() {
   echo "coroutine oracle $compare_label: exit $compare_code, $compare_seconds seconds"
 }
 
+# label|probes|file|omitted line|replacement|oracle flags. Every execution
+# field has one mark line in mark_thread_contents (lib/halo/heap/gc.wf), which
+# traces saved executions and the installed one that collect_if_due parks in
+# its cell; collect.wf keeps only the main, current, global, metatable and
+# constant roots. probes lists entry:exit isolated observations.
+edges() {
+  cat <<'EDGES'
+thread|thread_roots:221|lib/halo/heap/gc.wf|mark_thread_contents(heap: heap, ti: ti);||
+stack|thread_roots:236|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: stack_value);||
+frame|thread_roots:221|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: frame_function);||--isolate-frames
+open-list|thread_roots:222 upvalue_roots:240|lib/halo/heap/gc.wf|gc_mark_upvalue(heap: heap, h: upvalue);||
+library-table|thread_roots:223|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: context.table);||
+library-comparator|thread_roots:224|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: context.comparator);||
+library-error|thread_roots:225|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: context.saved_error);||
+library-key|thread_roots:226|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: context.foreach_key);||
+library-frame|thread_roots:227|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: library_function);||
+sort-a|thread_roots:228|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: frame.a);||
+sort-b|thread_roots:229|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: frame.b);||
+sort-pivot|thread_roots:230|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: frame.pivot);||
+pattern-source|thread_roots:231|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: source);||
+pattern-pattern|thread_roots:232|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: pattern);||
+pattern-replacement|thread_roots:233|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: replacement);||
+error|thread_roots:234|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: error);||
+stopped|thread_roots:235|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: stopped_value);||
+main|thread_roots:213|lib/halo/vm/collect.wf|pkg::heap::gc_mark(heap: &vm^.heap, v: main);||
+current-thread|switch_roots:46|lib/halo/vm/collect.wf|pkg::heap::gc_mark(heap: &vm^.heap, v: current);||
+captured-value|upvalue_roots:241|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: captured);||
+owner-close|upvalue_roots:242|lib/halo/heap/threads.wf|set heap^.upvalues.inner[ui].payload = Upval::Closed(v: held);|set heap^.upvalues.inner[ui].live = heap^.upvalues.inner[ui].live;|
+explicit-close|upvalue_roots:243|lib/halo/heap/threads.wf|close_thread_upvalues(heap: heap, h: h);||
+thread-entry|switch_roots:40|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: entry_value);||
+resumer|switch_roots:41|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: resumer_value);||
+transfer-child|switch_roots:42|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: transfer_child);||
+transfer-arguments|switch_roots:43|lib/halo/heap/gc.wf|set limit = transfer_extent;||
+EDGES
+}
+
+edges > "$out/edges" || exit 1
+selected_flags() {
+  while IFS='|' read -r label probes file line replacement flags; do
+    case ",$selection," in
+      *,all,*|*,"$label",*) [ -n "$flags" ] && printf '%s\n' "$flags" ;;
+    esac
+  done < "$out/edges" | sort -u
+}
+
 # Baseline transport, canonical recordings and collection counts must all pass
-# before a mutation can be credited. Missing new Redis recordings fail here.
+# before a mutation can be credited, with every flag set a selected row uses.
+# Missing new Redis recordings fail here.
 if ! build baseline-oracle test "$out/oracle-test"; then exit 1; fi
-compare baseline
-printf 'baseline\toracle\t%s\t%s\tbaseline\n' "$compare_code" "$compare_seconds" >> "$out/summary.tsv"
-if [ "$compare_code" != 0 ]; then cat "$out/oracle-baseline.log"; exit 1; fi
+baseline() {
+  baseline_label=baseline$(printf '%s' "$1" | tr -c 'a-z0-9' '-')
+  compare "$baseline_label" "$1"
+  printf '%s\toracle\t%s\t%s\tbaseline\n' "$baseline_label" "$compare_code" "$compare_seconds" >> "$out/summary.tsv"
+  if [ "$compare_code" != 0 ]; then cat "$out/oracle-$baseline_label.log"; return 1; fi
+}
+baseline '' || exit 1
+selected_flags | while IFS= read -r baseline_flags; do
+  baseline "$baseline_flags" || exit 1
+done || exit 1
 if ! build baseline-probe thread_roots "$out/probe-test"; then exit 1; fi
 timeout 60 "$out/probe-test" > "$out/baseline-probe.log" 2>&1
 code=$?
@@ -132,7 +189,7 @@ if [ "$code" != 0 ]; then cat "$out/baseline-probe.log"; exit 1; fi
 
 status=0
 selected=0
-while IFS='|' read -r label want entry file line replacement; do
+while IFS='|' read -r label probes file line replacement flags; do
   case ",$selection," in
     *,all,*|*,"$label",*) ;;
     *) continue ;;
@@ -159,7 +216,7 @@ while IFS='|' read -r label want entry file line replacement; do
   fi
   diff -u "$source" "$target" > "$out/omission-$label.diff"
   if build "$label-oracle" test "$out/oracle-test"; then
-    compare "$label"
+    compare "$label" "$flags"
     result=inconclusive
     if [ "$compare_code" = 0 ]; then
       result=survived
@@ -173,63 +230,20 @@ while IFS='|' read -r label want entry file line replacement; do
   else
     status=1
   fi
-  # Keep each established isolated observation; it is additional evidence,
-  # never a substitute for the oracle result. New active-edge rows have none.
-  if [ "$want" != - ]; then
-    if ! build "$label-probe" "$entry" "$out/probe-test"; then status=1; continue; fi
+  # Keep each established isolated observation, entry:exit; it is additional
+  # evidence, never a substitute for the oracle result.
+  for probe in $probes; do
+    entry=${probe%%:*}
+    want=${probe#*:}
+    if ! build "$label-$entry" "$entry" "$out/probe-test"; then status=1; continue; fi
     probe_started=$(date +%s)
-    timeout 60 "$out/probe-test" > "$out/probe-$label.log" 2>&1
+    timeout 60 "$out/probe-test" > "$out/probe-$label-$entry.log" 2>&1
     code=$?
     probe_ended=$(date +%s)
-    echo "thread roots $label: exit $code (want isolated observation $want)"
-    printf '%s\tprobe\t%s\t%s\texpected-%s\n' "$label" "$code" "$((probe_ended - probe_started))" "$want" >> "$out/summary.tsv"
-    if [ "$code" != "$want" ]; then status=1; cat "$out/probe-$label.log"; fi
-  fi
-done <<'EDGES'
-thread|221|thread_roots|lib/halo/heap/gc.wf|mark_thread_contents(heap: heap, ti: ti);
-stack|236|thread_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: stack_value);
-frame|221|thread_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: frame_function);
-open-list|222|thread_roots|lib/halo/heap/gc.wf|gc_mark_upvalue(heap: heap, h: upvalue);
-library-table|223|thread_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: context.table);
-library-comparator|224|thread_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: context.comparator);
-library-error|225|thread_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: context.saved_error);
-library-key|226|thread_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: context.foreach_key);
-library-frame|227|thread_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: library_function);
-sort-a|228|thread_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: frame.a);
-sort-b|229|thread_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: frame.b);
-sort-pivot|230|thread_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: frame.pivot);
-pattern-source|231|thread_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: source);
-pattern-pattern|232|thread_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: pattern);
-pattern-replacement|233|thread_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: replacement);
-error|234|thread_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: error);
-stopped|235|thread_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: stopped_value);
-main|213|thread_roots|lib/halo/vm/collect.wf|pkg::heap::gc_mark(heap: &vm^.heap, v: main);
-inactive-open-list|240|upvalue_roots|lib/halo/heap/gc.wf|gc_mark_upvalue(heap: heap, h: upvalue);
-captured-value|241|upvalue_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: captured);
-owner-close|242|upvalue_roots|lib/halo/heap/threads.wf|set heap^.upvalues.inner[ui].payload = Upval::Closed(v: held);|set heap^.upvalues.inner[ui].live = heap^.upvalues.inner[ui].live;
-explicit-close|243|upvalue_roots|lib/halo/heap/threads.wf|close_thread_upvalues(heap: heap, h: h);
-thread-entry|40|switch_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: entry_value);
-resumer|41|switch_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: resumer_value);
-saved-transfer-child|42|switch_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: transfer_child);
-saved-transfer-arguments|43|switch_roots|lib/halo/heap/gc.wf|set limit = transfer_extent;
-active-transfer-child|44|switch_roots|lib/halo/vm/collect.wf|pkg::heap::gc_mark(heap: &vm^.heap, v: transfer_child);
-active-transfer-arguments|45|switch_roots|lib/halo/vm/collect.wf|set limit = transfer_extent;
-current-thread|46|switch_roots|lib/halo/vm/collect.wf|pkg::heap::gc_mark(heap: &vm^.heap, v: current);
-active-stack|-|test|lib/halo/vm/collect.wf|pkg::heap::gc_mark(heap: &vm^.heap, v: v);
-active-frame|-|test|lib/halo/vm/collect.wf|pkg::heap::gc_mark(heap: &vm^.heap, v: f);
-active-open-list|-|test|lib/halo/vm/collect.wf|pkg::heap::gc_mark_upvalue(heap: &vm^.heap, h: u);
-active-library-table|-|test|lib/halo/vm/collect.wf|pkg::heap::gc_mark(heap: &vm^.heap, v: context.table);
-active-library-comparator|-|test|lib/halo/vm/collect.wf|pkg::heap::gc_mark(heap: &vm^.heap, v: context.comparator);
-active-library-error|-|test|lib/halo/vm/collect.wf|pkg::heap::gc_mark(heap: &vm^.heap, v: context.saved_error);
-active-library-key|-|test|lib/halo/vm/collect.wf|pkg::heap::gc_mark(heap: &vm^.heap, v: context.foreach_key);
-active-sort-a|-|test|lib/halo/vm/collect.wf|pkg::heap::gc_mark(heap: &vm^.heap, v: frame.a);
-active-sort-b|-|test|lib/halo/vm/collect.wf|pkg::heap::gc_mark(heap: &vm^.heap, v: frame.b);
-active-sort-pivot|-|test|lib/halo/vm/collect.wf|pkg::heap::gc_mark(heap: &vm^.heap, v: frame.pivot);
-active-pattern-source|-|test|lib/halo/vm/collect.wf|pkg::heap::gc_mark(heap: &vm^.heap, v: source);
-active-pattern-pattern|-|test|lib/halo/vm/collect.wf|pkg::heap::gc_mark(heap: &vm^.heap, v: pattern);
-active-pattern-replacement|-|test|lib/halo/vm/collect.wf|pkg::heap::gc_mark(heap: &vm^.heap, v: replacement);
-active-error|-|test|lib/halo/vm/collect.wf|pkg::heap::gc_mark(heap: &vm^.heap, v: e);
-active-stopped|-|test|lib/halo/vm/collect.wf|pkg::heap::gc_mark(heap: &vm^.heap, v: sv);
-EDGES
+    echo "thread roots $label $entry: exit $code (want isolated observation $want)"
+    printf '%s\tprobe\t%s\t%s\texpected-%s\n' "$label-$entry" "$code" "$((probe_ended - probe_started))" "$want" >> "$out/summary.tsv"
+    if [ "$code" != "$want" ]; then status=1; cat "$out/probe-$label-$entry.log"; fi
+  done
+done < "$out/edges"
 if [ "$selected" = 0 ]; then echo "thread roots: selection names no edge"; exit 1; fi
 exit "$status"
