@@ -4,6 +4,14 @@ Newest first. One entry per approved change of the tree: a dated title,
 `Nodes:` naming every node changed, `Owner-approved:` and `Summary:`; the
 owner-wide instructions' *Log format* owns the form.
 
+## 2026-10-12 Halo's reference moves from Redis 7.0.15 to Redis 7.2.16
+
+Nodes: halo
+
+Owner-approved: 2026-10-12 on the WF status board, card "Approve the two design-tree edits that move Halo's compatibility reference and library scope from Redis 7.0.15 to 7.2.16?" under item "Halo's oracle is recorded on Redis 7.2.16 and the test host replies as 7.2.16 does": chose option A, "approve these two edits".
+
+Summary: The owner moved Firn's reference to Redis 7.2.16, the latest 7.2 maintenance release, so Halo's replies are now judged against 7.2.16's bundled Lua on x86-64 Linux with glibc, and the library Halo provides follows 7.2.16's sandbox, whose exclusion list no longer names `getfenv`, `setfenv` and `newproxy` because 7.2.16 itself removes them. The corpus first recorded on 7.0.15 replies byte-identically on 7.2.16, and each script-visible difference between the releases has its own recorded script ([the move record](../research/investigations/halo/REDIS-72.md)).
+
 ## 2026-10-09 Halo's collector is forced and observed only through the embedding API
 
 Nodes: halo/heap/collector-validation

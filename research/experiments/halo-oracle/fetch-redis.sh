@@ -1,12 +1,15 @@
 #!/bin/sh
-# Fetches Redis 7.0.15, the reference (AGENTS.md), into <directory>, checks the
+# Fetches Redis 7.2.16, the reference (AGENTS.md), or the release named by the
+# optional second argument, into <directory>, checks the
 # tarball against the hash Redis publishes in its redis-hashes repository, an
 # independent source, and builds its bundled Lua with Redis's own deps
-# Makefile: <directory>/redis-7.0.15/deps/lua/src holds lua, liblua.a and the
-# headers. `make reference-lua` runs it; it does nothing when that Lua exists.
+# Makefile: <directory>/redis-<version>/deps/lua/src holds lua, liblua.a and
+# the headers. `make reference-lua` runs it for the reference; the performance
+# baseline still builds PUC Lua 5.1.5 from Redis 7.0.15 (halo-bench/README.md).
+# It does nothing when that Lua exists.
 set -eu
-dir=${1:?usage: fetch-redis.sh <directory>}
-version=7.0.15
+dir=${1:?usage: fetch-redis.sh <directory> [version]}
+version=${2:-7.2.16}
 src=$dir/redis-$version
 [ -x "$src/deps/lua/src/lua" ] && [ -f "$src/deps/lua/src/liblua.a" ] && exit 0
 mkdir -p "$dir"

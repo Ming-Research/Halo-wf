@@ -23,7 +23,7 @@ history, not current instructions ([AGENTS.md](../../AGENTS.md#design-tree-and-r
 - [halo-vm/](halo-vm/RESULTS.md) — the dispatch core's cell fixtures
   against the same programs run by PUC Lua 5.1.5.
 - [halo-lib/](halo-lib/RESULTS.md) — the slice-1 standard library against
-  Redis 7.0.15's Lua.
+  Redis 7.2.16's Lua.
 - [halo-patterns/](halo-patterns/RESULTS.md) — Lua 5.1 patterns against an
   authored differential corpus.
 - [halo-luacodecs/](halo-luacodecs/RESULTS.md) — Redis's `cjson`,
@@ -36,7 +36,7 @@ history, not current instructions ([AGENTS.md](../../AGENTS.md#design-tree-and-r
 ## End to end
 
 - [halo-oracle/](halo-oracle/README.md) — the reference's exact replies to
-  its scripts, recorded from Redis 7.0.15 on x86-64 Linux.
+  its scripts, recorded from Redis 7.2.16 on x86-64 Linux.
 - [halo-e2e/](halo-e2e/RESULTS.md) — those scripts run through `pkg::embed`
   and an in-memory host; `make check` runs this comparison.
 

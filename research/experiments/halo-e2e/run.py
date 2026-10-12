@@ -336,7 +336,7 @@ def main():
         for case, budget, status, seconds, collections, why in rows:
             report += [f'| {case} | {budget} | {status} | {seconds:.4f} | {collections} | {why.replace("|", "&#124;").replace(chr(0), "<NUL>")} |']
         report += ['', 'No scripts or expected replies were changed. No network or Redis server was used.',
-                   ('The reference is the stored Redis 7.0.15 RESP2 corpus.' if case_root == ORACLE.resolve()
+                   ('The reference is the stored Redis 7.2.16 RESP2 corpus.' if case_root == ORACLE.resolve()
                     else 'The reference is the selected local cases and their independently stated expected replies.'),
                    'Budget comparisons use fresh stores. They compare replies; atomic kill/restart and host Stop store preservation require separate checks.', '']
         text = '\n'.join(report)

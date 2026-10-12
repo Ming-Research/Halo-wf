@@ -11,7 +11,7 @@ have unvalidated differences from full LTO and are only sizing observations.
 Use the default or explicit `--full-lto` for runtime performance measurements.
 Reused binaries must have been built with the corresponding mode.
 
-This comparison checks `lib/halo/number` against Redis 7.0.15's bundled
+This comparison checks `lib/halo/number` against Redis 7.2.16's bundled
 PUC Lua 5.1.5 with Redis's patches, built on x86-64 Linux with glibc in the
 C locale. It runs in Halo's gate through `make check-reference`.
 `compare.py` builds the standalone Whitefoot adapter in
@@ -32,7 +32,7 @@ toolchain. `make number` uses that compiler with `--incremental` and runs
 `make reference-lua`, whose
 [fetch-redis.sh](../halo-oracle/fetch-redis.sh) verifies the Redis source
 archive and builds Lua with Redis's dependency Makefile. The executable,
-headers and `liblua.a` are under `build/redis/redis-7.0.15/deps/lua/src`.
+headers and `liblua.a` are under `build/redis/redis-7.2.16/deps/lua/src`.
 The default `NUMBER_SAMPLES=100` and `NUMBER_EXAMPLES=8` control random
 sampling and the maximum mismatch examples printed per group.
 `make check-reference` runs this comparison and the MessagePack comparison;
@@ -44,7 +44,7 @@ For a direct invocation with an existing compiler and reference build:
 ```sh
 python3 research/experiments/halo-number/compare.py \
   --compiler /path/to/whitefootc --incremental \
-  --lua build/redis/redis-7.0.15/deps/lua/src/lua --samples 100
+  --lua build/redis/redis-7.2.16/deps/lua/src/lua --samples 100
 ```
 
 The runner itself requires Python 3 and a C11 compiler and rebuilds neither
