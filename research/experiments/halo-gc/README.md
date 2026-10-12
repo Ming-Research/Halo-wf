@@ -127,7 +127,9 @@ live-charge and recovery checks.
 `thread-controls.sh`, called by `controls.sh` when `THREAD_ROOT_MUTANTS` is
 set, omits one marking or closing operation in a copied tree. It builds the
 ordinary `test` entry and runs the unchanged e2e runner with `--filter
-coroutines/ --budgets 1,7,1000 --gc-stress`. Before any omission, that same
+coroutines/ --budgets 1,7,1000 --gc-stress --case-timeout 60`; the runner's
+default per-case limit stays 900 seconds, and the shorter limit only bounds a
+mutant that loops (a timeout is never a detection). Before any omission, that same
 comparison must pass with every edge present; newly added scripts therefore
 need their Redis 7.0.15 recordings before this experiment can run.
 

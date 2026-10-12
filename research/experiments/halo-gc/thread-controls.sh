@@ -9,8 +9,10 @@ set -u
 # run.py exit 1 includes both semantic differences and infrastructure failures.
 # Accept only its explicit reply-difference reasons or native signal crashes.
 # Transport/setup/budget exits, malformed output/statistics and timeouts do
-# not establish detection. A completed run needs at least one valid difference
-# or signal crash; a missing baseline or fatal runner exception invalidates it.
+# not establish detection. compare() bounds each case at 60 seconds, so a
+# looping mutant costs minutes rather than hours; its timeout is no reply.
+# A completed run needs at least one valid difference or signal crash; a
+# missing baseline or fatal runner exception invalidates it.
 is_oracle_detection() (
   difference=1
   while IFS= read -r line || [ -n "$line" ]; do
@@ -44,7 +46,7 @@ EOF
     'FAIL coroutines/fixture budget=1 collections=None: invalid collection count' \
     'FAIL coroutines/fixture budget=1 collections=None: native exit 2 (2 transport/I/O, 3 setup compile, 4 setup runtime, 5 budget limit, 6 host stop)' \
     'FAIL coroutines/fixture budget=1 collections=None: native exit 3 (2 transport/I/O, 3 setup compile, 4 setup runtime, 5 budget limit, 6 host stop)' \
-    'FAIL coroutines/fixture budget=1 collections=None: Command timed out after 900 seconds' \
+    "FAIL coroutines/fixture budget=1 collections=None: Command '['/scratch/oracle-test', 'one', '--gc-stress']' timed out after 60 seconds" \
     'FAIL coroutines/fixture budget=1 collections=None: Expecting value: line 1 column 1 (char 0)'; do
     if is_oracle_detection <<EOF
 $invalid
@@ -106,7 +108,7 @@ compare() {
   compare_started=$(date +%s)
   GIT_DIR="$source_git" python3 -B "$tree/research/experiments/halo-e2e/run.py" \
     --compiler "$wfc" --binary "$out/oracle-test" --scratch-root "$out" \
-    --filter coroutines/ --budgets 1,7,1000 --gc-stress \
+    --filter coroutines/ --budgets 1,7,1000 --gc-stress --case-timeout 60 \
     --actual "$out/actual-$compare_label" --report "$out/oracle-$compare_label.md" \
     > "$out/oracle-$compare_label.log" 2>&1
   compare_code=$?
