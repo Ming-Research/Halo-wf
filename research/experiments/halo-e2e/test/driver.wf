@@ -479,24 +479,47 @@ fn install_host(engine: &Engine, env: &Env) -> r: unit writes(engine), writes(en
   return unit;
 }
 
-fn protect(engine: &Engine) -> r: unit writes(engine) {
-  let vm_v85 = &engine^.vm;
-  let meta_v86 = halo::heap::new_table(heap: &vm_v85^.heap, asize: 0_u32, hsize: 1_u32);
-  let index_v87 = literal(vm: vm_v85, text: &s_50[0_u64..7_u64]);
+fn protect(engine: &Engine, globals_read_only: Bool, strings_read_only: Bool) -> r: Bool writes(engine) {
+  doc "Protects the script environment as Redis 7.2.16 does, through the embedding interface: globals get an __index that rejects undeclared names and become read-only, and the shared string metatable becomes read-only. A false flag leaves that table writable, as a negative control. False when a call is refused.";
+  let ok = True();
+  let rejecting_v85 = halo::embed::new_table(engine: engine, asize: 0_u32, hsize: 1_u32);
+  let index_v87 = halo::embed::intern(engine: engine, bytes: &s_50[0_u64..7_u64]);
   let v_v88 = Value::Builtin(id: 4101_u32);
-  raw(vm: vm_v85, table: meta_v86, key: index_v87, value: v_v88);
-  match halo::value::tab_of(v: meta_v86) {
-    NoHandle() => {
+  let globals_v89 = Value::Tab(h: engine^.vm.globals);
+  match halo::embed::table_set(engine: engine, table: rejecting_v85, key: index_v87, value: v_v88) {
+    Ok(..) => {
     }
-    Handle(h: mh_v89) => {
-      let g_v90 = cvt::<u32, u64>(vm_v85^.globals);
-      if g_v90 < vm_v85^.heap.tables.inner.len {
-        set vm_v85^.heap.tables.inner[g_v90].payload.meta = mh_v89;
-        set vm_v85^.heap.tables.inner[g_v90].payload.read_only = True();
+    Err(..) => {
+      set ok = False();
+    }
+  }
+  match halo::embed::set_metatable(engine: engine, table: globals_v89, meta: rejecting_v85) {
+    Ok(..) => {
+    }
+    Err(..) => {
+      set ok = False();
+    }
+  }
+  if globals_read_only {
+    match halo::embed::set_read_only(engine: engine, table: globals_v89) {
+      Ok(..) => {
+      }
+      Err(..) => {
+        set ok = False();
       }
     }
   }
-  return unit;
+  if strings_read_only {
+    let strings_v90 = halo::embed::metatable_of(engine: engine, value: index_v87);
+    match halo::embed::set_read_only(engine: engine, table: strings_v90) {
+      Ok(..) => {
+      }
+      Err(..) => {
+        set ok = False();
+      }
+    }
+  }
+  return ok;
 }
 
 fn read_source(factory: &HandleFactory, input: &InputStream, source: &Box<Slots<u8>>) -> success: Bool writes(factory), writes(input), writes(source) waits {
@@ -540,6 +563,8 @@ fn main(inputs: Inputs) -> status: ExitStatus pure waits {
   let omit_suspended_root = False();
   let isolate_frames = False();
   let recover = False();
+  let globals_read_only = True();
+  let strings_read_only = True();
   let omit_refresh = 0_u8;
   let positional = 0_u64;
   for (index in 1_u64..modes) {
@@ -553,6 +578,10 @@ fn main(inputs: Inputs) -> status: ExitStatus pure waits {
       set isolate_frames = True();
     } else if argument_is(args: &args_v99, index: index, text: &recovery_option[0_u64..17_u64]) {
       set recover = True();
+    } else if argument_is(args: &args_v99, index: index, text: &global_readonly_option[0_u64..22_u64]) {
+      set globals_read_only = False();
+    } else if argument_is(args: &args_v99, index: index, text: &string_readonly_option[0_u64..22_u64]) {
+      set strings_read_only = False();
     } else if argument_is(args: &args_v99, index: index, text: &pin_refresh_option[0_u64..18_u64]) {
       set omit_refresh = 1_u8;
     } else if argument_is(args: &args_v99, index: index, text: &compile_refresh_option[0_u64..22_u64]) {
@@ -626,7 +655,10 @@ fn main(inputs: Inputs) -> status: ExitStatus pure waits {
       }
     }
   }
-  protect(engine: &engine_v114);
+  let protected_env = protect(engine: &engine_v114, globals_read_only: globals_read_only, strings_read_only: strings_read_only);
+  if bnot(protected_env) {
+    return std::process::exit_status(code: 4_u8);
+  }
   let primary_start = split_v112 + 1_u64;
   let primary_end = n_v111;
   let passes = 1_u64;
@@ -739,6 +771,10 @@ const suspended_option: Array<u8, 19> = "--collect-suspended";
 const recovery_option: Array<u8, 17> = "--memory-recovery";
 
 const stress_option: Array<u8, 11> = "--gc-stress";
+
+const global_readonly_option: Array<u8, 22> = "--omit-global-readonly";
+
+const string_readonly_option: Array<u8, 22> = "--omit-string-readonly";
 
 const stats_prefix: Array<u8, 15> = "{\"collections\":";
 

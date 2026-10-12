@@ -331,6 +331,8 @@ public fn library_builtin(index: u64) -> r: Option<BuiltinBinding> pure doc "Sta
 
 public fn install_libraries(vm: &Vm) -> r: unit writes(vm) doc "Installs the builtin-id table and _VERSION (Lua 5.1) into globals and creates string, table, math, cjson, cmsgpack, bit and struct tables. Installs string.__index through the string type metatable; adds math.pi, math.huge and math.mod with the same builtin value as math.fmod. Host functions use IDs >=4096.";
 
+public fn metatable(vm: &Vm, v: Value) -> r: Value reads(vm) doc "The metatable lua_getmetatable returns, without __metatable: a live table's own, the type metatable of every other kind (only strings have one), or nil.";
+
 public struct CjsonConfig {
   public settings: Array<u64, 9>;
   public buffer: Box<Slots<u8>>;

@@ -251,7 +251,11 @@ and length the host turns into a slice of the string's public readonly
 bytes, since no function returns a reference), `number_of`, `truthy`,
 `kind`, `new_table`, `table_append`, `table_set`, `table_get`,
 `table_border`, `table_next`, `set_global` (bypassing readonly, as Redis
-sets `KEYS` and `ARGV` from C), `pin`/`unpin`, `error_value`,
+sets `KEYS` and `ARGV` from C), `set_metatable`, `metatable_of` (the
+shared string metatable for a string) and `set_read_only`, with which the
+host protects the tables its rules name ([table
+protection](../../../design/halo/embedding/table-protection.md)),
+`pin`/`unpin`, `error_value`,
 `error_line` (the line of the innermost Lua function at the raise of the
 error that ended the run: the VM records the pc when the error first leaves
 a dispatch run, or, for an error a parked callback's continuation raises,

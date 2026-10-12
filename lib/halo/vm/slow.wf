@@ -441,7 +441,9 @@ fn slow<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, 
       let location = breg;
       for (i in 0_u64..100_u64) {
         if is_readonly(vm: vm, v: t) {
-          return raise_text(vm: vm, text: &slow_text_10[0_u64..34_u64]);
+          let refused = raise_text(vm: vm, text: &slow_text_10[0_u64..34_u64]);
+          locate_type_error(vm: vm);
+          return refused;
         }
         let old = table_get(heap: &vm^.heap, t: t, key: c);
         let tm = metamethod(vm: vm, v: t, name: &slow_text_11[0_u64..10_u64]);

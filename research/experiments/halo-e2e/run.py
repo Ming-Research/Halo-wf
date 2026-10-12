@@ -210,6 +210,8 @@ def main():
     parser.add_argument('--verify-memory', action='store_true', help='check 64 MiB exhaustion and a following script on the same engine')
     parser.add_argument('--isolate-frames', action='store_true', help='remove redundant frame function-slot aliases at budget checkpoints for sole-root testing')
     parser.add_argument('--omit-suspended-root', action='store_true', help='negative control: hide the parked snapshot only during the suspended collection probe')
+    parser.add_argument('--omit-global-readonly', action='store_true', help='negative control: leave the globals table writable')
+    parser.add_argument('--omit-string-readonly', action='store_true', help='negative control: leave the shared string metatable writable')
     parser.add_argument('--collect-suspended', action='store_true', help='probe collection while callback stack is parked, before resume')
     parser.add_argument('--gc-stress', action='store_true', help='force full collection at every collector safepoint')
     parser.add_argument('--cases', type=Path, default=ORACLE, help='case root with scripts/GROUP/*.lua and expected/GROUP/*.txt')
@@ -246,7 +248,8 @@ def main():
     revision = subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True, capture_output=True, check=True).stdout.strip()
     report = ['# Halo end-to-end comparison', '',
               f'Local parent revision: `{revision}`. Source digest: `{digest.hexdigest()}`.',
-              f'GC stress: {args.gc_stress}; suspended checkpoint probe: {args.collect_suspended}; frame alias isolation: {args.isolate_frames}; parked root omitted: {args.omit_suspended_root}.',
+              f'GC stress: {args.gc_stress}; suspended checkpoint probe: {args.collect_suspended}; frame alias isolation: {args.isolate_frames}; parked root omitted: {args.omit_suspended_root}; '
+              f'globals writable: {args.omit_global_readonly}; string metatable writable: {args.omit_string_readonly}.',
               'The digest includes every Halo module, the graph, host and runner; it identifies uncommitted source bytes too.', '']
     with tempfile.TemporaryDirectory(prefix='halo-e2e-', dir=args.scratch_root) as temporary:
         scratch = Path(temporary)
@@ -287,6 +290,10 @@ def main():
                     extra += ['--collect-suspended']
                 if args.omit_suspended_root:
                     extra += ['--omit-suspended-root']
+                if args.omit_global_readonly:
+                    extra += ['--omit-global-readonly']
+                if args.omit_string_readonly:
+                    extra += ['--omit-string-readonly']
                 collections = None
                 try:
                     result, seconds = run([str(binary)] + extra, input=fixture(source))

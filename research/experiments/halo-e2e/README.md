@@ -63,16 +63,23 @@ of the Whitefoot implementation, not as a compiler or Lua interpreter.
 
 The preparation chunk installs KEYS/ARGV from the JSON header and executes setup
 commands through the same test host. A NUL separates it from the unchanged script
-bytes on stdin. Global protection is applied afterward: raw host assignment
-bypasses readonly, while script writes raise and absent reads call a rejecting
-`__index`. The VM installs its slice-1 library; this host adds Redis members.
+bytes on stdin. Protection is applied afterward through the embedding's
+`set_metatable`, `metatable_of` and `set_read_only`: the globals table and the
+shared string metatable become read-only, and absent global reads call a
+rejecting `__index`. Raw host assignment bypasses read-only, while script
+writes raise. The VM installs its slice-1 library; this host adds Redis
+members.
 
 The `smoke` entry and `test` executable with three arguments run the embedding
 probe (stdin is unused): cache, flush, reset, budget resumption, host outcomes,
 and forced collection of pins and cached constants, including pin/compile/unpin
 changes between suspended budget checkpoints, the chunk name runtime errors
 are located in, and host calls left pending: completed, failed into a `pcall`
-inside a library callback, and refused by `resume`. A nonzero exit is the
+inside a library callback, and refused by `resume`. Its protection
+observations (exits 177–189) set, read and clear a table's metatable, read
+the string metatable, refuse a non-table argument with `InvalidTable`, and
+check that a script's assignment of a new key into a read-only table raises
+the located message while a host write still succeeds. A nonzero exit is the
 probe's numbered failed observation; `make check` runs it before the oracle
 comparison. Its cjson lifecycle observations (exits 120–145) keep an extracted
 encoder in a global table while discarded instances lose their buffers, slots
@@ -177,6 +184,12 @@ are recorded in the F4 experiment.
 negative control at budget 1: the harness hides the snapshot during collection
 and restores it before resume. The suspended-stack comparison is expected to
 fail with the original expected reply unchanged. Ordinary runs omit this flag.
+
+`--omit-global-readonly` and `--omit-string-readonly` are the host's
+protection controls: the host leaves the globals table or the shared string
+metatable writable. `make roots` runs `redis-api/global-write` and
+`redis-api/string-metatable-readonly` with and without them; each must pass
+without its flag and fail by a reply difference with it.
 
 `--scratch-root DIR` keeps temporary build and fixture files under an existing
 chosen directory. The cost-repair runs use the benchmark's `target/` so all

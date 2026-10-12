@@ -5,6 +5,7 @@ alias HostOutcome = halo::vm::HostOutcome;
 alias Host = halo::vm::Host;
 alias Vm = halo::vm::Vm;
 alias ExitStatus = std::process::ExitStatus;
+alias TableError = halo::heap::TableError;
 
 struct Probe {
   mode: u8;
@@ -934,6 +935,180 @@ fn long_chunk_error(engine: &Engine, env: &Probe, name: &[u8], want: &[u8]) -> r
   }
 }
 
+fn invalid_table(attempt: Result<unit, TableError>) -> r: Bool pure {
+  doc "True only for the InvalidTable refusal.";
+  match attempt {
+    Ok(..) => {
+      return False();
+    }
+    Err(error: refusal) => {
+      match refusal {
+        InvalidTable() => {
+          return True();
+        }
+        NilKey() => {
+          return False();
+        }
+        NanKey() => {
+          return False();
+        }
+        InvalidNext() => {
+          return False();
+        }
+        Overflow() => {
+          return False();
+        }
+      }
+    }
+  }
+}
+
+fn same_table(first: Value, second: Value) -> r: Bool pure {
+  match halo::value::tab_of(v: first) {
+    Handle(h: first_handle) => {
+      match halo::value::tab_of(v: second) {
+        Handle(h: second_handle) => {
+          if first_handle == second_handle {
+            return True();
+          }
+        }
+        NoHandle() => {
+        }
+      }
+    }
+    NoHandle() => {
+    }
+  }
+  return False();
+}
+
+fn protection_probe() -> r: u8 pure {
+  doc "The host sets, reads and clears a table's metatable, reads the shared string metatable and marks a table read-only through the embedding interface. A script's assignment into the read-only table raises a located error while a host write still succeeds, and a non-table argument is refused with InvalidTable.";
+  let engine = halo::embed::new_engine(limit: 67108864_u64);
+  let env = Probe(mode: 0_u8, calls: 0_u64);
+  let target = halo::embed::new_table(engine: &engine, asize: 0_u32, hsize: 0_u32);
+  let meta = halo::embed::new_table(engine: &engine, asize: 0_u32, hsize: 0_u32);
+  let flag = Value::True();
+  let nil = Value::Nil();
+  let initial = halo::embed::metatable_of(engine: &engine, value: target);
+  let initial_kind = halo::embed::kind(value: initial);
+  if initial_kind != 0_u8 {
+    return 177_u8;
+  }
+  let attached = halo::embed::set_metatable(engine: &engine, table: target, meta: meta);
+  match attached {
+    Ok(..) => {
+    }
+    Err(..) => {
+      return 178_u8;
+    }
+  }
+  let read_back = halo::embed::metatable_of(engine: &engine, value: target);
+  let same = same_table(first: read_back, second: meta);
+  if bnot(same) {
+    return 179_u8;
+  }
+  let detached = halo::embed::set_metatable(engine: &engine, table: target, meta: nil);
+  match detached {
+    Ok(..) => {
+    }
+    Err(..) => {
+      return 180_u8;
+    }
+  }
+  let cleared = halo::embed::metatable_of(engine: &engine, value: target);
+  let cleared_kind = halo::embed::kind(value: cleared);
+  if cleared_kind != 0_u8 {
+    return 180_u8;
+  }
+  let text = halo::embed::intern(engine: &engine, bytes: &sealed_name[0_u64..6_u64]);
+  let string_meta = halo::embed::metatable_of(engine: &engine, value: text);
+  let index_key = halo::embed::intern(engine: &engine, bytes: &index_name[0_u64..7_u64]);
+  let library = halo::embed::table_get(engine: &engine, table: string_meta, key: index_key);
+  let library_kind = halo::embed::kind(value: library);
+  if library_kind != 4_u8 {
+    return 181_u8;
+  }
+  let bad_target = halo::embed::set_metatable(engine: &engine, table: flag, meta: meta);
+  let bad_target_refused = invalid_table(attempt: bad_target);
+  if bnot(bad_target_refused) {
+    return 182_u8;
+  }
+  let bad_meta = halo::embed::set_metatable(engine: &engine, table: target, meta: flag);
+  let bad_meta_refused = invalid_table(attempt: bad_meta);
+  if bnot(bad_meta_refused) {
+    return 183_u8;
+  }
+  let bad_seal = halo::embed::set_read_only(engine: &engine, table: flag);
+  let bad_seal_refused = invalid_table(attempt: bad_seal);
+  if bnot(bad_seal_refused) {
+    return 184_u8;
+  }
+  let flag_meta = halo::embed::metatable_of(engine: &engine, value: flag);
+  let flag_meta_kind = halo::embed::kind(value: flag_meta);
+  if flag_meta_kind != 0_u8 {
+    return 185_u8;
+  }
+  let sealed = halo::embed::set_read_only(engine: &engine, table: target);
+  match sealed {
+    Ok(..) => {
+    }
+    Err(..) => {
+      return 186_u8;
+    }
+  }
+  let published = halo::embed::set_global(engine: &engine, name: &sealed_name[0_u64..6_u64], value: target);
+  match published {
+    Ok(..) => {
+    }
+    Err(..) => {
+      return 186_u8;
+    }
+  }
+  let compiled = halo::embed::compile(engine: &engine, chunk_name: &probe_text_4[0_u64..12_u64], source: &sealed_source[0_u64..12_u64]);
+  match move compiled {
+    Err(..) => {
+      return 187_u8;
+    }
+    Ok(value: sealed_id) => {
+      let refused = probe_run(engine: &engine, env: &env, script: sealed_id);
+      let refused_code = outcome_code(outcome: refused);
+      if refused_code != 1_u8 {
+        return 187_u8;
+      }
+      let located = format_matches(engine: &engine, line: 0_u64, want: &sealed_error[0_u64..49_u64]);
+      if bnot(located) {
+        return 188_u8;
+      }
+    }
+  }
+  let key = halo::embed::intern(engine: &engine, bytes: &sealed_key[0_u64..1_u64]);
+  let host_write = halo::embed::table_set(engine: &engine, table: target, key: key, value: flag);
+  match host_write {
+    Ok(..) => {
+    }
+    Err(..) => {
+      return 189_u8;
+    }
+  }
+  let stored = halo::embed::table_get(engine: &engine, table: target, key: key);
+  let stored_kind = halo::embed::kind(value: stored);
+  if stored_kind != 1_u8 {
+    return 189_u8;
+  }
+  return 0_u8;
+}
+
+const sealed_name: Array<u8, 6> = "sealed";
+
+const index_name: Array<u8, 7> = "__index";
+
+const sealed_source: Array<u8, 12> = "sealed.x = 1";
+
+const sealed_error: Array<u8, 49> = "user_script:1: Attempt to modify a readonly table";
+
+const sealed_key: Array<u8, 1> = "x";
+
 fn smoke() -> status: ExitStatus pure {
   doc "Runs the embedding lifecycle observations, including cjson reclamation, collection statistics and configurable pause with ordinary and stress collection.";
   let code = embed_probe();
@@ -945,6 +1120,9 @@ fn smoke() -> status: ExitStatus pure {
   }
   if code == 0_u8 {
     set code = pcall_field_probe();
+  }
+  if code == 0_u8 {
+    set code = protection_probe();
   }
   if code == 0_u8 {
     let ordinary = False();

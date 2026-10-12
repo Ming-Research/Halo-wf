@@ -138,7 +138,7 @@ both modes:
 | `redis-version` | The test host had no `REDIS_VERSION` or `REDIS_VERSION_NUM`. | This change. |
 | `number-argument-format`, `number-argument-effects`, `double-score-reply` | The test host had no ECHO, INCRBYFLOAT or ZRANGE; behind that, number text. | Commands: this change. Number text: `wf-need-halo-oracle-72`. |
 | `double-reply-table` | The test host did not convert a `{double=x}` table; behind that, number text. | Conversion: this change. Number text: `wf-need-halo-oracle-72`. |
-| `string-metatable-readonly` | The string metatable is not read-only, and the embedding interface gives the host no way to reach or mark it. | `halo-embed-protect`. |
+| `string-metatable-readonly` | The string metatable is not read-only, and the embedding interface gives the host no way to reach or mark it; behind that, a script assignment of a new key into a read-only table raised its message without the location Redis's Lua adds. | `halo-embed-protect`: the embedding's metatable and read-only functions, which the test host uses, and the located message. |
 
 "Number text" is the digits of a finite, non-integral number: Redis 7.2.16
 writes the shortest digits that read back exactly, Whitefoot's standard
@@ -155,4 +155,7 @@ LLONG_MAX/2, nan, inf, zeros), so by reading:
   because their only fractional value is 0.1. They do not test the
   shortest-digit rule, and the first does not test INCRBYFLOAT's long double
   sum, which the host computes in double.
-- `string-metatable-readonly` still fails until `halo-embed-protect`.
+- `string-metatable-readonly` is expected to pass with `halo-embed-protect`,
+  which marks the string metatable read-only through the embedding and
+  locates the refused assignment (`user_script:14:`); unverified until its
+  gate run.

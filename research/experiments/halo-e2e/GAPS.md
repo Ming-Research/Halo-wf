@@ -58,10 +58,16 @@ already located strings should pass false.
 Global read/write slow paths retain a continuation PC in `callback_plan`;
 the test host uses its previous instruction's line. A missing global's host
 callback adds Lua's prefix before raising, so a protected call sees it too.
-The current VM readonly refusal is an unlocated string; the terminal test
-host recognizes that message and requests a prefix from the formatter. This
-does not fix readonly errors caught inside Lua, and an explicit `error` with
-that identical message and level zero cannot be distinguished by this host.
+A script assignment of a global or of a new key into a read-only table raises
+the located message, as the reference's `luaV_settable` does through
+`luaG_runerror`, whether a `pcall` catches it or not. An assignment to a key
+the read-only table already holds is refused on the table-store
+instructions' direct path, which raises the message unlocated (found by
+reading the VM, not yet observed). The terminal test host recognizes the
+unlocated message and requests a prefix from the formatter; that does not
+help when a `pcall` catches it, and it also prefixes a terminal `rawset`
+refusal and `error("Attempt to modify a readonly table",0)`, which the
+reference leaves unlocated.
 
 Ordinary redis.member calls in this experiment use the member lookup's line
 from the continuation. A native Call/TailCall does not retain its PC in the
@@ -74,10 +80,11 @@ location parity. The formatter can accept their correct line once exported.
 The saved-member witness `local call=redis.call` on line 1, followed by
 `local x=1` on line 2 and `return call("GET","key","extra")` on line 3,
 currently reports `on @user_script:1` instead of the call's line 3.
-`return {pcall(function() missing_global=17 end)}` returns the raw readonly
-message without Lua's `user_script:1:` prefix. Conversely,
+`return {pcall(function() _G.redis=1 end)}` is expected, by the reading
+above, to return the raw readonly message without Lua's `user_script:1:`
+prefix. Conversely,
 `error("Attempt to modify a readonly table",0)` receives that prefix from
-the test host even though Lua level zero suppresses it. These observed
+the test host even though Lua level zero suppresses it. These
 witnesses distinguish corpus parity from general failure-location parity;
 they require failure kind/PC information from the VM, outside the permitted
 file boundary of this change.
@@ -136,3 +143,13 @@ REDIS_VERSION_NUM (7.2.16) are supplied by this host; set_repl checks its
 arguments as Redis 7.2.16 does and otherwise has no effect, since the host does
 not replicate; sha1hex uses the embedding's
 Whitefoot digest implementation.
+
+After the preparation chunk the host protects the script environment as
+Redis 7.2.16 does, through the embedding's `set_metatable`, `metatable_of`
+and `set_read_only`: the globals table becomes read-only and gets an
+`__index` that rejects undeclared names, and the shared string metatable
+becomes read-only. Redis also marks every table reachable from the globals
+read-only, such as the `string`, `math` and `redis` tables; this host
+protects only the globals table and the string metatable, so a script that
+assigns `string.x` succeeds here. That reading of Redis's `script_lua.c` is
+unverified: no oracle script writes a library table.

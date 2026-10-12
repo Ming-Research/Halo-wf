@@ -25,9 +25,10 @@ include $(ROOT)/whitefoot-kit/whitefoot.mk
 
 # `make check` runs three groups, which CI runs as parallel jobs: the core
 # (the embedding probe, the oracle corpus and the design lint), the extended
-# checks that need no reference build (the collector's root controls, the
-# research hosts, the JSON package) and the checks against Redis 7.0.15's
-# bundled Lua built from source (the number library, the MessagePack package).
+# checks that need no reference build (the collector's root controls and the
+# host's protection controls, the research hosts, the JSON package) and the
+# checks against Redis 7.0.15's bundled Lua built from source (the number
+# library, the MessagePack package).
 check: check-core check-extended check-reference
 check-core: compiler oracle design-lint
 check-extended: compiler roots hosts json
@@ -70,7 +71,10 @@ oracle: $(E2E_TEST)
 
 # The collector's removed-root controls (research/experiments/halo-gc): the
 # local root cases pass with the oracle's test program, and fail once a sole
-# root is hidden or one marking call is removed and rebuilt in a copy.
+# root is hidden or one marking call is removed and rebuilt in a copy. The
+# same script runs the test host's protection controls: the global-write and
+# string-metatable-readonly oracle scripts fail once the host leaves the
+# globals table or the string metatable writable.
 roots: $(E2E_TEST)
 	@WHITEFOOTC=$(WHITEFOOTC) sh $(ROOT)/research/experiments/halo-gc/controls.sh $(E2E_TEST) $(BUILD)/halo-roots
 
