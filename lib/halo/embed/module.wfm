@@ -4,7 +4,7 @@ alias Script = pkg::value::Script;
 alias CompileError = pkg::compile::CompileError;
 alias Outcome = pkg::vm::Outcome;
 alias Host = pkg::vm::Host;
-alias PendingCall = pkg::vm::PendingCall;
+alias PendingCall = pkg::execution::PendingCall;
 alias TableError = pkg::heap::TableError;
 alias Pair = pkg::heap::Pair;
 alias StringView = pkg::heap::StringView;
@@ -88,7 +88,7 @@ public fn number_of(value: Value) -> r: NumView pure doc "Views a numeric value 
 
 public fn truthy(value: Value) -> r: Bool pure doc "Lua truth, false only for nil and false.";
 
-public fn kind(value: Value) -> r: u8 pure doc "0 nil, 1 boolean, 2 number, 3 string, 4 table, 5 function.";
+public fn kind(value: Value) -> r: u8 pure doc "0 nil, 1 boolean, 2 number, 3 string, 4 table, 5 function, 7 thread. Kind 6 is reserved; this embedding classifier retains function for the cjson-null builtin.";
 
 public fn new_table(engine: &Engine, asize: u32, hsize: u32) -> r: Value writes(engine) doc "Allocates a raw table with requested array and hash sizes.";
 

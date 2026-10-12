@@ -157,6 +157,9 @@ fn dump_value(heap: &Heap, value: Value, out: &Box<Slots<u8>>) -> result: unit r
     Builtin(id: handle) => {
       push(out: out, byte: 88_u8);
     }
+    Thread(..) => {
+      push(out: out, byte: 88_u8);
+    }
   }
   return unit;
 }

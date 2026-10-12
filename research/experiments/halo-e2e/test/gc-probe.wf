@@ -60,7 +60,8 @@ fn gc_probe_live_bytes(stats: CollectionStats) -> r: u64 pure {
   doc "Sums the public per-kind accounting to check the independently specified pause formula.";
   let first = stats.strings.live_bytes +sat stats.tables.live_bytes;
   let second = stats.closures.live_bytes +sat stats.upvalues.live_bytes;
-  return first +sat second;
+  let existing = first +sat second;
+  return existing +sat stats.threads.live_bytes;
 }
 
 fn gc_probe_kind_zero(stats: CollectionKindStats) -> r: Bool pure {
@@ -120,7 +121,7 @@ fn gc_probe_kind_check(stats: CollectionKindStats, before: CollectionKindStats, 
 }
 
 fn gc_probe_entry_stats(stats: CollectionStats, before: CollectionStats) -> r: u8 pure {
-  doc "A cached start after an idle collection allocates its uncaptured 24-byte entry closure and frees the previous uncaptured 24-byte entry closure. All four kinds retain exactly the previous live objects and bytes; no string, table or upvalue is allocated or freed at entry.";
+  doc "A cached start after an idle collection allocates its uncaptured 24-byte entry closure and frees the previous uncaptured 24-byte entry closure. All five kinds retain exactly the previous live objects and bytes; no string, table, upvalue or thread is allocated or freed at entry.";
   let strings = gc_probe_kind_check(stats: stats.strings, before: before.strings, added_objects: 0_u64, added_bytes: 0_u64, freed_objects: 0_u64, freed_bytes: 0_u64);
   if strings != 0_u8 {
     return strings;
@@ -133,7 +134,11 @@ fn gc_probe_entry_stats(stats: CollectionStats, before: CollectionStats) -> r: u
   if closures != 0_u8 {
     return closures;
   }
-  return gc_probe_kind_check(stats: stats.upvalues, before: before.upvalues, added_objects: 0_u64, added_bytes: 0_u64, freed_objects: 0_u64, freed_bytes: 0_u64);
+  let upvalues = gc_probe_kind_check(stats: stats.upvalues, before: before.upvalues, added_objects: 0_u64, added_bytes: 0_u64, freed_objects: 0_u64, freed_bytes: 0_u64);
+  if upvalues != 0_u8 {
+    return upvalues;
+  }
+  return gc_probe_kind_check(stats: stats.threads, before: before.threads, added_objects: 0_u64, added_bytes: 0_u64, freed_objects: 0_u64, freed_bytes: 0_u64);
 }
 
 fn gc_probe_work_stats(stats: CollectionStats, before: CollectionStats) -> r: u8 pure {
@@ -150,7 +155,11 @@ fn gc_probe_work_stats(stats: CollectionStats, before: CollectionStats) -> r: u8
   if closures != 0_u8 {
     return closures;
   }
-  return gc_probe_kind_check(stats: stats.upvalues, before: before.upvalues, added_objects: 3_u64, added_bytes: 96_u64, freed_objects: 1_u64, freed_bytes: 32_u64);
+  let upvalues = gc_probe_kind_check(stats: stats.upvalues, before: before.upvalues, added_objects: 3_u64, added_bytes: 96_u64, freed_objects: 1_u64, freed_bytes: 32_u64);
+  if upvalues != 0_u8 {
+    return upvalues;
+  }
+  return gc_probe_kind_check(stats: stats.threads, before: before.threads, added_objects: 0_u64, added_bytes: 0_u64, freed_objects: 0_u64, freed_bytes: 0_u64);
 }
 
 fn gc_probe_kind_equal(stats: CollectionKindStats, before: CollectionKindStats) -> r: Bool pure {
@@ -211,6 +220,9 @@ fn gc_probe_slots_probe(engine: &Engine, env: &Probe, script: ScriptId, before: 
   if first.upvalues.slots_visited != before.upvalues.slots_visited {
     return 155_u8;
   }
+  if first.threads.slots_visited != before.threads.slots_visited {
+    return 155_u8;
+  }
   let resumed = halo::embed::resume::<ProbeHost>(engine: engine, env: env, budget: 1_u64);
   halo::embed::set_gc_stress(engine: engine, enabled: keep);
   let resume_code = outcome_code(outcome: resumed);
@@ -230,7 +242,9 @@ fn gc_probe_slots_probe(engine: &Engine, env: &Probe, script: ScriptId, before: 
   let first_stable = band(strings, tables);
   let second_stable = band(closures, upvalues);
   let all_stable = band(first_stable, second_stable);
-  let unstable = bnot(all_stable);
+  let threads = gc_probe_kind_stable(stats: second.threads, before: first.threads);
+  let every_stable = band(all_stable, threads);
+  let unstable = bnot(every_stable);
   if unstable {
     return 155_u8;
   }
@@ -286,7 +300,9 @@ fn gc_stats_probe(stress: Bool) -> r: u8 pure {
   let first_zero = band(strings_zero, tables_zero);
   let second_zero = band(closures_zero, upvalues_zero);
   let all_zero = band(first_zero, second_zero);
-  let not_zero = bnot(all_zero);
+  let threads_zero = gc_probe_kind_zero(stats: initial.threads);
+  let every_zero = band(all_zero, threads_zero);
+  let not_zero = bnot(every_zero);
   if not_zero {
     return 146_u8;
   }
@@ -389,7 +405,8 @@ fn gc_stats_probe(stress: Bool) -> r: u8 pure {
   if stats.strings.live_bytes == 0_u64 {
     return 150_u8;
   }
-  let marked = stats.tables.live_objects +sat stats.closures.live_objects;
+  let existing_marked = stats.tables.live_objects +sat stats.closures.live_objects;
+  let marked = existing_marked +sat stats.threads.live_objects;
   if stats.gray_pops != marked {
     return 152_u8;
   }
@@ -412,7 +429,9 @@ fn gc_stats_probe(stress: Bool) -> r: u8 pure {
   let first_saved = band(strings_saved, tables_saved);
   let second_saved = band(closures_saved, upvalues_saved);
   let all_saved = band(first_saved, second_saved);
-  let changed = bnot(all_saved);
+  let threads_saved = gc_probe_kind_equal(stats: saved.threads, before: stats.threads);
+  let every_saved = band(all_saved, threads_saved);
+  let changed = bnot(every_saved);
   if changed {
     return 154_u8;
   }

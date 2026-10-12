@@ -1,0 +1,1263 @@
+alias Engine = halo::embed::Engine;
+alias Value = halo::value::Value;
+alias Outcome = halo::vm::Outcome;
+alias ExitStatus = std::process::ExitStatus;
+alias no_handle = halo::heap::no_handle;
+
+fn switch_install(engine: &Engine) -> r: Bool writes(engine) {
+  let create = Value::Builtin(id: 150_u32);
+  let resume_value = Value::Builtin(id: 151_u32);
+  let yield_value = Value::Builtin(id: 152_u32);
+  let host_value = Value::Builtin(id: 4096_u32);
+  let installed_create = thread_global(engine: engine, name: &switch_create_name[0_u64..9_u64], value: create);
+  if bnot(installed_create) {
+    return False();
+  }
+  let installed_resume = thread_global(engine: engine, name: &switch_resume_name[0_u64..9_u64], value: resume_value);
+  if bnot(installed_resume) {
+    return False();
+  }
+  let installed_yield = thread_global(engine: engine, name: &switch_yield_name[0_u64..8_u64], value: yield_value);
+  if bnot(installed_yield) {
+    return False();
+  }
+  halo::embed::set_pcall_error_field(engine: engine, field: &switch_error_field[0_u64..3_u64]);
+  return thread_global(engine: engine, name: &probe_text_0[0_u64..4_u64], value: host_value);
+}
+
+fn switch_settle(engine: &Engine, env: &Probe, outcome: Outcome, budget: u64) -> r: Outcome writes(engine), writes(env) {
+  doc "Bounds every fixture at 20000 embedding slices; a stuck internal transfer or repeated checkpoint cannot hang CI.";
+  let current = outcome;
+  for (slice in 0_u64..20000_u64) {
+    if engine^.vm.native_entries != 0_u32 {
+      return Outcome::Error();
+    }
+    let code = outcome_code(outcome: current);
+    if code != 2_u8 {
+      return current;
+    }
+    if engine^.vm.budget != 0_u64 {
+      return Outcome::Error();
+    }
+    set current = halo::embed::resume::<SwitchProbeHost>(engine: engine, env: env, budget: budget);
+  }
+  return current;
+}
+
+fn switch_source(source: &[u8], budget: u64, stress: Bool) -> r: Bool reads(source) {
+  let engine = halo::embed::new_engine(limit: 67108864_u64);
+  let env = Probe(mode: 0_u8, calls: 0_u64);
+  let installed = switch_install(engine: &engine);
+  if bnot(installed) {
+    return False();
+  }
+  halo::embed::set_gc_stress(engine: &engine, enabled: stress);
+  let compiled = halo::embed::compile(engine: &engine, chunk_name: &switch_chunk_name[0_u64..13_u64], source: source);
+  let script = match move compiled {
+    Err(..) => {
+      return False();
+    }
+    Ok(value: found_script) => {
+      give found_script;
+    }
+  }
+  let first = halo::embed::start::<SwitchProbeHost>(engine: &engine, env: &env, script: script, budget: budget);
+  let settled = switch_settle(engine: &engine, env: &env, outcome: first, budget: budget);
+  let code = outcome_code(outcome: settled);
+  if code != 0_u8 {
+    return False();
+  }
+  if engine.result_count != 1_u64 {
+    return False();
+  }
+  if engine.vm.current_thread != engine.vm.main_thread {
+    return False();
+  }
+  if env.calls != 0_u64 {
+    return False();
+  }
+  return returned(engine: &engine, expected: 1.0_f64);
+}
+
+fn switch_lua_probe(budget: u64, stress: Bool) -> r: u8 pure {
+  doc "Codes 1-12 select independent Lua observations: counted transfers, open captures across owners, original table errors, tail calls, protected and native yield boundaries, exact depth 199/200, sequential depth release, and transfers under sort, index, gsub, xpcall and pcall error lookup. Expectations follow the recorded coroutine oracle; the public-library observations run alongside these private transfer controls.";
+  let values_ok = switch_source(source: &switch_values_source[0_u64..571_u64], budget: budget, stress: stress);
+  if bnot(values_ok) {
+    return 1_u8;
+  }
+  let captures_ok = switch_source(source: &switch_captures_source[0_u64..491_u64], budget: budget, stress: stress);
+  if bnot(captures_ok) {
+    return 2_u8;
+  }
+  let errors_ok = switch_source(source: &switch_errors_source[0_u64..420_u64], budget: budget, stress: stress);
+  if bnot(errors_ok) {
+    return 3_u8;
+  }
+  let tails_ok = switch_source(source: &switch_tails_source[0_u64..297_u64], budget: budget, stress: stress);
+  if bnot(tails_ok) {
+    return 4_u8;
+  }
+  let boundaries_ok = switch_source(source: &switch_boundaries_source[0_u64..617_u64], budget: budget, stress: stress);
+  if bnot(boundaries_ok) {
+    return 5_u8;
+  }
+  let depth_ok = switch_source(source: &switch_depth_source[0_u64..356_u64], budget: budget, stress: stress);
+  if bnot(depth_ok) {
+    return 6_u8;
+  }
+  let repeat_ok = switch_source(source: &switch_repeat_source[0_u64..185_u64], budget: budget, stress: stress);
+  if bnot(repeat_ok) {
+    return 7_u8;
+  }
+  let sort_ok = switch_source(source: &switch_sort_source[0_u64..434_u64], budget: budget, stress: stress);
+  if bnot(sort_ok) {
+    return 8_u8;
+  }
+  let index_ok = switch_source(source: &switch_index_source[0_u64..430_u64], budget: budget, stress: stress);
+  if bnot(index_ok) {
+    return 9_u8;
+  }
+  let gsub_ok = switch_source(source: &switch_gsub_source[0_u64..429_u64], budget: budget, stress: stress);
+  if bnot(gsub_ok) {
+    return 10_u8;
+  }
+  let xpcall_ok = switch_source(source: &switch_xpcall_source[0_u64..438_u64], budget: budget, stress: stress);
+  if bnot(xpcall_ok) {
+    return 11_u8;
+  }
+  let pcall_lookup_ok = switch_source(source: &switch_pcall_lookup_source[0_u64..498_u64], budget: budget, stress: stress);
+  if bnot(pcall_lookup_ok) {
+    return 12_u8;
+  }
+  return 0_u8;
+}
+
+const switch_create_name: Array<u8, 9> = "create_co";
+
+const switch_resume_name: Array<u8, 9> = "resume_co";
+
+const switch_yield_name: Array<u8, 8> = "yield_co";
+
+const switch_error_field: Array<u8, 3> = "err";
+
+const switch_chunk_name: Array<u8, 13> = "@switch_probe";
+
+const switch_recovered_name: Array<u8, 9> = "recovered";
+
+const switch_values_source: Array<u8, 571> = "local function pack(...) return {n=select('#',...),...} end; local co=create_co(function(...) local a=pack(...); assert(a.n==4 and a[1]==11 and a[2]==nil and a[3]==13 and a[4]==nil); local b=pack(yield_co(21,nil,23,nil)); assert(b.n==4 and b[1]==31 and b[2]==nil and b[3]==33 and b[4]==nil); return 41,nil,43,nil end); local a=pack(resume_co(co,11,nil,13,nil)); assert(a.n==5 and a[1] and a[2]==21 and a[3]==nil and a[4]==23 and a[5]==nil); local b=pack(resume_co(co,31,nil,33,nil)); assert(b.n==5 and b[1] and b[2]==41 and b[3]==nil and b[4]==43 and b[5]==nil); return 1";
+
+const switch_captures_source: Array<u8, 491> = "local main=10; local read,write; local co=create_co(function() main=main+1; local value=20; read=function() return value end; write=function(v) value=v end; yield_co(); assert(main==12 and value==31); return value end); assert(resume_co(co)); assert(main==11 and read()==20); write(30); local peer=create_co(function() assert(read()==30); write(31); main=12 end); assert(resume_co(peer)); local ok,v=resume_co(co); assert(ok and v==31 and read()==31); write(40); assert(read()==40); return 1";
+
+const switch_errors_source: Array<u8, 420> = "local marker={err='converted'}; local read; local co=create_co(function() local v=marker; read=function() return v end; error(v) end); local ok,e=resume_co(co); assert(not ok and e==marker and read()==marker); local dead,de=resume_co(co); assert(not dead and de=='cannot resume dead coroutine'); local done=create_co(function() return marker end); local yes,value=resume_co(done); assert(yes and value==marker); return 1";
+
+const switch_tails_source: Array<u8, 297> = "local function y(...) return yield_co(...) end; local co=create_co(function() return y(17,nil,19) end); local function r(...) return resume_co(...) end; local a,b,c,d=r(co); assert(a and b==17 and c==nil and d==19); local e,f,g,h=r(co,23,nil,29); assert(e and f==23 and g==nil and h==29); return 1";
+
+const switch_boundaries_source: Array<u8, 617> = "local boundary='attempt to yield across metamethod/C-call boundary'; local co=create_co(function() return pcall(function() yield_co() end) end); local a,b,c=resume_co(co); assert(a and not b and c==boundary); local meta=create_co(function() return setmetatable({},{__index=function() yield_co() end}).missing end); local d,e=resume_co(meta); assert(not d and e==boundary); local call=create_co(function() local t=setmetatable({},{__call=function(self,v) local x=yield_co(v); return x end}); return t(31) end); local f,g=resume_co(call); assert(f and g==31); local h,i=resume_co(call,37); assert(h and i==37); return 1";
+
+const switch_depth_source: Array<u8, 356> = "local reached=0; local function descend(depth) reached=depth; local child=create_co(descend); local ok,failed,err=resume_co(child,depth+1); if not ok then return depth+1,failed end; return failed,err end; local root=create_co(descend); local ok,failed,err=resume_co(root,1); assert(ok and reached==199 and failed==200 and err=='C stack overflow'); return 1";
+
+const switch_repeat_source: Array<u8, 185> = "local co=create_co(function() for i=1,300 do local back=yield_co(i); assert(back==i+1) end; return 301 end); for i=1,301 do local ok,v=resume_co(co,i); assert(ok and v==i) end; return 1";
+
+const switch_sort_source: Array<u8, 434> = "local co=create_co(function() local a,b=yield_co(17,nil,19); assert(a==23 and b==nil); return 29,nil end); local called=0; local function invoke() called=called+1; local ok,a,b,c=resume_co(co); assert(ok and a==17 and b==nil and c==19) end; local t={2,1}; table.sort(t,function(a,b) invoke(); return a<b end); assert(t[1]==1 and t[2]==2); assert(called==1); local ok,a,b=resume_co(co,23,nil); assert(ok and a==29 and b==nil); return 1";
+
+const switch_index_source: Array<u8, 430> = "local co=create_co(function() local a,b=yield_co(17,nil,19); assert(a==23 and b==nil); return 29,nil end); local called=0; local function invoke() called=called+1; local ok,a,b,c=resume_co(co); assert(ok and a==17 and b==nil and c==19) end; local t=setmetatable({},{__index=function() invoke(); return 41 end}); assert(t.missing==41); assert(called==1); local ok,a,b=resume_co(co,23,nil); assert(ok and a==29 and b==nil); return 1";
+
+const switch_gsub_source: Array<u8, 429> = "local co=create_co(function() local a,b=yield_co(17,nil,19); assert(a==23 and b==nil); return 29,nil end); local called=0; local function invoke() called=called+1; local ok,a,b,c=resume_co(co); assert(ok and a==17 and b==nil and c==19) end; local s,n=string.gsub('a','a',function() invoke(); return 'b' end); assert(s=='b' and n==1); assert(called==1); local ok,a,b=resume_co(co,23,nil); assert(ok and a==29 and b==nil); return 1";
+
+const switch_xpcall_source: Array<u8, 438> = "local co=create_co(function() local a,b=yield_co(17,nil,19); assert(a==23 and b==nil); return 29,nil end); local called=0; local function invoke() called=called+1; local ok,a,b,c=resume_co(co); assert(ok and a==17 and b==nil and c==19) end; local ok,v=xpcall(function() invoke(); return 43 end,function(e) return e end); assert(ok and v==43); assert(called==1); local ok,a,b=resume_co(co,23,nil); assert(ok and a==29 and b==nil); return 1";
+
+const switch_pcall_lookup_source: Array<u8, 498> = "local co=create_co(function() local a,b=yield_co(17,nil,19); assert(a==23 and b==nil); return 29,nil end); local called=0; local function invoke() called=called+1; local ok,a,b,c=resume_co(co); assert(ok and a==17 and b==nil and c==19) end; local marker=setmetatable({},{__index=function() invoke(); return 'caught' end}); local ok,e=pcall(function() error(marker) end); assert(not ok and e=='caught'); assert(called==1); local ok,a,b=resume_co(co,23,nil); assert(ok and a==29 and b==nil); return 1";
+
+const switch_host_success_source: Array<u8, 361> = "local marker={}; local co=create_co(function() local a,b,c,d=host(17,nil,marker,nil); assert(a==73 and b==nil and c==79 and d==nil); local v=yield_co(83); return v end); local t=setmetatable({},{__index=function() local ok,v=resume_co(co); assert(ok and v==83); return 89 end}); assert(t.missing==89); local ok,v=resume_co(co,97); assert(ok and v==97); return 1";
+
+const switch_host_failure_source: Array<u8, 254> = "local marker={err='must-not-convert'}; local co=create_co(function() return host(17,nil,marker,nil) end); local t=setmetatable({},{__index=function() local ok,e=resume_co(co); assert(not ok and e==marker); return 89 end}); assert(t.missing==89); return 1";
+
+const switch_stop_source: Array<u8, 597> = "if recovered then assert(main_read()==11 and child_read()==23); local fresh=create_co(function() return 37 end); assert(fresh~=held); local ok,e=resume_co(held); assert(not ok and e=='cannot resume dead coroutine'); local yes,v=resume_co(fresh); assert(yes and v==37); return 1 end; local main=11; main_read=function() return main end; held=create_co(function() local child=23; child_read=function() return child end; host(17); error('continued-after-stop') end); local t=setmetatable({},{__index=function() return resume_co(held) end}); local ignored=t.missing; error('stop-became-resume-result')";
+
+fn switch_waiting(engine: &Engine) -> r: Bool reads(engine) {
+  if engine^.vm.native_entries != 0_u32 {
+    return False();
+  }
+  let child = engine^.vm.current_thread;
+  let main = engine^.vm.main_thread;
+  if child == main {
+    return False();
+  }
+  let child_index = cvt::<u32, u64>(child);
+  let main_index = cvt::<u32, u64>(main);
+  if child_index < engine^.vm.heap.threads.inner.len {
+    if engine^.vm.heap.threads.inner[child_index].resumer != main {
+      return False();
+    }
+    if engine^.vm.heap.threads.inner[child_index].status != 1_u8 {
+      return False();
+    }
+  } else {
+    return False();
+  }
+  if main_index < engine^.vm.heap.threads.inner.len {
+    return engine^.vm.heap.threads.inner[main_index].status == 2_u8;
+  }
+  return False();
+}
+
+fn switch_pending_probe(failure: Bool, budget: u64, stress: Bool) -> r: u8 pure {
+  doc "Codes 13-19 observe pending host arguments in a child reached under a resumer metamethod, counted success results and the original failed table despite configured pcall conversion. No live native entry remains while the host owns the call; main stays normal and the child running.";
+  let engine = halo::embed::new_engine(limit: 67108864_u64);
+  let env = Probe(mode: 3_u8, calls: 0_u64);
+  let installed = switch_install(engine: &engine);
+  if bnot(installed) {
+    return 13_u8;
+  }
+  halo::embed::set_gc_stress(engine: &engine, enabled: stress);
+  let source = if failure {
+    give &switch_host_failure_source[0_u64..254_u64];
+  } else {
+    give &switch_host_success_source[0_u64..361_u64];
+  }
+  let compiled = halo::embed::compile(engine: &engine, chunk_name: &switch_chunk_name[0_u64..13_u64], source: source);
+  let script = match move compiled {
+    Err(..) => {
+      return 13_u8;
+    }
+    Ok(value: found_script) => {
+      give found_script;
+    }
+  }
+  let first = halo::embed::start::<SwitchProbeHost>(engine: &engine, env: &env, script: script, budget: budget);
+  let pending = switch_settle(engine: &engine, env: &env, outcome: first, budget: budget);
+  let pending_code = outcome_code(outcome: pending);
+  if pending_code != 4_u8 {
+    return 14_u8;
+  }
+  if env.calls != 1_u64 {
+    return 14_u8;
+  }
+  let waiting = switch_waiting(engine: &engine);
+  if bnot(waiting) {
+    return 15_u8;
+  }
+  match halo::embed::pending_call(engine: &engine) {
+    None() => {
+      return 16_u8;
+    }
+    Some(value: pending_info) => {
+      if pending_info.id != 4096_u32 {
+        return 16_u8;
+      }
+      if pending_info.argc != 4_u64 {
+        return 16_u8;
+      }
+    }
+  }
+  let first_arg = halo::embed::pending_argument(engine: &engine, index: 0_u64);
+  let first_ok = up_probe_number(value: first_arg, expected: 17.0_f64);
+  if bnot(first_ok) {
+    return 16_u8;
+  }
+  let second_arg = halo::embed::pending_argument(engine: &engine, index: 1_u64);
+  let second_nil = is_nil(v: second_arg);
+  if bnot(second_nil) {
+    return 16_u8;
+  }
+  let marker = halo::embed::pending_argument(engine: &engine, index: 2_u64);
+  let marker_kind = halo::embed::kind(value: marker);
+  if marker_kind != 4_u8 {
+    return 16_u8;
+  }
+  let last_arg = halo::embed::pending_argument(engine: &engine, index: 3_u64);
+  let last_nil = is_nil(v: last_arg);
+  if bnot(last_nil) {
+    return 16_u8;
+  }
+  let answer_nil = Value::Nil();
+  let results = array_filled::<Value, 4>(value: answer_nil);
+  set results[0_u64] = Value::Num(n: 73.0_f64);
+  set results[2_u64] = Value::Num(n: 79.0_f64);
+  halo::embed::collect_at_next_safepoint(engine: &engine);
+  let completed = if failure {
+    give halo::embed::fail_call::<SwitchProbeHost>(engine: &engine, env: &env, error: marker, budget: budget);
+  } else {
+    give halo::embed::complete_call::<SwitchProbeHost>(engine: &engine, env: &env, results: &results[0_u64..4_u64], budget: budget);
+  }
+  let settled = switch_settle(engine: &engine, env: &env, outcome: completed, budget: budget);
+  let settled_code = outcome_code(outcome: settled);
+  if settled_code != 0_u8 {
+    return 17_u8;
+  }
+  let correct = returned(engine: &engine, expected: 1.0_f64);
+  if bnot(correct) {
+    return 18_u8;
+  }
+  if engine.result_count != 1_u64 {
+    return 18_u8;
+  }
+  if engine.vm.current_thread != engine.vm.main_thread {
+    return 19_u8;
+  }
+  if engine.vm.native_entries != 0_u32 {
+    return 19_u8;
+  }
+  if env.calls != 1_u64 {
+    return 19_u8;
+  }
+  return 0_u8;
+}
+
+fn switch_stop_probe(budget: u64, stress: Bool, source_mode: u8) -> r: u8 pure {
+  doc "Codes 20-25 require a stop in a child under a resumer callback to end the embedding attempt. Modes 1 and 2 raise Stop inside child-owned and main-owned foreach callbacks after 128 non-tail Lua calls; budget 1000 keeps the native foreach entry live and requires an open capture holding 23 only beyond the shortened stack in the parked snapshot before reset. Smaller budgets already detach that native entry, so their host stop may leave the full installed stack authoritative; they still check reset recovery. Reset closes both owners, restores parked captures, and retains dead thread identity; the same cached script calls the captures, rejects the old thread and resumes a distinct fresh thread.";
+  let engine = halo::embed::new_engine(limit: 67108864_u64);
+  let env = Probe(mode: 2_u8, calls: 0_u64);
+  let installed = switch_install(engine: &engine);
+  if bnot(installed) {
+    return 20_u8;
+  }
+  halo::embed::set_gc_stress(engine: &engine, enabled: stress);
+  let source = if source_mode == 1_u8 {
+    give &switch_child_stop_source[0_u64..712_u64];
+  } else if source_mode == 2_u8 {
+    give &switch_main_stop_source[0_u64..621_u64];
+  } else {
+    give &switch_stop_source[0_u64..597_u64];
+  }
+  let compiled = halo::embed::compile(engine: &engine, chunk_name: &switch_chunk_name[0_u64..13_u64], source: source);
+  let script = match move compiled {
+    Err(..) => {
+      return 20_u8;
+    }
+    Ok(value: found_script) => {
+      give found_script;
+    }
+  }
+  let first = halo::embed::start::<SwitchProbeHost>(engine: &engine, env: &env, script: script, budget: budget);
+  let stopped = switch_settle(engine: &engine, env: &env, outcome: first, budget: budget);
+  let stopped_code = outcome_code(outcome: stopped);
+  if stopped_code != 3_u8 {
+    return 21_u8;
+  }
+  if env.calls != 1_u64 {
+    return 21_u8;
+  }
+  if engine.vm.native_entries != 0_u32 {
+    return 21_u8;
+  }
+  if source_mode != 0_u8 {
+    if budget == 1000_u64 {
+      let parked_capture = switch_stopped_capture(engine: &engine);
+      if bnot(parked_capture) {
+        return 23_u8;
+      }
+    }
+  }
+  let refused = halo::embed::resume::<SwitchProbeHost>(engine: &engine, env: &env, budget: budget);
+  let refused_code = outcome_code(outcome: refused);
+  if refused_code != 1_u8 {
+    return 22_u8;
+  }
+  if env.calls != 1_u64 {
+    return 22_u8;
+  }
+  halo::embed::reset(engine: &engine);
+  if engine.vm.current_thread != engine.vm.main_thread {
+    return 23_u8;
+  }
+  if engine.vm.open_upvalues.inner.len != 0_u64 {
+    return 23_u8;
+  }
+  if engine.vm.callbacks.inner.len != 0_u64 {
+    return 23_u8;
+  }
+  if engine.vm.stopped_stack.inner.len != 0_u64 {
+    return 23_u8;
+  }
+  if engine.vm.native_entries != 0_u32 {
+    return 23_u8;
+  }
+  let captures = engine.vm.heap.upvalues.inner.len;
+  for (capture_index in 0_u64..captures) {
+    if capture_index < engine.vm.heap.upvalues.inner.len {
+      if engine.vm.heap.upvalues.inner[capture_index].live {
+        match engine.vm.heap.upvalues.inner[capture_index].payload {
+          Open(..) => {
+            return 23_u8;
+          }
+          Closed(..) => {
+          }
+        }
+      }
+    }
+  }
+  let yes = Value::True();
+  let marked = thread_global(engine: &engine, name: &switch_recovered_name[0_u64..9_u64], value: yes);
+  if bnot(marked) {
+    return 24_u8;
+  }
+  set env.mode = 0_u8;
+  halo::embed::collect_at_next_safepoint(engine: &engine);
+  let restarted = halo::embed::start::<SwitchProbeHost>(engine: &engine, env: &env, script: script, budget: budget);
+  let settled = switch_settle(engine: &engine, env: &env, outcome: restarted, budget: budget);
+  let settled_code = outcome_code(outcome: settled);
+  if settled_code != 0_u8 {
+    return 25_u8;
+  }
+  let correct = returned(engine: &engine, expected: 1.0_f64);
+  if bnot(correct) {
+    return 25_u8;
+  }
+  if env.calls != 1_u64 {
+    return 25_u8;
+  }
+  return 0_u8;
+}
+
+fn switch_budget_probe(budget: u64, stress: Bool) -> r: u8 pure {
+  doc "Codes 26-29 require genuine zero-fuel embedding stops, both running identities across slices, the waiting resumer link and no live native entry. Three hundred Lua resumes spend at least three hundred call safepoints, so switches cannot replenish the shared slice budget.";
+  if budget == 0_u64 {
+    return 26_u8;
+  }
+  let engine = halo::embed::new_engine(limit: 67108864_u64);
+  let env = Probe(mode: 0_u8, calls: 0_u64);
+  let installed = switch_install(engine: &engine);
+  if bnot(installed) {
+    return 26_u8;
+  }
+  halo::embed::set_gc_stress(engine: &engine, enabled: stress);
+  let compiled = halo::embed::compile(engine: &engine, chunk_name: &switch_chunk_name[0_u64..13_u64], source: &switch_repeat_source[0_u64..185_u64]);
+  let script = match move compiled {
+    Err(..) => {
+      return 26_u8;
+    }
+    Ok(value: found_script) => {
+      give found_script;
+    }
+  }
+  let current = halo::embed::start::<SwitchProbeHost>(engine: &engine, env: &env, script: script, budget: budget);
+  let saw_child = False();
+  let saw_main = False();
+  let checkpoints = 0_u64;
+  for (slice in 0_u64..20000_u64) {
+    let code = outcome_code(outcome: current);
+    if code == 0_u8 {
+      let correct = returned(engine: &engine, expected: 1.0_f64);
+      if bnot(correct) {
+        return 29_u8;
+      }
+      if bnot(saw_child) {
+        return 29_u8;
+      }
+      if bnot(saw_main) {
+        return 29_u8;
+      }
+      let minimum = 300_u64 / budget;
+      if checkpoints < minimum {
+        return 29_u8;
+      }
+      return 0_u8;
+    }
+    if code != 2_u8 {
+      return 27_u8;
+    }
+    if engine.vm.budget != 0_u64 {
+      return 28_u8;
+    }
+    if engine.vm.native_entries != 0_u32 {
+      return 28_u8;
+    }
+    if engine.vm.current_thread == engine.vm.main_thread {
+      set saw_main = True();
+    } else {
+      let waiting = switch_waiting(engine: &engine);
+      if bnot(waiting) {
+        return 28_u8;
+      }
+      set saw_child = True();
+    }
+    set checkpoints = checkpoints +sat 1_u64;
+    set current = halo::embed::resume::<SwitchProbeHost>(engine: &engine, env: &env, budget: budget);
+  }
+  return 29_u8;
+}
+
+fn switch_edge_thread(heap: &halo::heap::Heap, target: Value) -> r: u32 writes(heap) {
+  let execution = halo::execution::empty();
+  set execution.error = target;
+  match halo::heap::alloc_thread(heap: heap, payload: move execution) {
+    None() => {
+      return no_handle;
+    }
+    Some(value: allocated_handle) => {
+      return allocated_handle;
+    }
+  }
+}
+
+fn switch_edge_saved(edge: u8) -> r: Bool pure {
+  doc "Isolates entry, resumer, pending-child and pending-argument edges on a saved execution. The target has no alias in a live window; unrelated garbage and removal of the sole root detect blanket slab or stack retention.";
+  let heap = halo::heap::heap_new(limit: 0_u64);
+  let target = halo::heap::intern(heap: &heap, bytes: &thread_edge_target[0_u64..4_u64]);
+  let garbage = halo::heap::intern(heap: &heap, bytes: &thread_edge_garbage[0_u64..4_u64]);
+  let nil = Value::Nil();
+  let root_handle = switch_edge_thread(heap: &heap, target: nil);
+  if root_handle == no_handle {
+    return False();
+  }
+  let child = no_handle;
+  if edge == 1_u8 {
+    set child = switch_edge_thread(heap: &heap, target: target);
+  }
+  if edge == 2_u8 {
+    set child = switch_edge_thread(heap: &heap, target: target);
+  }
+  if edge == 3_u8 {
+    set child = switch_edge_thread(heap: &heap, target: nil);
+  }
+  let root_index = cvt::<u32, u64>(root_handle);
+  if root_index >= heap.threads.inner.len {
+    return False();
+  }
+  if edge == 0_u8 {
+    let closure = thread_edge_closure(heap: &heap, target: target);
+    match closure {
+      None() => {
+        return False();
+      }
+      Some(value: entry_handle) => {
+        if root_index < heap.threads.inner.len {
+          set heap.threads.inner[root_index].entry_function = Value::Fun(h: entry_handle);
+        } else {
+          return False();
+        }
+      }
+    }
+  } else if edge == 1_u8 {
+    set heap.threads.inner[root_index].resumer = child;
+  } else {
+    set heap.threads.inner[root_index].payload.transfer_kind = 1_u8;
+    set heap.threads.inner[root_index].payload.transfer.child = child;
+    if edge == 3_u8 {
+      let stack = box_slots_new::<Value>(capacity: 3_u64);
+      place_back(window: &stack.inner, value: nil);
+      place_back(window: &stack.inner, value: target);
+      place_back(window: &stack.inner, value: garbage);
+      set heap.threads.inner[root_index].payload.stack = move stack;
+      set heap.threads.inner[root_index].payload.transfer.func = 0_u64;
+      set heap.threads.inner[root_index].payload.transfer.argc = 1_u64;
+      let frames = box_slots_new::<halo::execution::Frame>(capacity: 1_u64);
+      let frame = thread_edge_frame(closure: no_handle, top: 0_u64);
+      place_back(window: &frames.inner, value: frame);
+      set heap.threads.inner[root_index].payload.frames = move frames;
+    }
+  }
+  let refreshed = halo::heap::refresh_thread_storage(heap: &heap, h: root_handle);
+  if bnot(refreshed) {
+    return False();
+  }
+  let root = Value::Thread(h: root_handle);
+  thread_edge_collect(heap: &heap, root: root);
+  let target_live = thread_edge_live(heap: &heap, value: target);
+  if bnot(target_live) {
+    return False();
+  }
+  let garbage_live = thread_edge_live(heap: &heap, value: garbage);
+  if garbage_live {
+    return False();
+  }
+  thread_edge_collect(heap: &heap, root: nil);
+  let target_leaked = thread_edge_live(heap: &heap, value: target);
+  if target_leaked {
+    return False();
+  }
+  return heap.bytes == 0_u64;
+}
+
+fn switch_edge_active(argument: Bool) -> r: Bool pure {
+  doc "Runs one synthetic backedge with top and a frame window both zero. Only the active request's child or counted argument keeps the target live. The adjacent argument-excluded slot must be collected.";
+  let vm = halo::vm::vm_new(limit: 0_u64);
+  let stack = halo::vm::stack_new(size: 256_u64);
+  let consts = halo::vm::stack_new(size: 256_u64);
+  let env = Probe(mode: 0_u8, calls: 0_u64);
+  let target = halo::heap::intern(heap: &vm.heap, bytes: &thread_edge_target[0_u64..4_u64]);
+  let garbage = halo::heap::intern(heap: &vm.heap, bytes: &thread_edge_garbage[0_u64..4_u64]);
+  let nil = Value::Nil();
+  let child_target = if argument {
+    give nil;
+  } else {
+    give target;
+  }
+  let child = switch_edge_thread(heap: &vm.heap, target: child_target);
+  if child == no_handle {
+    return False();
+  }
+  set vm.transfer_kind = 1_u8;
+  set vm.transfer.child = child;
+  set vm.transfer.func = 0_u64;
+  if argument {
+    set vm.transfer.argc = 1_u64;
+    if stack.inner.len >= 256_u64 {
+      set stack.inner[1_u64] = target;
+      set stack.inner[2_u64] = garbage;
+    }
+  }
+  let frames = box_slots_new::<halo::execution::Frame>(capacity: 1_u64);
+  let frame = thread_edge_frame(closure: no_handle, top: 0_u64);
+  place_back(window: &frames.inner, value: frame);
+  set vm.frames = move frames;
+  set vm.top = 0_u64;
+  set vm.heap.gc_stress = True();
+  set vm.budget = 1_u64;
+  let code = box_slots_new::<halo::value::Cell>(capacity: 1_u64);
+  let jump = halo::value::Cell::Jmp(target: 0_u32);
+  place_back(window: &code.inner, value: jump);
+  if code.inner.len > 0_u64 {
+    if stack.inner.len >= 256_u64 {
+      if consts.inner.len >= 256_u64 {
+        let outcome = halo::vm::run::<SwitchProbeHost>(code: &code, consts: &consts, stack: &stack, vm: &vm, env: &env, pc: 0_u64, base: 0_u64, kbase: 0_u64);
+        let outcome_kind = outcome_code(outcome: outcome);
+        if outcome_kind != 2_u8 {
+          return False();
+        }
+      }
+    }
+  }
+  if vm.heap.collections == 0_u64 {
+    return False();
+  }
+  let target_live = thread_edge_live(heap: &vm.heap, value: target);
+  if bnot(target_live) {
+    return False();
+  }
+  let garbage_live = thread_edge_live(heap: &vm.heap, value: garbage);
+  if garbage_live {
+    return False();
+  }
+  set vm.transfer_kind = 0_u8;
+  thread_edge_collect(heap: &vm.heap, root: nil);
+  let target_leaked = thread_edge_live(heap: &vm.heap, value: target);
+  if target_leaked {
+    return False();
+  }
+  return vm.heap.bytes == 0_u64;
+}
+
+fn switch_edges_probe() -> r: u8 pure {
+  doc "Missing-edge codes: 40 entry closure, 41 waiting resumer, 42 inactive request child, 43 inactive request argument, 44 active request child, 45 active request argument, 46 installed current identity. A collection parks the installed execution in its cell, so 44 and 45 reach the same marking lines as 42 and 43 and remain positive observations of that parking. Each control also rejects retaining unrelated garbage or a target after its root is removed.";
+  for (index in 0_u64..4_u64) {
+    let edge = cvt::<u64, u8>(index);
+    let passed = switch_edge_saved(edge: edge);
+    if bnot(passed) {
+      return edge +sat 40_u8;
+    }
+  }
+  let child_mode = False();
+  let child_passed = switch_edge_active(argument: child_mode);
+  if bnot(child_passed) {
+    return 44_u8;
+  }
+  let argument_mode = True();
+  let argument_passed = switch_edge_active(argument: argument_mode);
+  if bnot(argument_passed) {
+    return 45_u8;
+  }
+  let current_passed = switch_edge_current();
+  if bnot(current_passed) {
+    return 46_u8;
+  }
+  return 0_u8;
+}
+
+fn switch_probe() -> r: u8 pure {
+  let edge_code = switch_edges_probe();
+  if edge_code != 0_u8 {
+    return edge_code;
+  }
+  let growth_mode = True();
+  let growth_code = switch_limit_probe(growth: growth_mode);
+  if growth_code != 0_u8 {
+    return growth_code;
+  }
+  let creation_mode = False();
+  let creation_code = switch_limit_probe(growth: creation_mode);
+  if creation_code != 0_u8 {
+    return creation_code;
+  }
+  for (mode in 0_u64..2_u64) {
+    let stress = mode == 1_u64;
+    for (slice in 0_u64..3_u64) {
+      let budget = 1_u64;
+      if slice == 1_u64 {
+        set budget = 7_u64;
+      }
+      if slice == 2_u64 {
+        set budget = 1000_u64;
+      }
+      let public_code = switch_public_probe(budget: budget, stress: stress);
+      if public_code != 0_u8 {
+        return public_code;
+      }
+      let wrap_gc_code = switch_wrap_gc_probe(budget: budget, stress: stress);
+      if wrap_gc_code != 0_u8 {
+        return wrap_gc_code;
+      }
+      let lua_code = switch_lua_probe(budget: budget, stress: stress);
+      if lua_code != 0_u8 {
+        return lua_code;
+      }
+      let success = False();
+      let success_code = switch_pending_probe(failure: success, budget: budget, stress: stress);
+      if success_code != 0_u8 {
+        return success_code;
+      }
+      let failure = True();
+      let failure_code = switch_pending_probe(failure: failure, budget: budget, stress: stress);
+      if failure_code != 0_u8 {
+        return failure_code;
+      }
+      let direct_success = switch_immediate_probe(failure: success, budget: budget, stress: stress);
+      if direct_success != 0_u8 {
+        return direct_success;
+      }
+      let direct_failure = switch_immediate_probe(failure: failure, budget: budget, stress: stress);
+      if direct_failure != 0_u8 {
+        return direct_failure;
+      }
+      let stop_code = switch_stop_probe(budget: budget, stress: stress, source_mode: 0_u8);
+      if stop_code != 0_u8 {
+        return stop_code;
+      }
+      let child_stop_code = switch_stop_probe(budget: budget, stress: stress, source_mode: 1_u8);
+      if child_stop_code != 0_u8 {
+        return child_stop_code;
+      }
+      let main_stop_code = switch_stop_probe(budget: budget, stress: stress, source_mode: 2_u8);
+      if main_stop_code != 0_u8 {
+        return main_stop_code;
+      }
+      if budget < 1000_u64 {
+        let budget_code = switch_budget_probe(budget: budget, stress: stress);
+        if budget_code != 0_u8 {
+          return budget_code;
+        }
+      }
+    }
+  }
+  return 0_u8;
+}
+
+fn switch_smoke() -> status: ExitStatus pure {
+  let code = switch_probe();
+  return std::process::exit_status(code: code);
+}
+
+fn switch_host_call(env: &Probe, vm: &halo::vm::Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64, id: u32) -> r: halo::vm::HostOutcome writes(env), writes(vm), writes(stack) contract {
+  ensures stack^.inner.len == entry(stack)^.inner.len;
+} {
+  if env^.mode == 4_u8 {
+    set env^.calls = env^.calls +sat 1_u64;
+    let second = func +sat 1_u64;
+    let third = func +sat 2_u64;
+    let fourth = func +sat 3_u64;
+    if func >= stack^.inner.len {
+      return halo::vm::HostOutcome::Stop();
+    }
+    if second >= stack^.inner.len {
+      return halo::vm::HostOutcome::Stop();
+    }
+    if third >= stack^.inner.len {
+      return halo::vm::HostOutcome::Stop();
+    }
+    if fourth < stack^.inner.len {
+      set stack^.inner[func] = Value::Num(n: 73.0_f64);
+      set stack^.inner[second] = Value::Nil();
+      set stack^.inner[third] = Value::Num(n: 79.0_f64);
+      set stack^.inner[fourth] = Value::Nil();
+      return halo::vm::HostOutcome::Returned(count: 4_u64);
+    }
+    return halo::vm::HostOutcome::Stop();
+  }
+  if env^.mode == 5_u8 {
+    set env^.calls = env^.calls +sat 1_u64;
+    let error_slot = func +sat 3_u64;
+    if error_slot < stack^.inner.len {
+      set vm^.error = stack^.inner[error_slot];
+      return halo::vm::HostOutcome::Raised();
+    }
+    return halo::vm::HostOutcome::Stop();
+  }
+  return probe_call(env: env, vm: vm, stack: stack, func: func, argc: argc, id: id);
+}
+
+binding SwitchProbeHost : halo::vm::Host<Probe> {
+  call = switch_host_call;
+}
+
+fn switch_immediate_probe(failure: Bool, budget: u64, stress: Bool) -> r: u8 pure {
+  doc "Codes 30-32 repeat the pending child-host scenarios with immediate Returned and Raised outcomes, so success on only one embedding path cannot pass the probe.";
+  let engine = halo::embed::new_engine(limit: 67108864_u64);
+  let mode = 4_u8;
+  if failure {
+    set mode = 5_u8;
+  }
+  let env = Probe(mode: mode, calls: 0_u64);
+  let installed = switch_install(engine: &engine);
+  if bnot(installed) {
+    return 30_u8;
+  }
+  halo::embed::set_gc_stress(engine: &engine, enabled: stress);
+  let source = if failure {
+    give &switch_host_failure_source[0_u64..254_u64];
+  } else {
+    give &switch_host_success_source[0_u64..361_u64];
+  }
+  let compiled = halo::embed::compile(engine: &engine, chunk_name: &switch_chunk_name[0_u64..13_u64], source: source);
+  let script = match move compiled {
+    Err(..) => {
+      return 30_u8;
+    }
+    Ok(value: found_script) => {
+      give found_script;
+    }
+  }
+  let first = halo::embed::start::<SwitchProbeHost>(engine: &engine, env: &env, script: script, budget: budget);
+  let settled = switch_settle(engine: &engine, env: &env, outcome: first, budget: budget);
+  let code = outcome_code(outcome: settled);
+  if code != 0_u8 {
+    return 31_u8;
+  }
+  let correct = returned(engine: &engine, expected: 1.0_f64);
+  if bnot(correct) {
+    return 32_u8;
+  }
+  if engine.result_count != 1_u64 {
+    return 32_u8;
+  }
+  if env.calls != 1_u64 {
+    return 32_u8;
+  }
+  if engine.vm.current_thread != engine.vm.main_thread {
+    return 32_u8;
+  }
+  return 0_u8;
+}
+
+const switch_limit_growth_source: Array<u8, 208> = "local function deep(n) if n==0 then return 1 end; return 1+deep(n-1) end; local co=create_co(function() return deep(256) end); local ok,v=resume_co(co); if not ok then error(v,0) end; assert(v==257); return 1";
+
+const switch_limit_creation_source: Array<u8, 104> = "local kept={}; for i=1,64 do kept[i]=create_co(function() return i end) end; assert(#kept==64); return 1";
+
+fn switch_live_children(engine: &Engine) -> r: u64 reads(engine) {
+  let count = 0_u64;
+  let length = engine^.vm.heap.threads.inner.len;
+  for (index in 0_u64..length) {
+    if index < engine^.vm.heap.threads.inner.len {
+      if engine^.vm.heap.threads.inner[index].live {
+        let main_index = cvt::<u32, u64>(engine^.vm.main_thread);
+        if index != main_index {
+          set count = count +sat 1_u64;
+        }
+      }
+    }
+  }
+  return count;
+}
+
+fn switch_limit_probe(growth: Bool) -> r: u8 pure {
+  doc "Codes 33-39 compare a limited failure with recovery of the same cached script under a 64 MiB ceiling. A one-safepoint slice first installs the child or creates the first of 64 retained children; lowering the limit then isolates active child buffer growth or additional thread allocation. The failure must be exactly not enough memory and must follow collection, with increased charged child storage or additional live children observed.";
+  let engine = halo::embed::new_engine(limit: 67108864_u64);
+  let env = Probe(mode: 0_u8, calls: 0_u64);
+  let installed = switch_install(engine: &engine);
+  if bnot(installed) {
+    return 33_u8;
+  }
+  let source = if growth {
+    give &switch_limit_growth_source[0_u64..208_u64];
+  } else {
+    give &switch_limit_creation_source[0_u64..104_u64];
+  }
+  let compiled = halo::embed::compile(engine: &engine, chunk_name: &switch_chunk_name[0_u64..13_u64], source: source);
+  let script = match move compiled {
+    Err(..) => {
+      return 33_u8;
+    }
+    Ok(value: found_script) => {
+      give found_script;
+    }
+  }
+  let current = halo::embed::start::<SwitchProbeHost>(engine: &engine, env: &env, script: script, budget: 1_u64);
+  let ready = False();
+  for (slice in 0_u64..20000_u64) {
+    let code = outcome_code(outcome: current);
+    if code != 2_u8 {
+      return 34_u8;
+    }
+    if growth {
+      if engine.vm.current_thread != engine.vm.main_thread {
+        set ready = True();
+        break;
+      }
+    } else {
+      let live_children = switch_live_children(engine: &engine);
+      if live_children > 0_u64 {
+        set ready = True();
+        break;
+      }
+    }
+    set current = halo::embed::resume::<SwitchProbeHost>(engine: &engine, env: &env, budget: 1_u64);
+  }
+  if bnot(ready) {
+    return 34_u8;
+  }
+  let owner = engine.vm.current_thread;
+  let owner_index = cvt::<u32, u64>(owner);
+  let initial_charge = 0_u64;
+  if growth {
+    if owner_index < engine.vm.heap.threads.inner.len {
+      set initial_charge = engine.vm.heap.threads.inner[owner_index].accounted_bytes;
+    } else {
+      return 35_u8;
+    }
+  }
+  let initial_children = switch_live_children(engine: &engine);
+  let allowance = 8192_u64;
+  if growth {
+    set allowance = 4096_u64;
+  }
+  let baseline_bytes = halo::embed::heap_bytes(engine: &engine);
+  let limit = baseline_bytes +sat allowance;
+  if limit >= 67108864_u64 {
+    return 35_u8;
+  }
+  set engine.vm.heap.limit = limit;
+  let before_collection = halo::embed::collection_count(engine: &engine);
+  let observed_growth = False();
+  for (slice in 0_u64..20000_u64) {
+    set current = halo::embed::resume::<SwitchProbeHost>(engine: &engine, env: &env, budget: 1_u64);
+    if growth {
+      if owner_index < engine.vm.heap.threads.inner.len {
+        if engine.vm.heap.threads.inner[owner_index].accounted_bytes > initial_charge {
+          set observed_growth = True();
+        }
+      }
+    } else {
+      let live_children = switch_live_children(engine: &engine);
+      if live_children > initial_children {
+        set observed_growth = True();
+      }
+    }
+    let code = outcome_code(outcome: current);
+    if code != 2_u8 {
+      break;
+    }
+    if engine.vm.budget != 0_u64 {
+      return 36_u8;
+    }
+    if engine.vm.native_entries != 0_u32 {
+      return 36_u8;
+    }
+  }
+  let final_code = outcome_code(outcome: current);
+  if final_code != 1_u8 {
+    return 36_u8;
+  }
+  let memory_error = thread_memory_error(engine: &engine);
+  if bnot(memory_error) {
+    return 36_u8;
+  }
+  if bnot(observed_growth) {
+    return 37_u8;
+  }
+  let after_collection = halo::embed::collection_count(engine: &engine);
+  if after_collection <= before_collection {
+    return 37_u8;
+  }
+  set engine.vm.heap.limit = 67108864_u64;
+  let restarted = halo::embed::start::<SwitchProbeHost>(engine: &engine, env: &env, script: script, budget: 1_u64);
+  let settled = switch_settle(engine: &engine, env: &env, outcome: restarted, budget: 1_u64);
+  let recovered_code = outcome_code(outcome: settled);
+  if recovered_code != 0_u8 {
+    return 38_u8;
+  }
+  let correct = returned(engine: &engine, expected: 1.0_f64);
+  if bnot(correct) {
+    return 39_u8;
+  }
+  if engine.result_count != 1_u64 {
+    return 39_u8;
+  }
+  if env.calls != 0_u64 {
+    return 39_u8;
+  }
+  return 0_u8;
+}
+
+const switch_child_stop_source: Array<u8, 712> = "if recovered then assert(main_read()==11 and child_read()==23); local fresh=create_co(function() return 37 end); assert(fresh~=held); local ok,e=resume_co(held); assert(not ok and e=='cannot resume dead coroutine'); local yes,v=resume_co(fresh); assert(yes and v==37); return 1 end; local main=11; main_read=function() return main end; held=create_co(function() table.foreach({1},function() local function stop(n) if n>0 then return 1+stop(n-1) end; local child=23; child_read=function() return child end; host(17); error('continued-after-stop') end; return stop(128) end) end); local t=setmetatable({},{__index=function() return resume_co(held) end}); local ignored=t.missing; error('stop-became-resume-result')";
+
+fn switch_edge_current() -> r: Bool pure {
+  doc "Only current_thread names the installed child: its slab payload, provided stack, frame and constants carry no Thread alias. One ordinary safepoint must keep both current and intrinsic main identities live while freeing unrelated garbage; removing all roots must reclaim both.";
+  let vm = halo::vm::vm_new(limit: 0_u64);
+  let stack = halo::vm::stack_new(size: 256_u64);
+  let consts = halo::vm::stack_new(size: 256_u64);
+  let env = Probe(mode: 0_u8, calls: 0_u64);
+  let nil = Value::Nil();
+  let child = switch_edge_thread(heap: &vm.heap, target: nil);
+  if child == no_handle {
+    return False();
+  }
+  let child_index = cvt::<u32, u64>(child);
+  let main_index = cvt::<u32, u64>(vm.main_thread);
+  set vm.current_thread = child;
+  let garbage = halo::heap::intern(heap: &vm.heap, bytes: &thread_edge_garbage[0_u64..4_u64]);
+  let frames = box_slots_new::<halo::execution::Frame>(capacity: 1_u64);
+  let frame = thread_edge_frame(closure: no_handle, top: 0_u64);
+  place_back(window: &frames.inner, value: frame);
+  set vm.frames = move frames;
+  set vm.top = 0_u64;
+  set vm.heap.gc_stress = True();
+  set vm.budget = 1_u64;
+  let code = box_slots_new::<halo::value::Cell>(capacity: 1_u64);
+  let jump = halo::value::Cell::Jmp(target: 0_u32);
+  place_back(window: &code.inner, value: jump);
+  if code.inner.len > 0_u64 {
+    if stack.inner.len >= 256_u64 {
+      if consts.inner.len >= 256_u64 {
+        let outcome = halo::vm::run::<SwitchProbeHost>(code: &code, consts: &consts, stack: &stack, vm: &vm, env: &env, pc: 0_u64, base: 0_u64, kbase: 0_u64);
+        let outcome_kind = outcome_code(outcome: outcome);
+        if outcome_kind != 2_u8 {
+          return False();
+        }
+      }
+    }
+  }
+  if vm.heap.collections == 0_u64 {
+    return False();
+  }
+  if child_index < vm.heap.threads.inner.len {
+    if bnot(vm.heap.threads.inner[child_index].live) {
+      return False();
+    }
+  } else {
+    return False();
+  }
+  if main_index < vm.heap.threads.inner.len {
+    if bnot(vm.heap.threads.inner[main_index].live) {
+      return False();
+    }
+  } else {
+    return False();
+  }
+  let garbage_live = thread_edge_live(heap: &vm.heap, value: garbage);
+  if garbage_live {
+    return False();
+  }
+  thread_edge_collect(heap: &vm.heap, root: nil);
+  if vm.heap.last_collection.threads.live_objects != 0_u64 {
+    return False();
+  }
+  return vm.heap.bytes == 0_u64;
+}
+
+const switch_main_stop_source: Array<u8, 621> = "if recovered then assert(main_read()==11 and child_read()==23); local fresh=create_co(function() return 37 end); assert(fresh~=held); local ok,e=resume_co(held); assert(not ok and e=='cannot resume dead coroutine'); local yes,v=resume_co(fresh); assert(yes and v==37); return 1 end; local main=11; main_read=function() return main end; held=create_co(function() return 0 end); table.foreach({1},function() local function stop(n) if n>0 then return 1+stop(n-1) end; local child=23; child_read=function() return child end; host(17); error('continued-after-stop') end; return stop(128) end); error('stop-became-main-result')";
+
+fn switch_stopped_capture(engine: &Engine) -> r: Bool reads(engine) {
+  doc "Requires an open capture owned by the stopped current thread whose value 23 exists beyond the shortened installed stack, inside the parked snapshot. Reset cannot close this capture correctly without restoring that snapshot.";
+  if bnot(engine^.vm.host_stopped) {
+    return False();
+  }
+  let length = engine^.vm.heap.upvalues.inner.len;
+  for (index in 0_u64..length) {
+    if index < engine^.vm.heap.upvalues.inner.len {
+      if engine^.vm.heap.upvalues.inner[index].live {
+        match engine^.vm.heap.upvalues.inner[index].payload {
+          Open(owner: captured_owner, slot: captured_slot) => {
+            if captured_owner^ == engine^.vm.current_thread {
+              if captured_slot^ >= engine^.stack.inner.len {
+                if captured_slot^ < engine^.vm.stopped_stack.inner.len {
+                  let value = engine^.vm.stopped_stack.inner[captured_slot^];
+                  let correct = up_probe_number(value: value, expected: 23.0_f64);
+                  if correct {
+                    return True();
+                  }
+                }
+              }
+            }
+          }
+          Closed(..) => {
+          }
+        }
+      }
+    }
+  }
+  return False();
+}
+
+fn switch_public_probe(budget: u64, stress: Bool) -> r: u8 pure {
+  doc "Codes 47-50 guard public registration and all status/running states, wrap counted and tail transfers, direct wrapper error locations and values, and create/wrap/resume/status argument validation. The recorded coroutine oracle and PUC lbaselib.c luaB_auxwrap supply expectations; lua_isstring includes numeric errors and luaL_where always adds the direct Lua caller location.";
+  let passed_47 = switch_source(source: &switch_public_status_source[0_u64..1007_u64], budget: budget, stress: stress);
+  if bnot(passed_47) {
+    return 47_u8;
+  }
+  let passed_48 = switch_source(source: &switch_public_wrap_values_source[0_u64..809_u64], budget: budget, stress: stress);
+  if bnot(passed_48) {
+    return 48_u8;
+  }
+  let passed_49 = switch_source(source: &switch_public_wrap_errors_source[0_u64..1372_u64], budget: budget, stress: stress);
+  if bnot(passed_49) {
+    return 49_u8;
+  }
+  let passed_50 = switch_source(source: &switch_public_arguments_source[0_u64..915_u64], budget: budget, stress: stress);
+  if bnot(passed_50) {
+    return 50_u8;
+  }
+  return 0_u8;
+}
+
+const switch_public_status_source: Array<u8, 1007> = "assert(type(coroutine)=='table'); for _,name in ipairs({'create','resume','yield','status','wrap','running'}) do assert(type(coroutine[name])=='function') end; assert(select('#',coroutine.running())==1 and coroutine.running()==nil); local parent,child; parent=coroutine.create(function() assert(coroutine.running()==parent and coroutine.status(parent)=='running'); child=coroutine.create(function() assert(coroutine.running()==child and coroutine.status(child)=='running' and coroutine.status(parent)=='normal'); return 17 end); local ok,v=coroutine.resume(child); assert(ok and v==17 and coroutine.status(child)=='dead'); coroutine.yield(23); assert(coroutine.running()==parent); return 29 end); assert(type(parent)=='thread' and coroutine.status(parent)=='suspended'); local ok,v=coroutine.resume(parent); assert(ok and v==23 and coroutine.status(parent)=='suspended' and coroutine.running()==nil); local yes,w=coroutine.resume(parent); assert(yes and w==29 and coroutine.status(parent)=='dead'); return 1";
+
+const switch_public_wrap_values_source: Array<u8, 809> = "local function pack(...) return {n=select('#',...),...} end; local function y(...) return coroutine.yield(...) end; local wrapped=coroutine.wrap(function(...) local a=pack(...); assert(a.n==4 and a[1]==11 and a[2]==nil and a[3]==13 and a[4]==nil); local b=pack(y(21,nil,23,nil)); assert(b.n==4 and b[1]==31 and b[2]==nil and b[3]==33 and b[4]==nil); return 41,nil,43,nil end); assert(type(wrapped)=='function'); local function tail(...) return wrapped(...) end; local a=pack(tail(11,nil,13,nil)); assert(a.n==4 and a[1]==21 and a[2]==nil and a[3]==23 and a[4]==nil); local b=pack(tail(31,nil,33,nil)); assert(b.n==4 and b[1]==41 and b[2]==nil and b[3]==43 and b[4]==nil); local empty=coroutine.wrap(function() coroutine.yield(); return end); assert(select('#',empty())==0 and select('#',empty())==0); return 1";
+
+const switch_public_wrap_errors_source: Array<u8, 1372> = "local located=coroutine.wrap(function()\n  error('body')\nend)\nlocal ok,e=pcall(function()\n  local result=located()\nend)\nassert(not ok and e=='switch_probe:5: switch_probe:2: body')\nlocal zero=coroutine.wrap(function() error('plain',0) end)\nok,e=pcall(function()\n  local result=zero()\nend)\nassert(not ok and e=='switch_probe:10: plain')\nlocal prelocated=coroutine.wrap(function() error('user_script:99: existing',0) end)\nok,e=pcall(function()\n  local result=prelocated()\nend)\nassert(not ok and e=='switch_probe:15: user_script:99: existing')\nlocal numeric=coroutine.wrap(function() error(17,0) end)\nok,e=pcall(function()\n  local result=numeric()\nend)\nassert(not ok and e=='switch_probe:20: 17')\nlocal marker={tag=23}; local tables=coroutine.wrap(function() error(marker,0) end)\nok,e=pcall(function() local result=tables() end)\nassert(not ok and e==marker)\nlocal bare=coroutine.wrap(function() error('bare',0) end)\nok,e=pcall(bare); assert(not ok and e=='bare')\nok,e=pcall(bare); assert(not ok and e=='cannot resume dead coroutine')\nok,e=pcall(function()\n  local result=bare()\nend)\nassert(not ok and e=='switch_probe:30: cannot resume dead coroutine')\nlocal protected=coroutine.wrap(function() return pcall(function() coroutine.yield() end) end)\nlocal caught,boundary=protected(); assert(not caught and boundary=='attempt to yield across metamethod/C-call boundary')\nreturn 1";
+
+const switch_public_arguments_source: Array<u8, 915> = "local function rejected(fn,expected,...) local ok,e=pcall(fn,...); assert(not ok and e==expected) end; local lua_error=\"bad argument #1 to '?' (Lua function expected)\"; local thread_error=\"bad argument #1 to '?' (coroutine expected)\"; local callable=setmetatable({},{__call=function() end}); local native=string.gmatch('a','a'); for _,fn in ipairs({coroutine.create,coroutine.wrap}) do rejected(fn,lua_error); rejected(fn,lua_error,nil); rejected(fn,lua_error,7); rejected(fn,lua_error,type); rejected(fn,lua_error,native); rejected(fn,lua_error,callable) end; for _,fn in ipairs({coroutine.resume,coroutine.status}) do rejected(fn,thread_error); rejected(fn,thread_error,nil); rejected(fn,thread_error,7); rejected(fn,thread_error,function() end) end; local co=coroutine.create(function() return 17 end); assert(coroutine.status(co,99)=='suspended'); local ok,v=coroutine.resume(co); assert(ok and v==17); return 1";
+
+const switch_wrap_gc_source: Array<u8, 759> = "wrap_phase=(wrap_phase or 0)+1; if wrap_phase==1 then held_wrap=coroutine.wrap(function(v) local captured={value=v}; local sent=coroutine.yield(23); return captured.value+sent end); assert(held_wrap(11)==23); wrap_wait=true; while wrap_wait do end; assert(held_wrap(31)==42); elseif wrap_phase==2 then local ok,e=pcall(held_wrap); assert(not ok and e=='cannot resume dead coroutine'); elseif wrap_phase==3 then held_wrap=nil; elseif wrap_phase==4 then held_wrap=coroutine.wrap(function(v) local captured={value=v}; local sent=coroutine.yield(47); return captured.value+sent end); assert(held_wrap(41)==47); wrap_wait=true; while wrap_wait do end; assert(held_wrap(53)==94); elseif wrap_phase==5 then held_wrap=nil; else error('unexpected phase') end; return 1";
+
+const switch_wrap_wait_name: Array<u8, 9> = "wrap_wait";
+
+fn switch_wrap_child(engine: &Engine) -> r: u32 reads(engine) {
+  let length = engine^.vm.heap.threads.inner.len;
+  for (index in 0_u64..length) {
+    if index < engine^.vm.heap.threads.inner.len {
+      if engine^.vm.heap.threads.inner[index].live {
+        if index < 4294967295_u64 {
+          let handle = cvt::<u64, u32>(index);
+          if handle != engine^.vm.main_thread {
+            return handle;
+          }
+        }
+      }
+    }
+  }
+  return no_handle;
+}
+
+fn switch_wrap_gc_probe(budget: u64, stress: Bool) -> r: u8 pure {
+  doc "Codes 51-55 isolate an escaped public wrap closure as the only child-thread root. In the first and fourth runs, a main-thread wait loop exposes a Budget checkpoint after the child yields with a captured table; a forced next-safepoint collection precedes releasing the loop and resuming the child within the same run. Across cached-script starts only dead wrappers persist: a forced sweep must retain their children until the wrappers are dropped, then reclaim and reuse the child slot with different captures. Existing Thread and closed-upvalue missing-edge controls cover the composed edges; this probe proves the public wrapper installs them.";
+  let engine = halo::embed::new_engine(limit: 67108864_u64);
+  let env = Probe(mode: 0_u8, calls: 0_u64);
+  halo::embed::set_gc_stress(engine: &engine, enabled: stress);
+  let compiled = halo::embed::compile(engine: &engine, chunk_name: &switch_chunk_name[0_u64..13_u64], source: &switch_wrap_gc_source[0_u64..759_u64]);
+  let script = match move compiled {
+    Err(..) => {
+      return 51_u8;
+    }
+    Ok(value: found_script) => {
+      give found_script;
+    }
+  }
+  let first_child = no_handle;
+  for (phase in 0_u64..5_u64) {
+    let started = halo::embed::start::<SwitchProbeHost>(engine: &engine, env: &env, script: script, budget: budget);
+    let current = started;
+    let initial_capture = phase == 0_u64;
+    let reused_capture = phase == 3_u64;
+    let needs_capture = bor(initial_capture, reused_capture);
+    if needs_capture {
+      let observed = False();
+      for (slice in 0_u64..20000_u64) {
+        let suspended_code = outcome_code(outcome: current);
+        if suspended_code != 2_u8 {
+          return 52_u8;
+        }
+        if engine.vm.budget != 0_u64 {
+          return 52_u8;
+        }
+        if engine.vm.native_entries != 0_u32 {
+          return 52_u8;
+        }
+        let wait_key = halo::embed::intern(engine: &engine, bytes: &switch_wrap_wait_name[0_u64..9_u64]);
+        let globals = Value::Tab(h: engine.vm.globals);
+        let wait_value = halo::embed::table_get(engine: &engine, table: globals, key: wait_key);
+        let waiting = halo::embed::truthy(value: wait_value);
+        if waiting {
+          if engine.vm.current_thread != engine.vm.main_thread {
+            return 52_u8;
+          }
+          let before = halo::embed::collection_count(engine: &engine);
+          halo::embed::collect_at_next_safepoint(engine: &engine);
+          set current = halo::embed::resume::<SwitchProbeHost>(engine: &engine, env: &env, budget: 1_u64);
+          let collected_code = outcome_code(outcome: current);
+          if collected_code != 2_u8 {
+            return 53_u8;
+          }
+          let after = halo::embed::collection_count(engine: &engine);
+          if after <= before {
+            return 53_u8;
+          }
+          let suspended_stats = halo::embed::last_collection(engine: &engine);
+          if suspended_stats.threads.live_objects != 2_u64 {
+            return 54_u8;
+          }
+          let no = Value::False();
+          let released_wait = thread_global(engine: &engine, name: &switch_wrap_wait_name[0_u64..9_u64], value: no);
+          if bnot(released_wait) {
+            return 53_u8;
+          }
+          set observed = True();
+          break;
+        }
+        set current = halo::embed::resume::<SwitchProbeHost>(engine: &engine, env: &env, budget: budget);
+      }
+      if bnot(observed) {
+        return 53_u8;
+      }
+    }
+    let settled = switch_settle(engine: &engine, env: &env, outcome: current, budget: budget);
+    let code = outcome_code(outcome: settled);
+    if code != 0_u8 {
+      return 52_u8;
+    }
+    let correct = returned(engine: &engine, expected: 1.0_f64);
+    if bnot(correct) {
+      return 52_u8;
+    }
+    if engine.result_count != 1_u64 {
+      return 52_u8;
+    }
+    if engine.vm.current_thread != engine.vm.main_thread {
+      return 52_u8;
+    }
+    let collected = gc_probe_collect(engine: &engine, env: &env, keep: stress);
+    if bnot(collected) {
+      return 53_u8;
+    }
+    let stats = halo::embed::last_collection(engine: &engine);
+    let first_release = phase == 2_u64;
+    let last_release = phase == 4_u64;
+    let released = bor(first_release, last_release);
+    if released {
+      if stats.threads.live_objects != 1_u64 {
+        return 54_u8;
+      }
+      let children = switch_live_children(engine: &engine);
+      if children != 0_u64 {
+        return 54_u8;
+      }
+    } else {
+      if stats.threads.live_objects != 2_u64 {
+        return 54_u8;
+      }
+      let children = switch_live_children(engine: &engine);
+      if children != 1_u64 {
+        return 54_u8;
+      }
+      let child = switch_wrap_child(engine: &engine);
+      if child == no_handle {
+        return 55_u8;
+      }
+      if phase == 0_u64 {
+        set first_child = child;
+      } else if child != first_child {
+        return 55_u8;
+      }
+    }
+  }
+  return 0_u8;
+}

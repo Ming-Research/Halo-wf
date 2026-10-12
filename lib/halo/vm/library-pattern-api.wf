@@ -262,6 +262,8 @@ fn pattern_gmatch_next(vm: &Vm, stack: &Box<Slots<Value>>, func: u64) -> r: Host
     }
     Builtin(..) => {
     }
+    Thread(..) => {
+    }
   }
   let source = values[0_u64];
   let pattern = values[1_u64];

@@ -1,0 +1,41 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "bulk",
+      "bytes": "running"
+    },
+    {
+      "type": "bulk",
+      "bytes": "true"
+    },
+    {
+      "type": "bulk",
+      "bytes": "normal"
+    },
+    {
+      "type": "bulk",
+      "bytes": "true"
+    },
+    {
+      "type": "bulk",
+      "bytes": "suspended"
+    },
+    {
+      "type": "bulk",
+      "bytes": "running"
+    },
+    {
+      "type": "bulk",
+      "bytes": "true"
+    },
+    {
+      "type": "bulk",
+      "bytes": "dead"
+    },
+    {
+      "type": "bulk",
+      "bytes": "true"
+    }
+  ]
+}

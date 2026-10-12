@@ -385,7 +385,7 @@ fn units() -> r: Bool pure {
   }
   let ups = array_filled::<u32, 2>(value: 0_u32);
   let fun = halo::heap::new_closure(heap: &heap, proto: 7_u32, upvals: &ups[0_u64..2_u64]);
-  let open = halo::heap::Upval::Open(slot: 9_u64);
+  let open = halo::heap::Upval::Open(owner: 0_u32, slot: 9_u64);
   let uv = match halo::heap::new_upvalue(heap: &heap, value: open) {
     Some(value: handle) => {
       give handle;
@@ -429,6 +429,9 @@ fn units() -> r: Bool pure {
       return False();
     }
     Builtin(..) => {
+      return False();
+    }
+    Thread(..) => {
       return False();
     }
   }
@@ -768,6 +771,8 @@ fn key_id(keys: &Array<Value, 162>, key: Value) -> r: u64 reads(keys) {
     Fun(..) => {
     }
     Builtin(..) => {
+    }
+    Thread(..) => {
     }
   }
   return 162_u64;

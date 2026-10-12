@@ -753,6 +753,9 @@ fn fixture_protected_error(budget: u64) -> r: Bool pure {
             Builtin(..) => {
               return False();
             }
+            Thread(..) => {
+              return False();
+            }
           }
         }
         let second_false = false_is(stack: &stack, slot: 2_u64);
@@ -1205,6 +1208,8 @@ fn false_is(stack: &Box<Slots<Value>>, slot: u64) -> r: Bool reads(stack) {
       Fun(..) => {
       }
       Builtin(..) => {
+      }
+      Thread(..) => {
       }
     }
   }

@@ -1,0 +1,97 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "bulk",
+      "bytes": "true"
+    },
+    {
+      "type": "bulk",
+      "bytes": "nil"
+    },
+    {
+      "type": "bulk",
+      "bytes": "suspended"
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "running"
+        },
+        {
+          "type": "bulk",
+          "bytes": "thread"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "bulk",
+          "bytes": "normal"
+        },
+        {
+          "type": "bulk",
+          "bytes": "running"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "bulk",
+          "bytes": "paused"
+        },
+        {
+          "type": "bulk",
+          "bytes": "suspended"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "true"
+        },
+        {
+          "type": "bulk",
+          "bytes": "finished"
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        },
+        {
+          "type": "bulk",
+          "bytes": "true"
+        }
+      ]
+    }
+  ]
+}

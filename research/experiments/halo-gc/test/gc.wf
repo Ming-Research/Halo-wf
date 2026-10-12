@@ -38,6 +38,9 @@ fn live_table(heap: &Heap, v: Value) -> r: Bool reads(heap) {
     Builtin(id: bid) => {
       return False();
     }
+    Thread(..) => {
+      return False();
+    }
   }
 }
 

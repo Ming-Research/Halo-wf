@@ -1,0 +1,147 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "running"
+        },
+        {
+          "type": "bulk",
+          "bytes": "running"
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 2
+            },
+            {
+              "type": "bulk",
+              "bytes": "false"
+            },
+            {
+              "type": "bulk",
+              "bytes": "cannot resume running coroutine"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "normal"
+        },
+        {
+          "type": "bulk",
+          "bytes": "normal"
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 2
+            },
+            {
+              "type": "bulk",
+              "bytes": "false"
+            },
+            {
+              "type": "bulk",
+              "bytes": "cannot resume normal coroutine"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "child"
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 2
+            },
+            {
+              "type": "bulk",
+              "bytes": "true"
+            },
+            {
+              "type": "bulk",
+              "bytes": "child-done"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "parent"
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 2
+            },
+            {
+              "type": "bulk",
+              "bytes": "true"
+            },
+            {
+              "type": "bulk",
+              "bytes": "parent-done"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 2
+            },
+            {
+              "type": "bulk",
+              "bytes": "false"
+            },
+            {
+              "type": "bulk",
+              "bytes": "cannot resume dead coroutine"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

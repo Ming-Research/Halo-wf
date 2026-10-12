@@ -85,6 +85,9 @@ fn append_value(env: &Env, vm: &Vm, v: Value) -> r: unit reads(vm), writes(env) 
     Builtin(..) => {
       append_text(out: &env^.bytes, text: &run_other_text[0_u64..6_u64]);
     }
+    Thread(..) => {
+      append_text(out: &env^.bytes, text: &run_other_text[0_u64..6_u64]);
+    }
   }
   return unit;
 }

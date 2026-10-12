@@ -1,0 +1,89 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "bulk",
+      "bytes": "true"
+    },
+    {
+      "type": "bulk",
+      "bytes": "first"
+    },
+    {
+      "type": "bulk",
+      "bytes": "start"
+    },
+    {
+      "type": "bulk",
+      "bytes": "true"
+    },
+    {
+      "type": "integer",
+      "value": 199
+    },
+    {
+      "type": "bulk",
+      "bytes": "C stack overflow"
+    },
+    {
+      "type": "bulk",
+      "bytes": "dead"
+    },
+    {
+      "type": "bulk",
+      "bytes": "false"
+    },
+    {
+      "type": "bulk",
+      "bytes": "C stack overflow"
+    },
+    {
+      "type": "bulk",
+      "bytes": "false"
+    },
+    {
+      "type": "bulk",
+      "bytes": "C stack overflow"
+    },
+    {
+      "type": "bulk",
+      "bytes": "dead"
+    },
+    {
+      "type": "bulk",
+      "bytes": "suspended"
+    },
+    {
+      "type": "bulk",
+      "bytes": "false"
+    },
+    {
+      "type": "bulk",
+      "bytes": "cannot resume dead coroutine"
+    },
+    {
+      "type": "bulk",
+      "bytes": "nil"
+    },
+    {
+      "type": "bulk",
+      "bytes": "true"
+    },
+    {
+      "type": "bulk",
+      "bytes": "yielded ran"
+    },
+    {
+      "type": "bulk",
+      "bytes": "again"
+    },
+    {
+      "type": "bulk",
+      "bytes": "dead"
+    },
+    {
+      "type": "bulk",
+      "bytes": "dead"
+    }
+  ]
+}
