@@ -120,7 +120,9 @@ longer repeated:
 - `interpreters.sh` fetches and builds PUC Lua 5.4.9 (pinned SHA-256),
   LuaJIT 2.1 and Luau (pinned commits) with each project's default release
   build, and writes their versions, digests, compilers and a compile line
-  to `manifest.txt`. PUC Lua 5.1.5 comes from `fetch-redis.sh`.
+  to `manifest.txt`. PUC Lua 5.1.5 is Redis 7.0.15's bundled Lua, built by
+  `fetch-redis.sh <directory> 7.0.15`; the oracle reference moved to 7.2.16,
+  and the baseline stays until a measurement decides it (`halo-bench-baseline-72`).
 - `fastest.py` times Halo's bench host and any number of other
   interpreters (`--engine ID=COMMAND`, the workload path appended) round-robin
   on the kernels and the bundles, validates every result against PUC 5.1.5

@@ -16,7 +16,7 @@ perl .github/run-check.pl msgpack python3 -B research/experiments/msgpack/run.py
   --full-lto --generated 3000
 ```
 
-Use an existing compiler and local Redis 7.0.15 sources/archive; no download or
+Use an existing compiler and local Redis 7.2.16 sources/archive; no download or
 Cargo build is needed. `--scratch` must be outside the repository. The cache is
 `${WHITEFOOT_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/whitefoot}/msgpack`, persistent
 across runs; `--cache DIR` overrides it and `--no-cache` disables it. The runner

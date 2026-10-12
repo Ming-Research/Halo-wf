@@ -1,6 +1,6 @@
 # Halo correctness oracle
 
-This corpus records the exact RESP2 replies of Redis 7.0.15 for small Lua 5.1
+This corpus records the exact RESP2 replies of Redis 7.2.16 for small Lua 5.1
 `EVAL` scripts. It supplies independent expected behavior for the Lua engine
 and its firn bindings described in [Halo's design](../../investigations/halo/DESIGN.md).
 Halo's `make check-core` compares the corpus through the `oracle` target;
@@ -15,7 +15,7 @@ below is the index of the observations it protects.
 ## Layout and invocation
 
 - `scripts/<group>/<name>.lua`: one observation or small related set per file.
-- `expected/<group>/<name>.txt`: the typed reply produced by Redis 7.0.15.
+- `expected/<group>/<name>.txt`: the typed reply produced by Redis 7.2.16.
 - `run.sh`: POSIX shell entry point with an embedded Python 3 standard-library
   RESP2 client. Python handles binary replies independently of Whitefoot;
   there is no redis-cli display-mode or locale ambiguity.
@@ -45,17 +45,17 @@ Compiler cache, `--no-cache` and `--full-lto` options belong to the
 [Halo comparison runner](../halo-e2e/README.md), not this RESP2 client.
 It uses a local TCP connection, so omit it from runs that prohibit network access.
 
-The default server is `/private/tmp/wf-redis-7.0.15/src/redis-server`, a
+The default server is `/private/tmp/wf-redis-7.2.16/src/redis-server`, a
 macOS build; the reference replies are recorded on x86-64 Linux by
 [oracle-reference.yml](../../../.github/workflows/oracle-reference.yml),
-which builds Redis 7.0.15 from source and keeps the new replies and their
+which builds Redis 7.2.16 from source and keeps the new replies and their
 difference from `expected/` as an artifact for review. The replies in
 `expected/` are that recording; the first one changed only
 `lua-core/nonfinite`, whose `0/0` prints `-nan` on x86-64 (a negative default
 NaN, printed with its sign by glibc) where the earlier macOS arm64 recording
 printed `nan`.
 Python 3 and that executable are the only dependencies. `--server PATH`
-can select another Redis 7.0.15 executable; its reported version is checked.
+can select another Redis 7.2.16 executable; its reported version is checked.
 The runner starts it on a free loopback port with `--save '' --appendonly no`,
 keeps all server files in a directory under the system's temporary
 directory, outside the repository, flushes the database before and after each case, and stops
@@ -134,7 +134,7 @@ one string type. It is RESP2 throughout; there is no HELLO 3 negotiation.
 
 ## Determinism and platform limits
 
-The pinned reference is recorded with Redis 7.0.15 on x86-64 Linux with
+The pinned reference is recorded with Redis 7.2.16 on x86-64 Linux with
 glibc, as described above. The replies are exact observations of that
 reference, not portable-language promises for every case.
 
@@ -150,14 +150,14 @@ reference, not portable-language promises for every case.
   5.1's boundary property. The language does not uniquely define `#` for
   every table with holes; the chosen result can differ with implementation
   and allocation layout.
-- `math-random` is **deterministic** here. Redis 7.0.15 replaces Lua's libc
+- `math-random` is **deterministic** here. Redis 7.2.16 replaces Lua's libc
   random functions with `redisLrand48`/`redisSrand48`, a 48-bit generator.
   Its initial state corresponds to seed `0x1234abcd` (305441741); Redis 7
   does not reset it on every EVAL. The script explicitly restores that
   seed, samples all three random forms, then seeds 12345 twice to check
   reproducibility. The numeric generator is intended to agree across
   architectures; its returned fractional values also exercise `%.14g`.
-  This behavior is evidenced by Redis 7.0.15 `src/rand.c` and
+  This behavior is evidenced by `src/rand.c` and
   `src/script_lua.c` in the reference source distribution.
 - `next-pairs` sorts its observations, avoiding unspecified hash iteration
   order; `table-growth-order` records the unsorted order on purpose, with
@@ -168,7 +168,7 @@ reference, not portable-language promises for every case.
 
 Fourteen cases intentionally return top-level errors, marked by `-- error: true`
 in their script headers: three in `lua-core` and eleven in `redis-api`.
-Redis 7.0.15 reports the global-write refusal as "Attempt to modify a readonly
+Redis 7.2.16 reports the global-write refusal as "Attempt to modify a readonly
 table". No script was dropped; there were no unexpected top-level rejections.
 Two complete generations must agree before treating a changed corpus as a
 reproducible reference. Cross-platform differences should be investigated,
@@ -273,8 +273,8 @@ not automatically used to overwrite this baseline.
 | redis-api | [double-reply-table](scripts/redis-api/double-reply-table.lua) | Returned {double=x} tables become bulk strings with the host's double text; 7.2.16 prints the shortest round-trip digits where 7.0.15 printed %.17g. |
 | redis-api | [double-score-reply](scripts/redis-api/double-score-reply.lua) | ZADD with a number score, then ZSCORE and WITHSCORES, reply with the host's double text (0.1 versus 0.10000000000000001). |
 | redis-api | [error-after-call-in-callback-line](scripts/redis-api/error-after-call-in-callback-line.lua) | A gsub error after a replacement that called redis.call returns is located at the gsub call. |
-| redis-api | [error-message-crlf](scripts/redis-api/error-message-crlf.lua) | A top-level runtime error whose message holds CR LF; 7.0.15 breaks the RESP framing, 7.2.16 is assumed to replace them with spaces. |
-| redis-api | [error-message-newline](scripts/redis-api/error-message-newline.lua) | A top-level runtime error whose message holds LF; 7.0.15 breaks the RESP framing, 7.2.16 is assumed to replace it with a space. |
+| redis-api | [error-message-crlf](scripts/redis-api/error-message-crlf.lua) | A top-level runtime error whose message holds CR LF; 7.0.15 breaks the RESP framing, 7.2.16 replaces them with spaces. |
+| redis-api | [error-message-newline](scripts/redis-api/error-message-newline.lua) | A top-level runtime error whose message holds LF; 7.0.15 breaks the RESP framing, 7.2.16 replaces it with a space. |
 | redis-api | [error-reply](scripts/redis-api/error-reply.lua) | redis.error_reply constructs a RESP error reply. |
 | redis-api | [error-reply-newline](scripts/redis-api/error-reply-newline.lua) | Control: redis.error_reply with a newline is sent as one line with a space, in both releases. |
 | redis-api | [error-rethrow-line](scripts/redis-api/error-rethrow-line.lua) | A redis.call error caught by xpcall and raised with error(e,0) is located at the rethrow. |
