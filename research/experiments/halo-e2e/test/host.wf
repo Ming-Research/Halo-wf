@@ -75,16 +75,16 @@ fn whole_integer(x: f64) -> r: Option<i64> pure {
   return None<i64>();
 }
 
-fn fpconv_text(out: &Box<Slots<u8>>, x: f64, signed_nan: Bool) -> r: unit writes(out) {
-  doc "Appends Redis 7.2.16's fpconv_dtoa text of x, written by the fpconv package; signed_nan true keeps a negative NaN's sign, as fpconv_dtoa writes it, and false writes every NaN as nan.";
+fn fpconv_text(out: &Box<Slots<u8>>, x: f64) -> r: unit writes(out) {
+  doc "Appends fpconv_dtoa's text of x, written by the fpconv package: the minus of a set sign bit first, a NaN's included.";
   let bytes = array_filled::<u8, 32>(value: 0_u8);
-  let count = fpconv::dtoa::format_double(value: x, signed_nan: signed_nan, out: &bytes[0_u64..32_u64]);
+  let count = fpconv::dtoa::format_double(value: x, out: &bytes[0_u64..32_u64]);
   text_bytes(out: out, bytes: &bytes[0_u64..count]);
   return unit;
 }
 
 fn append_argument_text(out: &Box<Slots<u8>>, x: f64) -> r: unit writes(out) {
-  doc "Appends the text a Lua number becomes as a redis.call argument, after Redis 7.2.16's luaArgsToRedisArgv: an integer when double2ll accepts it, otherwise fpconv_dtoa's text, in which a negative NaN keeps its sign (0/0 is -nan on the reference platform).";
+  doc "Appends the text a Lua number becomes as a redis.call argument, after Redis 7.2.16's luaArgsToRedisArgv: an integer when double2ll accepts it, otherwise fpconv_dtoa's text with no other rule, so a negative NaN keeps its sign (0/0 is -nan on the reference platform).";
   match whole_integer(x: x) {
     Some(value: integer) => {
       append_integer(out: out, value: integer);
@@ -93,22 +93,31 @@ fn append_argument_text(out: &Box<Slots<u8>>, x: f64) -> r: unit writes(out) {
     None() => {
     }
   }
-  let keep_sign = True();
-  fpconv_text(out: out, x: x, signed_nan: keep_sign);
+  fpconv_text(out: out, x: x);
   return unit;
 }
 
 fn append_double_text(out: &Box<Slots<u8>>, x: f64) -> r: unit writes(out) {
-  doc "Appends a RESP2 double reply's text, after Redis 7.2.16's d2string: nan for every NaN, and inf, -inf, 0 and -0 as fpconv_dtoa writes them; any other value as a redis.call argument's text.";
+  doc "Appends a RESP2 double reply's text, after Redis 7.2.16's d2string, which writes three cases itself before its integer rule and fpconv_dtoa: nan for every NaN whatever its sign, inf or -inf for an infinity, and 0 or -0 for a zero by its sign. Any other value is written as a redis.call argument's text.";
+  if fne(x, x) {
+    text_bytes(out: out, bytes: &nan_word[0_u64..3_u64]);
+    return unit;
+  }
   let zero = feq(x, 0.0_f64);
   let magnitude = fabs(x);
   let infinite = fgt(magnitude, 1.7976931348623157e308_f64);
-  let not_a_number = fne(x, x);
   let edge = bor(zero, infinite);
-  let special = bor(edge, not_a_number);
-  if special {
-    let drop_sign = False();
-    fpconv_text(out: out, x: x, signed_nan: drop_sign);
+  if edge {
+    let value_bits = reinterpret::<f64, u64>(x);
+    let sign_bit = ishr.wrap(value_bits, 63_u32);
+    if sign_bit == 1_u64 {
+      push(out: out, byte: 45_u8);
+    }
+    if zero {
+      push(out: out, byte: 48_u8);
+    } else {
+      text_bytes(out: out, bytes: &inf_word[0_u64..3_u64]);
+    }
     return unit;
   }
   append_argument_text(out: out, x: x);

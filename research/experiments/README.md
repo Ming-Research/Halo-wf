@@ -39,9 +39,10 @@ history, not current instructions ([AGENTS.md](../../AGENTS.md#design-tree-and-r
   its scripts, recorded from Redis 7.2.16 on x86-64 Linux.
 - [halo-e2e/](halo-e2e/RESULTS.md) — those scripts run through `pkg::embed`
   and an in-memory host; `make check` runs this comparison.
-- [redis-double-text/](../../lib/fpconv/README.md#oracle-table) — 18,231
-  doubles as redis-server 7.2.16 wrote them; `make check` compares the test
-  host's texts, written with the `lib/fpconv` package.
+- [redis-double-text/](../../lib/fpconv/README.md#oracle-table) — 18,235
+  doubles as redis-server 7.2.16 wrote them, recorded by the oracle-reference
+  workflow; `make check` compares the test host's texts, written with the
+  `lib/fpconv` package.
 
 ## Codec packages
 

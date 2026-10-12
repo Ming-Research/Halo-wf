@@ -70,11 +70,11 @@ oracle: $(E2E_TEST)
 	exit $$status
 
 # The double texts (research/experiments/redis-double-text): the same test
-# program writes each of the 18,231 doubles that redis-server 7.2.16 wrote in a
+# program writes each of the 18,235 doubles that redis-server 7.2.16 wrote in a
 # measured table, as a double reply and as a redis.call argument, with the test
 # host's rules and the fpconv package (lib/fpconv), and the runner requires
-# every text byte for byte. It first shows that the table rejects an
-# exact-shortest formatter.
+# every text byte for byte. It first requires the table's pinned row count and
+# digest, and shows that the table rejects an exact-shortest formatter.
 double-text: $(E2E_TEST)
 	@cd $(ROOT) && $(PY) -B research/experiments/redis-double-text/check.py --binary $(E2E_TEST)
 

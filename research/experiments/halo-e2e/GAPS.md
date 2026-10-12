@@ -107,15 +107,19 @@ fixed clock at zero: positive durations remain live; nonpositive ones delete
 immediately. Reopen with clock-valued expiry fixtures before using this host
 to test countdowns. Malformed score/expiry inputs are not verified.
 
-A Lua number passed to redis.call, a double reply (ZSCORE, WITHSCORES scores,
-a returned `{double=x}`) and INCRBYFLOAT's result follow Redis 7.2.16's rules:
-double2ll's integer range, d2string's nan, infinities and zeros, and
+A Lua number passed to redis.call and a double reply (ZSCORE, WITHSCORES
+scores, a returned `{double=x}`) follow Redis 7.2.16's rules: double2ll's
+integer range, d2string's nan, infinities and zeros for a double reply, and
 otherwise fpconv's Grisu2 text, which this host writes with the
 [fpconv package](../../../lib/fpconv/README.md) (board item
-`halo-redis-double-text`). The gate compares both texts with 18,231 doubles
-measured on redis-server 7.2.16. INCRBYFLOAT still adds in double where Redis
-adds in long double and prints with `%.17Lf`, so sums that the two precisions
-round differently still differ.
+`halo-redis-double-text`). The gate compares both texts with 18,235 doubles
+measured on redis-server 7.2.16, both NaNs and both infinities among them.
+INCRBYFLOAT's result does not follow these rules: Redis adds in long double
+and writes the sum with ld2string's `%.17Lf`, while this host adds in double
+and writes the sum as a redis.call argument's text. The two agree when both
+precisions give the same integral sum within double2ll's range and on sums
+such as 0 + 0.1, and otherwise can differ (1e17 + 1 keeps the 1 in long
+double).
 
 RESP2 conversion truncates representable numbers toward zero, maps true to one and false/nil
 to nil bulk, recognizes err before ok fields, and traverses tables from index

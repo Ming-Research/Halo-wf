@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Compare the test host's double texts with the ones redis-server 7.2.16 wrote; builds nothing."""
 import argparse
+import hashlib
 import math
 from pathlib import Path
 import struct
@@ -13,17 +14,20 @@ HEADER = ['bits', 'family', 'double_reply', 'call_argument']
 COLUMNS = ('double_reply', 'call_argument')
 # 1e23: Redis writes 99999999999999990000000, the exact shortest digits are 1e+23.
 GRISU_WITNESS = '44b52d02c7e14af6'
-# Read from Redis 7.2.16's d2string and fpconv_dtoa (source-excerpts of the
-# measuring run), not measured: the table holds no NaN or infinity.
-SOURCE_PROBES = [
-    ('7ff8000000000000', 'nan', 'nan'),
-    ('fff8000000000000', 'nan', '-nan'),
-    ('7ff0000000000000', 'inf', 'inf'),
-    ('fff0000000000000', '-inf', '-inf'),
-]
+# The committed table as record.py wrote it on redis-server 7.2.16: a row
+# lost, added or changed, or a table recorded again, fails the check until
+# these two are updated together with the table.
+TABLE_ROWS = 18235
+TABLE_SHA256 = ''
 
 
 def load(path):
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    if not TABLE_SHA256:
+        raise SystemExit(f'{path}: TABLE_SHA256 in check.py is not set; the table\'s SHA-256 is {digest}')
+    if digest != TABLE_SHA256:
+        raise SystemExit(f'{path}: SHA-256 {digest}, but check.py pins {TABLE_SHA256}; '
+                         'a table recorded again needs TABLE_SHA256 and TABLE_ROWS updated with it')
     rows = []
     with open(path, encoding='ascii', newline='') as table:
         if table.readline().rstrip('\n').split('\t') != HEADER:
@@ -36,6 +40,9 @@ def load(path):
             rows.append(dict(zip(HEADER, fields)))
     if len({row['bits'] for row in rows}) != len(rows):
         raise ValueError(f'{path}: repeated bit pattern')
+    if len(rows) != TABLE_ROWS:
+        raise SystemExit(f'{path}: {len(rows)} rows, but check.py pins {TABLE_ROWS}')
+    print(f'table: {len(rows)} rows (pinned {TABLE_ROWS}), SHA-256 {digest} (pinned)', flush=True)
     return rows
 
 
@@ -74,12 +81,9 @@ def shortest_differs(rows):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--binary', type=Path, required=True, help='the built halo-e2e test program')
-    parser.add_argument('--table', type=Path, default=TABLE)
     parser.add_argument('--show', type=int, default=10, help='mismatches to print')
     args = parser.parse_args()
-    rows = load(args.table)
-    probes = [{'bits': bits, 'family': 'source', 'double_reply': reply, 'call_argument': argument}
-              for bits, reply, argument in SOURCE_PROBES]
+    rows = load(TABLE)
 
     # The table rejects an exact-shortest formatter, and the comparison sees
     # a one-row change: otherwise a pass below would not show Grisu2's digits.
@@ -94,8 +98,7 @@ def main():
     print(f'control: an exact-shortest formatter differs on {len(differs)} of {len(rows)} rows, '
           f'including 1e23; the comparison detects one changed text', flush=True)
 
-    checked = rows + probes
-    source = b''.join(struct.pack('<Q', int(row['bits'], 16)) for row in checked)
+    source = b''.join(struct.pack('<Q', int(row['bits'], 16)) for row in rows)
     try:
         result = subprocess.run([str(args.binary), '--double-text'], input=source, capture_output=True, timeout=600)
     except subprocess.TimeoutExpired:
@@ -106,8 +109,8 @@ def main():
         print(result.stderr.decode('utf8', 'replace'))
         return 2
     lines = result.stdout.split(b'\n')
-    if lines[-1] != b'' or len(lines) - 1 != len(checked):
-        print(f'double text: {len(lines) - 1} lines for {len(checked)} bit patterns')
+    if lines[-1] != b'' or len(lines) - 1 != len(rows):
+        print(f'double text: {len(lines) - 1} lines for {len(rows)} bit patterns')
         return 2
     actual = []
     for line in lines[:-1]:
@@ -116,11 +119,11 @@ def main():
             print(f'double text: malformed line {line!r}')
             return 2
         actual.append(fields)
-    mismatches = compare(checked, actual)
+    mismatches = compare(rows, actual)
     for row, column, expected, got in mismatches[:args.show]:
         print(f'MISMATCH {row["bits"]} {row["family"]} {column}: expected {expected!r}, got {got!r}')
-    print(f'double text: {len(rows)} measured rows and {len(probes)} source-derived probes, '
-          f'{len(checked) * 2 - len(mismatches)}/{len(checked) * 2} texts byte-identical', flush=True)
+    print(f'double text: {len(rows)} measured rows, '
+          f'{len(rows) * 2 - len(mismatches)}/{len(rows) * 2} texts byte-identical', flush=True)
     return 1 if mismatches else 0
 
 

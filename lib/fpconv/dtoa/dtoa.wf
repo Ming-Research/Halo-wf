@@ -409,11 +409,11 @@ fn emit_digits(digits: &Chars, power: i64, negative: Bool, out: &Chars) -> emitt
   return unit;
 }
 
-fn format_double(value: f64, signed_nan: Bool, out: &[u8]) -> length: u64 writes(out) contract {
+fn format_double(value: f64, out: &[u8]) -> length: u64 writes(out) contract {
   requires out^.len >= 32_u64;
   ensures length <= 32_u64;
 } {
-  doc "fpconv_dtoa with filter_special, NaN's sign written only when signed_nan is true.";
+  doc "fpconv_dtoa with filter_special: the sign bit's minus first, for a NaN too.";
   let text = chars_new();
   let bits = reinterpret::<f64, u64>(value);
   let sign = ishr.wrap(bits, 63_u32);
@@ -426,13 +426,7 @@ fn format_double(value: f64, signed_nan: Bool, out: &[u8]) -> length: u64 writes
   let special = biased == 2047_u64;
   let has_fraction = fraction != 0_u64;
   let nan = band(special, has_fraction);
-  let show_sign = negative;
-  if nan {
-    if bnot(signed_nan) {
-      set show_sign = False();
-    }
-  }
-  if show_sign {
+  if negative {
     push_byte(chars: &text, byte: 45_u8);
   }
   if zero {
