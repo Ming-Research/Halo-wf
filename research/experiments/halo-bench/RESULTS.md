@@ -5245,3 +5245,38 @@ kernels' gains kept. Its blocked store forwards on integer-table were about
 timing effect (ratio 0.996); Whitefoot recorded that as its item
 lm-bl-int-table-forward-rise. The upgrade to the release that contains
 #357 is measured again when it is published.
+
+## Whitefoot wf-d837678c6905 upgrade
+
+### Question, recorded before it runs
+
+The pin moves from `wf-7062f3ac4ac7` (Whitefoot main `7062f3ac4`,
+specification v0.127) to `wf-d837678c6905` (main `d837678c6`, v0.129). In
+between: Whitefoot#357, which per-field copies and in-place loop reads
+without forced inlining, and which restored concat's copy loop in its
+third experiment release (`wf-exp-ce22645f11a0`: concat 0.980 against
+`wf-78223721f77d` and 0.942 against `wf-7062f3ac4ac7`, recorded in
+[the previous upgrade's outcome](#whitefoot-wf-7062f3ac4ac7-upgrade)); Whitefoot#351, enum tags sized by
+variant count, which narrows Halo's `Cell`; growth that keeps facts about
+length and filled elements (v0.128); and `&r^` on a range reference refused
+(v0.129). The gate passes on the new release with the source unchanged
+(check run 38196808155), so both releases build the same source.
+
+Comparison, on the 14900K with every timed process on CPU 2: one, three
+and six interleaved full-LTO pairs over the seven kernels (binary-trees at
+depth 14), new release against `wf-7062f3ac4ac7` with a twin of the old
+build, and new release against `wf-78223721f77d`, the release before
+concat's regression; and three `perf stat` runs per side of fib and
+integer-table counting cycles and blocked store forwards
+(`LD_BLOCKS.STORE_FORWARD`, event 0x03, umask 0x82, on the P-cores).
+
+Expected, from status-board item halo-pin-357: concat not slower than
+under `wf-78223721f77d` beyond its larger range and the twin's difference;
+no other kernel slower than under `wf-7062f3ac4ac7` beyond its larger range
+and the twin's difference. Either failure stops the upgrade for an
+attribution. Integer-table's blocked-store-forward count rose about 10% in
+the experiment release against `wf-7062f3ac4ac7` without a timing effect;
+Whitefoot tracks it as lm-bl-int-table-forward-rise, and it does not block
+this upgrade. The experiment release's ratios are predictions here, and
+the official release adds #351, so a difference from them is reported as
+measured.
