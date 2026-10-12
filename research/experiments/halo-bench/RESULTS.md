@@ -5727,3 +5727,10 @@ next PUC comparison. `enter_lua` (190), the `Call` arm (125) and the
 `enter_lua`'s repeated closure checks and prototype copy now matter more is
 a measurement for [one closure lookup](#one-closure-lookup-and-the-prototype-fields-a-call-reads)'s
 change on this base, not yet taken.
+
+Both measurements predate the merge of coroutines from main, after which
+`prepare` also charges a running coroutine's stack growth once a call is
+prepared; the merged revision makes the direct entry charge it the same way
+after `enter_lua` when a coroutine is running, which adds to every Lua call
+on the main thread one comparison of the running thread with the main
+thread, and is measured again below.

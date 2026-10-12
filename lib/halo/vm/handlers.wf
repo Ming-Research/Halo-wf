@@ -3332,7 +3332,11 @@ fn instruction_call<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slo
   let step = Step::Error();
   match lua_callee(vm: vm, stack: stack, func: ra) {
     Some(value: lua_handle) => {
-      set step = enter_lua(vm: vm, stack: stack, h: lua_handle, func: ra, argc: argc, wanted: wanted, return_pc: next, tail: tailing);
+      let entered = enter_lua(vm: vm, stack: stack, h: lua_handle, func: ra, argc: argc, wanted: wanted, return_pc: next, tail: tailing);
+      set step = entered;
+      if vm^.current_thread != vm^.main_thread {
+        set step = charge_coroutine_call(vm: vm, stack: stack, step: entered);
+      }
     }
     None() => {
       set step = prepare::<Host<E>>(code: code, consts: consts, vm: vm, stack: stack, env: env, func: ra, argc: argc, wanted: wanted, return_pc: next, base: base, kbase: kbase, tail: tailing);
@@ -3400,7 +3404,11 @@ fn instruction_tail_call<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
   let step = Step::Error();
   match lua_callee(vm: vm, stack: stack, func: ra) {
     Some(value: lua_handle) => {
-      set step = enter_lua(vm: vm, stack: stack, h: lua_handle, func: ra, argc: argc, wanted: wanted, return_pc: next, tail: tailing);
+      let entered = enter_lua(vm: vm, stack: stack, h: lua_handle, func: ra, argc: argc, wanted: wanted, return_pc: next, tail: tailing);
+      set step = entered;
+      if vm^.current_thread != vm^.main_thread {
+        set step = charge_coroutine_call(vm: vm, stack: stack, step: entered);
+      }
     }
     None() => {
       set step = prepare::<Host<E>>(code: code, consts: consts, vm: vm, stack: stack, env: env, func: ra, argc: argc, wanted: wanted, return_pc: next, base: base, kbase: kbase, tail: tailing);
