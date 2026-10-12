@@ -1,9 +1,11 @@
 # Halo's gate: every push runs the checks of `make check` as eight parallel
-# jobs (Makefile), each after downloading the pinned Whitefoot compiler
-# release: the core group, the reference group and the parts of the extended
-# group, so that no job compiles more than about two test programs. Each check
-# is in exactly one job. The exact revision that merges into main passes all
-# eight first (the owner-wide merge requirements).
+# jobs, one per part of the Makefile's GATE_PARTS, each after downloading the
+# pinned Whitefoot compiler release: the core group, the reference group and
+# the parts of the extended group, so that no job builds more than three
+# Whitefoot programs, nor more than one end-to-end test program. Each check is
+# in exactly one job; the core group's gate-parts check fails when this
+# matrix's parts differ from GATE_PARTS. The exact revision that merges into
+# main passes all eight first (the owner-wide merge requirements).
 name: check
 
 on:

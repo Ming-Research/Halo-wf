@@ -22,38 +22,63 @@ DESIGN_REVIEW_BASE ?= origin/main
 include $(ROOT)/whitefoot-kit/whitefoot.mk
 
 # The collector's mutant controls (research/experiments/halo-gc/controls.sh),
-# one part each; controls.sh names the same labels.
+# one part each; gate-parts checks that controls.sh lists the same labels.
 ROOTS_MUTANTS := open-upvalues frame-closure constants
 ROOTS_MUTANT_TARGETS := $(ROOTS_MUTANTS:%=roots-mutant-%)
 ROOTS_MUTANT_CHECKS := $(ROOTS_MUTANTS:%=check-roots-mutant-%)
 
+# The parts of `make check`, each a `check-<part>` target and one CI job
+# (.github/workflows/check.yml's matrix): the core group, the extended group's
+# parts and the reference group.
+EXTENDED_PARTS := roots-base $(ROOTS_MUTANTS:%=roots-mutant-%) hosts-vm hosts-lib-json
+GATE_PARTS := core $(EXTENDED_PARTS) reference
+
 .PHONY: check check-core check-extended check-reference \
 	check-roots-base $(ROOTS_MUTANT_CHECKS) check-hosts-vm check-hosts-lib-json \
 	oracle roots roots-base $(ROOTS_MUTANT_TARGETS) hosts hosts-vm hosts-lib json \
-	reference-lua number msgpack design-lint design-ready FORCE
+	reference-lua number msgpack design-lint design-ready gate-parts FORCE
 
 # `make check` runs three groups: the core (the embedding probe, the oracle
-# corpus and the design lint), the extended checks that need no reference
-# build (the collector's root controls, the research hosts, the JSON package)
-# and the checks against Redis 7.0.15's bundled Lua built from source (the
-# number library, the MessagePack package).
-check: check-core check-extended check-reference
-check-core: compiler oracle design-lint
-check-extended: compiler roots hosts json
+# corpus, the design lint and gate-parts), the extended checks that need no
+# reference build (the collector's root controls, the research hosts, the JSON
+# package) and the checks against Redis 7.0.15's bundled Lua built from source
+# (the number library, the MessagePack package). `check` and `check-extended`
+# are made of their parts, so they run exactly what CI's jobs run.
+check: $(GATE_PARTS:%=check-%)
+check-core: compiler oracle design-lint gate-parts
+check-extended: $(EXTENDED_PARTS:%=check-%)
 check-reference: compiler number msgpack
 
-# CI does not run the groups as three jobs: it runs core, reference and the
-# parts below as eight parallel jobs, so that no job compiles more than about
-# two test programs and the slowest job bounds the gate's time. The extended
-# group is split into: the root controls except the mutants (check-roots-base,
-# which builds the oracle's test program), one job per mutant (each builds its
-# own program), halo-vm's smoke and suite (check-hosts-vm), and the other
-# hosts' builds with the JSON package (check-hosts-lib-json). Together the
-# parts run exactly the checks of check-extended, each in one part.
+# CI runs each part as a parallel job, so that no job builds more than three
+# Whitefoot programs, nor more than one end-to-end test program, and the
+# slowest job bounds the gate's time. The extended group's parts: the root
+# controls except the mutants (check-roots-base, which builds the oracle's
+# test program), one per mutant (each builds its own test program), halo-vm's
+# smoke and suite (check-hosts-vm, two programs), and the other hosts' builds
+# with the JSON package (check-hosts-lib-json, three programs). Each check of
+# the extended group is in exactly one part.
 check-roots-base: compiler roots-base
 $(ROOTS_MUTANT_CHECKS): check-roots-mutant-%: compiler roots-mutant-%
 check-hosts-vm: compiler hosts-vm
 check-hosts-lib-json: compiler hosts-lib json
+
+# The parts stay in step, checked without compiling anything: check.yml's
+# matrix runs exactly GATE_PARTS, each once, so every check of `make check`
+# has a CI job; and controls.sh's parts (ROOTS_PART=list) are exactly base and
+# one mutant-<label> per ROOTS_MUTANTS label, so every roots part has a target.
+GATE_WORKFLOW := $(ROOT)/.github/workflows/check.yml
+ROOTS_SCRIPT := $(ROOT)/research/experiments/halo-gc/controls.sh
+gate-parts:
+	@ci=$$(sed -n 's/^[ -]*part: *//p' $(GATE_WORKFLOW) | sort | tr '\n' ' '); \
+	gate=$$(printf '%s\n' $(GATE_PARTS) | sort | tr '\n' ' '); \
+	if [ "$$ci" != "$$gate" ]; then \
+		echo "gate parts: check.yml's matrix runs [ $$ci], make check runs [ $$gate]"; exit 1; fi; \
+	listed=$$(ROOTS_PART=list sh $(ROOTS_SCRIPT)) || { echo "gate parts: controls.sh did not list its parts"; exit 1; }; \
+	roots=$$(printf '%s\n' $$listed | sort | tr '\n' ' '); \
+	want=$$(printf '%s\n' base $(ROOTS_MUTANTS:%=mutant-%) | sort | tr '\n' ' '); \
+	if [ "$$roots" != "$$want" ]; then \
+		echo "gate parts: controls.sh lists [ $$roots], the Makefile has targets for [ $$want]"; exit 1; fi; \
+	echo "gate parts: check.yml's $(words $(GATE_PARTS)) jobs match make check's parts; controls.sh's parts match roots-base and the $(words $(ROOTS_MUTANTS)) mutant targets"
 
 # The end-to-end comparison: research/experiments/halo-e2e builds a test
 # program that runs scripts through pkg::embed and an in-memory host, and its
