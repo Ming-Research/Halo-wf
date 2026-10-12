@@ -43,6 +43,14 @@
     },
     {
       "type": "bulk",
+      "bytes": "Attempt to modify a readonly table"
+    },
+    {
+      "type": "bulk",
+      "bytes": "Attempt to modify a readonly table"
+    },
+    {
+      "type": "bulk",
       "bytes": "function,number,table"
     }
   ]
