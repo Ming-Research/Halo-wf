@@ -7,16 +7,14 @@ Halo's `make check-core` compares the corpus through the `oracle` target;
 recording reference replies remains the job of
 [oracle-reference.yml](../../../.github/workflows/oracle-reference.yml).
 
-There are 123 scripts: 68 `lua-core`, 23 `redis-api`, 6 `apps`, 11 `libs`,
+There are 124 scripts: 68 `lua-core`, 23 `redis-api`, 6 `apps`, 12 `libs`,
 and 15 `coroutines`.
 The scripts, replies and runner belong here until the oracle is replaced or
 Halo/firn scripting is retired. Each case is consumed by `run.sh`; the table
 below is the index of the observations it protects.
 
 The `coroutines` group is comparison 1 of the
-[coroutine study](../../investigations/halo/COROUTINES.md); Halo has no
-coroutine library yet, so `make check-core` fails on these cases until it
-does.
+[coroutine study](../../investigations/halo/COROUTINES.md).
 
 ## Layout and invocation
 
@@ -212,6 +210,7 @@ not automatically used to overwrite this baseline.
 | libs | [cjson-objects](scripts/libs/cjson-objects.lua) | JSON objects, empty table encoding and decoded null/boolean values. |
 | libs | [cmsgpack-binary](scripts/libs/cmsgpack-binary.lua) | MessagePack exact scalar bytes and binary strings survive packing. |
 | libs | [cmsgpack-roundtrip](scripts/libs/cmsgpack-roundtrip.lua) | MessagePack round-trips maps, arrays, booleans, integers and strings. |
+| libs | [gsub-null-replacement](scripts/libs/gsub-null-replacement.lua) | string.gsub refuses cjson.null, a userdata, as its replacement. |
 | libs | [struct-integers](scripts/libs/struct-integers.lua) | struct packs explicit-endian signed and unsigned integer widths. |
 | libs | [struct-strings-floats](scripts/libs/struct-strings-floats.lua) | struct packs fixed strings and doubles with explicit endian and offsets. |
 | lua-core | [argument-error-names](scripts/lua-core/argument-error-names.lua) | Argument errors name the called function from the call site: aliases, fields, methods and bad self, upvalues, tail calls, generic-for iterators, metamethods, and '?' for calls from native code. |
