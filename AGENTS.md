@@ -53,12 +53,16 @@ The upgrade's benchmark is
   Halo-wf areas (`halo-compat`, `halo-perf`, `halo-tools`); code and
   documents name an item by its key.
 - Halo's performance comparisons build both sides with full LTO.
-- `make check`, the gate, runs in CI on every push as three parallel groups
-  (Makefile): core (the embedding probe, every oracle script at budgets 1, 7
-  and 1000, ordinary and under collector stress, and the design lint),
-  extended (the collector's root controls, the research hosts, the JSON
-  package) and reference (the number library and the MessagePack package
-  against Redis 7.0.15's bundled Lua built from source). It needs git, curl,
+- `make check`, the gate, is three groups (Makefile): core (the embedding
+  probe, every oracle script at budgets 1, 7 and 1000, ordinary and under
+  collector stress, and the design lint), extended (the collector's root
+  controls, the research hosts, the JSON package) and reference (the number
+  library and the MessagePack package against Redis 7.0.15's bundled Lua built
+  from source). CI runs it on every push as eight parallel jobs, each check in
+  exactly one, so that no job compiles more than about two test programs:
+  core, reference, the extended group's six parts (`check-roots-base`, one
+  `check-roots-mutant-<label>` per collector mutant, `check-hosts-vm` and
+  `check-hosts-lib-json`; `.github/workflows/check.yml`). It needs git, curl,
   Python 3, a C compiler, both submodules (`git clone --recurse-submodules`)
   and, on Linux, `/usr/bin/clang` and LLD of the LLVM major the pinned
   release names (`make toolchain` installs it).

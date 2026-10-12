@@ -21,17 +21,39 @@ DESIGN_REVIEW_BASE ?= origin/main
 # projects written in Whitefoot (whitefoot-kit/downstream.md).
 include $(ROOT)/whitefoot-kit/whitefoot.mk
 
-.PHONY: check check-core check-extended check-reference oracle roots hosts json reference-lua number msgpack design-lint design-ready FORCE
+# The collector's mutant controls (research/experiments/halo-gc/controls.sh),
+# one part each; controls.sh names the same labels.
+ROOTS_MUTANTS := open-upvalues frame-closure constants
+ROOTS_MUTANT_TARGETS := $(ROOTS_MUTANTS:%=roots-mutant-%)
+ROOTS_MUTANT_CHECKS := $(ROOTS_MUTANTS:%=check-roots-mutant-%)
 
-# `make check` runs three groups, which CI runs as parallel jobs: the core
-# (the embedding probe, the oracle corpus and the design lint), the extended
-# checks that need no reference build (the collector's root controls, the
-# research hosts, the JSON package) and the checks against Redis 7.0.15's
-# bundled Lua built from source (the number library, the MessagePack package).
+.PHONY: check check-core check-extended check-reference \
+	check-roots-base $(ROOTS_MUTANT_CHECKS) check-hosts-vm check-hosts-lib-json \
+	oracle roots roots-base $(ROOTS_MUTANT_TARGETS) hosts hosts-vm hosts-lib json \
+	reference-lua number msgpack design-lint design-ready FORCE
+
+# `make check` runs three groups: the core (the embedding probe, the oracle
+# corpus and the design lint), the extended checks that need no reference
+# build (the collector's root controls, the research hosts, the JSON package)
+# and the checks against Redis 7.0.15's bundled Lua built from source (the
+# number library, the MessagePack package).
 check: check-core check-extended check-reference
 check-core: compiler oracle design-lint
 check-extended: compiler roots hosts json
 check-reference: compiler number msgpack
+
+# CI does not run the groups as three jobs: it runs core, reference and the
+# parts below as eight parallel jobs, so that no job compiles more than about
+# two test programs and the slowest job bounds the gate's time. The extended
+# group is split into: the root controls except the mutants (check-roots-base,
+# which builds the oracle's test program), one job per mutant (each builds its
+# own program), halo-vm's smoke and suite (check-hosts-vm), and the other
+# hosts' builds with the JSON package (check-hosts-lib-json). Together the
+# parts run exactly the checks of check-extended, each in one part.
+check-roots-base: compiler roots-base
+$(ROOTS_MUTANT_CHECKS): check-roots-mutant-%: compiler roots-mutant-%
+check-hosts-vm: compiler hosts-vm
+check-hosts-lib-json: compiler hosts-lib json
 
 # The end-to-end comparison: research/experiments/halo-e2e builds a test
 # program that runs scripts through pkg::embed and an in-memory host, and its
@@ -70,21 +92,40 @@ oracle: $(E2E_TEST)
 
 # The collector's removed-root controls (research/experiments/halo-gc): the
 # local root cases pass with the oracle's test program, and fail once a sole
-# root is hidden or one marking call is removed and rebuilt in a copy.
+# root is hidden or one marking call is removed and rebuilt in a copy. `roots`
+# runs all of it; `roots-base` runs the classifier self-test and the controls
+# that need the oracle's test program, and `roots-mutant-<label>` builds one
+# mutant in a copy and checks that its control fails by a detected result.
+# Each check is in exactly one of `roots-base` and the mutant targets.
+ROOTS_CONTROLS = WHITEFOOTC=$(WHITEFOOTC) sh $(ROOT)/research/experiments/halo-gc/controls.sh
 roots: $(E2E_TEST)
-	@WHITEFOOTC=$(WHITEFOOTC) sh $(ROOT)/research/experiments/halo-gc/controls.sh $(E2E_TEST) $(BUILD)/halo-roots
+	@ROOTS_PART=all $(ROOTS_CONTROLS) $(E2E_TEST) $(BUILD)/halo-roots
+
+roots-base: $(E2E_TEST)
+	@ROOTS_PART=base $(ROOTS_CONTROLS) $(E2E_TEST) $(BUILD)/halo-roots
+
+$(ROOTS_MUTANT_TARGETS): roots-mutant-%: $(PIN) $(WHITEFOOTC) FORCE
+	@ROOTS_PART=mutant-$* $(ROOTS_CONTROLS) $(BUILD)/halo-roots
 
 # The research hosts that use the engine's interfaces directly build, and
-# halo-vm's smoke and suite pass, so an interface change reaches them.
+# halo-vm's smoke and suite pass, so an interface change reaches them. `hosts`
+# is two parts, each building two programs: `hosts-vm` builds and runs
+# halo-vm's smoke and suite, and `hosts-lib` builds halo-lib's run entry and
+# the benchmark host without running them.
 HOSTS := $(BUILD)/halo-hosts
-hosts: $(PIN) $(WHITEFOOTC) FORCE
+hosts: hosts-vm hosts-lib
+
+hosts-vm: $(PIN) $(WHITEFOOTC) FORCE
 	@mkdir -p $(HOSTS)
 	@cd $(ROOT)/research/experiments/halo-vm && $(WHITEFOOTC) --graph modules.wfg --entry smoke -o $(HOSTS)/vm-smoke
 	@cd $(ROOT)/research/experiments/halo-vm && $(WHITEFOOTC) --graph modules.wfg --entry suite -o $(HOSTS)/vm-suite
-	@cd $(ROOT)/research/experiments/halo-lib && $(WHITEFOOTC) --graph modules.wfg --entry run -o $(HOSTS)/lib-run
-	@cd $(ROOT)/research/experiments/halo-bench && $(WHITEFOOTC) --graph modules.wfg --entry bench -o $(HOSTS)/bench
 	@$(HOSTS)/vm-smoke && echo "halo-vm smoke: passed"
 	@$(HOSTS)/vm-suite && echo "halo-vm suite: passed"
+
+hosts-lib: $(PIN) $(WHITEFOOTC) FORCE
+	@mkdir -p $(HOSTS)
+	@cd $(ROOT)/research/experiments/halo-lib && $(WHITEFOOTC) --graph modules.wfg --entry run -o $(HOSTS)/lib-run
+	@cd $(ROOT)/research/experiments/halo-bench && $(WHITEFOOTC) --graph modules.wfg --entry bench -o $(HOSTS)/bench
 
 # The JSON package against the runner's independent Python oracle
 # (research/experiments/json), on generated documents and number texts.

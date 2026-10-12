@@ -7,11 +7,31 @@
 # reason() gives, or a budget-dependent reply) or the engine's own setup
 # compile (3), setup runtime (4), budget (5) or host-stop (6) exit; a crash by
 # signal, a transport failure (2), any other exit, a timeout, an invalid
-# statistic or any other FAIL reason, or a Traceback, rejects the control. A pure-shell classifier self-test runs first, before
-# compiler setup. Mutants build in copies under the
-# scratch directory; the working tree is never edited. `make roots` runs it:
+# statistic or any other FAIL reason, or a Traceback, rejects the control. A
+# pure-shell classifier self-test runs first, before compiler setup. Mutants
+# build in copies under the scratch directory; the working tree is never
+# edited. `make roots` runs all of it:
 #   WHITEFOOTC=<compiler> controls.sh <built e2e test program> <scratch directory>
+# ROOTS_PART selects what runs, so CI can run the parts as parallel jobs. Every
+# check belongs to exactly one part, and the default runs all of them:
+#   all (default)    every part, in the order below
+#   base             the classifier self-test (run once, in this part) and the
+#                    four non-mutant controls; needs the built e2e test program
+#   mutant-<label>   one mutant's build and its control (open-upvalues,
+#                    frame-closure or constants); it builds its own program and
+#                    takes only the scratch directory:
+#   ROOTS_PART=mutant-<label> WHITEFOOTC=<compiler> controls.sh <scratch directory>
+# `make roots-base` and `make roots-mutant-<label>` run the parts.
 set -u
+
+part=${ROOTS_PART:-all}
+case "$part" in
+  all|base|mutant-open-upvalues|mutant-frame-closure|mutant-constants) ;;
+  *) echo "controls.sh: unknown ROOTS_PART '$part' (all, base, mutant-open-upvalues, mutant-frame-closure or mutant-constants)" >&2; exit 2 ;;
+esac
+
+# Whether the selected part includes the named one.
+runs() { [ "$part" = all ] || [ "$part" = "$1" ]; }
 
 is_detected_failure() (
   difference=1
@@ -73,15 +93,22 @@ EOF
   return 0
 }
 
-if ! classifier_self_test; then
+if runs base && ! classifier_self_test; then
   echo "roots classifier self-test: failed" >&2
   exit 1
 fi
 
 root=$(CDPATH= cd -- "$(dirname -- "$0")/../../.." && pwd -P)
 wfc=${WHITEFOOTC:?set WHITEFOOTC to the Whitefoot compiler}
-binary=${1:?usage: controls.sh <e2e test program> <scratch directory>}
-out=${2:?usage: controls.sh <e2e test program> <scratch directory>}
+if runs base; then
+  binary=${1:?usage: controls.sh <e2e test program> <scratch directory>}
+  out=${2:?usage: controls.sh <e2e test program> <scratch directory>}
+else
+  out=${1:?usage: ROOTS_PART=$part controls.sh <scratch directory>}
+  if [ "$#" != 1 ]; then
+    echo "usage: ROOTS_PART=$part controls.sh <scratch directory>" >&2; exit 2
+  fi
+fi
 mkdir -p "$out"
 cases=$root/research/experiments/halo-gc/cases
 status=0
@@ -121,14 +148,22 @@ mutant() {
   fi
 }
 
-expect 0 every-root compare --binary "$binary" --cases "$cases" --budgets 1,7,1000 --gc-stress
-expect 0 frame-sole-root compare --binary "$binary" --cases "$cases" --filter gc/frame-closure --budgets 1 --gc-stress --isolate-frames
-expect 0 parked-sole-root compare --binary "$binary" --cases "$cases" --filter gc/suspended-stack --budgets 1 --gc-stress --collect-suspended
-expect 1 parked-root-hidden compare --binary "$binary" --cases "$cases" --filter gc/suspended-stack --budgets 1 --gc-stress --collect-suspended --omit-suspended-root
-mutant open-upvalues 'pkg::heap::gc_mark_upvalue(heap: &vm^.heap, h: u);'
-mutant frame-closure 'pkg::heap::gc_mark(heap: &vm^.heap, v: f);'
-mutant constants 'pkg::heap::gc_mark(heap: &vm^.heap, v: k);'
-expect 1 open-upvalues-unmarked compare --binary "$out/mutant-open-upvalues" --cases "$cases" --filter gc/open-upvalues --budgets 1,7,1000 --gc-stress
-expect 1 frame-closure-unmarked compare --binary "$out/mutant-frame-closure" --cases "$cases" --filter gc/frame-closure --budgets 1 --gc-stress --isolate-frames
-expect 1 constants-unmarked compare --binary "$out/mutant-constants" --budgets 1,7,1000 --gc-stress
+if runs base; then
+  expect 0 every-root compare --binary "$binary" --cases "$cases" --budgets 1,7,1000 --gc-stress
+  expect 0 frame-sole-root compare --binary "$binary" --cases "$cases" --filter gc/frame-closure --budgets 1 --gc-stress --isolate-frames
+  expect 0 parked-sole-root compare --binary "$binary" --cases "$cases" --filter gc/suspended-stack --budgets 1 --gc-stress --collect-suspended
+  expect 1 parked-root-hidden compare --binary "$binary" --cases "$cases" --filter gc/suspended-stack --budgets 1 --gc-stress --collect-suspended --omit-suspended-root
+fi
+if runs mutant-open-upvalues; then
+  mutant open-upvalues 'pkg::heap::gc_mark_upvalue(heap: &vm^.heap, h: u);'
+  expect 1 open-upvalues-unmarked compare --binary "$out/mutant-open-upvalues" --cases "$cases" --filter gc/open-upvalues --budgets 1,7,1000 --gc-stress
+fi
+if runs mutant-frame-closure; then
+  mutant frame-closure 'pkg::heap::gc_mark(heap: &vm^.heap, v: f);'
+  expect 1 frame-closure-unmarked compare --binary "$out/mutant-frame-closure" --cases "$cases" --filter gc/frame-closure --budgets 1 --gc-stress --isolate-frames
+fi
+if runs mutant-constants; then
+  mutant constants 'pkg::heap::gc_mark(heap: &vm^.heap, v: k);'
+  expect 1 constants-unmarked compare --binary "$out/mutant-constants" --budgets 1,7,1000 --gc-stress
+fi
 exit $status

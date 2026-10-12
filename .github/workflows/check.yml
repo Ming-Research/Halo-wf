@@ -1,7 +1,9 @@
-# Halo's gate: every push runs `make check` as its three groups, core,
-# extended and reference, in parallel jobs (Makefile), after downloading the
-# pinned Whitefoot compiler release. The exact revision that merges into main
-# passes all three first (the owner-wide merge requirements).
+# Halo's gate: every push runs the checks of `make check` as eight parallel
+# jobs (Makefile), each after downloading the pinned Whitefoot compiler
+# release: the core group, the reference group and the parts of the extended
+# group, so that no job compiles more than about two test programs. Each check
+# is in exactly one job. The exact revision that merges into main passes all
+# eight first (the owner-wide merge requirements).
 name: check
 
 on:
@@ -14,13 +16,39 @@ concurrency:
 
 jobs:
   check:
-    name: make check-${{ matrix.group }}
+    name: make check-${{ matrix.part }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        group: [core, extended, reference]
+        # `artifacts` lists what a failed job keeps: the end-to-end reports
+        # and replies, or the roots controls' logs, or the reference build's.
+        include:
+          - part: core
+            artifacts: |
+              build/halo-e2e/*.md
+              build/halo-e2e/ordinary/
+              build/halo-e2e/stress/
+          - part: roots-base
+            artifacts: |
+              build/halo-roots/*.log
+          - part: roots-mutant-open-upvalues
+            artifacts: |
+              build/halo-roots/*.log
+          - part: roots-mutant-frame-closure
+            artifacts: |
+              build/halo-roots/*.log
+          - part: roots-mutant-constants
+            artifacts: |
+              build/halo-roots/*.log
+          - part: hosts-vm
+            artifacts: ""
+          - part: hosts-lib-json
+            artifacts: ""
+          - part: reference
+            artifacts: |
+              build/redis/lua-build.log
     steps:
       - uses: actions/checkout@v4
         with:
@@ -50,20 +78,15 @@ jobs:
           python3 --version
 
       - name: Check
-        run: make -k check-${{ matrix.group }}
+        run: make -k check-${{ matrix.part }}
 
       # A failed comparison is read from the runner's report and the actual
       # replies it kept, which the job's log only summarizes.
       - name: Keep the end-to-end reports and replies
-        if: failure()
+        if: failure() && matrix.artifacts != ''
         uses: actions/upload-artifact@v4
         with:
-          name: halo-${{ matrix.group }}
-          path: |
-            build/halo-e2e/*.md
-            build/halo-e2e/ordinary/
-            build/halo-e2e/stress/
-            build/halo-roots/*.log
-            build/redis/lua-build.log
+          name: halo-${{ matrix.part }}
+          path: ${{ matrix.artifacts }}
           if-no-files-found: ignore
           retention-days: 14
