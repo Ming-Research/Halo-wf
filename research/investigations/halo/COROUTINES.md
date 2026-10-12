@@ -328,7 +328,14 @@ Reading each exit for a live value outside those bounds found none:
   call, because the safepoint has just tested the heap and the shift never
   grows the stack. The test host allocates nothing there, so no oracle script
   can observe it. The `__call` path now raises the top past the shifted
-  arguments, as PUC's `tryfuncTM` does.
+  arguments, as PUC's `tryfuncTM` does. An embedding probe case whose host
+  allocates at that point would fail before the fix, but its host only reads
+  the stack, and Whitefoot refuses to bind such a host to the engine's host
+  interface, whose call may write the stack and promises to keep its length
+  (`witnesses/w4_reads_only_binding.wf`: `FN-4 BehaviorArgumentMismatch`;
+  declaring the write is `EFF-2 EffectMismatch`, restating the promise is
+  `MSR-3 InvalidEntryFormer`). The case waits for that gap
+  (`halo-call-top-probe`).
 - A budget stop: every register of a frame lies below that frame's top, and
   a transfer requested but not yet consumed is covered by its extent, in the
   copy when a native level parked it.
