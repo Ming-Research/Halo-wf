@@ -5,7 +5,7 @@
 # pairs with a twin of main as the noise control. Comparison 3 runs the
 # producer-consumer kernel on this branch against PUC 5.1.5, exploratory, with
 # a profile. The 14900K job runs only for a commit whose message contains
-# [bench]. Remove before the branch is ready.
+# [bench] at the start of its subject. Remove before the branch is ready.
 name: coroutine-bench
 
 on:
@@ -40,7 +40,7 @@ jobs:
 
   bench:
     needs: build
-    if: contains(github.event.head_commit.message, '[bench]')
+    if: startsWith(github.event.head_commit.message, '[bench]')
     runs-on: [self-hosted, 14900k]
     timeout-minutes: 90
     steps:

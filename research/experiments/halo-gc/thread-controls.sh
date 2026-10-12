@@ -32,7 +32,36 @@ is_oracle_detection() (
   return "$difference"
 )
 
+# A fail-stop: every case stops in host setup (native exit 4) and none passes,
+# while the baseline passed every case. Removing a root of the running
+# execution frees a cell the collector then finds dead; the checked guard ends
+# the script before any reply, which is a reply change Redis would not make.
+is_fail_stop() (
+  stopped=1
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in
+      *Traceback*) return 1 ;;
+      [1-9]*/*" passed") return 1 ;;
+      "FAIL coroutines/"*": native exit 4 (2 transport/I/O, 3 setup compile, 4 setup runtime, 5 budget limit, 6 host stop)") stopped=0 ;;
+      "FAIL "*) return 1 ;;
+    esac
+  done
+  return "$stopped"
+)
+
 classifier_self_test() {
+  printf '%s\n' '0/3 passed' \
+    'FAIL coroutines/fixture budget=1 collections=None: native exit 4 (2 transport/I/O, 3 setup compile, 4 setup runtime, 5 budget limit, 6 host stop)' \
+    | is_fail_stop || return 1
+  for invalid in \
+    '1/3 passed' \
+    'FAIL coroutines/fixture budget=1 collections=None: native exit 3 (2 transport/I/O, 3 setup compile, 4 setup runtime, 5 budget limit, 6 host stop)' \
+    'FAIL coroutines/fixture budget=1 collections=1: reply/conversion difference; inspect actual JSON'; do
+    if printf '%s\n' '0/3 passed' \
+      'FAIL coroutines/fixture budget=7 collections=None: native exit 4 (2 transport/I/O, 3 setup compile, 4 setup runtime, 5 budget limit, 6 host stop)' \
+      "$invalid" | is_fail_stop
+    then return 1; fi
+  done
   is_oracle_detection <<'EOF' || return 1
 FAIL coroutines/fixture budget=1 collections=1: reply/conversion difference; inspect actual JSON
 EOF
@@ -223,10 +252,13 @@ while IFS='|' read -r label probes file line replacement flags; do
     elif [ "$compare_code" = 1 ] && [ -s "$out/oracle-$label.md" ] && \
          is_oracle_detection < "$out/oracle-$label.log"; then
       result=detected
+    elif [ "$compare_code" = 1 ] && [ -s "$out/oracle-$label.md" ] && \
+         is_fail_stop < "$out/oracle-$label.log"; then
+      result=fail-stop
     fi
-    echo "coroutine oracle $label: $result (requires a reply difference or native crash)"
+    echo "coroutine oracle $label: $result (requires a reply difference, native crash or fail-stop in setup)"
     printf '%s\toracle\t%s\t%s\t%s\n' "$label" "$compare_code" "$compare_seconds" "$result" >> "$out/summary.tsv"
-    if [ "$result" != detected ]; then status=1; cat "$out/oracle-$label.log"; fi
+    case "$result" in detected|fail-stop) ;; *) status=1; cat "$out/oracle-$label.log" ;; esac
   else
     status=1
   fi
