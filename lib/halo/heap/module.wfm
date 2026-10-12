@@ -96,6 +96,10 @@ public struct ThreadCell {
   public next_free: u32;
   public payload: Execution;
   public accounted_bytes: u64;
+  public status: u8;
+  public started: Bool;
+  public entry: Value;
+  public resumer: u32;
 }
 
 public struct CollectionKindStats {
@@ -206,3 +210,7 @@ public fn table_set(heap: &Heap, t: Value, key: Value, val: Value) -> r: Result<
 public fn table_border(heap: &Heap, t: Value) -> r: u64 reads(heap) doc "Lua 5.1 luaH_getn border.";
 
 public fn table_next(heap: &Heap, t: Value, key: Value) -> r: Result<Option<Pair>, TableError> reads(heap) doc "PUC Lua 5.1 array-index then node-index order. Number, string and boolean keys match Redis Lua; table, closure and builtin keys hash handles instead of PUC addresses. InvalidNext means invalid key to 'next'.";
+
+public fn refresh_thread_bytes(heap: &Heap, h: u32, amount: u64) -> r: Bool writes(heap) doc "Reconciles an installed owner using the same storage estimate and cached-charge protocol as refresh_thread_storage; saturation or accounting overflow preserves the previous charge.";
+
+public fn retire_thread(heap: &Heap, owner: u32) -> r: unit writes(heap) doc "Closes captures and releases execution storage, marking the thread dead without recycling an identity still reachable from globals or embedding pins.";

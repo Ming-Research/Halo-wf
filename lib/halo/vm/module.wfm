@@ -12,10 +12,17 @@ alias LibraryContext = pkg::execution::LibraryContext;
 alias SortFrame = pkg::execution::SortFrame;
 alias PatternSubFrame = pkg::execution::PatternSubFrame;
 alias PendingCall = pkg::execution::PendingCall;
+alias CoroutineCall = pkg::execution::CoroutineCall;
 
 public struct Vm {
   public main_thread: u32;
   public current_thread: u32;
+  public native_entries: u32;
+  public transfer_kind: u8;
+  public transfer: CoroutineCall;
+  public resume_call: CoroutineCall;
+  public yield_call: CoroutineCall;
+  public c_depth: u32;
   public pattern_subs: Box<Slots<PatternSubFrame>>;
   public cjson_configs: Box<Slots<CjsonConfig>>;
   public cjson_active_config: u64;

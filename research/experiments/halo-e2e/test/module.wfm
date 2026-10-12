@@ -8,3 +8,5 @@ public fn smoke() -> status: ExitStatus pure doc "Checks embedding lifecycle, bu
 public fn thread_smoke() -> status: ExitStatus pure doc "Runs isolated thread payload edges, allocation, main identity and limit observations for the missing-edge controls.";
 
 public fn upvalue_smoke() -> status: ExitStatus pure doc "Runs isolated owner-qualified capture lifetime and stack-access observations for the missing-edge controls.";
+
+public fn switch_smoke() -> status: ExitStatus pure doc "Runs isolated coroutine transfer, native-unwinding, depth and ownership observations.";

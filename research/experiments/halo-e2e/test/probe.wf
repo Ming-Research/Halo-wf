@@ -979,6 +979,9 @@ fn smoke() -> status: ExitStatus pure {
   if code == 0_u8 {
     set code = upvalue_probe();
   }
+  if code == 0_u8 {
+    set code = switch_probe();
+  }
   return std::process::exit_status(code: code);
 }
 

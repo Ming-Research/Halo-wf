@@ -196,11 +196,32 @@ fn thread_stack_limit(execution: &Execution) -> r: u64 reads(execution) {
       break;
     }
   }
+  if execution^.transfer_kind != 0_u8 {
+    let transfer_first = execution^.transfer.func +sat 1_u64;
+    let transfer_extent = transfer_first +sat execution^.transfer.argc;
+    if transfer_extent > limit {
+      set limit = transfer_extent;
+    }
+  }
   return imin(limit, len);
 }
 
 fn mark_thread_contents(heap: &Heap, ti: u64) -> r: unit writes(heap) {
   doc "Traces only a reached thread's owned execution; rechecks slab and buffer bounds after marking writes the heap.";
+  if ti < heap^.threads.inner.len {
+    let entry_value = heap^.threads.inner[ti].entry;
+    let resumer_handle = heap^.threads.inner[ti].resumer;
+    let resumer_value = Value::Thread(h: resumer_handle);
+    gc_mark(heap: heap, v: entry_value);
+    gc_mark(heap: heap, v: resumer_value);
+  }
+  if ti < heap^.threads.inner.len {
+    if heap^.threads.inner[ti].payload.transfer_kind == 1_u8 {
+      let transfer_handle = heap^.threads.inner[ti].payload.transfer.child;
+      let transfer_child = Value::Thread(h: transfer_handle);
+      gc_mark(heap: heap, v: transfer_child);
+    }
+  }
   if ti < heap^.threads.inner.len {
     let limit = thread_stack_limit(execution: &heap^.threads.inner[ti].payload);
     for (i in 0_u64..limit) {

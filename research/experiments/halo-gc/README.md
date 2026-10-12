@@ -115,7 +115,7 @@ compiler provides no source-mutator command, so this uses the established
 copy/delete/build control instead of adding a test path to production code.
 
 Run in CI. First select the single `stack` omission and inspect its build
-duration before selecting further names or `all` (22 omissions):
+duration before selecting further names or `all` (29 omissions):
 
 ```sh
 THREAD_ROOT_MUTANTS=stack make roots
@@ -158,8 +158,55 @@ captures retain their selected value without retaining the owner or unrelated
 slots. A suspended saved execution uses `stopped_stack`; otherwise it uses
 `stack`. `host_stopped` does not select authority because it can remain set
 after restoration while the active stack changes. Switching must preserve
-this authority invariant when it is introduced. Resumer edges remain for that
-stage.
+this authority invariant when it is introduced. The switching stage adds the resumer and request edges below.
+
+
+Switching observations in `switch-probe.wf` use private create/resume/yield
+IDs installed only by the embedding probe; they do not register the public
+coroutine library. They exercise counted transfers and nil holes, cross-owner
+captures, tail calls, original error values, callback parking, boundary and
+depth limits, shared budgets, pending and immediate host results, host stops,
+reset. Those execution fixtures run at budgets 1, 7 and 1000, ordinarily and
+under collector stress. The budget-identity observation runs at 1 and 7
+because a slice of 1000 need not stop in every owner. Separate logical storage
+exhaustion/recovery probes run at budget 1 without collector stress, lowering
+the heap limit after the initial checkpoint and requiring a due collection.
+
+Seven additional controls use `switch_roots`, with fresh isolated heaps and
+an empty frame window where needed. A zero-mutant baseline must pass; each
+omission must produce its specific observation:
+
+| Name | Omission | Expected exit |
+| --- | --- | --- |
+| `thread-entry` | New thread's entry closure | 40 |
+| `resumer` | Child's waiting resumer | 41 |
+| `saved-transfer-child` | Inactive pending request's child | 42 |
+| `saved-transfer-arguments` | Inactive pending request's argument extent | 43 |
+| `active-transfer-child` | Active pending request's child | 44 |
+| `active-transfer-arguments` | Active pending request's argument extent | 45 |
+| `current-thread` | Installed child identity | 46 |
+
+Argument extents extend the ordinary stack-root window so the same slots are
+marked and protected from dead-slot clearing. A separate marking call would
+retain an object while still allowing its pending argument slot to be cleared.
+Installed coroutine capacities use the same logical estimator as saved
+payloads; call preparation and the outer driver reconcile growth before heap
+limits or embedding suspension accept it. Main's installed storage retains
+its existing treatment; when main waits in its cell its saved buffers are
+charged, and restoring main releases that saved-storage charge.
+
+Reset/start terminates every non-main execution, closes captures and releases
+its buffers. A thread identity still reachable from a global or embedding pin
+remains a dead cell until ordinary collection, because recycling such a handle
+would make an old thread value alias a new coroutine. Host-stopped snapshots
+are restored before closing captures, including captures beyond a native
+wrapper's temporarily shortened stack. At budget 1000, deep foreach fixtures
+first require an open capture containing 23 only in that snapshot; omitting
+restoration would close it incorrectly. At smaller budgets the native frames
+have already unwound, so recovery is checked against the current authoritative
+storage. The original small-limit thread probe
+now grows storage after start has reset and paused; resume reaches its same
+limit assertion without a second start retiring the storage being measured.
 
 No results are claimed by these authored controls. Their actual failures and
 the restored positive observations must be recorded from CI before treating

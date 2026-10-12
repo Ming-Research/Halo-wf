@@ -22,6 +22,13 @@ fn stack_limit(vm: &Vm, stack: &Box<Slots<Value>>) -> r: u64 reads(vm), reads(st
       break;
     }
   }
+  if vm^.transfer_kind != 0_u8 {
+    let transfer_first = vm^.transfer.func +sat 1_u64;
+    let transfer_extent = transfer_first +sat vm^.transfer.argc;
+    if transfer_extent > limit {
+      set limit = transfer_extent;
+    }
+  }
   if limit > len {
     return len;
   }
@@ -29,9 +36,17 @@ fn stack_limit(vm: &Vm, stack: &Box<Slots<Value>>) -> r: u64 reads(vm), reads(st
 }
 
 fn mark_roots(vm: &Vm, stack: &Box<Slots<Value>>, consts: &Box<Slots<Value>>, limit: u64) -> r: unit reads(stack), reads(consts), writes(vm) {
-  doc "Marks every root: the main-thread identity, the live stack, each frame's closure, the open upvalues, the globals, the per-type metatables, the script's constants, the error value and a host-stopped stack. Main is the only installed execution until coroutine switching is implemented; its buffers are traced here and its thread cell owns empty counterparts.";
+  doc "Marks main and current identities, a requested child, the live stack including counted transfer arguments, frame closures, open upvalues, globals, type metatables, constants, errors and parked storage. Installed execution is traced here; saved owners and the resumer chain are traced through thread edges.";
   let main = Value::Thread(h: vm^.main_thread);
   pkg::heap::gc_mark(heap: &vm^.heap, v: main);
+  if vm^.current_thread != vm^.main_thread {
+    let current = Value::Thread(h: vm^.current_thread);
+    pkg::heap::gc_mark(heap: &vm^.heap, v: current);
+  }
+  if vm^.transfer_kind == 1_u8 {
+    let transfer_child = Value::Thread(h: vm^.transfer.child);
+    pkg::heap::gc_mark(heap: &vm^.heap, v: transfer_child);
+  }
   let i = 0_u64;
   loop {
     if i < limit {
@@ -141,6 +156,10 @@ fn collect_if_due(vm: &Vm, stack: &Box<Slots<Value>>, consts: &Box<Slots<Value>>
   ensures stack^.inner.len == entry(stack)^.inner.len;
 } {
   doc "Call sites gate the slow path with the same stress/limit/allocation predicate as heap.gc_due; this check also preserves the helper's standalone behavior. A safepoint: at a loop back-edge or call every live value is in a stack slot or a root, so a due collection marks the roots, clears the stack above the live part as Lua 5.1's traversestack does, and sweeps.";
+  let accounted = coroutine_refresh_storage(vm: vm, stack: stack);
+  if bnot(accounted) {
+    return raise_text(vm: vm, text: &collection_memory_error[0_u64..17_u64]);
+  }
   let due = pkg::heap::gc_due(heap: &vm^.heap);
   if bnot(due) {
     return True();

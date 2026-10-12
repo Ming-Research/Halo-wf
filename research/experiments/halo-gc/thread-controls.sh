@@ -91,6 +91,13 @@ inactive-open-list|240|upvalue_roots|lib/halo/heap/gc.wf|gc_mark_upvalue(heap: h
 captured-value|241|upvalue_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: captured);
 owner-close|242|upvalue_roots|lib/halo/heap/threads.wf|set heap^.upvalues.inner[ui].payload = Upval::Closed(v: held);|set heap^.upvalues.inner[ui].live = heap^.upvalues.inner[ui].live;
 explicit-close|243|upvalue_roots|lib/halo/heap/threads.wf|close_thread_upvalues(heap: heap, h: h);
+thread-entry|40|switch_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: entry_value);
+resumer|41|switch_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: resumer_value);
+saved-transfer-child|42|switch_roots|lib/halo/heap/gc.wf|gc_mark(heap: heap, v: transfer_child);
+saved-transfer-arguments|43|switch_roots|lib/halo/heap/gc.wf|set limit = transfer_extent;
+active-transfer-child|44|switch_roots|lib/halo/vm/collect.wf|pkg::heap::gc_mark(heap: &vm^.heap, v: transfer_child);
+active-transfer-arguments|45|switch_roots|lib/halo/vm/collect.wf|set limit = transfer_extent;
+current-thread|46|switch_roots|lib/halo/vm/collect.wf|pkg::heap::gc_mark(heap: &vm^.heap, v: current);
 EDGES
 if [ "$selected" = 0 ]; then echo "thread roots: selection names no edge"; exit 1; fi
 exit "$status"

@@ -558,10 +558,10 @@ fn thread_memory_error(engine: &Engine) -> r: Bool reads(engine) {
 }
 
 fn thread_limit_probe() -> r: u8 pure {
-  doc "Observations 217 through 220 use a small logical limit to detect bypass through coroutine storage: growing a globally rooted thread by 2048 reserved bytes must force a safepoint collection and fail with exactly not enough memory while its live charge remains above the limit. Removing the limit must permit the same cached chunk to run again, so an unrelated execution error cannot pass this control.";
+  doc "Observations 217 through 220 use a small logical limit to detect bypass through coroutine storage: after a zero-budget start, growing a globally rooted thread by 2048 reserved bytes must force a safepoint collection and fail with exactly not enough memory while its live charge remains above the limit. Removing the limit must permit the same cached chunk to run again, so an unrelated execution error cannot pass this control.";
   let engine = halo::embed::new_engine(limit: 0_u64);
   let env = Probe(mode: 0_u8, calls: 0_u64);
-  let compiled = halo::embed::compile(engine: &engine, chunk_name: &gc_probe_name[0_u64..9_u64], source: &gc_probe_idle[0_u64..8_u64]);
+  let compiled = halo::embed::compile(engine: &engine, chunk_name: &gc_probe_name[0_u64..9_u64], source: &thread_limit_source[0_u64..43_u64]);
   let script = match move compiled {
     Err(..) => {
       return 217_u8;
@@ -589,6 +589,11 @@ fn thread_limit_probe() -> r: u8 pure {
   if bnot(baseline) {
     return 217_u8;
   }
+  let checkpoint = halo::embed::start::<ProbeHost>(engine: &engine, env: &env, script: script, budget: 0_u64);
+  let checkpoint_code = outcome_code(outcome: checkpoint);
+  if checkpoint_code != 2_u8 {
+    return 217_u8;
+  }
   let limit = engine.vm.heap.bytes +sat 1024_u64;
   set engine.vm.heap.limit = limit;
   let index = cvt::<u32, u64>(h);
@@ -612,7 +617,7 @@ fn thread_limit_probe() -> r: u8 pure {
     return 218_u8;
   }
   let before = halo::embed::collection_count(engine: &engine);
-  let outcome = halo::embed::start::<ProbeHost>(engine: &engine, env: &env, script: script, budget: 1000000_u64);
+  let outcome = halo::embed::resume::<ProbeHost>(engine: &engine, env: &env, budget: 1000000_u64);
   let failure_code = outcome_code(outcome: outcome);
   if failure_code != 1_u8 {
     return 219_u8;
@@ -679,5 +684,10 @@ fn thread_smoke() -> status: ExitStatus pure {
   if code == 0_u8 {
     set code = upvalue_probe();
   }
+  if code == 0_u8 {
+    set code = switch_probe();
+  }
   return std::process::exit_status(code: code);
 }
+
+const thread_limit_source: Array<u8, 43> = "local n=0; while n<2 do n=n+1 end; return 1";
