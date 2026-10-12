@@ -5336,3 +5336,107 @@ it grew. Whitefoot tracks the rise as lm-bl-int-table-forward-rise.
 ### Outcome
 
 The pin moves to `wf-d837678c6905`; status-board item halo-pin-357.
+
+## Fastest-interpreter baseline
+
+### Question, recorded before it runs
+
+The owner's performance goal is for Halo to be the fastest Lua interpreter,
+in two stages: first faster than PUC Lua 5.1.5 on every workload before the
+next Whitefoot release, then faster than the fastest current interpreters,
+PUC Lua 5.4, LuaJIT 2.1 with its JIT off (`-joff`, the hand-written assembly
+interpreter) and Luau's interpreter. This measurement asks, per workload,
+where Halo on main's pin (`wf-d837678c6905`) stands against each of them.
+It is exploratory: it tests no proposal and sets the yardstick that later
+comparisons repeat.
+
+### Method
+
+Workloads. The seven P1 kernels (`kernels/`, binary-trees at depth 14 as in
+the comparisons above) and six benchmarks of are-we-fast-yet's Lua port
+(Marr et al., commit `74306fec1510`): List, NBody, Permute, Queens, Sieve
+and Towers. `awfy.py` bundles each benchmark with the modules it requires,
+unchanged, into one script whose driver makes harness.lua's measured call
+once (`inner_benchmark_loop` with the inner iterations below) and prints 1
+only when upstream's `verify_result` accepted every iteration. Inner
+iterations, estimated from operation counts for PUC 5.1.5 at 0.3–1 s before
+any measurement: List 1000, NBody 250000 (the only count NBody verifies
+besides 1), Permute 400, Queens 800, Sieve 2000, Towers 300. Bounce, CD,
+DeltaBlue, Havlak, Json, Mandelbrot, Richards and Storage are excluded:
+on Lua 5.1 they reach bitwise operations through LuaBitOp's `bit`
+(`bit32 or require'bit'`), which plain Lua 5.1, and so the PUC 5.1.5
+reference run standalone, does not have.
+
+Interpreters, each built from source in CI at a pin, with the release build
+its project ships by default (`interpreters.sh`; versions, digests,
+compilers and a compile line of each are in the run's manifests):
+
+- Halo: the bench host (`host/`, numeric `print` only, budget 2^64−1),
+  built by `wf-d837678c6905` with full LTO through `/usr/bin/clang`;
+- PUC Lua 5.1.5: Redis 7.0.15's bundled Lua (`fetch-redis.sh`), gcc `-O2`;
+- PUC Lua 5.4.9: lua.org's tarball (SHA-256 `2335b6c5…`), `make linux`,
+  gcc `-O2`;
+- LuaJIT 2.1: branch v2.1 at `c6ffc141a876`, `make`, gcc `-O2
+  -fomit-frame-pointer`, run with `-joff`;
+- Luau 0.742 (`8387cfb461b3`): `make config=release`, g++ `-O2`, the `luau`
+  CLI without `--codegen`, once at its default bytecode optimization
+  (`-O1`) and once with `-O2`, Luau's highest level, which inlines and
+  unrolls at bytecode compile time and remains interpreted.
+
+Agreement. PUC 5.1.5's output is each workload's checksum. Halo must print
+the same bytes, with its stats showing no budget suspension, as in `run.py`.
+Every other interpreter must print one number that, formatted as Lua 5.1
+prints numbers (`%.14g`), equals it: Lua 5.4 prints integers in full and
+Luau prints the shortest round-trip form, so equal values print differently.
+An interpreter that exits nonzero, times out (180 s) or prints a different
+value is n/a for that workload, with the reason recorded; the workload is
+never changed per interpreter. A PUC 5.1.5 failure fails the run.
+
+Timing. `fastest.py` measures wall time around each process launch through
+exit, so source reading, compilation to bytecode, execution, collection and
+teardown are included for every interpreter; Halo reads the script on
+stdin, the others from a file. Each workload runs a number of rounds; each
+round launches every interpreter once, in an order rotated by one position
+each round. Medians and min–max ranges (also relative to the median) per
+interpreter and workload; the ratio reported is Halo's median over the
+interpreter's, above 1 when Halo is slower; a geometric mean of these
+ratios over the workloads both completed is a summary only, since it weighs
+workloads equally and covers different sets for different interpreters.
+The 14900K runs the sample mode (one round) and then six rounds, with every
+timed process on CPU 2 (a P-core); the artifact records the governor of
+every CPU and CPU 2's frequency before and after. The interpreters'
+compilers differ (clang with full LTO for Halo, gcc for the others), as
+each project ships; the comparison is of the interpreters as built, not of
+their source alone.
+
+What would change the plan. Exploratory, so these are directions, not
+pass/fail criteria:
+
+- Stage 1: every workload with Halo / PUC 5.1.5 above 1 is a stage-1 gap,
+  ranked by ratio. If the AWFY benchmarks rank differently from the P1
+  kernels, the next attributions come from the AWFY profiles rather than
+  the kernels.
+- Stage 2: if LuaJIT `-joff` is more than 3 times faster than Halo on most
+  workloads both complete (at least 7 of the 13), stage 2 needs a
+  value-representation change, such as narrower values and the dispatch
+  that goes with them, rather than code-generation fixes; if within 3 times
+  on most, stage 2 proceeds through code generation and VM path fixes.
+- If PUC 5.4.9 and Luau are within 1.5 times of Halo on most workloads
+  while LuaJIT `-joff` is beyond 3, the remaining gap is specific to a
+  hand-written assembly interpreter, and what Whitefoot would need to reach
+  it (register-pinned dispatch, for example) goes to Whitefoot as a gap.
+- A Halo n/a is a correctness item before any performance work on that
+  workload.
+- A ratio whose distance from 1 is within the larger relative range of
+  its two medians decides nothing for that cell; it is reported as such and
+  repeated with more rounds before a plan rests on it.
+
+Expected, a prior from what is generally reported for these interpreters
+on other machines, not from any measurement here: Halo between 1.3 and 1.9 times PUC 5.1.5 on the five
+kernels P1 still fails; PUC 5.4 faster than 5.1 by tens of percent; Luau
+and LuaJIT `-joff` faster than PUC 5.1 by about 1.5–2 and 2–4 times. A
+result outside these is reported as measured.
+
+### Result
+
+Not yet measured.

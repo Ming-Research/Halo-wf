@@ -1,0 +1,168 @@
+# Temporary, on this branch only: the fastest-interpreter baseline of
+# research/experiments/halo-bench/RESULTS.md. Both jobs build Halo's bench
+# host with the pinned compiler and full LTO, PUC Lua 5.1.5 from Redis
+# 7.0.15, PUC Lua 5.4.9, LuaJIT 2.1 and Luau 0.742 at their pins
+# (interpreters.sh) and the are-we-fast-yet bundles (awfy.py). The hosted job
+# runs fastest.py's one-round sample mode as a smoke test. The 14900K job runs
+# only for a commit whose message contains [bench]: it rebuilds there and
+# runs the sample, then the full measurement, with every timed process on
+# CPU 2. Remove before the branch is ready.
+name: fastest-baseline
+
+on:
+  push:
+    branches: [claude/halo-fastest-baseline]
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  ROUNDS: 6
+
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+      - name: Build Halo and the interpreters; bundle the workloads
+        run: |
+          set -euo pipefail
+          make toolchain
+          release=$(sed -n 's/^release = //p' whitefoot.pin)
+          wfc="$PWD/build/whitefoot/$release/whitefootc"
+          out="$PWD/build/fastest"
+          rm -rf "$out"; mkdir -p "$out"
+          "$wfc" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo"
+          sh research/experiments/halo-oracle/fetch-redis.sh "$PWD/build/redis"
+          sh research/experiments/halo-bench/interpreters.sh "$out/interpreters"
+          python3 -B research/experiments/halo-bench/awfy.py --checkout "$out/awfy-src" --out "$out/awfy"
+          {
+            echo "source $(git rev-parse HEAD), compiler $release"
+            sha256sum "$wfc" "$out/halo" build/redis/redis-7.0.15/deps/lua/src/lua
+            /usr/bin/clang --version | head -n 1
+            echo "puc-5.1.5 compile: $(grep -m1 -e ' -c .*lvm\.c' build/redis/lua-build.log || echo 'no lvm.c line')"
+          } | tee "$out/manifest.txt"
+      - name: Sample mode, one round
+        run: |
+          set -euo pipefail
+          release=$(sed -n 's/^release = //p' whitefoot.pin)
+          out="$PWD/build/fastest"
+          SECONDS=0
+          python3 -B research/experiments/halo-bench/fastest.py --halo "$out/halo" \
+            --engine "puc-5.1.5=$PWD/build/redis/redis-7.0.15/deps/lua/src/lua" \
+            --engine "puc-5.4.9=$out/interpreters/lua-5.4.9/src/lua" \
+            --engine "luajit-2.1-joff=$out/interpreters/luajit/src/luajit -joff" \
+            --engine "luau-0.742=$out/interpreters/luau/build/release/luau" \
+            --engine "luau-0.742-O2=$out/interpreters/luau/build/release/luau -O2" \
+            --reference puc-5.1.5 --kernels all --scale binary-trees=14 --awfy "$out/awfy" \
+            --manifest "$out/manifest.txt" --manifest "$out/interpreters/manifest.txt" \
+            --compiler "$PWD/build/whitefoot/$release/whitefootc" \
+            --sample --out "$out/sample.json"
+          echo "sample mode took ${SECONDS}s on the hosted runner"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: halo-fastest-sample
+          path: |
+            build/fastest/*.json
+            build/fastest/*.md
+            build/fastest/*.txt
+            build/fastest/sample-sources/
+            build/fastest/awfy/
+            build/fastest/interpreters/*.txt
+            build/fastest/interpreters/*.log
+            build/redis/lua-build.log
+          if-no-files-found: ignore
+          retention-days: 30
+
+  bench:
+    needs: smoke
+    if: contains(github.event.head_commit.message, '[bench]')
+    runs-on: [self-hosted, 14900k]
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+      - name: Build Halo and the interpreters; bundle the workloads
+        run: |
+          set -euo pipefail
+          make compiler
+          make toolchain-check
+          release=$(sed -n 's/^release = //p' whitefoot.pin)
+          wfc="$PWD/build/whitefoot/$release/whitefootc"
+          out="$PWD/build/fastest"
+          rm -rf "$out"; mkdir -p "$out"
+          "$wfc" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo"
+          sh research/experiments/halo-oracle/fetch-redis.sh "$PWD/build/redis"
+          sh research/experiments/halo-bench/interpreters.sh "$out/interpreters"
+          python3 -B research/experiments/halo-bench/awfy.py --checkout "$out/awfy-src" --out "$out/awfy"
+          {
+            echo "source $(git rev-parse HEAD), compiler $release"
+            sha256sum "$wfc" "$out/halo" build/redis/redis-7.0.15/deps/lua/src/lua
+            /usr/bin/clang --version | head -n 1
+            echo "puc-5.1.5 compile: $(grep -m1 -e ' -c .*lvm\.c' build/redis/lua-build.log || echo 'no lvm.c line')"
+          } | tee "$out/manifest.txt"
+      - name: Measure on CPU 2
+        run: |
+          set -euo pipefail
+          release=$(sed -n 's/^release = //p' whitefoot.pin)
+          out="$PWD/build/fastest"
+          # The 14900K is a hybrid part (P-cores CPU 0-15, E-cores 16-31): run
+          # every timed process on one ordinary P-core thread, CPU 2.
+          pin="taskset -c 2"
+          cpu2=/sys/devices/system/cpu/cpu2/cpufreq
+          cpu_state() {
+            echo "$1: CPU 2 governor $(cat $cpu2/scaling_governor 2>/dev/null || echo unknown)," \
+              "frequency $(cat $cpu2/scaling_cur_freq 2>/dev/null || echo unknown) kHz" \
+              "(min $(cat $cpu2/scaling_min_freq 2>/dev/null || echo unknown)," \
+              "max $(cat $cpu2/scaling_max_freq 2>/dev/null || echo unknown))"
+          }
+          lscpu -e=CPU,CORE,MAXMHZ > "$out/lscpu.txt" 2>&1 || true
+          cat /sys/devices/system/cpu/cpufreq/policy*/scaling_governor 2>/dev/null | sort | uniq -c > "$out/governor.txt" || true
+          {
+            echo "timed processes pinned with: $pin"
+            cat "$out/governor.txt"
+            cpu_state before
+          } | tee -a "$out/manifest.txt"
+          measure() {
+            label=$1; shift
+            SECONDS=0
+            $pin python3 -B research/experiments/halo-bench/fastest.py --halo "$out/halo" \
+              --engine "puc-5.1.5=$PWD/build/redis/redis-7.0.15/deps/lua/src/lua" \
+              --engine "puc-5.4.9=$out/interpreters/lua-5.4.9/src/lua" \
+              --engine "luajit-2.1-joff=$out/interpreters/luajit/src/luajit -joff" \
+              --engine "luau-0.742=$out/interpreters/luau/build/release/luau" \
+              --engine "luau-0.742-O2=$out/interpreters/luau/build/release/luau -O2" \
+              --reference puc-5.1.5 --kernels all --scale binary-trees=14 --awfy "$out/awfy" \
+              --manifest "$out/manifest.txt" --manifest "$out/interpreters/manifest.txt" \
+              --compiler "$PWD/build/whitefoot/$release/whitefootc" \
+              "$@" --out "$out/$label.json" > "$out/$label.log" 2>&1 || { cat "$out/$label.log"; exit 1; }
+            echo "== $label took ${SECONDS}s"
+            cat "$out/$label.md"
+          }
+          measure sample --sample
+          measure full --rounds "$ROUNDS"
+          cpu_state after | tee -a "$out/manifest.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: halo-fastest-baseline
+          path: |
+            build/fastest/*.json
+            build/fastest/*.md
+            build/fastest/*.log
+            build/fastest/*.txt
+            build/fastest/*-sources/
+            build/fastest/awfy/
+            build/fastest/interpreters/*.txt
+            build/fastest/interpreters/*.log
+            build/redis/lua-build.log
+          if-no-files-found: ignore
+          retention-days: 30
