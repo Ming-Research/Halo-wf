@@ -1,0 +1,39 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "<1><2><3><4><5>5"
+        },
+        {
+          "type": "integer",
+          "value": 5
+        },
+        {
+          "type": "bulk",
+          "bytes": "31,41,59,26,53"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "<1> <2> <3>"
+        },
+        {
+          "type": "integer",
+          "value": 3
+        },
+        {
+          "type": "bulk",
+          "bytes": "1a5,1b5,1c5"
+        }
+      ]
+    }
+  ]
+}
