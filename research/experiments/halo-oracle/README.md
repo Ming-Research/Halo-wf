@@ -7,8 +7,8 @@ Halo's `make check-core` compares the corpus through the `oracle` target;
 recording reference replies remains the job of
 [oracle-reference.yml](../../../.github/workflows/oracle-reference.yml).
 
-There are 140 scripts: 68 `lua-core`, 23 `redis-api`, 6 `apps`, 12 `libs`,
-and 31 `coroutines`.
+There are 143 scripts: 68 `lua-core`, 23 `redis-api`, 6 `apps`, 12 `libs`,
+and 34 `coroutines`.
 The scripts, replies and runner belong here until the oracle is replaced or
 Halo/firn scripting is retired. Each case is consumed by `run.sh`; the table
 below is the index of the observations it protects.
@@ -180,7 +180,9 @@ The coroutine `gc-*` cases are Lua-visible lifetime observations for the
 [thread omission controls](../halo-gc/README.md). They deliberately allocate
 while executions or captures are parked; collection is forced by Halo's
 `--gc-stress` runner, without inserting a reference-only `collectgarbage`
-call. Their target descriptions identify the intended discrimination, not a
+call. `gc-error-over-limit` and `gc-stopped-over-limit` instead reach the
+collection Halo runs when a coroutine stops with the test host's 64 MiB heap
+limit exceeded, so they collect in ordinary runs too. Their target descriptions identify the intended discrimination, not a
 claim that each individual omission has already changed a reply. Some saved
 fields have alternate retaining paths or are not live at a script-visible
 collection point; a surviving mutant must remain visible in the control
@@ -201,13 +203,16 @@ report rather than being counted as detected by a probe alone.
 | coroutines | [direct-wrap-errors](scripts/coroutines/direct-wrap-errors.lua) | Direct Lua wrapper calls add caller locations to string and numeric errors, preserve table errors and locate dead-wrapper refusal. |
 | coroutines | [errors-in-coroutine](scripts/coroutines/errors-in-coroutine.lua) | resume and inner pcall catch located strings, level-zero errors, identity-preserving tables and Redis command errors; redis.pcall returns replies. |
 | coroutines | [gc-callback-roots](scripts/coroutines/gc-callback-roots.lua) | Nested resumes park foreach, sort, gsub and xpcall while children allocate; dynamic keys, tables, strings, callbacks and errors survive. |
+| coroutines | [gc-error-over-limit](scripts/coroutines/gc-error-over-limit.lua) | A coroutine's arithmetic error survives the collection the host's 64 MiB heap limit forces while the dying coroutine is still installed; targets the error omission. |
 | coroutines | [gc-escaped-owner](scripts/coroutines/gc-escaped-owner.lua) | Escaped reads and writes survive an unreachable suspended owner and later thread-slot reuse; targets captured-value and owner-close omissions. |
 | coroutines | [gc-library-contexts](scripts/coroutines/gc-library-contexts.lua) | Parked foreach, sort and pcall keep a tail-left comparator, an evicted foreach key and a replaced pcall error table while children allocate; targets library-comparator, library-key and library-error omissions. |
+| coroutines | [gc-library-table-sole](scripts/coroutines/gc-library-table-sole.lua) | foreach called as an __index function keeps walking a table whose only holder is its saved record while a child allocates; targets the library-table omission. |
 | coroutines | [gc-metamethod-wrappers](scripts/coroutines/gc-metamethod-wrappers.lua) | Coroutines entered through self-clearing __index wrappers stay distinct from a coroutine they create; targets current-thread and resumer omissions. |
 | coroutines | [gc-open-list-reuse](scripts/coroutines/gc-open-list-reuse.lua) | A parked owner's dead-closure capture stays listed, so a later capture and a block exit still close a block local's capture; targets the open-list omission. |
 | coroutines | [gc-open-recapture](scripts/coroutines/gc-open-recapture.lua) | A discarded closure leaves an open capture that a suspended owner later recaptures and writes; targets the open-list omission. |
 | coroutines | [gc-pattern-coercion](scripts/coroutines/gc-pattern-coercion.lua) | gsub keeps strings converted from a numeric source and pattern while its replacement resumes an allocating child; targets pattern-source and pattern-pattern omissions. |
 | coroutines | [gc-sort-frames](scripts/coroutines/gc-sort-frames.lua) | sort keeps a compared pair and its pivot that a comparator removed from the table; targets sort-a, sort-b and sort-pivot omissions. |
+| coroutines | [gc-stopped-over-limit](scripts/coroutines/gc-stopped-over-limit.lua) | A table held only in a deep register of a foreach callback inside a coroutine survives a budget stop taken over the host's 64 MiB heap limit; targets the stopped omission at budget 1. |
 | coroutines | [gc-thread-roots](scripts/coroutines/gc-thread-roots.lua) | An unstarted thread retains a private entry capture, and normal parents retain private locals during nested child allocation. |
 | coroutines | [gc-transfer-values](scripts/coroutines/gc-transfer-values.lua) | Tail resume and yield carry 20 fresh table values and a trailing nil beyond the caller's fixed registers. |
 | coroutines | [generator-values](scripts/coroutines/generator-values.lua) | create, resume and yield exchange multiple values in both directions, counting nil holes. |

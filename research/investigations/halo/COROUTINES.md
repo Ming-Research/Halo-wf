@@ -2,8 +2,8 @@
 
 Status: implemented on the work branch; comparisons 1 and 2 passed and
 comparison 3 is exploratory (Results below); the design-tree change is
-proposed and awaits the owner, as does the ruling on the nine collector
-edges only isolated probes observe. Board items `halo-coroutine-study` (this study) and `halo-coroutines` (the implementation).
+proposed and awaits the owner, as does the proposed resolution for the nine
+collector edges whose omission changed no reply. Board items `halo-coroutine-study` (this study) and `halo-coroutines` (the implementation).
 
 ## Question
 
@@ -191,6 +191,23 @@ the coroutine group under collector stress (run 38208572999, `d08f224`):
   one's isolated probe observes the deletion. Whether a probe may stand
   in for a reply change is the owner's ruling (status board, coroutine
   item).
+
+The branch has since changed six of the nine; their control results are
+pending CI. Three new oracle scripts, `gc-library-table-sole`,
+`gc-error-over-limit` and `gc-stopped-over-limit`, make a reply depend on
+a library context's table, on a dead coroutine's error value and on a
+stopped coroutine's stack copy; their Redis 7.0.15 replies are recorded in
+CI. The last two reach the collection Halo runs when a coroutine stops
+above the test host's 64 MiB heap limit, which runs before a stopped copy
+is restored; the stopped script reaches it only at budget 1. The mark of a library context's function is deleted with
+its control, because every library context saves a native frame without a
+closure, which leaves 25 controls. Two duplicate holders are removed so that
+existing scripts can observe the other two marks: the collector's separate
+pass that closed dead coroutines' upvalues before sweeping, and the copy of
+the entry function in a new coroutine's stack slot zero. The remaining
+three, gsub's replacement and a pending transfer's child and arguments, are
+proposed to rest on their isolated probes
+([collector validation](../../../design/halo/heap/collector-validation.md)).
 
 Comparison 2 passes. The 14900K ran it on CPU 2 with governor
 `performance` (run 38213220871): main `3e86f0f` against branch `90d950b`,

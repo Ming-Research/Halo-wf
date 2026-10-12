@@ -145,7 +145,7 @@ when other cases have unqualified failures. The classifier's positive
 and negative samples run in CI before baseline compilation; they include a changed
 reply, a signal crash, transport/setup exits and a semantic failure mixed
 with a zero collection count. The established isolated observations still
-run, 27 across 26 rows, and must retain their specific native exits.
+run, 26 across 25 rows, and must retain their specific native exits.
 They are additional evidence and do not satisfy the oracle requirement.
 
 Every mutation starts from original sources. The copied runner and copied
@@ -159,7 +159,7 @@ so this uses the established copy/delete/build control rather than adding a
 production test path.
 
 Run in CI. First select the single `stack` omission and inspect its build and
-comparison durations before selecting further names or `all` (26 rows):
+comparison durations before selecting further names or `all` (25 rows):
 
 ```sh
 THREAD_ROOT_MUTANTS=stack make roots
@@ -176,7 +176,7 @@ The harness records their actual costs separately. No local timing is claimed.
 Remove this workflow before the branch is ready, after recording CI evidence.
 
 Names are `thread`, `stack`, `frame`, `open-list`, `library-table`,
-`library-comparator`, `library-error`, `library-key`, `library-frame`, `sort-a`,
+`library-comparator`, `library-error`, `library-key`, `sort-a`,
 `sort-b`, `sort-pivot`, `pattern-source`, `pattern-pattern`,
 `pattern-replacement`, `error`, `stopped`, `main`, `current-thread`, and the
 upvalue and switching names below; comma-separated names select a bounded
@@ -197,16 +197,31 @@ frames' function-slot aliases at budget checkpoints, and each distinct option
 set gets its own unmutated baseline.
 
 Some omissions may be observationally redundant under the public interface.
-In particular, `gc_sweep` closes unreachable owners before `free_thread`, so
-omitting only the latter's `explicit-close` cannot leave a script-visible
-capture open. `coroutine_transfer` clears the pending request before saving
-the resumer, so the transfer child and argument marks see a pending request
-only in the driver's over-limit collection between a request and its
-transfer, which no script reaches below the test host's 64 MiB limit. A newly created thread also holds its entry closure
-in stack slot zero. These are validation-contract gaps, not detections: the
-rows remain selected by `all`, unchanged replies fail, and the isolated
-probes do not waive the owner's oracle criterion. CI must distinguish further
-redundancy from missing discriminating cases; no all-edge success is claimed.
+The first full run left nine rows unchanged; the branch has since changed
+six of them. `gc-library-table-sole`, `gc-error-over-limit` and
+`gc-stopped-over-limit` are scripts whose replies depend on `library-table`,
+`error` and `stopped`; the last two reach the driver's over-limit
+collection, which runs before a stopped copy is restored, and the stopped
+script reaches it only at budget 1, where every checkpoint after a resumed
+one stops before its safepoint collects. The mark of a library context's
+function was deleted with its row, because every library context saves a
+native frame without a closure. `gc_sweep` no longer closes unreachable
+owners in a pass of its own before `free_thread` does, and a new thread no
+longer copies its entry closure into stack slot zero, so existing scripts
+can observe `explicit-close` and `thread-entry`. The other three rows remain
+probe-only pending the owner's ruling
+([collector validation](../../../design/halo/heap/collector-validation.md)):
+`coroutine_transfer` clears the pending request before saving the resumer,
+so the transfer child and argument marks see a pending request only in the
+driver's over-limit collection between a request and its transfer, where
+the requesting call's registers also hold both (a wrapped child through the
+wrapper in the call's function register); and gsub's replacement stays in
+its caller's argument registers for the whole call. The stack mark, or the
+stopped-copy mark while the caller is parked, covers those registers.
+These are validation-contract gaps, not detections: the rows remain
+selected by `all`, unchanged replies fail, and the isolated probes do not
+waive the owner's oracle criterion. CI must distinguish further redundancy
+from missing discriminating cases; no all-edge success is claimed.
 
 Owner-qualified observations in `upvalue-probe.wf` additionally check reads
 and writes against active, inactive and suspended stacks; capture reuse and
@@ -222,11 +237,11 @@ extent loses its sole retained value:
 | `owner-close` | Shared conversion from Open to Closed | 242 | A surviving capture still names an owner whose storage has been freed. |
 | `explicit-close` | Closing in `free_thread` | 243 | Explicit owner destruction leaves a capture open. |
 
-Collection closes unreachable owners before sweeping any slab; explicit
-thread destruction closes them as well. Omitting only the pre-sweep call can
-be masked by the later destructor call, so `owner-close` removes their shared
-conversion. The pre-sweep ordering is inspected in source; that ordering alone
-has no independently discriminating dynamic control in this stage. Escaped
+Collection closes an unreachable owner's captures only in `free_thread`,
+which sweeps threads after every other slab: each surviving open capture
+marked the value it selects, so closing copies only retained values, and a
+capture already swept is no longer live and is skipped. `owner-close`
+removes the conversion that this close shares with retiring a thread. Escaped
 captures retain their selected value without retaining the owner or unrelated
 slots. A suspended saved execution uses `stopped_stack`; otherwise it uses
 `stack`. `host_stopped` does not select authority because it can remain set

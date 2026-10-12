@@ -1,7 +1,7 @@
 -- checks: a suspended owner keeps an open capture whose only closure died; after resuming, its next capture and a block exit still close a live capture of a block local before the slot is reused.
 -- KEYS: []
 -- ARGV: []
--- expects: No pre-existing keys; under collector stress the owner is parked while main collects, so this targets the open-list and inactive-open-list omissions, whose freed capture handle the owner's next capture would reuse while its stale list entry stays first.
+-- expects: No pre-existing keys; under collector stress the owner is parked while main collects, so this targets the open-list omission for an inactive owner, whose freed capture handle the owner's next capture would reuse while its stale list entry stays first.
 local function body()
   local low = "low"
   local keep_mid

@@ -207,7 +207,7 @@ fn thread_stack_limit(execution: &Execution) -> r: u64 reads(execution) {
 }
 
 fn mark_thread_contents(heap: &Heap, ti: u64) -> r: unit writes(heap) {
-  doc "Traces only a reached thread's owned execution; rechecks slab and buffer bounds after marking writes the heap.";
+  doc "Traces only a reached thread's owned execution; a library context's saved frame is always a native frame without a closure, so only its values are marked. Rechecks slab and buffer bounds after marking writes the heap.";
   if ti < heap^.threads.inner.len {
     let entry_value = heap^.threads.inner[ti].entry_function;
     let resumer_handle = heap^.threads.inner[ti].resumer;
@@ -273,10 +273,6 @@ fn mark_thread_contents(heap: &Heap, ti: u64) -> r: unit writes(heap) {
         gc_mark(heap: heap, v: context.comparator);
         gc_mark(heap: heap, v: context.saved_error);
         gc_mark(heap: heap, v: context.foreach_key);
-        if context.frame.closure != no_handle {
-          let library_function = Value::Fun(h: context.frame.closure);
-          gc_mark(heap: heap, v: library_function);
-        }
         set i = i +wrap 1_u64;
       } else {
         break;
@@ -405,24 +401,8 @@ fn collection_threshold(live: u64, pause: u64) -> r: u64 pure {
 }
 
 fn gc_sweep(heap: &Heap) -> r: u64 writes(heap) {
-  doc "Closes dead owners' captures before freeing any slab payload, so escaped captures cannot retain open references into freed or reused storage. Counts each visited slot and each live or freed payload, then publishes a completed snapshot; free_string also removes the weak intern entry.";
+  doc "Counts each visited slot and each live or freed payload, then publishes a completed snapshot; free_string also removes the weak intern entry. Threads are swept last: free_thread closes a dead owner's surviving captures, and each surviving open capture marked the value it selects, so closing copies only retained values, and a freed capture is no longer live and is skipped.";
   let epoch = heap^.epoch;
-  let ti = 0_u64;
-  loop {
-    if ti < heap^.threads.inner.len {
-      if heap^.threads.inner[ti].live {
-        if heap^.threads.inner[ti].mark != epoch {
-          if ti < 4294967296_u64 {
-            let owner = cvt::<u64, u32>(ti);
-            close_thread_upvalues(heap: heap, h: owner);
-          }
-        }
-      }
-      set ti = ti +wrap 1_u64;
-    } else {
-      break;
-    }
-  }
   let freed = 0_u64;
   let tables = collection_kind_empty();
   let closures = collection_kind_empty();

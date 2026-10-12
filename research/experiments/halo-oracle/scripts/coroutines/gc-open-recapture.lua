@@ -1,7 +1,7 @@
 -- checks: a suspended owner's open-upvalue list retains a capture after its first closure dies, so a later closure can recapture and update the same local.
 -- KEYS: []
 -- ARGV: []
--- expects: No pre-existing keys; under collector stress this targets open-list and inactive-open-list omissions.
+-- expects: No pre-existing keys; under collector stress this targets the open-list omission for an inactive owner.
 local owner = coroutine.create(function()
   local value = 37
   local discarded = function() return value end

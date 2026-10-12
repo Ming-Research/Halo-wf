@@ -185,6 +185,7 @@ fn coroutine_lua_entry(vm: &Vm, value: Value) -> r: Bool reads(vm) {
 }
 
 fn coroutine_create(vm: &Vm, entry_value: Value) -> r: Value writes(vm) {
+  doc "Until the first resume writes the entry closure into function slot zero, the cell's entry_function is its only holder, so that one mark retains it.";
   let accepted = coroutine_lua_entry(vm: vm, value: entry_value);
   if bnot(accepted) {
     return Value::Nil();
@@ -193,9 +194,6 @@ fn coroutine_create(vm: &Vm, entry_value: Value) -> r: Value writes(vm) {
   let values = stack_new(size: 256_u64);
   set execution.stack = move values;
   set execution.top = 1_u64;
-  if execution.stack.inner.len > 0_u64 {
-    set execution.stack.inner[0_u64] = entry_value;
-  }
   match pkg::heap::alloc_thread(heap: &vm^.heap, payload: move execution) {
     Some(value: thread_handle) => {
       let index = cvt::<u32, u64>(thread_handle);
