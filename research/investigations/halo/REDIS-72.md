@@ -153,8 +153,8 @@ now follows Redis 7.2.16's other number rules (the integer rule, nan, inf,
 zeros) and writes number text with the fpconv package (`lib/fpconv`, a port
 of `fpconv_dtoa`), and the gate compares its texts with a table recorded on
 redis-server 7.2.16 ([fpconv README](../../../lib/fpconv/README.md#oracle-table)).
-[Gate run 38239423950](https://github.com/Ming-Research/Halo-wf/actions/runs/38239423950)
-on 4c40f82 passed `double-reply-table`, `number-argument-format`,
+[Gate run 38310472546](https://github.com/Ming-Research/Halo-wf/actions/runs/38310472546)
+on 475f545 (the pure port, with the table of 18,235 rows) passed `double-reply-table`, `number-argument-format`,
 `number-argument-effects` and `double-score-reply` at budgets 1, 7 and 1000,
 ordinary and under collector stress. `number-argument-effects` does not test
 INCRBYFLOAT's long double sum, which the host computes in double.
