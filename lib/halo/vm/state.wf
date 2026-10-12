@@ -537,20 +537,32 @@ fn coerce_string(vm: &Vm, v: Value) -> r: Value writes(vm) {
   }
 }
 
-fn upvalue_handle(vm: &Vm, u: u8) -> r: Option<u32> reads(vm) {
+fn running_closure(vm: &Vm) -> r: u32 reads(vm) {
+  doc "The closure handle of the top frame record, the function a run is executing, or no_handle, which names no slab cell, when no frame is active. run keeps a copy, read here when it starts and after every step through its shared epilogue; the frame record stays authoritative and is what the collector marks.";
   let n = vm^.frames.inner.len;
   if n > 0_u64 {
     let f = n - 1_u64;
-    let cl = cvt::<u32, u64>(vm^.frames.inner[f].closure);
-    if cl < vm^.heap.closures.inner.len {
-      let i = cvt::<u8, u64>(u);
-      if i < vm^.heap.closures.inner[cl].payload.upvals.inner.len {
-        let h = vm^.heap.closures.inner[cl].payload.upvals.inner[i];
-        return Some<u32>(value: h);
-      }
+    return vm^.frames.inner[f].closure;
+  }
+  return no_handle;
+}
+
+fn closure_upvalue(vm: &Vm, closure: u32, u: u8) -> r: Option<u32> reads(vm) {
+  doc "The handle of capture u of the closure whose handle is closure, or None when that handle is outside the closure slab or u outside its captures.";
+  let cl = cvt::<u32, u64>(closure);
+  if cl < vm^.heap.closures.inner.len {
+    let i = cvt::<u8, u64>(u);
+    if i < vm^.heap.closures.inner[cl].payload.upvals.inner.len {
+      let h = vm^.heap.closures.inner[cl].payload.upvals.inner[i];
+      return Some<u32>(value: h);
     }
   }
   return None<u32>();
+}
+
+fn upvalue_handle(vm: &Vm, u: u8) -> r: Option<u32> reads(vm) {
+  let closure = running_closure(vm: vm);
+  return closure_upvalue(vm: vm, closure: closure, u: u);
 }
 
 fn read_upvalue(vm: &Vm, stack: &Box<Slots<Value>>, h: u32) -> r: Value reads(vm), reads(stack) {

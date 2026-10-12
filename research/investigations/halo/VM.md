@@ -220,7 +220,11 @@ into `vm.error`. Outcomes: `Done(count)`, `Error`, `Budget`, `HostStopped`.
 The retained C1 form lets selected hot arms
 continue the loop with the current window facts; callback-free variants expose
 the next pc, while fast misses, frame changes and other instructions keep
-the checked shared Step epilogue (section 11).
+the checked shared Step epilogue (section 11). A ninth loop-carried value,
+a copy of the running closure's handle read from the top frame when `run`
+starts and in that epilogue, lets `GetUpval` skip the frame record
+([reading an upvalue](../../experiments/halo-bench/RESULTS.md#reading-an-upvalue),
+provisional on its criterion).
 
 ## 6. Embedding
 

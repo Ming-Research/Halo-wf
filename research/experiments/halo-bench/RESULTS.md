@@ -5734,3 +5734,118 @@ prepared; the merged revision makes the direct entry charge it the same way
 after `enter_lua` when a coroutine is running, which adds to every Lua call
 on the main thread one comparison of the running thread with the main
 thread, and is measured again below.
+
+## Reading an upvalue
+
+### Criterion, recorded before the change
+
+After the direct Lua-callee entry, callgrind of fib(32) at `a324a52`
+([run 38308001560](https://github.com/Ming-Research/Halo-wf/actions/runs/38308001560),
+7,049,155 Lua calls of fib) attributes 62 executed instructions per Lua
+call of fib to the `GetUpval` arm, out of 780.5. Fib reads its own
+function, `fib`, as an upvalue, twice in each call that recurses, and about
+half the calls recurse, so this is about one upvalue read per call. The
+14900K's cycle profile puts that arm's samples after the dependent loads of
+the upvalue cell and of the stack slot it points to
+([store-forwarding stalls](#store-forwarding-stalls-in-the-instruction-level-profiles)),
+and the arm took 19.9% of fib's cycles ([P1 on the current pin](#p1-on-the-current-pin)).
+
+What the arm does today, from the source (`instruction_get_upval`,
+`upvalue_handle` and `read_upvalue`): it loads the VM's frame-record buffer
+and its length, checks that a frame exists, loads the top frame's closure
+handle, checks it against the closure slab's length, checks the upvalue
+index against that closure's handle array and loads the upvalue handle,
+checks the handle against the upvalue slab's length, and then, for an open
+upvalue owned by the running thread, checks its slot against the stack and
+loads the value, or loads a closed upvalue's value; it stores the value in
+the destination register, tests whether the run is suspended and checks the
+next pc against the code. From the arm's start to the value, six loads
+each wait on the one before: the frame-record buffer and length, the
+frame's closure handle, the closure's handle array, the upvalue handle, the
+upvalue cell and the stack slot. PUC Lua's `GETUPVAL` keeps the running
+closure in a local of `luaV_execute`, set again whenever the frame changes,
+and reads `cl->upvals[b]->v`: three dependent loads.
+
+Change: `run` carries the running closure's handle as a loop variable beside
+`pc`, `base` and `kbase`. It is read from the top frame record when `run`
+starts and again in the shared epilogue after every step that ends there,
+and the `GetUpval` arm starts from it instead of from the frame records.
+This removes the first two of the six dependent loads; the closure's handle
+array, the upvalue handle, the upvalue cell and the stack slot remain, one
+more than PUC because the handle array is a separate buffer. The arm keeps
+every bound check it makes today on the closure slab, the handle array, the
+upvalue slab and the stack; only the check that a frame exists moves to
+where the handle is read, which yields the slab's no-handle value when there
+is none, so the arm raises "invalid upvalue index" as today. `SetUpval` and
+closure creation keep reading the frame record; this change is to the read
+only, and applies to every upvalue read of every Lua function.
+
+Why the copy always names the top frame's closure: every frame change
+inside a run (a call, a tail call, a return, an error unwound to a `pcall`,
+a callback, a coroutine transfer) happens in a handler that returns a step
+to the shared epilogue, or ends the run, which starts again from the frame
+records; the arms that continue the loop directly (`Move`, `LoadK`,
+`GetUpval`, `ForLoop` and the callback-free fast variants) push and pop no
+frame, and the collection `ForLoop` may run puts the same frame records
+back. The frame record stays authoritative and is what the collector marks,
+so the closure the copy names is never freed while its frame runs, and the
+collector moves no slab cell. A stale copy, should a later change forget
+this, still passes the arm's bound checks before any heap read, so it could
+read a wrong value or raise but never index outside a buffer.
+
+Cost: the epilogue reads the top frame's closure after each step that ends
+there, about five instructions; in fib that is twice per call (`Call` and
+`Return`).
+
+Prior objection: [the VM design](../../investigations/halo/VM.md#11-performance-stage-candidates)
+records that a ninth loop-carried value cost 8% (match-dispatch E0, stated
+for x86-64 in candidate C2) while `run` was a self-tail call whose eight
+loop-carried values were all argument registers. `run` is now
+`loop { match }`, whose loop variables the register allocator may spill, so
+the copy may live in a stack slot, one load that waits on nothing; the risk
+that remains is other arms gaining spills or reloads, which the other six
+kernels' timing and the disassembly below test.
+
+Comparison: the criterion of
+[entering a Lua callee directly](#entering-a-lua-callee-directly-from-the-call-instructions):
+on the 14900K, six interleaved full-LTO pairs of this branch's base
+(`77de872`, the direct-entry branch with main merged) against the branch
+with the change, both built by `wf-d837678c6905`, with a twin of the base,
+every timed process on CPU 2, one, three and six pairs over the seven
+kernels as `run.py` runs them (binary-trees at depth 14, fib at N = 30);
+callgrind of fib(32) on a hosted runner by the temporary profile workflow,
+before and after, since the base's count is not 780.5 (it adds the
+coroutine charge's comparison to every Lua call); and the disassembly of
+`run` in both binaries.
+
+Expected: in callgrind, the `GetUpval` arm about 6 to 8 instructions fewer
+per call (the frame-record length, its test, the buffer, the index
+arithmetic and the closure handle), and the shared epilogue about 5 more
+per step, 10 per call of fib, so fib's total per Lua call changes by about
++2 to +6 instructions. The expected gain is latency, not instructions: two
+dependent loads of about 5 cycles each leave the read, against about 170
+cycles per call of fib on the 14900K (0.0786 s for 2,692,537 calls of
+fib(30) at about 5.7 GHz, an upper bound since the time includes start-up),
+so fib 2% to 6% faster if the read's chain is on fib's critical path, less
+if other work overlaps it.
+
+Kept only if: fib's median falls at least 3%, by more than both the larger
+min–max range and the twin's difference from 1; no other kernel is slower
+beyond its larger range and the twin's difference; and `make check` passes
+on the measured revision, with its ordinary and collector-stress oracle
+comparisons and its root controls. Otherwise the change is reverted with
+its measurements kept. `--check-module pkg::vm` is timed and reported, not
+judged.
+
+What the disassembly must show for the run to test the change: the
+`GetUpval` arm no longer loads the VM's frame-record buffer or length, and
+takes the closure handle from a register or from one stack slot; the shared
+epilogue loads the top frame's closure. If the arm still reads the frame
+records, the run does not test the change and is reported as such; if
+callgrind counts fewer than 5 instructions saved per call in the arm, the
+reading above is wrong and is corrected before the timing is interpreted.
+The run also reports, before and after, `run`'s stack frame size and saved
+registers and the stack reloads in the arms fib and the other kernels
+spend most in (`Call`, `Return`, `LtJmpRK`, `SubRK`, `AddRR`, `ForLoop`,
+`GetTableR`, `SetTableRR`), which answers the prior objection whatever the
+timing.
