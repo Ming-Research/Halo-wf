@@ -271,7 +271,7 @@ not automatically used to overwrite this baseline.
 | redis-api | [call-error-in-callback](scripts/redis-api/call-error-in-callback.lua) | A redis.call error inside a sort comparator ends the script with an error reply. |
 | redis-api | [call-in-callback](scripts/redis-api/call-in-callback.lua) | redis.call and redis.pcall return to sort, gsub and __tostring callbacks; pcall inside a comparator catches a redis.call error. |
 | redis-api | [call-success](scripts/redis-api/call-success.lua) | redis.call returns successful write and read replies. |
-| redis-api | [double-reply-table](scripts/redis-api/double-reply-table.lua) | Returned {double=x} tables become bulk strings with the host's double text; 7.2.16 prints the shortest round-trip digits where 7.0.15 printed %.17g. |
+| redis-api | [double-reply-table](scripts/redis-api/double-reply-table.lua) | Returned {double=x} tables become bulk strings with the host's double text; 7.2.16 writes fpconv's Grisu2 digits, which read back exactly but are not always the shortest, where 7.0.15 printed %.17g. |
 | redis-api | [double-score-reply](scripts/redis-api/double-score-reply.lua) | ZADD with a number score, then ZSCORE and WITHSCORES, reply with the host's double text (0.1 versus 0.10000000000000001). |
 | redis-api | [error-after-call-in-callback-line](scripts/redis-api/error-after-call-in-callback-line.lua) | A gsub error after a replacement that called redis.call returns is located at the gsub call. |
 | redis-api | [error-message-crlf](scripts/redis-api/error-message-crlf.lua) | A top-level runtime error whose message holds CR LF; 7.0.15 breaks the RESP framing, 7.2.16 replaces them with spaces. |
@@ -286,7 +286,7 @@ not automatically used to overwrite this baseline.
 | redis-api | [lua-nil](scripts/redis-api/lua-nil.lua) | A top-level Lua nil becomes a RESP nil bulk. |
 | redis-api | [lua-scalars](scripts/redis-api/lua-scalars.lua) | Lua numbers truncate toward zero; true is one and false is nil. |
 | redis-api | [number-argument-effects](scripts/redis-api/number-argument-effects.lua) | A number argument stored by SET is read back by INCR, and INCRBYFLOAT reads a fractional one; 7.0.15 and 7.2.16 format the argument differently. |
-| redis-api | [number-argument-format](scripts/redis-api/number-argument-format.lua) | ECHO returns number arguments as the host formats them: %.17g in 7.0.15, integers and shortest round-trip digits in 7.2.16. |
+| redis-api | [number-argument-format](scripts/redis-api/number-argument-format.lua) | ECHO returns number arguments as the host formats them: %.17g in 7.0.15, integers and fpconv's Grisu2 digits in 7.2.16. |
 | redis-api | [pcall-keeps-other-errors](scripts/redis-api/pcall-keeps-other-errors.lua) | pcall preserves error tables whose err field is neither string nor number, and nil and false errors. |
 | redis-api | [pcall-outside-comparator](scripts/redis-api/pcall-outside-comparator.lua) | A redis.call error from a sort comparator caught by pcall around sort is the err string. |
 | redis-api | [pcall-success-error](scripts/redis-api/pcall-success-error.lua) | redis.pcall returns successes and error tables without raising. |

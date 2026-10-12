@@ -2,7 +2,8 @@
 
 Halo is a Lua 5.1 engine written in Whitefoot with an embedding interface
 (`lib/halo`), with the JSON and MessagePack packages its codec libraries bind
-(`lib/json`, `lib/msgpack`). Firn-wf hosts it to run Redis scripts.
+(`lib/json`, `lib/msgpack`), and the port of the double-to-text conversion
+Redis's replies use (`lib/fpconv`). Firn-wf hosts it to run Redis scripts.
 
 ## Goal and first priorities
 
@@ -55,7 +56,8 @@ The upgrade's benchmark is
 - Halo's performance comparisons build both sides with full LTO.
 - `make check`, the gate, runs in CI on every push as three parallel groups
   (Makefile): core (the embedding probe, every oracle script at budgets 1, 7
-  and 1000, ordinary and under collector stress, and the design lint),
+  and 1000, ordinary and under collector stress, the test host's double text
+  against the table recorded on Redis, and the design lint),
   extended (the collector's root controls, the research hosts, the JSON
   package) and reference (the number library and the MessagePack package
   against Redis 7.2.16's bundled Lua built from source). It needs git, curl,
