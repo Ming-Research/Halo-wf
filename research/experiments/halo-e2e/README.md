@@ -13,7 +13,7 @@ Reused binaries must have been built with the corresponding mode.
 
 This explicitly invoked experiment runs the unchanged Halo oracle scripts through
 `pkg::embed` and an in-memory Whitefoot Redis test host. It compares typed RESP2
-JSON with the existing Redis 7.0.15 observations; it never regenerates them.
+JSON with the stored reference observations (Redis 7.2.16); it never regenerates them.
 The runner owns fixture transport, JSON formatting and comparison, not Lua
 execution. The Whitefoot host owns commands and both reply conversions.
 

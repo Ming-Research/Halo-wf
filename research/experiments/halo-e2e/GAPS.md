@@ -99,13 +99,24 @@ protocol's stop-before-write/reset/restart is the currently useful protocol.
 ## Test host and conversion scope
 
 The host uses separate tables for values, key types and expiry durations. It
-supports GET, SET, INCR, DEL, EXISTS, EXPIRE, PEXPIRE, TTL, HSET, HGET, HGETALL,
-LPUSH, RPUSH, LPOP, LRANGE, ZADD, ZCARD, ZSCORE, ZREMRANGEBYSCORE and PING. The
-implemented forms serve the corpus, not the full Redis command option grammar.
-Expiry uses a fixed clock at zero: positive durations remain live; nonpositive
-ones delete immediately. Reopen with clock-valued expiry fixtures before using
-this host to test countdowns. ZSCORE uses Halo's Lua number formatting; general
-Redis double formatting and malformed score/expiry inputs are not verified.
+supports GET, SET, INCR, INCRBYFLOAT, DEL, EXISTS, EXPIRE, PEXPIRE, TTL, HSET,
+HGET, HGETALL, LPUSH, RPUSH, LPOP, LRANGE, ZADD, ZCARD, ZSCORE, ZRANGE (by rank,
+optionally WITHSCORES), ZREMRANGEBYSCORE, ECHO and PING. The implemented forms
+serve the corpus, not the full Redis command option grammar. Expiry uses a
+fixed clock at zero: positive durations remain live; nonpositive ones delete
+immediately. Reopen with clock-valued expiry fixtures before using this host
+to test countdowns. Malformed score/expiry inputs are not verified.
+
+A Lua number passed to redis.call, a double reply (ZSCORE, WITHSCORES scores,
+a returned `{double=x}`) and INCRBYFLOAT's result follow Redis 7.2.16's rules
+(double2ll's integer range, d2string's nan, infinities and zeros), except
+for the digits of a finite non-integral value: Redis writes the shortest
+digits that read back exactly, and this host writes Lua's %.14g text, which
+agrees for values such as 0.1 and differs for values such as 1/3. Whitefoot's
+standard library has no shortest round-trip conversion yet (board item
+`wf-need-halo-oracle-72`). INCRBYFLOAT also adds in double where Redis adds in
+long double and prints with `%.17Lf`, so sums that the two precisions round
+differently still differ.
 
 RESP2 conversion truncates representable numbers toward zero, maps true to one and false/nil
 to nil bulk, recognizes err before ok fields, and traverses tables from index
@@ -114,9 +125,14 @@ it does not end traversal. Numeric replies outside the signed 64-bit domain,
 including nonfinite values, currently use INT64_MIN; Redis's target-specific C
 conversion for those inputs has not been established by this corpus run.
 Status/error payloads replace CR/LF with spaces and
-use Redis's C-string boundary. A defensive reply nesting limit of 128 is a test
+use Redis's C-string boundary; a returned error table's text first loses its
+trailing CR/LF, as Redis 7.2.16's addReplyErrorFormatEx trims it. A `{double=x}`
+table, checked after err and ok, becomes a bulk string. A defensive reply nesting limit of 128 is a test
 host limitation, not Lua acceptance. Cyclic/deep replies are not corpus cases.
 
 `new_engine` installs the VM's slice-1 library. Redis call/pcall, status/error
-reply, log and sha1hex are supplied by this host; sha1hex uses the embedding's
+reply, log, sha1hex, set_repl with its REPL_* flags, REDIS_VERSION and
+REDIS_VERSION_NUM (7.2.16) are supplied by this host; set_repl checks its
+arguments as Redis 7.2.16 does and otherwise has no effect, since the host does
+not replicate; sha1hex uses the embedding's
 Whitefoot digest implementation.
