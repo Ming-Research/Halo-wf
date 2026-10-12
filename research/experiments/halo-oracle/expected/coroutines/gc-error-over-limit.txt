@@ -1,0 +1,17 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "bulk",
+      "bytes": "false"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:8: attempt to perform arithmetic on a nil value"
+    },
+    {
+      "type": "integer",
+      "value": 41943040
+    }
+  ]
+}
