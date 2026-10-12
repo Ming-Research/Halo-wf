@@ -69,7 +69,7 @@ luajit=$dir/luajit/src/luajit
 {
   echo "luajit-2.1-joff: $luajit -joff"
   echo "  source LuaJIT commit $luajit_commit, $("$luajit" -v)"
-  echo "  compile: $(compile_line "$dir/luajit-build.log" ' -c .*lj_tab\.c')"
+  echo "  compile: $(compile_line "$dir/luajit-build.log" ' -o lj_tab\.o ')"
 } >> "$manifest"
 
 # Luau 0.742 (released 2026-10-09).

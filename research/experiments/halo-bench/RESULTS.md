@@ -5440,16 +5440,16 @@ result outside these is reported as measured.
 ### Result
 
 Run on 2026-10-12 by the temporary workflow
-[`fastest-baseline.yml`](https://github.com/Ming-Research/Halo-wf/blob/8a86f9c/.github/workflows/fastest-baseline.yml) on the 14900K (Ubuntu, CPU
+[`fastest-baseline.yml`](https://github.com/Ming-Research/Halo-wf/blob/9bff3d991b4aee1327f720e03d55bc0c366f82b5/.github/workflows/fastest-baseline.yml) on the 14900K (Ubuntu, CPU
 governor `performance` on all 32 CPUs, every timed process on CPU 2), source
 `9bff3d991b4a`, Halo built by `wf-d837678c6905` with full LTO through Ubuntu
 clang 22.1.8, the other interpreters with gcc/g++ 15.2.0 at the flags above;
-the run's JSON, manifests and logs are the run's `halo-fastest-baseline`
-artifact. Six rounds. Every interpreter agreed with PUC 5.1.5 on all 13
+the run's JSON, with every launch, the manifests and the CPU state, is
+[`fastest-baseline-2026-10-12.json`](fastest-baseline-2026-10-12.json). Six rounds. Every interpreter agreed with PUC 5.1.5 on all 13
 workloads (no n/a). The job started on the 14900K without going through the
 machine's queue because the commit body mentioned the trigger; the runner
-has one slot, so no other CI job overlapped it. The trigger now requires
-`[bench]` at the start of the subject.
+has one slot, so no other CI job overlapped it. Commit `8a86f9c` then
+changed the trigger to require `[bench]` at the start of the subject.
 
 Median seconds per launch; in parentheses Halo / interpreter, above 1 when Halo is slower.
 
@@ -5494,27 +5494,40 @@ Read against the directions recorded before the run:
   (NBody) to 1.80 (fib) times, and faster on string-key (0.84) and sort
   (0.63). Ranked: fib 1.80, List 1.70, Towers 1.61, Sieve 1.53, loop 1.52,
   Queens 1.45, Permute 1.42, integer-table 1.37, binary-trees 1.34, concat
-  1.34, NBody 1.23. The six AWFY benchmarks (1.23 to 1.70) fall inside the
-  kernels' range (1.34 to 1.80, failing kernels only), so they do not by
-  themselves reorder the attribution work.
+  1.34, NBody 1.23. The AWFY benchmarks do rank differently from the
+  kernels: List, Towers and Sieve take places 2 to 4, above four of the
+  five failing kernels, and NBody (1.23) is below every failing kernel. By
+  the direction recorded before the run, the next attributions therefore
+  come from the AWFY profiles (List, Towers, Sieve) as well as fib's.
 - Stage 2. LuaJIT `-joff` is more than 3 times faster than Halo on 8 of 13
   workloads (fib 3.32, binary-trees 3.18, List 3.29, NBody 3.88, Permute
   3.89, Queens 3.76, Sieve 3.74, Towers 4.33); List's distance from 3 (10%)
   is inside LuaJIT's 17.5% range there, which leaves 7 of 13 clear of the
-  noise, still the recorded threshold. By the direction recorded before the
-  run, stage 2 needs a value-representation change, not only code
-  generation and VM path fixes. This is a direction for a later
-  investigation, which states its own question; it does not change stage 1.
+  noise, still the recorded threshold. Read mechanically, the direction
+  recorded before the run says stage 2 needs a value-representation
+  change. The next bullet contradicts that reading: PUC 5.4.9 and Luau
+  keep 16-byte tagged values, the size of Halo's
+  ([values](../../../design/halo/values.md)), and are still 1.96 and 2.26
+  times faster by geometric mean (Luau above 3 times on four workloads),
+  so narrower values cannot be what most of that gap needs. The
+  directions did not foresee every comparison interpreter being far
+  ahead. This run does not challenge the 16-byte value decision; the
+  attribution of the gap to LuaJIT `-joff` belongs to a later
+  investigation, after the gap to the 16-byte interpreters is understood.
+  Stage 1 is unchanged.
 - PUC 5.4.9 and Luau are not within 1.5 times of Halo on most workloads
   (PUC 5.4.9 1.70 to 2.87 times faster on 12, slower only on sort; Luau
   1.21 to 3.17 times faster on all 13), so
   the gap is not specific to LuaJIT's hand-written assembly interpreter.
 - Luau `-O2` matches Luau `-O1` on every workload (within 3%); it adds
   nothing to later runs.
-- The prior held: Halo 1.34 to 1.80 times PUC 5.1.5 on the five kernels
-  P1 still fails; PUC 5.4.9 1.48 times faster than PUC 5.1.5 by the
-  geometric means (1.96 / 1.32); LuaJIT `-joff` 2.1 times and Luau 1.7
-  times faster than PUC 5.1.5 by the same measure.
+- The prior held, with one correction: its Halo part (1.3 to 1.9 times
+  PUC 5.1.5 on the five kernels P1 still fails) repeats this record's own
+  "P1 on the current pin" result rather than anything reported elsewhere,
+  so it is not an independent prior; measured 1.34 to 1.80. Otherwise:
+  PUC 5.4.9 1.48 times faster than PUC 5.1.5 by the geometric means
+  (1.96 / 1.32); LuaJIT `-joff` 2.1 times and Luau 1.7 times faster than
+  PUC 5.1.5 by the same measure.
 
 Noise. Some ranges are wide: Luau `-O2` fib 38% and Luau NBody 84% (one
 slow launch each of six), Halo Queens 10.5% (two slow launches), PUC 5.4.9

@@ -125,7 +125,7 @@ longer repeated:
   checks. `--sample` runs one round to time the run before `--rounds N`.
 
 The recorded run came from a temporary workflow, kept at
-[`8a86f9c`](https://github.com/Ming-Research/Halo-wf/blob/8a86f9c/.github/workflows/fastest-baseline.yml): it built Halo's bench host with
+[`9bff3d9`](https://github.com/Ming-Research/Halo-wf/blob/9bff3d991b4aee1327f720e03d55bc0c366f82b5/.github/workflows/fastest-baseline.yml): it built Halo's bench host with
 full LTO, ran `fetch-redis.sh`, `interpreters.sh` and `awfy.py`, then the
 sample and six rounds on the 14900K's CPU 2. A repetition runs the same
 steps; for example, the sample with two interpreters:

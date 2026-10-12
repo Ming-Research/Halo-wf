@@ -1,0 +1,5627 @@
+{
+  "revision": "9bff3d991b4aee1327f720e03d55bc0c366f82b5",
+  "host": "Linux-7.0.0-38-generic-x86_64-with-glibc2.43",
+  "started_utc": "2026-10-12T06:03:13Z",
+  "sample": false,
+  "rounds": 6,
+  "reference": "puc-5.1.5",
+  "affinity": [
+    2
+  ],
+  "cpu_before": {
+    "2": {
+      "scaling_governor": "performance",
+      "scaling_cur_freq": "5000000"
+    }
+  },
+  "engines": {
+    "halo": {
+      "command": [
+        "/home/runner/actions-runner/_work/Halo-wf/Halo-wf/build/fastest/halo"
+      ],
+      "sha256": "ddde8a4e60f8d5a7cd1ff3b13aa346535d13bb61a54a32f0bc4719f2a49d51ad"
+    },
+    "puc-5.1.5": {
+      "command": [
+        "/home/runner/actions-runner/_work/Halo-wf/Halo-wf/build/redis/redis-7.0.15/deps/lua/src/lua"
+      ],
+      "sha256": "8117a054b5de152fb3e666dde2fe0c5abf3650e22e9ff0090d282bdbc7d8321b"
+    },
+    "puc-5.4.9": {
+      "command": [
+        "/home/runner/actions-runner/_work/Halo-wf/Halo-wf/build/fastest/interpreters/lua-5.4.9/src/lua"
+      ],
+      "sha256": "52ea73b2e7d63c0755eabd00ea22381bd241c18fdcff41119255bd9ac30d10f5"
+    },
+    "luajit-2.1-joff": {
+      "command": [
+        "/home/runner/actions-runner/_work/Halo-wf/Halo-wf/build/fastest/interpreters/luajit/src/luajit",
+        "-joff"
+      ],
+      "sha256": "a1ff02fbce1ed98f3e384e560158a456ffc26d43badac7a31e424af616c68320"
+    },
+    "luau-0.742": {
+      "command": [
+        "/home/runner/actions-runner/_work/Halo-wf/Halo-wf/build/fastest/interpreters/luau/build/release/luau"
+      ],
+      "sha256": "f99ef38cee8bcbc336a92b1b1878bd2d26e74978650865a4edb87ea9a3993449"
+    },
+    "luau-0.742-O2": {
+      "command": [
+        "/home/runner/actions-runner/_work/Halo-wf/Halo-wf/build/fastest/interpreters/luau/build/release/luau",
+        "-O2"
+      ],
+      "sha256": "f99ef38cee8bcbc336a92b1b1878bd2d26e74978650865a4edb87ea9a3993449"
+    }
+  },
+  "compiler_sha256": "19e5b96a992507097d0c8fcac404665b0125cd746e9e63a68427bc82a12730be",
+  "host_sources_sha256": {
+    "modules.wfg": "dae3b0320fcfb9d8223b537ee27b7d1342e277a639dddf4582b5736d4b865230",
+    "host/module.wfm": "6b555158bf47efd20cbd81a123f4906b55d5213364ee829b7c0253a89820a939",
+    "host/driver.wf": "7b71e6ec93653531b32de2b0cc50943e5d2a6a1a3fd5b607faf7fc739ed1d503"
+  },
+  "scales": {
+    "binary-trees": 14
+  },
+  "manifests": {
+    "/home/runner/actions-runner/_work/Halo-wf/Halo-wf/build/fastest/manifest.txt": "source 9bff3d991b4aee1327f720e03d55bc0c366f82b5, compiler wf-d837678c6905\n19e5b96a992507097d0c8fcac404665b0125cd746e9e63a68427bc82a12730be  /home/runner/actions-runner/_work/Halo-wf/Halo-wf/build/whitefoot/wf-d837678c6905/whitefootc\nddde8a4e60f8d5a7cd1ff3b13aa346535d13bb61a54a32f0bc4719f2a49d51ad  /home/runner/actions-runner/_work/Halo-wf/Halo-wf/build/fastest/halo\n8117a054b5de152fb3e666dde2fe0c5abf3650e22e9ff0090d282bdbc7d8321b  build/redis/redis-7.0.15/deps/lua/src/lua\nUbuntu clang version 22.1.8 (++20260714015917+ca7933e47d3a-1~exp1~20260714135927.17)\npuc-5.1.5 compile: cc -Wall -DLUA_ANSI -DENABLE_CJSON_GLOBAL -DREDIS_STATIC='' -DLUA_USE_MKSTEMP  -O2    -c -o lvm.o lvm.c\ntimed processes pinned with: taskset -c 2\n     32 performance\nbefore: CPU 2 governor performance, frequency 4400000 kHz (min 5000000, max 5000000)\n",
+    "/home/runner/actions-runner/_work/Halo-wf/Halo-wf/build/fastest/interpreters/manifest.txt": "puc-5.4.9: /home/runner/actions-runner/_work/Halo-wf/Halo-wf/build/fastest/interpreters/lua-5.4.9/src/lua\n  source lua-5.4.9.tar.gz sha256 2335b6c582a52654f94612bf10d2f4672805d05329aa6568b1d8cd9e5c6fb8e6\n  compile: gcc -std=gnu99 -O2 -Wall -Wextra -DLUA_COMPAT_5_3 -DLUA_USE_LINUX    -c -o lvm.o lvm.c\nluajit-2.1-joff: /home/runner/actions-runner/_work/Halo-wf/Halo-wf/build/fastest/interpreters/luajit/src/luajit -joff\n  source LuaJIT commit c6ffc141a8762b41703f9287d63d93622a13dd8f, LuaJIT 2.1.1788856981 -- Copyright (C) 2005-2026 Mike Pall. https://luajit.org/\n  compile: gcc -fPIC  -O2 -fomit-frame-pointer -Wall   -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -U_FORTIFY_SOURCE  -DLUA_MULTILIB=\\\"lib\\\" -DLUA_LJDIR=\\\"/usr/local/share/luajit-2.1\\\" -fno-stack-protector -DLUAJIT_UNWIND_EXTERNAL   -c -o lj_tab_dyn.o lj_tab.c\nluau-0.742: /home/runner/actions-runner/_work/Halo-wf/Halo-wf/build/fastest/interpreters/luau/build/release/luau (default -O1, no --codegen)\nluau-0.742-O2: /home/runner/actions-runner/_work/Halo-wf/Halo-wf/build/fastest/interpreters/luau/build/release/luau -O2 (no --codegen)\n  source Luau tag 0.742 commit 8387cfb461b38ce09e37c1e4c2811538ef1bf5cb\n  compile: g++ VM/src/lvmexecute.cpp -g -Wall -Wno-unused -Wno-maybe-uninitialized -O2 -DNDEBUG -fno-math-errno -std=c++11 -ICommon/include -IVM/include -c -MMD -MP -o build/release/VM/src/lvmexecute.cpp.o\ngcc: gcc (Ubuntu 15.2.0-16ubuntu1) 15.2.0\ng++: g++ (Ubuntu 15.2.0-16ubuntu1) 15.2.0\n52ea73b2e7d63c0755eabd00ea22381bd241c18fdcff41119255bd9ac30d10f5  /home/runner/actions-runner/_work/Halo-wf/Halo-wf/build/fastest/interpreters/lua-5.4.9/src/lua\na1ff02fbce1ed98f3e384e560158a456ffc26d43badac7a31e424af616c68320  /home/runner/actions-runner/_work/Halo-wf/Halo-wf/build/fastest/interpreters/luajit/src/luajit\nf99ef38cee8bcbc336a92b1b1878bd2d26e74978650865a4edb87ea9a3993449  /home/runner/actions-runner/_work/Halo-wf/Halo-wf/build/fastest/interpreters/luau/build/release/luau\n"
+  },
+  "awfy_manifest": {
+    "repository": "https://github.com/smarr/are-we-fast-yet.git",
+    "commit": "74306fec151070fd07157cefeacf19e7e0bcdc89",
+    "harness": "harness.lua <Name> 1 <inner>",
+    "excluded": {
+      "Bounce": "som.lua needs LuaBitOp bit (band, bxor, rshift) on Lua 5.1",
+      "CD": "som.lua needs LuaBitOp bit (band, bxor, rshift) on Lua 5.1",
+      "DeltaBlue": "som.lua needs LuaBitOp bit (band, bxor, rshift) on Lua 5.1",
+      "Havlak": "som.lua needs LuaBitOp bit (band, bxor, rshift) on Lua 5.1",
+      "Json": "som.lua and hashindextable.lua need LuaBitOp bit on Lua 5.1",
+      "Mandelbrot": "mandelbrot-fn.lua needs LuaBitOp bit (bxor, lshift) on Lua 5.1",
+      "Richards": "richards.lua needs LuaBitOp bit (band, bxor) on Lua 5.1",
+      "Storage": "som.lua needs LuaBitOp bit (band, bxor, rshift) on Lua 5.1"
+    },
+    "bundles": {
+      "List": {
+        "inner_iterations": 1000,
+        "files": {
+          "benchmarks/Lua/benchmark.lua": "f854c782efb9513bd60805e6e833e4df268b997ea9ff95744de0ad6d00733e63",
+          "benchmarks/Lua/list.lua": "863cff8f08d7b48bbf5f01b12d487dace4aee25777fbcc456c43819a51e59e07"
+        },
+        "sha256": "cdcdfb6eca86307d2498b69cd40706b6b674d987a040779ed8902f75e215e7af"
+      },
+      "NBody": {
+        "inner_iterations": 250000,
+        "files": {
+          "benchmarks/Lua/benchmark.lua": "f854c782efb9513bd60805e6e833e4df268b997ea9ff95744de0ad6d00733e63",
+          "benchmarks/Lua/nbody.lua": "6bd49dde32cf69dd4b9e6a971d182d357ac4b7e29910dfbd79c3626b73d8cd7f"
+        },
+        "sha256": "896c1e22a10e6ab308d13bb5a4a671a54b23401a92949f0fd04a795e25332ac9"
+      },
+      "Permute": {
+        "inner_iterations": 400,
+        "files": {
+          "benchmarks/Lua/benchmark.lua": "f854c782efb9513bd60805e6e833e4df268b997ea9ff95744de0ad6d00733e63",
+          "benchmarks/Lua/permute.lua": "7e7c7cd4dd1d10b85a4474d868a70da04be5b5ec9b287bee8421a111fcee2068"
+        },
+        "sha256": "460e6d40ae2853a7c7cef86689eee85e1fce7cd742bc5ee53aba2d0e215ab482"
+      },
+      "Queens": {
+        "inner_iterations": 800,
+        "files": {
+          "benchmarks/Lua/benchmark.lua": "f854c782efb9513bd60805e6e833e4df268b997ea9ff95744de0ad6d00733e63",
+          "benchmarks/Lua/queens.lua": "03f9349ae7ba3aad09a5bba4f7102e77ea340e757906f9c8e53c133d8e469381"
+        },
+        "sha256": "1d76a570036135f58aaa8495638a8b929947df6e724562fff0808958d8e37c7d"
+      },
+      "Sieve": {
+        "inner_iterations": 2000,
+        "files": {
+          "benchmarks/Lua/benchmark.lua": "f854c782efb9513bd60805e6e833e4df268b997ea9ff95744de0ad6d00733e63",
+          "benchmarks/Lua/sieve.lua": "3b6a63b07b5ed506e97337ba339983aa71a54021bd73c9f83b4e069aa5d89fed"
+        },
+        "sha256": "7f36b4dcb7bebd064ad6e8b9dbb5ebf5577a235f7721870356323ab2c6d1fec2"
+      },
+      "Towers": {
+        "inner_iterations": 300,
+        "files": {
+          "benchmarks/Lua/benchmark.lua": "f854c782efb9513bd60805e6e833e4df268b997ea9ff95744de0ad6d00733e63",
+          "benchmarks/Lua/towers.lua": "d0902a6d929a57e6412586687585732bccfdf39a81c805bbdcd8485b4c1b4c75"
+        },
+        "sha256": "eed8c3da2050e1460c27b970be89552d93df7375b943fe8975b7cffc7c6a5765"
+      }
+    }
+  },
+  "workloads": {
+    "fib": {
+      "path": "/home/runner/actions-runner/_work/Halo-wf/Halo-wf/research/experiments/halo-bench/kernels/fib.lua",
+      "sha256": "dbbbf86920c5e832958c523d378e5d28fd593739008327d2db30ba61548b44ab",
+      "reference": "832040\n",
+      "engines": {
+        "halo": {
+          "status": "ok",
+          "median": 0.08706505350710358,
+          "minimum": 0.08698449801886454,
+          "maximum": 0.08820968799409457,
+          "relative_range": 0.014072121085069576,
+          "runs": 6
+        },
+        "puc-5.1.5": {
+          "status": "ok",
+          "median": 0.048416475488920696,
+          "minimum": 0.04812451600446366,
+          "maximum": 0.04995360501925461,
+          "relative_range": 0.03777823553491639,
+          "runs": 6,
+          "halo_over": 1.7982526119032967
+        },
+        "puc-5.4.9": {
+          "status": "ok",
+          "median": 0.032761976501205936,
+          "minimum": 0.032644171005813405,
+          "maximum": 0.033279794006375596,
+          "relative_range": 0.019401240964164488,
+          "runs": 6,
+          "halo_over": 2.6575030814730853
+        },
+        "luajit-2.1-joff": {
+          "status": "ok",
+          "median": 0.026190820484771393,
+          "minimum": 0.02616363699780777,
+          "maximum": 0.026315680996049196,
+          "relative_range": 0.005805239982070446,
+          "runs": 6,
+          "halo_over": 3.3242583430224117
+        },
+        "luau-0.742": {
+          "status": "ok",
+          "median": 0.03038462100084871,
+          "minimum": 0.030324224004289135,
+          "maximum": 0.03063121298328042,
+          "relative_range": 0.010103432884112988,
+          "runs": 6,
+          "halo_over": 2.8654316110993014
+        },
+        "luau-0.742-O2": {
+          "status": "ok",
+          "median": 0.03040906750538852,
+          "minimum": 0.030316863994812593,
+          "maximum": 0.041872917994624004,
+          "relative_range": 0.3800200054725014,
+          "runs": 6,
+          "halo_over": 2.863128028890579
+        }
+      }
+    },
+    "loop": {
+      "path": "/home/runner/actions-runner/_work/Halo-wf/Halo-wf/research/experiments/halo-bench/kernels/loop.lua",
+      "sha256": "109c6f96fd9809ccf6525f982b11baa2f6dbe352990a28a60c474807be9265da",
+      "reference": "5.00000005e+15\n",
+      "engines": {
+        "halo": {
+          "status": "ok",
+          "median": 0.50188454950694,
+          "minimum": 0.5015763199771754,
+          "maximum": 0.5031629069999326,
+          "relative_range": 0.0031612589475325512,
+          "runs": 6
+        },
+        "puc-5.1.5": {
+          "status": "ok",
+          "median": 0.3299786485004006,
+          "minimum": 0.32947339600650594,
+          "maximum": 0.330514472007053,
+          "relative_range": 0.003154979891208848,
+          "runs": 6,
+          "halo_over": 1.520960679691767
+        },
+        "puc-5.4.9": {
+          "status": "ok",
+          "median": 0.2761121289950097,
+          "minimum": 0.27595302899135277,
+          "maximum": 0.2763075540133286,
+          "relative_range": 0.001283989309945408,
+          "runs": 6,
+          "halo_over": 1.8176838204598058
+        },
+        "luajit-2.1-joff": {
+          "status": "ok",
+          "median": 0.22670258648577146,
+          "minimum": 0.22572171498904936,
+          "maximum": 0.22749255801318213,
+          "relative_range": 0.007811304897678866,
+          "runs": 6,
+          "halo_over": 2.2138457142765757
+        },
+        "luau-0.742": {
+          "status": "ok",
+          "median": 0.28163597302045673,
+          "minimum": 0.28147366701159626,
+          "maximum": 0.2831977960013319,
+          "relative_range": 0.006121835116604176,
+          "runs": 6,
+          "halo_over": 1.7820328281376376
+        },
+        "luau-0.742-O2": {
+          "status": "ok",
+          "median": 0.2825950249825837,
+          "minimum": 0.28104545298265293,
+          "maximum": 0.28466170601313934,
+          "relative_range": 0.01279659127300374,
+          "runs": 6,
+          "halo_over": 1.7759850851509895
+        }
+      }
+    },
+    "integer-table": {
+      "path": "/home/runner/actions-runner/_work/Halo-wf/Halo-wf/research/experiments/halo-bench/kernels/integer-table.lua",
+      "sha256": "0281334766512a9e620a543d5b429f7c0d61b8ea2ff82927224d52b1e72ee3ce",
+      "reference": "50000005000000\n",
+      "engines": {
+        "halo": {
+          "status": "ok",
+          "median": 0.3523932399984915,
+          "minimum": 0.34551804297370836,
+          "maximum": 0.3591913529962767,
+          "relative_range": 0.038801283539454,
+          "runs": 6
+        },
+        "puc-5.1.5": {
+          "status": "ok",
+          "median": 0.25634230600553565,
+          "minimum": 0.2523568450124003,
+          "maximum": 0.2608615240023937,
+          "relative_range": 0.03317704019487814,
+          "runs": 6,
+          "halo_over": 1.3746979399915427
+        },
+        "puc-5.4.9": {
+          "status": "ok",
+          "median": 0.2070558104896918,
+          "minimum": 0.19369423401076347,
+          "maximum": 0.21034048599540256,
+          "relative_range": 0.08039500048450861,
+          "runs": 6,
+          "halo_over": 1.7019239361845162
+        },
+        "luajit-2.1-joff": {
+          "status": "ok",
+          "median": 0.12124389900418464,
+          "minimum": 0.11644097298267297,
+          "maximum": 0.12307774001965299,
+          "relative_range": 0.054738977313414795,
+          "runs": 6,
+          "halo_over": 2.9064822468826157
+        },
+        "luau-0.742": {
+          "status": "ok",
+          "median": 0.2904017570108408,
+          "minimum": 0.283953678997932,
+          "maximum": 0.291786752990447,
+          "relative_range": 0.026973232094537815,
+          "runs": 6,
+          "halo_over": 1.2134680024864193
+        },
+        "luau-0.742-O2": {
+          "status": "ok",
+          "median": 0.2889926560019376,
+          "minimum": 0.28285631598555483,
+          "maximum": 0.290615378995426,
+          "relative_range": 0.026848651163713825,
+          "runs": 6,
+          "halo_over": 1.2193847583314672
+        }
+      }
+    },
+    "string-key": {
+      "path": "/home/runner/actions-runner/_work/Halo-wf/Halo-wf/research/experiments/halo-bench/kernels/string-key.lua",
+      "sha256": "585821f9c9800736ce0e3af1f83bbb2b1f6a7d274e04c83b0494a4ae38b74cea",
+      "reference": "28500000\n",
+      "engines": {
+        "halo": {
+          "status": "ok",
+          "median": 0.02230855250672903,
+          "minimum": 0.021744580008089542,
+          "maximum": 0.02316109699313529,
+          "relative_range": 0.06349658879115871,
+          "runs": 6
+        },
+        "puc-5.1.5": {
+          "status": "ok",
+          "median": 0.026700820002588443,
+          "minimum": 0.026339700998505577,
+          "maximum": 0.027170607005245984,
+          "relative_range": 0.031119119437524993,
+          "runs": 6,
+          "halo_over": 0.8355006514618796
+        },
+        "puc-5.4.9": {
+          "status": "ok",
+          "median": 0.012014453008305281,
+          "minimum": 0.011631410015979782,
+          "maximum": 0.012119266990339383,
+          "relative_range": 0.040605841482950475,
+          "runs": 6,
+          "halo_over": 1.8568096684308226
+        },
+        "luajit-2.1-joff": {
+          "status": "ok",
+          "median": 0.01117312400310766,
+          "minimum": 0.011114255990833044,
+          "maximum": 0.011336742987623438,
+          "relative_range": 0.01991269377557363,
+          "runs": 6,
+          "halo_over": 1.9966262345718346
+        },
+        "luau-0.742": {
+          "status": "ok",
+          "median": 0.01628260500729084,
+          "minimum": 0.016245124978013337,
+          "maximum": 0.01671033599996008,
+          "relative_range": 0.028571043867884543,
+          "runs": 6,
+          "halo_over": 1.3700849769886305
+        },
+        "luau-0.742-O2": {
+          "status": "ok",
+          "median": 0.016279694507829845,
+          "minimum": 0.016268220992060378,
+          "maximum": 0.016376176004996523,
+          "relative_range": 0.006631267735658262,
+          "runs": 6,
+          "halo_over": 1.3703299221001695
+        }
+      }
+    },
+    "concat": {
+      "path": "/home/runner/actions-runner/_work/Halo-wf/Halo-wf/research/experiments/halo-bench/kernels/concat.lua",
+      "sha256": "2fa66325e51e5d25ee67972f779b3c88d47326557f4cbf9393195799c3a7525c",
+      "reference": "5000000\n",
+      "engines": {
+        "halo": {
+          "status": "ok",
+          "median": 0.07286466349614784,
+          "minimum": 0.07241159598925151,
+          "maximum": 0.0775292300095316,
+          "relative_range": 0.07023478562486807,
+          "runs": 6
+        },
+        "puc-5.1.5": {
+          "status": "ok",
+          "median": 0.05455781651835423,
+          "minimum": 0.05414538498735055,
+          "maximum": 0.05884391599101946,
+          "relative_range": 0.08612021711111247,
+          "runs": 6,
+          "halo_over": 1.3355494802772185
+        },
+        "puc-5.4.9": {
+          "status": "ok",
+          "median": 0.039240355996298604,
+          "minimum": 0.035975086997495964,
+          "maximum": 0.04172270800336264,
+          "relative_range": 0.14647219322905297,
+          "runs": 6,
+          "halo_over": 1.8568807964693514
+        },
+        "luajit-2.1-joff": {
+          "status": "ok",
+          "median": 0.02943078349926509,
+          "minimum": 0.02938257998903282,
+          "maximum": 0.02984137399471365,
+          "relative_range": 0.015588915792618492,
+          "runs": 6,
+          "halo_over": 2.4757976116390967
+        },
+        "luau-0.742": {
+          "status": "ok",
+          "median": 0.0336824990081368,
+          "minimum": 0.03359979699598625,
+          "maximum": 0.03416581000783481,
+          "relative_range": 0.016804365130741048,
+          "runs": 6,
+          "halo_over": 2.163279615284652
+        },
+        "luau-0.742-O2": {
+          "status": "ok",
+          "median": 0.03372946551826317,
+          "minimum": 0.0336157449928578,
+          "maximum": 0.03388379802345298,
+          "relative_range": 0.007947147293218841,
+          "runs": 6,
+          "halo_over": 2.160267361980418
+        }
+      }
+    },
+    "sort": {
+      "path": "/home/runner/actions-runner/_work/Halo-wf/Halo-wf/research/experiments/halo-bench/kernels/sort.lua",
+      "sha256": "96bb6c47b3062381dca7a9b5ae09186792d28ca5dd7cbfe7d6b3432fb8e4807d",
+      "reference": "1.0733795172001e+15\n",
+      "engines": {
+        "halo": {
+          "status": "ok",
+          "median": 0.18441451450053137,
+          "minimum": 0.18252952900365926,
+          "maximum": 0.18662124298862182,
+          "relative_range": 0.022187591882583423,
+          "runs": 6
+        },
+        "puc-5.1.5": {
+          "status": "ok",
+          "median": 0.29180545901181176,
+          "minimum": 0.29055381400394253,
+          "maximum": 0.29265226700226776,
+          "relative_range": 0.00719127395845013,
+          "runs": 6,
+          "halo_over": 0.631977602903812
+        },
+        "puc-5.4.9": {
+          "status": "ok",
+          "median": 0.3171950009855209,
+          "minimum": 0.3122702849796042,
+          "maximum": 0.31792611299897544,
+          "relative_range": 0.017830760263556077,
+          "runs": 6,
+          "halo_over": 0.5813916169156442
+        },
+        "luajit-2.1-joff": {
+          "status": "ok",
+          "median": 0.30561460099124815,
+          "minimum": 0.3039889560022857,
+          "maximum": 0.3066036259988323,
+          "relative_range": 0.008555448555357005,
+          "runs": 6,
+          "halo_over": 0.603421806099547
+        },
+        "luau-0.742": {
+          "status": "ok",
+          "median": 0.12449873451259919,
+          "minimum": 0.1243926520110108,
+          "maximum": 0.12493244998040609,
+          "relative_range": 0.004335770733000243,
+          "runs": 6,
+          "halo_over": 1.4812561366386319
+        },
+        "luau-0.742-O2": {
+          "status": "ok",
+          "median": 0.12447627150686458,
+          "minimum": 0.12311865400988609,
+          "maximum": 0.12510512699373066,
+          "relative_range": 0.015958647859524205,
+          "runs": 6,
+          "halo_over": 1.481523444332612
+        }
+      }
+    },
+    "binary-trees": {
+      "path": "/home/runner/actions-runner/_work/Halo-wf/Halo-wf/build/fastest/full-sources/binary-trees.lua",
+      "sha256": "01f28ad8804be0bc1b8539aabfc7942da18b928b1a270cf7cb9300367f1eebd6",
+      "reference": "-43682\n",
+      "engines": {
+        "halo": {
+          "status": "ok",
+          "median": 1.2154611839941936,
+          "minimum": 1.2141548089857679,
+          "maximum": 1.2218831149803009,
+          "relative_range": 0.0063583322086326055,
+          "runs": 6
+        },
+        "puc-5.1.5": {
+          "status": "ok",
+          "median": 0.9071779439982492,
+          "minimum": 0.9027869050041772,
+          "maximum": 0.9102676589973271,
+          "relative_range": 0.0082461815155906,
+          "runs": 6,
+          "halo_over": 1.3398266481625785
+        },
+        "puc-5.4.9": {
+          "status": "ok",
+          "median": 0.7048608519980917,
+          "minimum": 0.6774381209979765,
+          "maximum": 0.717578414012678,
+          "relative_range": 0.05694782580265946,
+          "runs": 6,
+          "halo_over": 1.7243987668611283
+        },
+        "luajit-2.1-joff": {
+          "status": "ok",
+          "median": 0.3822655800031498,
+          "minimum": 0.37853610300226137,
+          "maximum": 0.3985571179946419,
+          "relative_range": 0.052374621309654784,
+          "runs": 6,
+          "halo_over": 3.179624971686382
+        },
+        "luau-0.742": {
+          "status": "ok",
+          "median": 0.38314736299798824,
+          "minimum": 0.3795590679801535,
+          "maximum": 0.3958257579943165,
+          "relative_range": 0.04245544034776103,
+          "runs": 6,
+          "halo_over": 3.172307319261324
+        },
+        "luau-0.742-O2": {
+          "status": "ok",
+          "median": 0.39443473851133604,
+          "minimum": 0.383156930009136,
+          "maximum": 0.409720280993497,
+          "relative_range": 0.06734536386073812,
+          "runs": 6,
+          "halo_over": 3.0815267148668277
+        }
+      }
+    },
+    "List": {
+      "path": "/home/runner/actions-runner/_work/Halo-wf/Halo-wf/build/fastest/awfy/List.lua",
+      "sha256": "cdcdfb6eca86307d2498b69cd40706b6b674d987a040779ed8902f75e215e7af",
+      "reference": "1\n",
+      "engines": {
+        "halo": {
+          "status": "ok",
+          "median": 0.7423562080075499,
+          "minimum": 0.7412621060211677,
+          "maximum": 0.7436714399955235,
+          "relative_range": 0.0032455227670586525,
+          "runs": 6
+        },
+        "puc-5.1.5": {
+          "status": "ok",
+          "median": 0.43575140200846363,
+          "minimum": 0.4342749370262027,
+          "maximum": 0.4500569249794353,
+          "relative_range": 0.03621787074118483,
+          "runs": 6,
+          "halo_over": 1.7036232232091155
+        },
+        "puc-5.4.9": {
+          "status": "ok",
+          "median": 0.2761832980031613,
+          "minimum": 0.26902727599372156,
+          "maximum": 0.2867591639806051,
+          "relative_range": 0.06420333204465012,
+          "runs": 6,
+          "halo_over": 2.687911301569918
+        },
+        "luajit-2.1-joff": {
+          "status": "ok",
+          "median": 0.22561036700790282,
+          "minimum": 0.18792792700696737,
+          "maximum": 0.22743774400441907,
+          "relative_range": 0.17512412005458833,
+          "runs": 6,
+          "halo_over": 3.290434822888906
+        },
+        "luau-0.742": {
+          "status": "ok",
+          "median": 0.24583857849938795,
+          "minimum": 0.2455241860006936,
+          "maximum": 0.2529912600002717,
+          "relative_range": 0.030373890237885198,
+          "runs": 6,
+          "halo_over": 3.0196896375619016
+        },
+        "luau-0.742-O2": {
+          "status": "ok",
+          "median": 0.24551523898844607,
+          "minimum": 0.24507590400753543,
+          "maximum": 0.24751121399458498,
+          "relative_range": 0.009919180565260779,
+          "runs": 6,
+          "halo_over": 3.0236665188937013
+        }
+      }
+    },
+    "NBody": {
+      "path": "/home/runner/actions-runner/_work/Halo-wf/Halo-wf/build/fastest/awfy/NBody.lua",
+      "sha256": "896c1e22a10e6ab308d13bb5a4a671a54b23401a92949f0fd04a795e25332ac9",
+      "reference": "1\n",
+      "engines": {
+        "halo": {
+          "status": "ok",
+          "median": 0.8204505835019518,
+          "minimum": 0.8201346159912646,
+          "maximum": 0.8322994270129129,
+          "relative_range": 0.014826988079799944,
+          "runs": 6
+        },
+        "puc-5.1.5": {
+          "status": "ok",
+          "median": 0.6692116640042514,
+          "minimum": 0.667685526976129,
+          "maximum": 0.6735438669857103,
+          "relative_range": 0.008754091305772699,
+          "runs": 6,
+          "halo_over": 1.2259956417865718
+        },
+        "puc-5.4.9": {
+          "status": "ok",
+          "median": 0.3545602580124978,
+          "minimum": 0.3482417909835931,
+          "maximum": 0.3651508280017879,
+          "relative_range": 0.04769016446732948,
+          "runs": 6,
+          "halo_over": 2.3139947722878516
+        },
+        "luajit-2.1-joff": {
+          "status": "ok",
+          "median": 0.21154153850511648,
+          "minimum": 0.21108980602002703,
+          "maximum": 0.2143834290036466,
+          "relative_range": 0.015569627633864963,
+          "runs": 6,
+          "halo_over": 3.8784372530320224
+        },
+        "luau-0.742": {
+          "status": "ok",
+          "median": 0.26159455299784895,
+          "minimum": 0.2614573499886319,
+          "maximum": 0.48205341599532403,
+          "relative_range": 0.843274691612199,
+          "runs": 6,
+          "halo_over": 3.1363442934864865
+        },
+        "luau-0.742-O2": {
+          "status": "ok",
+          "median": 0.2614828430087073,
+          "minimum": 0.2613467579940334,
+          "maximum": 0.2620092130091507,
+          "relative_range": 0.0025334549964918466,
+          "runs": 6,
+          "halo_over": 3.1376841939669102
+        }
+      }
+    },
+    "Permute": {
+      "path": "/home/runner/actions-runner/_work/Halo-wf/Halo-wf/build/fastest/awfy/Permute.lua",
+      "sha256": "460e6d40ae2853a7c7cef86689eee85e1fce7cd742bc5ee53aba2d0e215ab482",
+      "reference": "1\n",
+      "engines": {
+        "halo": {
+          "status": "ok",
+          "median": 0.5191546870046295,
+          "minimum": 0.5175830659864005,
+          "maximum": 0.52302986299037,
+          "relative_range": 0.010491664893552197,
+          "runs": 6
+        },
+        "puc-5.1.5": {
+          "status": "ok",
+          "median": 0.3652615485043498,
+          "minimum": 0.3649950890103355,
+          "maximum": 0.3656639879918657,
+          "relative_range": 0.0018312877012901718,
+          "runs": 6,
+          "halo_over": 1.421323128948097
+        },
+        "puc-5.4.9": {
+          "status": "ok",
+          "median": 0.2222971674927976,
+          "minimum": 0.2097554259817116,
+          "maximum": 0.245284691976849,
+          "relative_range": 0.15982779446026246,
+          "runs": 6,
+          "halo_over": 2.3354084663334724
+        },
+        "luajit-2.1-joff": {
+          "status": "ok",
+          "median": 0.1336099005129654,
+          "minimum": 0.13081729802070186,
+          "maximum": 0.13382228100090288,
+          "relative_range": 0.02249072088718021,
+          "runs": 6,
+          "halo_over": 3.8856004308921044
+        },
+        "luau-0.742": {
+          "status": "ok",
+          "median": 0.2053068099921802,
+          "minimum": 0.2042197029804811,
+          "maximum": 0.21897743802401237,
+          "relative_range": 0.0718813713197988,
+          "runs": 6,
+          "halo_over": 2.528677383007428
+        },
+        "luau-0.742-O2": {
+          "status": "ok",
+          "median": 0.20503793850366492,
+          "minimum": 0.20465459101251327,
+          "maximum": 0.20551336600328796,
+          "relative_range": 0.004188371171900663,
+          "runs": 6,
+          "halo_over": 2.531993302280251
+        }
+      }
+    },
+    "Queens": {
+      "path": "/home/runner/actions-runner/_work/Halo-wf/Halo-wf/build/fastest/awfy/Queens.lua",
+      "sha256": "1d76a570036135f58aaa8495638a8b929947df6e724562fff0808958d8e37c7d",
+      "reference": "1\n",
+      "engines": {
+        "halo": {
+          "status": "ok",
+          "median": 0.6755980885063764,
+          "minimum": 0.6728501420002431,
+          "maximum": 0.7435309480060823,
+          "relative_range": 0.1046196062545138,
+          "runs": 6
+        },
+        "puc-5.1.5": {
+          "status": "ok",
+          "median": 0.46433516599063296,
+          "minimum": 0.4639591879968066,
+          "maximum": 0.4648365490138531,
+          "relative_range": 0.0018894993989410555,
+          "runs": 6,
+          "halo_over": 1.4549793726370603
+        },
+        "puc-5.4.9": {
+          "status": "ok",
+          "median": 0.3087350290006725,
+          "minimum": 0.30124245598562993,
+          "maximum": 0.32632180000655353,
+          "relative_range": 0.08123258349433672,
+          "runs": 6,
+          "halo_over": 2.1882780541397677
+        },
+        "luajit-2.1-joff": {
+          "status": "ok",
+          "median": 0.17961532648769207,
+          "minimum": 0.17794647201662883,
+          "maximum": 0.1866930949909147,
+          "relative_range": 0.048696417757452384,
+          "runs": 6,
+          "halo_over": 3.761361024793566
+        },
+        "luau-0.742": {
+          "status": "ok",
+          "median": 0.25928555098653305,
+          "minimum": 0.25822132200119086,
+          "maximum": 0.29239464897545986,
+          "relative_range": 0.13179803827959516,
+          "runs": 6,
+          "halo_over": 2.6056141035852245
+        },
+        "luau-0.742-O2": {
+          "status": "ok",
+          "median": 0.25972110050497577,
+          "minimum": 0.25848178699379787,
+          "maximum": 0.2933219409896992,
+          "relative_range": 0.1341444877915642,
+          "runs": 6,
+          "halo_over": 2.601244516494081
+        }
+      }
+    },
+    "Sieve": {
+      "path": "/home/runner/actions-runner/_work/Halo-wf/Halo-wf/build/fastest/awfy/Sieve.lua",
+      "sha256": "7f36b4dcb7bebd064ad6e8b9dbb5ebf5577a235f7721870356323ab2c6d1fec2",
+      "reference": "1\n",
+      "engines": {
+        "halo": {
+          "status": "ok",
+          "median": 0.8561654295044718,
+          "minimum": 0.8543087800208014,
+          "maximum": 0.8570676319941413,
+          "relative_range": 0.0032223351682590983,
+          "runs": 6
+        },
+        "puc-5.1.5": {
+          "status": "ok",
+          "median": 0.5611237684934167,
+          "minimum": 0.5599692649848294,
+          "maximum": 0.572280235006474,
+          "relative_range": 0.0219398477000873,
+          "runs": 6,
+          "halo_over": 1.525804960647495
+        },
+        "puc-5.4.9": {
+          "status": "ok",
+          "median": 0.29881626200221945,
+          "minimum": 0.2966195050103124,
+          "maximum": 0.30698232899885625,
+          "relative_range": 0.03467958510392869,
+          "runs": 6,
+          "halo_over": 2.865190213436619
+        },
+        "luajit-2.1-joff": {
+          "status": "ok",
+          "median": 0.22896229701291304,
+          "minimum": 0.2287164170120377,
+          "maximum": 0.22959278599591926,
+          "relative_range": 0.003827568972336622,
+          "runs": 6,
+          "halo_over": 3.739329316110878
+        },
+        "luau-0.742": {
+          "status": "ok",
+          "median": 0.3580470130109461,
+          "minimum": 0.352687201986555,
+          "maximum": 0.3591090500121936,
+          "relative_range": 0.017935767629046757,
+          "runs": 6,
+          "halo_over": 2.391209529454439
+        },
+        "luau-0.742-O2": {
+          "status": "ok",
+          "median": 0.3549066440027673,
+          "minimum": 0.35127018598723225,
+          "maximum": 0.35938656597863883,
+          "relative_range": 0.022869056211140666,
+          "runs": 6,
+          "halo_over": 2.4123679958434256
+        }
+      }
+    },
+    "Towers": {
+      "path": "/home/runner/actions-runner/_work/Halo-wf/Halo-wf/build/fastest/awfy/Towers.lua",
+      "sha256": "eed8c3da2050e1460c27b970be89552d93df7375b943fe8975b7cffc7c6a5765",
+      "reference": "1\n",
+      "engines": {
+        "halo": {
+          "status": "ok",
+          "median": 0.7164806045038858,
+          "minimum": 0.7119455510110129,
+          "maximum": 0.7209737370139919,
+          "relative_range": 0.012600740265998491,
+          "runs": 6
+        },
+        "puc-5.1.5": {
+          "status": "ok",
+          "median": 0.4452418394939741,
+          "minimum": 0.44395404899842106,
+          "maximum": 0.4472702500061132,
+          "relative_range": 0.007448089360741725,
+          "runs": 6,
+          "halo_over": 1.609194242208189
+        },
+        "puc-5.4.9": {
+          "status": "ok",
+          "median": 0.30350597949291114,
+          "minimum": 0.29053683998063207,
+          "maximum": 0.3081018940138165,
+          "relative_range": 0.05787383188473453,
+          "runs": 6,
+          "halo_over": 2.360680358591157
+        },
+        "luajit-2.1-joff": {
+          "status": "ok",
+          "median": 0.16547475349216256,
+          "minimum": 0.16504245300893672,
+          "maximum": 0.1690343490045052,
+          "relative_range": 0.024123897521065373,
+          "runs": 6,
+          "halo_over": 4.329848447472204
+        },
+        "luau-0.742": {
+          "status": "ok",
+          "median": 0.22864002801361494,
+          "minimum": 0.22735634801210836,
+          "maximum": 0.2310251269955188,
+          "relative_range": 0.016046092258141173,
+          "runs": 6,
+          "halo_over": 3.1336621619956295
+        },
+        "luau-0.742-O2": {
+          "status": "ok",
+          "median": 0.22863007101113908,
+          "minimum": 0.2273336040088907,
+          "maximum": 0.22953943500760943,
+          "relative_range": 0.009648035312954386,
+          "runs": 6,
+          "halo_over": 3.133798635215305
+        }
+      }
+    }
+  },
+  "launches": [
+    {
+      "engine": "halo",
+      "seconds": 0.08820968799409457,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "832040\n",
+      "stderr": "0\n0\n",
+      "workload": "fib",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.04844639400835149,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "832040\n",
+      "stderr": "",
+      "workload": "fib",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.03273545901174657,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "832040\n",
+      "stderr": "",
+      "workload": "fib",
+      "round": 1
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.026218048005830497,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "832040\n",
+      "stderr": "",
+      "workload": "fib",
+      "round": 1
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.03063121298328042,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "832040\n",
+      "stderr": "",
+      "workload": "fib",
+      "round": 1
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.03055391798261553,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "832040\n",
+      "stderr": "",
+      "workload": "fib",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.048411744995974004,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "832040\n",
+      "stderr": "",
+      "workload": "fib",
+      "round": 2
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.032644171005813405,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "832040\n",
+      "stderr": "",
+      "workload": "fib",
+      "round": 2
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.026315680996049196,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "832040\n",
+      "stderr": "",
+      "workload": "fib",
+      "round": 2
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.030324224004289135,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "832040\n",
+      "stderr": "",
+      "workload": "fib",
+      "round": 2
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.030316863994812593,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "832040\n",
+      "stderr": "",
+      "workload": "fib",
+      "round": 2
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.08706510200863704,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "832040\n",
+      "stderr": "0\n0\n",
+      "workload": "fib",
+      "round": 2
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.033279794006375596,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "832040\n",
+      "stderr": "",
+      "workload": "fib",
+      "round": 3
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.02616363699780777,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "832040\n",
+      "stderr": "",
+      "workload": "fib",
+      "round": 3
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.03049043900682591,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "832040\n",
+      "stderr": "",
+      "workload": "fib",
+      "round": 3
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.041872917994624004,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "832040\n",
+      "stderr": "",
+      "workload": "fib",
+      "round": 3
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.0874860699987039,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "832040\n",
+      "stderr": "0\n0\n",
+      "workload": "fib",
+      "round": 3
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.048287570010870695,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "832040\n",
+      "stderr": "",
+      "workload": "fib",
+      "round": 3
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.02619056499679573,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "832040\n",
+      "stderr": "",
+      "workload": "fib",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.030411533021833748,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "832040\n",
+      "stderr": "",
+      "workload": "fib",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.030435772001510486,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "832040\n",
+      "stderr": "",
+      "workload": "fib",
+      "round": 4
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.08698449801886454,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "832040\n",
+      "stderr": "0\n0\n",
+      "workload": "fib",
+      "round": 4
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.04995360501925461,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "832040\n",
+      "stderr": "",
+      "workload": "fib",
+      "round": 4
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.0326738839794416,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "832040\n",
+      "stderr": "",
+      "workload": "fib",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.030330168025102466,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "832040\n",
+      "stderr": "",
+      "workload": "fib",
+      "round": 5
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.030376942013390362,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "832040\n",
+      "stderr": "",
+      "workload": "fib",
+      "round": 5
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.08702382000046782,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "832040\n",
+      "stderr": "0\n0\n",
+      "workload": "fib",
+      "round": 5
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.04812451600446366,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "832040\n",
+      "stderr": "",
+      "workload": "fib",
+      "round": 5
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.0327884939906653,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "832040\n",
+      "stderr": "",
+      "workload": "fib",
+      "round": 5
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.026178561995038763,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "832040\n",
+      "stderr": "",
+      "workload": "fib",
+      "round": 5
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.030382363009266555,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "832040\n",
+      "stderr": "",
+      "workload": "fib",
+      "round": 6
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.08706500500557013,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "832040\n",
+      "stderr": "0\n0\n",
+      "workload": "fib",
+      "round": 6
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.04842120598186739,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "832040\n",
+      "stderr": "",
+      "workload": "fib",
+      "round": 6
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.032846838992554694,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "832040\n",
+      "stderr": "",
+      "workload": "fib",
+      "round": 6
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.026191075972747058,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "832040\n",
+      "stderr": "",
+      "workload": "fib",
+      "round": 6
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.030357708979863673,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "832040\n",
+      "stderr": "",
+      "workload": "fib",
+      "round": 6
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.5015763199771754,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5.00000005e+15\n",
+      "stderr": "0\n0\n",
+      "workload": "loop",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.33012380299624056,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5.00000005e+15\n",
+      "stderr": "",
+      "workload": "loop",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.2761120990035124,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000050000000\n",
+      "stderr": "",
+      "workload": "loop",
+      "round": 1
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.22749255801318213,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5.00000005e+15\n",
+      "stderr": "",
+      "workload": "loop",
+      "round": 1
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.28147366701159626,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000050000000\n",
+      "stderr": "",
+      "workload": "loop",
+      "round": 1
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.2826644039887469,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000050000000\n",
+      "stderr": "",
+      "workload": "loop",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.33041903597768396,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5.00000005e+15\n",
+      "stderr": "",
+      "workload": "loop",
+      "round": 2
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.2763075540133286,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000050000000\n",
+      "stderr": "",
+      "workload": "loop",
+      "round": 2
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.22572171498904936,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5.00000005e+15\n",
+      "stderr": "",
+      "workload": "loop",
+      "round": 2
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.28161889902548864,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000050000000\n",
+      "stderr": "",
+      "workload": "loop",
+      "round": 2
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.2815583850024268,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000050000000\n",
+      "stderr": "",
+      "workload": "loop",
+      "round": 2
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.5019151880114805,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5.00000005e+15\n",
+      "stderr": "0\n0\n",
+      "workload": "loop",
+      "round": 2
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.27608977700583637,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000050000000\n",
+      "stderr": "",
+      "workload": "loop",
+      "round": 3
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.2269537909887731,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5.00000005e+15\n",
+      "stderr": "",
+      "workload": "loop",
+      "round": 3
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.2816530470154248,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000050000000\n",
+      "stderr": "",
+      "workload": "loop",
+      "round": 3
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.28104545298265293,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000050000000\n",
+      "stderr": "",
+      "workload": "loop",
+      "round": 3
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.5022468010138255,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5.00000005e+15\n",
+      "stderr": "0\n0\n",
+      "workload": "loop",
+      "round": 3
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.32947339600650594,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5.00000005e+15\n",
+      "stderr": "",
+      "workload": "loop",
+      "round": 3
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.22614841000176966,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5.00000005e+15\n",
+      "stderr": "",
+      "workload": "loop",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.2817679699801374,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000050000000\n",
+      "stderr": "",
+      "workload": "loop",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.2840424220194109,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000050000000\n",
+      "stderr": "",
+      "workload": "loop",
+      "round": 4
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.5018539110023994,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5.00000005e+15\n",
+      "stderr": "0\n0\n",
+      "workload": "loop",
+      "round": 4
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.330514472007053,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5.00000005e+15\n",
+      "stderr": "",
+      "workload": "loop",
+      "round": 4
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.276112158986507,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000050000000\n",
+      "stderr": "",
+      "workload": "loop",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.2831977960013319,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000050000000\n",
+      "stderr": "",
+      "workload": "loop",
+      "round": 5
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.28466170601313934,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000050000000\n",
+      "stderr": "",
+      "workload": "loop",
+      "round": 5
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.5031629069999326,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5.00000005e+15\n",
+      "stderr": "0\n0\n",
+      "workload": "loop",
+      "round": 5
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.329735122009879,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5.00000005e+15\n",
+      "stderr": "",
+      "workload": "loop",
+      "round": 5
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.27617905198712833,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000050000000\n",
+      "stderr": "",
+      "workload": "loop",
+      "round": 5
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.2270286809944082,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5.00000005e+15\n",
+      "stderr": "",
+      "workload": "loop",
+      "round": 5
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.2825256459764205,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000050000000\n",
+      "stderr": "",
+      "workload": "loop",
+      "round": 6
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.5018003710138146,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5.00000005e+15\n",
+      "stderr": "0\n0\n",
+      "workload": "loop",
+      "round": 6
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.32983349400456063,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5.00000005e+15\n",
+      "stderr": "",
+      "workload": "loop",
+      "round": 6
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.27595302899135277,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000050000000\n",
+      "stderr": "",
+      "workload": "loop",
+      "round": 6
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.22645138198276982,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5.00000005e+15\n",
+      "stderr": "",
+      "workload": "loop",
+      "round": 6
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.2815508430066984,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000050000000\n",
+      "stderr": "",
+      "workload": "loop",
+      "round": 6
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.34600895197945647,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "50000005000000\n",
+      "stderr": "0\n7\n",
+      "workload": "integer-table",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.2536060120037291,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "50000005000000\n",
+      "stderr": "",
+      "workload": "integer-table",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.20790409497567452,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "50000005000000\n",
+      "stderr": "",
+      "workload": "integer-table",
+      "round": 1
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.12307774001965299,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "50000005000000\n",
+      "stderr": "",
+      "workload": "integer-table",
+      "round": 1
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.29021980401012115,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "50000005000000\n",
+      "stderr": "",
+      "workload": "integer-table",
+      "round": 1
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.28285631598555483,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "50000005000000\n",
+      "stderr": "",
+      "workload": "integer-table",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.2529519189847633,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "50000005000000\n",
+      "stderr": "",
+      "workload": "integer-table",
+      "round": 2
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.19411330099683255,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "50000005000000\n",
+      "stderr": "",
+      "workload": "integer-table",
+      "round": 2
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.11644097298267297,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "50000005000000\n",
+      "stderr": "",
+      "workload": "integer-table",
+      "round": 2
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.283953678997932,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "50000005000000\n",
+      "stderr": "",
+      "workload": "integer-table",
+      "round": 2
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.28899151599034667,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "50000005000000\n",
+      "stderr": "",
+      "workload": "integer-table",
+      "round": 2
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.34668021398829296,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "50000005000000\n",
+      "stderr": "0\n7\n",
+      "workload": "integer-table",
+      "round": 2
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.19369423401076347,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "50000005000000\n",
+      "stderr": "",
+      "workload": "integer-table",
+      "round": 3
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.12156968799536116,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "50000005000000\n",
+      "stderr": "",
+      "workload": "integer-table",
+      "round": 3
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.29082527800346725,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "50000005000000\n",
+      "stderr": "",
+      "workload": "integer-table",
+      "round": 3
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.2836167490168009,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "50000005000000\n",
+      "stderr": "",
+      "workload": "integer-table",
+      "round": 3
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.35810626600869,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "50000005000000\n",
+      "stderr": "0\n7\n",
+      "workload": "integer-table",
+      "round": 3
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.2590786000073422,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "50000005000000\n",
+      "stderr": "",
+      "workload": "integer-table",
+      "round": 3
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.12156533100642264,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "50000005000000\n",
+      "stderr": "",
+      "workload": "integer-table",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.29058371001156047,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "50000005000000\n",
+      "stderr": "",
+      "workload": "integer-table",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.290615378995426,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "50000005000000\n",
+      "stderr": "",
+      "workload": "integer-table",
+      "round": 4
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.3591913529962767,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "50000005000000\n",
+      "stderr": "0\n7\n",
+      "workload": "integer-table",
+      "round": 4
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.2608615240023937,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "50000005000000\n",
+      "stderr": "",
+      "workload": "integer-table",
+      "round": 4
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.21034048599540256,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "50000005000000\n",
+      "stderr": "",
+      "workload": "integer-table",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.2846826909808442,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "50000005000000\n",
+      "stderr": "",
+      "workload": "integer-table",
+      "round": 5
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.2895959830202628,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "50000005000000\n",
+      "stderr": "",
+      "workload": "integer-table",
+      "round": 5
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.34551804297370836,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "50000005000000\n",
+      "stderr": "0\n7\n",
+      "workload": "integer-table",
+      "round": 5
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.2523568450124003,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "50000005000000\n",
+      "stderr": "",
+      "workload": "integer-table",
+      "round": 5
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.20620752600370906,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "50000005000000\n",
+      "stderr": "",
+      "workload": "integer-table",
+      "round": 5
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.12048937898362055,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "50000005000000\n",
+      "stderr": "",
+      "workload": "integer-table",
+      "round": 5
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.2889937960135285,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "50000005000000\n",
+      "stderr": "",
+      "workload": "integer-table",
+      "round": 6
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.35895970900310203,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "50000005000000\n",
+      "stderr": "0\n7\n",
+      "workload": "integer-table",
+      "round": 6
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.260662366024917,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "50000005000000\n",
+      "stderr": "",
+      "workload": "integer-table",
+      "round": 6
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.20988181297434494,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "50000005000000\n",
+      "stderr": "",
+      "workload": "integer-table",
+      "round": 6
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.12092246700194664,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "50000005000000\n",
+      "stderr": "",
+      "workload": "integer-table",
+      "round": 6
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.291786752990447,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "50000005000000\n",
+      "stderr": "",
+      "workload": "integer-table",
+      "round": 6
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.02314122999086976,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "28500000\n",
+      "stderr": "0\n0\n",
+      "workload": "string-key",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.0267403670004569,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "28500000\n",
+      "stderr": "",
+      "workload": "string-key",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.012119266990339383,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "28500000\n",
+      "stderr": "",
+      "workload": "string-key",
+      "round": 1
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.011160583992023021,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "28500000\n",
+      "stderr": "",
+      "workload": "string-key",
+      "round": 1
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.016588018013862893,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "28500000\n",
+      "stderr": "",
+      "workload": "string-key",
+      "round": 1
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.016268220992060378,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "28500000\n",
+      "stderr": "",
+      "workload": "string-key",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.027165731007698923,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "28500000\n",
+      "stderr": "",
+      "workload": "string-key",
+      "round": 2
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.011631410015979782,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "28500000\n",
+      "stderr": "",
+      "workload": "string-key",
+      "round": 2
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.011177645006682724,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "28500000\n",
+      "stderr": "",
+      "workload": "string-key",
+      "round": 2
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.01671033599996008,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "28500000\n",
+      "stderr": "",
+      "workload": "string-key",
+      "round": 2
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.01628470199648291,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "28500000\n",
+      "stderr": "",
+      "workload": "string-key",
+      "round": 2
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.02316109699313529,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "28500000\n",
+      "stderr": "0\n0\n",
+      "workload": "string-key",
+      "round": 2
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.012040039990097284,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "28500000\n",
+      "stderr": "",
+      "workload": "string-key",
+      "round": 3
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.011336742987623438,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "28500000\n",
+      "stderr": "",
+      "workload": "string-key",
+      "round": 3
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.016297671012580395,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "28500000\n",
+      "stderr": "",
+      "workload": "string-key",
+      "round": 3
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.01627468701917678,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "28500000\n",
+      "stderr": "",
+      "workload": "string-key",
+      "round": 3
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.022845416009658948,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "28500000\n",
+      "stderr": "0\n0\n",
+      "workload": "string-key",
+      "round": 3
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.026661273004719988,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "28500000\n",
+      "stderr": "",
+      "workload": "string-key",
+      "round": 3
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.011168602999532595,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "28500000\n",
+      "stderr": "",
+      "workload": "string-key",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.016245124978013337,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "28500000\n",
+      "stderr": "",
+      "workload": "string-key",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.016376176004996523,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "28500000\n",
+      "stderr": "",
+      "workload": "string-key",
+      "round": 4
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.021744580008089542,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "28500000\n",
+      "stderr": "0\n0\n",
+      "workload": "string-key",
+      "round": 4
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.026339700998505577,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "28500000\n",
+      "stderr": "",
+      "workload": "string-key",
+      "round": 4
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.011933670990401879,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "28500000\n",
+      "stderr": "",
+      "workload": "string-key",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.016248292988166213,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "28500000\n",
+      "stderr": "",
+      "workload": "string-key",
+      "round": 5
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.016274076013360173,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "28500000\n",
+      "stderr": "",
+      "workload": "string-key",
+      "round": 5
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.02177168900379911,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "28500000\n",
+      "stderr": "0\n0\n",
+      "workload": "string-key",
+      "round": 5
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.02657417900627479,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "28500000\n",
+      "stderr": "",
+      "workload": "string-key",
+      "round": 5
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.012009560014121234,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "28500000\n",
+      "stderr": "",
+      "workload": "string-key",
+      "round": 5
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.011114255990833044,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "28500000\n",
+      "stderr": "",
+      "workload": "string-key",
+      "round": 5
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.016315981978550553,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "28500000\n",
+      "stderr": "",
+      "workload": "string-key",
+      "round": 6
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.021767789992736652,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "28500000\n",
+      "stderr": "0\n0\n",
+      "workload": "string-key",
+      "round": 6
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.027170607005245984,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "28500000\n",
+      "stderr": "",
+      "workload": "string-key",
+      "round": 6
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.012019346002489328,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "28500000\n",
+      "stderr": "",
+      "workload": "string-key",
+      "round": 6
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.011233286990318447,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "28500000\n",
+      "stderr": "",
+      "workload": "string-key",
+      "round": 6
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.016267539002001286,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "28500000\n",
+      "stderr": "",
+      "workload": "string-key",
+      "round": 6
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.07241159598925151,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000\n",
+      "stderr": "0\n0\n",
+      "workload": "concat",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.05478942199260928,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000\n",
+      "stderr": "",
+      "workload": "concat",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.039008024003123865,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000\n",
+      "stderr": "",
+      "workload": "concat",
+      "round": 1
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.029440780985169113,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000\n",
+      "stderr": "",
+      "workload": "concat",
+      "round": 1
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.033652254001935944,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000\n",
+      "stderr": "",
+      "workload": "concat",
+      "round": 1
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.03388379802345298,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000\n",
+      "stderr": "",
+      "workload": "concat",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.05414538498735055,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000\n",
+      "stderr": "",
+      "workload": "concat",
+      "round": 2
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.03903551198891364,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000\n",
+      "stderr": "",
+      "workload": "concat",
+      "round": 2
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.02984137399471365,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000\n",
+      "stderr": "",
+      "workload": "concat",
+      "round": 2
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.0336345010146033,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000\n",
+      "stderr": "",
+      "workload": "concat",
+      "round": 2
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.03367380998679437,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000\n",
+      "stderr": "",
+      "workload": "concat",
+      "round": 2
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.0775292300095316,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000\n",
+      "stderr": "0\n0\n",
+      "workload": "concat",
+      "round": 2
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.039521628990769386,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000\n",
+      "stderr": "",
+      "workload": "concat",
+      "round": 3
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.029420786013361067,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000\n",
+      "stderr": "",
+      "workload": "concat",
+      "round": 3
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.03416581000783481,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000\n",
+      "stderr": "",
+      "workload": "concat",
+      "round": 3
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.03380293300142512,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000\n",
+      "stderr": "",
+      "workload": "concat",
+      "round": 3
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.07311817599111237,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000\n",
+      "stderr": "0\n0\n",
+      "workload": "concat",
+      "round": 3
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.05455623101443052,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000\n",
+      "stderr": "",
+      "workload": "concat",
+      "round": 3
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.02948419001768343,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000\n",
+      "stderr": "",
+      "workload": "concat",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.03371274401433766,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000\n",
+      "stderr": "",
+      "workload": "concat",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.033699942025123164,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000\n",
+      "stderr": "",
+      "workload": "concat",
+      "round": 4
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.07282135498826392,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000\n",
+      "stderr": "0\n0\n",
+      "workload": "concat",
+      "round": 4
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.05884391599101946,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000\n",
+      "stderr": "",
+      "workload": "concat",
+      "round": 4
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.04172270800336264,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000\n",
+      "stderr": "",
+      "workload": "concat",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.03359979699598625,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000\n",
+      "stderr": "",
+      "workload": "concat",
+      "round": 5
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.03375898901140317,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000\n",
+      "stderr": "",
+      "workload": "concat",
+      "round": 5
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.07290797200403176,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000\n",
+      "stderr": "0\n0\n",
+      "workload": "concat",
+      "round": 5
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.054559402022277936,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000\n",
+      "stderr": "",
+      "workload": "concat",
+      "round": 5
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.03944520000368357,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000\n",
+      "stderr": "",
+      "workload": "concat",
+      "round": 5
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.02938257998903282,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000\n",
+      "stderr": "",
+      "workload": "concat",
+      "round": 5
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.0336157449928578,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000\n",
+      "stderr": "",
+      "workload": "concat",
+      "round": 6
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.07272133798687719,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000\n",
+      "stderr": "0\n0\n",
+      "workload": "concat",
+      "round": 6
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.05446167298941873,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000\n",
+      "stderr": "",
+      "workload": "concat",
+      "round": 6
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.035975086997495964,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000\n",
+      "stderr": "",
+      "workload": "concat",
+      "round": 6
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.02941151600680314,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000\n",
+      "stderr": "",
+      "workload": "concat",
+      "round": 6
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.03379476600093767,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "5000000\n",
+      "stderr": "",
+      "workload": "concat",
+      "round": 6
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.18605233600828797,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1.0733795172001e+15\n",
+      "stderr": "0\n5\n",
+      "workload": "sort",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.2918869820132386,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1.0733795172001e+15\n",
+      "stderr": "",
+      "workload": "sort",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.3171392379736062,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1073379517200111\n",
+      "stderr": "",
+      "workload": "sort",
+      "round": 1
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.3054602919728495,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1.0733795172001e+15\n",
+      "stderr": "",
+      "workload": "sort",
+      "round": 1
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.12493244998040609,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1073379517200111\n",
+      "stderr": "",
+      "workload": "sort",
+      "round": 1
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.1246139669965487,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1073379517200111\n",
+      "stderr": "",
+      "workload": "sort",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.2922110889921896,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1.0733795172001e+15\n",
+      "stderr": "",
+      "workload": "sort",
+      "round": 2
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.3175287379999645,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1073379517200111\n",
+      "stderr": "",
+      "workload": "sort",
+      "round": 2
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.3044486010039691,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1.0733795172001e+15\n",
+      "stderr": "",
+      "workload": "sort",
+      "round": 2
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.1245219420234207,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1073379517200111\n",
+      "stderr": "",
+      "workload": "sort",
+      "round": 2
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.12428380199708045,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1073379517200111\n",
+      "stderr": "",
+      "workload": "sort",
+      "round": 2
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.18377862600027584,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1.0733795172001e+15\n",
+      "stderr": "0\n5\n",
+      "workload": "sort",
+      "round": 2
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.3167897989915218,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1073379517200111\n",
+      "stderr": "",
+      "workload": "sort",
+      "round": 3
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.3039889560022857,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1.0733795172001e+15\n",
+      "stderr": "",
+      "workload": "sort",
+      "round": 3
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.12440450000576675,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1073379517200111\n",
+      "stderr": "",
+      "workload": "sort",
+      "round": 3
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.12433857601718046,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1073379517200111\n",
+      "stderr": "",
+      "workload": "sort",
+      "round": 3
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.18662124298862182,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1.0733795172001e+15\n",
+      "stderr": "0\n5\n",
+      "workload": "sort",
+      "round": 3
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.29055381400394253,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1.0733795172001e+15\n",
+      "stderr": "",
+      "workload": "sort",
+      "round": 3
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.3066036259988323,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1.0733795172001e+15\n",
+      "stderr": "",
+      "workload": "sort",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.124668330012355,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1073379517200111\n",
+      "stderr": "",
+      "workload": "sort",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.12311865400988609,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1073379517200111\n",
+      "stderr": "",
+      "workload": "sort",
+      "round": 4
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.18355356401298195,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1.0733795172001e+15\n",
+      "stderr": "0\n5\n",
+      "workload": "sort",
+      "round": 4
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.29172393601038493,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1.0733795172001e+15\n",
+      "stderr": "",
+      "workload": "sort",
+      "round": 4
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.3122702849796042,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1073379517200111\n",
+      "stderr": "",
+      "workload": "sort",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.1243926520110108,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1073379517200111\n",
+      "stderr": "",
+      "workload": "sort",
+      "round": 5
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.12510512699373066,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1073379517200111\n",
+      "stderr": "",
+      "workload": "sort",
+      "round": 5
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.1850504030007869,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1.0733795172001e+15\n",
+      "stderr": "0\n5\n",
+      "workload": "sort",
+      "round": 5
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.2905726940080058,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1.0733795172001e+15\n",
+      "stderr": "",
+      "workload": "sort",
+      "round": 5
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.31725076399743557,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1073379517200111\n",
+      "stderr": "",
+      "workload": "sort",
+      "round": 5
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.3063126770139206,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1.0733795172001e+15\n",
+      "stderr": "",
+      "workload": "sort",
+      "round": 5
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.12495732598472387,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1073379517200111\n",
+      "stderr": "",
+      "workload": "sort",
+      "round": 6
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.18252952900365926,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1.0733795172001e+15\n",
+      "stderr": "0\n5\n",
+      "workload": "sort",
+      "round": 6
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.29265226700226776,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1.0733795172001e+15\n",
+      "stderr": "",
+      "workload": "sort",
+      "round": 6
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.31792611299897544,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1073379517200111\n",
+      "stderr": "",
+      "workload": "sort",
+      "round": 6
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.3057689100096468,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1.0733795172001e+15\n",
+      "stderr": "",
+      "workload": "sort",
+      "round": 6
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.12447552700177766,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1073379517200111\n",
+      "stderr": "",
+      "workload": "sort",
+      "round": 6
+    },
+    {
+      "engine": "halo",
+      "seconds": 1.2218831149803009,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "-43682\n",
+      "stderr": "0\n182\n",
+      "workload": "binary-trees",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.9048207119922154,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "-43682\n",
+      "stderr": "",
+      "workload": "binary-trees",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.6788910159957595,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "-43682\n",
+      "stderr": "",
+      "workload": "binary-trees",
+      "round": 1
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.3824065600056201,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "-43682\n",
+      "stderr": "",
+      "workload": "binary-trees",
+      "round": 1
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.3801820249937009,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "-43682\n",
+      "stderr": "",
+      "workload": "binary-trees",
+      "round": 1
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.409720280993497,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "-43682\n",
+      "stderr": "",
+      "workload": "binary-trees",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.9102676589973271,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "-43682\n",
+      "stderr": "",
+      "workload": "binary-trees",
+      "round": 2
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.717578414012678,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "-43682\n",
+      "stderr": "",
+      "workload": "binary-trees",
+      "round": 2
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.39584005501819775,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "-43682\n",
+      "stderr": "",
+      "workload": "binary-trees",
+      "round": 2
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.39429012598702684,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "-43682\n",
+      "stderr": "",
+      "workload": "binary-trees",
+      "round": 2
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.3946151250274852,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "-43682\n",
+      "stderr": "",
+      "workload": "binary-trees",
+      "round": 2
+    },
+    {
+      "engine": "halo",
+      "seconds": 1.2148667619912885,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "-43682\n",
+      "stderr": "0\n182\n",
+      "workload": "binary-trees",
+      "round": 2
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.7044071420095861,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "-43682\n",
+      "stderr": "",
+      "workload": "binary-trees",
+      "round": 3
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.37853610300226137,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "-43682\n",
+      "stderr": "",
+      "workload": "binary-trees",
+      "round": 3
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.3958257579943165,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "-43682\n",
+      "stderr": "",
+      "workload": "binary-trees",
+      "round": 3
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.39576692500850186,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "-43682\n",
+      "stderr": "",
+      "workload": "binary-trees",
+      "round": 3
+    },
+    {
+      "engine": "halo",
+      "seconds": 1.2143377809843514,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "-43682\n",
+      "stderr": "0\n182\n",
+      "workload": "binary-trees",
+      "round": 3
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.9027869050041772,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "-43682\n",
+      "stderr": "",
+      "workload": "binary-trees",
+      "round": 3
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.3821246000006795,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "-43682\n",
+      "stderr": "",
+      "workload": "binary-trees",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.3819684259942733,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "-43682\n",
+      "stderr": "",
+      "workload": "binary-trees",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.3942543519951869,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "-43682\n",
+      "stderr": "",
+      "workload": "binary-trees",
+      "round": 4
+    },
+    {
+      "engine": "halo",
+      "seconds": 1.2160556059970986,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "-43682\n",
+      "stderr": "0\n182\n",
+      "workload": "binary-trees",
+      "round": 4
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.9094284669845365,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "-43682\n",
+      "stderr": "",
+      "workload": "binary-trees",
+      "round": 4
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.7053145619865973,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "-43682\n",
+      "stderr": "",
+      "workload": "binary-trees",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.3795590679801535,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "-43682\n",
+      "stderr": "",
+      "workload": "binary-trees",
+      "round": 5
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.383156930009136,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "-43682\n",
+      "stderr": "",
+      "workload": "binary-trees",
+      "round": 5
+    },
+    {
+      "engine": "halo",
+      "seconds": 1.2202817799989134,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "-43682\n",
+      "stderr": "0\n182\n",
+      "workload": "binary-trees",
+      "round": 5
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.9049467949953396,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "-43682\n",
+      "stderr": "",
+      "workload": "binary-trees",
+      "round": 5
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.6774381209979765,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "-43682\n",
+      "stderr": "",
+      "workload": "binary-trees",
+      "round": 5
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.3985571179946419,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "-43682\n",
+      "stderr": "",
+      "workload": "binary-trees",
+      "round": 5
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.39374219000455923,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "-43682\n",
+      "stderr": "",
+      "workload": "binary-trees",
+      "round": 6
+    },
+    {
+      "engine": "halo",
+      "seconds": 1.2141548089857679,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "-43682\n",
+      "stderr": "0\n182\n",
+      "workload": "binary-trees",
+      "round": 6
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.9094090930011589,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "-43682\n",
+      "stderr": "",
+      "workload": "binary-trees",
+      "round": 6
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.7124158459773753,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "-43682\n",
+      "stderr": "",
+      "workload": "binary-trees",
+      "round": 6
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.37889335700310767,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "-43682\n",
+      "stderr": "",
+      "workload": "binary-trees",
+      "round": 6
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.3843263000017032,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "-43682\n",
+      "stderr": "",
+      "workload": "binary-trees",
+      "round": 6
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.7436714399955235,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "0\n90\n",
+      "workload": "List",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.4344588320236653,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "List",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.2709024630021304,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "List",
+      "round": 1
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.18792792700696737,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "List",
+      "round": 1
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.2529912600002717,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "List",
+      "round": 1
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.2451753969944548,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "List",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.4342749370262027,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "List",
+      "round": 2
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.26902727599372156,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "List",
+      "round": 2
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.1894438279850874,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "List",
+      "round": 2
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.24598525700275786,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "List",
+      "round": 2
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.24507590400753543,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "List",
+      "round": 2
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.742393376014661,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "0\n90\n",
+      "workload": "List",
+      "round": 2
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.28092680900590494,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "List",
+      "round": 3
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.2255067490041256,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "List",
+      "round": 3
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.24602892599068582,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "List",
+      "round": 3
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.24536719999741763,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "List",
+      "round": 3
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.7428609329799656,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "0\n90\n",
+      "workload": "List",
+      "round": 3
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.43561117799254134,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "List",
+      "round": 3
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.22723279599449597,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "List",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.24569189999601804,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "List",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.24751121399458498,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "List",
+      "round": 4
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.7412621060211677,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "0\n90\n",
+      "workload": "List",
+      "round": 4
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.4358916260243859,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "List",
+      "round": 4
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.2714397870004177,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "List",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.24564005999127403,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "List",
+      "round": 5
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.24591762499767356,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "List",
+      "round": 5
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.7423190400004387,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "0\n90\n",
+      "workload": "List",
+      "round": 5
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.4500569249794353,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "List",
+      "round": 5
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.28134341101394966,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "List",
+      "round": 5
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.22743774400441907,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "List",
+      "round": 5
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.24566327797947451,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "List",
+      "round": 6
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.7418026129889768,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "0\n90\n",
+      "workload": "List",
+      "round": 6
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.44637315298314206,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "List",
+      "round": 6
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.2867591639806051,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "List",
+      "round": 6
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.22571398501168005,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "List",
+      "round": 6
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.2455241860006936,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "List",
+      "round": 6
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.8203400180209428,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "0\n0\n",
+      "workload": "NBody",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.6686073190066963,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "NBody",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.3651508280017879,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "NBody",
+      "round": 1
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.21129135598312132,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "NBody",
+      "round": 1
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.2614891039847862,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "NBody",
+      "round": 1
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.2615651079977397,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "NBody",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.6698160090018064,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "NBody",
+      "round": 2
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.35231252800440416,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "NBody",
+      "round": 2
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.21166524599539116,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "NBody",
+      "round": 2
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.2614573499886319,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "NBody",
+      "round": 2
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.2613467579940334,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "NBody",
+      "round": 2
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.8205611489829607,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "0\n0\n",
+      "workload": "NBody",
+      "round": 2
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.3503349030215759,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "NBody",
+      "round": 3
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.21418858799734153,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "NBody",
+      "round": 3
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.26147321600001305,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "NBody",
+      "round": 3
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.2620092130091507,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "NBody",
+      "round": 3
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.8247508549829945,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "0\n0\n",
+      "workload": "NBody",
+      "round": 3
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.667685526976129,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "NBody",
+      "round": 3
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.21108980602002703,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "NBody",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.2619604390056338,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "NBody",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.2614478559989948,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "NBody",
+      "round": 4
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.8201889930060133,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "0\n0\n",
+      "workload": "NBody",
+      "round": 4
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.6712548790092114,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "NBody",
+      "round": 4
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.35680798802059144,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "NBody",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.2617000020109117,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "NBody",
+      "round": 5
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.2615023679973092,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "NBody",
+      "round": 5
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.8201346159912646,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "0\n0\n",
+      "workload": "NBody",
+      "round": 5
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.6684847410069779,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "NBody",
+      "round": 5
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.3482417909835931,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "NBody",
+      "round": 5
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.2143834290036466,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "NBody",
+      "round": 5
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.26146331802010536,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "NBody",
+      "round": 6
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.8322994270129129,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "0\n0\n",
+      "workload": "NBody",
+      "round": 6
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.6735438669857103,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "NBody",
+      "round": 6
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.3646968060056679,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "NBody",
+      "round": 6
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.2114178310148418,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "NBody",
+      "round": 6
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.48205341599532403,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "NBody",
+      "round": 6
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.5193981050106231,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "0\n1\n",
+      "workload": "Permute",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.3649950890103355,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Permute",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.245284691976849,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Permute",
+      "round": 1
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.13366682597552426,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Permute",
+      "round": 1
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.2042197029804811,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Permute",
+      "round": 1
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.20515042199986055,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Permute",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.36562308500288054,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Permute",
+      "round": 2
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.21624411901575513,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Permute",
+      "round": 2
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.13362076500197873,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Permute",
+      "round": 2
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.21897743802401237,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Permute",
+      "round": 2
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.20490606801467948,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Permute",
+      "round": 2
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.5189112689986359,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "0\n1\n",
+      "workload": "Permute",
+      "round": 2
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.2097554259817116,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Permute",
+      "round": 3
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.13348766000126489,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Permute",
+      "round": 3
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.20509391999803483,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Permute",
+      "round": 3
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.2053285239962861,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Permute",
+      "round": 3
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.518103231996065,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "0\n1\n",
+      "workload": "Permute",
+      "round": 3
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.3653980410017539,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Permute",
+      "round": 3
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.13382228100090288,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Permute",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.20448428101371974,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Permute",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.20551336600328796,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Permute",
+      "round": 4
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.52302986299037,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "0\n1\n",
+      "workload": "Permute",
+      "round": 4
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.36510531898238696,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Permute",
+      "round": 4
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.22268639798858203,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Permute",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.2102103020006325,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Permute",
+      "round": 5
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.20492545500746928,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Permute",
+      "round": 5
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.5175830659864005,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "0\n1\n",
+      "workload": "Permute",
+      "round": 5
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.3656639879918657,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Permute",
+      "round": 5
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.22190793699701317,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Permute",
+      "round": 5
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.13081729802070186,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Permute",
+      "round": 5
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.20465459101251327,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Permute",
+      "round": 6
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.520202444982715,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "0\n1\n",
+      "workload": "Permute",
+      "round": 6
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.36512505600694567,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Permute",
+      "round": 6
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.23282881901832297,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Permute",
+      "round": 6
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.13359903602395207,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Permute",
+      "round": 6
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.20551969998632558,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Permute",
+      "round": 6
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.713420727988705,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "0\n116\n",
+      "workload": "Queens",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.4648365490138531,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Queens",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.31319703100598417,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Queens",
+      "round": 1
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.1791680769820232,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Queens",
+      "round": 1
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.25910859898431227,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Queens",
+      "round": 1
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.2599034210143145,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Queens",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.464348927984247,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Queens",
+      "round": 2
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.3107136460021138,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Queens",
+      "round": 2
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.17888336200849153,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Queens",
+      "round": 2
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.2584370270196814,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Queens",
+      "round": 2
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.2585221749905031,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Queens",
+      "round": 2
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.6737527179939207,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "0\n116\n",
+      "workload": "Queens",
+      "round": 2
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.30124245598562993,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Queens",
+      "round": 3
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.17794647201662883,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Queens",
+      "round": 3
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.25946250298875384,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Queens",
+      "round": 3
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.25848178699379787,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Queens",
+      "round": 3
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.6735482169897296,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "0\n116\n",
+      "workload": "Queens",
+      "round": 3
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.4643163369910326,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Queens",
+      "round": 3
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.18006257599336095,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Queens",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.2604117119917646,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Queens",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.259538779995637,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Queens",
+      "round": 4
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.6728501420002431,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "0\n116\n",
+      "workload": "Queens",
+      "round": 4
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.46432140399701893,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Queens",
+      "round": 4
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.3067564119992312,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Queens",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.25822132200119086,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Queens",
+      "round": 5
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.2933219409896992,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Queens",
+      "round": 5
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.6774434590188321,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "0\n116\n",
+      "workload": "Queens",
+      "round": 5
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.4639591879968066,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Queens",
+      "round": 5
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.301269128016429,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Queens",
+      "round": 5
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.18530202697729692,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Queens",
+      "round": 5
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.26007171199307777,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Queens",
+      "round": 6
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.7435309480060823,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "0\n116\n",
+      "workload": "Queens",
+      "round": 6
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.46435474199824966,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Queens",
+      "round": 6
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.32632180000655353,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Queens",
+      "round": 6
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.1866930949909147,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Queens",
+      "round": 6
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.29239464897545986,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Queens",
+      "round": 6
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.8547504580055829,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "0\n2001\n",
+      "workload": "Sieve",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.5599692649848294,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Sieve",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.30026521597756073,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Sieve",
+      "round": 1
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.22959278599591926,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Sieve",
+      "round": 1
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.35840827401261777,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Sieve",
+      "round": 1
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.35812802700093016,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Sieve",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.5615373759937938,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Sieve",
+      "round": 2
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.2992030680179596,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Sieve",
+      "round": 2
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.22892985900398344,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Sieve",
+      "round": 2
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.35768575200927444,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Sieve",
+      "round": 2
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.3571799810160883,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Sieve",
+      "round": 2
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.8543087800208014,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "0\n2001\n",
+      "workload": "Sieve",
+      "round": 2
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.29690962698077783,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Sieve",
+      "round": 3
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.22883975101285614,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Sieve",
+      "round": 3
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.3587797939835582,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Sieve",
+      "round": 3
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.35127018598723225,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Sieve",
+      "round": 3
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.8570676319941413,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "0\n2001\n",
+      "workload": "Sieve",
+      "round": 3
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.572280235006474,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Sieve",
+      "round": 3
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.22899473502184264,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Sieve",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.3532684610108845,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Sieve",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.3526333069894463,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Sieve",
+      "round": 4
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.856670306995511,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "0\n2001\n",
+      "workload": "Sieve",
+      "round": 4
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.5630922929849476,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Sieve",
+      "round": 4
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.30698232899885625,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Sieve",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.352687201986555,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Sieve",
+      "round": 5
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.35189591100788675,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Sieve",
+      "round": 5
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.8558265840110835,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "0\n2001\n",
+      "workload": "Sieve",
+      "round": 5
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.5607101609930396,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Sieve",
+      "round": 5
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.2966195050103124,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Sieve",
+      "round": 5
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.22920536799938418,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Sieve",
+      "round": 5
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.35938656597863883,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Sieve",
+      "round": 6
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.8565042749978602,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "0\n2001\n",
+      "workload": "Sieve",
+      "round": 6
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.560573523020139,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Sieve",
+      "round": 6
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.2984294559864793,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Sieve",
+      "round": 6
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.2287164170120377,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Sieve",
+      "round": 6
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.3591090500121936,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Sieve",
+      "round": 6
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.7119455510110129,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "0\n7\n",
+      "workload": "Towers",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.4447714159905445,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Towers",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.3081018940138165,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Towers",
+      "round": 1
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.16842885702499188,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Towers",
+      "round": 1
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.22735634801210836,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Towers",
+      "round": 1
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.22892500201123767,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Towers",
+      "round": 1
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.4450986719748471,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Towers",
+      "round": 2
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.3063732679875102,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Towers",
+      "round": 2
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.1690343490045052,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Towers",
+      "round": 2
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.23044054201454856,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Towers",
+      "round": 2
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.22762867997516878,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Towers",
+      "round": 2
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.7176865450164769,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "0\n7\n",
+      "workload": "Towers",
+      "round": 2
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.29053683998063207,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Towers",
+      "round": 3
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.16504245300893672,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Towers",
+      "round": 3
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.22797772201010957,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Towers",
+      "round": 3
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.2273336040088907,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Towers",
+      "round": 3
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.7209737370139919,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "0\n7\n",
+      "workload": "Towers",
+      "round": 3
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.4472702500061132,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Towers",
+      "round": 3
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.16536359398742206,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Towers",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.2310251269955188,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Towers",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.22953943500760943,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Towers",
+      "round": 4
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.7181265449908096,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "0\n7\n",
+      "workload": "Towers",
+      "round": 4
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.44539006002014503,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Towers",
+      "round": 4
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.30178084899671376,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Towers",
+      "round": 4
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.22892862200387754,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Towers",
+      "round": 5
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.2283351400110405,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Towers",
+      "round": 5
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.713720383006148,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "0\n7\n",
+      "workload": "Towers",
+      "round": 5
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.44538500701310113,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Towers",
+      "round": 5
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.3052311099891085,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Towers",
+      "round": 5
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.16534877399681136,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Towers",
+      "round": 5
+    },
+    {
+      "engine": "luau-0.742-O2",
+      "seconds": 0.22933273497619666,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Towers",
+      "round": 6
+    },
+    {
+      "engine": "halo",
+      "seconds": 0.7152746639912948,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "0\n7\n",
+      "workload": "Towers",
+      "round": 6
+    },
+    {
+      "engine": "puc-5.1.5",
+      "seconds": 0.44395404899842106,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Towers",
+      "round": 6
+    },
+    {
+      "engine": "puc-5.4.9",
+      "seconds": 0.29825902500306256,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Towers",
+      "round": 6
+    },
+    {
+      "engine": "luajit-2.1-joff",
+      "seconds": 0.16558591299690306,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Towers",
+      "round": 6
+    },
+    {
+      "engine": "luau-0.742",
+      "seconds": 0.22835143402335234,
+      "exit": 0,
+      "timeout": false,
+      "stdout": "1\n",
+      "stderr": "",
+      "workload": "Towers",
+      "round": 6
+    }
+  ],
+  "cpu_after": {
+    "2": {
+      "scaling_governor": "performance",
+      "scaling_cur_freq": "5000000"
+    }
+  },
+  "geomean_halo_over": {
+    "puc-5.1.5": {
+      "value": 1.3220102456433844,
+      "workloads": 13
+    },
+    "puc-5.4.9": {
+      "value": 1.9553863242776257,
+      "workloads": 13
+    },
+    "luajit-2.1-joff": {
+      "value": 2.787206172472484,
+      "workloads": 13
+    },
+    "luau-0.742": {
+      "value": 2.260980661871965,
+      "workloads": 13
+    },
+    "luau-0.742-O2": {
+      "value": 2.2576473846965492,
+      "workloads": 13
+    }
+  }
+}
