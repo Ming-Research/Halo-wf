@@ -55,7 +55,7 @@ fn park_for_marking(vm: &Vm, stack: &Box<Slots<Value>>) -> r: u64 writes(vm), wr
 fn unpark_after_marking(vm: &Vm, stack: &Box<Slots<Value>>, length: u64) -> r: unit writes(vm), writes(stack) contract {
   ensures stack^.inner.len == length;
 } {
-  doc "Reinstalls the buffers park_for_marking moved, returning the cell its own counterparts. The saved scalars stay in the cell until the next switch or collection overwrites them; nothing reads them while the thread is installed. length restates the unchanged stack length for callers' contracts.";
+  doc "Reinstalls the buffers park_for_marking moved, returning the cell its own counterparts. The saved scalars stay in the cell until the next switch or collection overwrites them; nothing reads them while the thread is installed. The two swaps return the stack box with its length unchanged, but the checker loses a box's proven length across swap, so the closing resize_stack exists only to restate that length for callers' contracts. This is the owner's ruled exception to routing around a Whitefoot gap: it waits on Whitefoot's swap length and capacity fact rule (status-board item coord-wfbl-09-04-rule, under wf-need-halo-coroutines), and its removal is tracked by Halo's item halo-coroutine-swap-workaround.";
   let installed = vm^.current_thread;
   coroutine_swap_boxes(vm: vm, stack: stack, h: installed);
   resize_stack(stack: stack, size: length);

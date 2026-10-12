@@ -1,7 +1,7 @@
 -- checks: a value held only in a deep register of a foreach callback inside a coroutine survives a budget stop taken with garbage over the host's heap limit, and is intact when the run continues.
 -- KEYS: []
 -- ARGV: []
--- expects: No pre-existing keys. The main chunk holds a 40 MiB string; 200 nested calls inside the callback put the fresh table far past the coroutine stack's length at callback entry, and the deepest call drops a 30 MiB string just before a call. At budget 1 that call always stops before its safepoint collects, so a host with a 64 MiB heap limit collects while only the stopped stack copy holds the table. Written to make the reply depend on the stopped-copy mark, it did not: the control omitting that mark left the reply unchanged (halo-gc README); it stays as the corpus's only case of that collection during a budget stop in a callback.
+-- expects: No pre-existing keys. The main chunk holds a 40 MiB string; 200 nested calls inside the callback put the fresh table far past the coroutine stack's length at callback entry, and the deepest call drops a 30 MiB string just before a call. At budget 1 that call stops before its safepoint collects, so a host with a 64 MiB heap limit collects at that stop. The callback's first stop came earlier, at its first call, before the table existed; from then on the callback runs from its saved record without a native level, so this collection finds the whole stack installed and retains the table through it, not through a parked copy (gc-stopped-high-register covers the copy). It is the corpus's case of that collection during a stop inside a callback continued from its record.
 local big = string.rep("a", 40 * 1048576)
 local keep = {}
 local function refill()

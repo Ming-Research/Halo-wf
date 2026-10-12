@@ -339,7 +339,7 @@ fn coroutine_reject_resume(vm: &Vm, stack: &Box<Slots<Value>>, call: CoroutineCa
 }
 
 fn coroutine_prepare(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, stack: &Box<Slots<Value>>, id: u32, callable: Value, func: u64, argc: u64, wanted: i64, return_pc: u64, base: u64, kbase: u64, tail: Bool) -> r: Step reads(code), reads(consts), writes(vm), writes(stack) {
-  doc "Public coroutine calls and the captured wrapper entry share deferred transfers; native callers always return with their original execution installed.";
+  doc "Public coroutine calls and the captured wrapper entry share deferred transfers; native callers always return with their original execution installed. A resume refused at the C-depth limit leaves a never-started coroutine dead, because Lua 5.1's resume_error resets the coroutine's top to its base and so drops its function, and leaves a yielded one suspended.";
   let wrapping = id == builtin_coroutine_wrapaux;
   let call = CoroutineCall(child: no_handle, func: func, argc: argc, wanted: wanted, return_pc: return_pc, base: base, kbase: kbase, tail: tail, activation: vm^.activation, top: vm^.top, wrapping: wrapping);
   let pc = return_pc -sat 1_u64;
@@ -464,6 +464,11 @@ fn coroutine_prepare(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &V
   }
   let depth = coroutine_depth(vm: vm);
   if depth >= 199_u32 {
+    if index < vm^.heap.threads.inner.len {
+      if bnot(vm^.heap.threads.inner[index].started) {
+        pkg::heap::retire_thread(heap: &vm^.heap, owner: child);
+      }
+    }
     return coroutine_reject_resume(vm: vm, stack: stack, call: call, text: &coroutine_overflow[0_u64..16_u64]);
   }
   set vm^.transfer = call;
@@ -490,7 +495,7 @@ fn coroutine_copy_saved(vm: &Vm, stack: &Box<Slots<Value>>, owner: u32, source: 
 }
 
 fn coroutine_transfer(vm: &Vm, stack: &Box<Slots<Value>>) -> r: Step writes(vm), writes(stack) {
-  doc "Consumes a deferred request only after every native caller has unwound and the complete parked stack has been restored.";
+  doc "Consumes a deferred request only after every native caller has unwound and the complete parked stack has been restored. The child's stack is grown to the transfer's room before the exchange, but the checker loses that length across swap, so the slot-zero write and the argument copy after the exchange test their indices against the installed length, tests that never fail. This is the owner's ruled exception to routing around a Whitefoot gap: it waits on Whitefoot's swap length and capacity fact rule (status-board item coord-wfbl-09-04-rule, under wf-need-halo-coroutines), and its removal is tracked by Halo's item halo-coroutine-swap-workaround.";
   if vm^.native_entries != 0_u32 {
     return Step::Budget();
   }
@@ -610,7 +615,7 @@ fn coroutine_transfer(vm: &Vm, stack: &Box<Slots<Value>>) -> r: Step writes(vm),
 }
 
 fn coroutine_deliver(vm: &Vm, stack: &Box<Slots<Value>>, source: u64, count: u64, failed: Bool, terminal: Bool) -> r: Step writes(vm), writes(stack) {
-  doc "Restores the waiting resumer and finishes its delayed call. Only a real protected catch transforms a host error table; this boundary preserves the original value.";
+  doc "Restores the waiting resumer and finishes its delayed call. Only a real protected catch transforms a host error table; this boundary preserves the original value. The resumer's stack is grown to the delivery's room before the exchange, but the checker loses that length across swap, so the result writes after the exchange test their indices against the installed length, tests that never fail. This is the owner's ruled exception to routing around a Whitefoot gap: it waits on Whitefoot's swap length and capacity fact rule (status-board item coord-wfbl-09-04-rule, under wf-need-halo-coroutines), and its removal is tracked by Halo's item halo-coroutine-swap-workaround.";
   let child = vm^.current_thread;
   let child_index = cvt::<u32, u64>(child);
   if child_index >= vm^.heap.threads.inner.len {

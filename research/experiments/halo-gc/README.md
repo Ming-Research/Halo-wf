@@ -137,7 +137,10 @@ Owner ruling `halo-card-coroutine-gc-validation`, option A, requires every
 coroutine-edge mutant to change at least one coroutine oracle reply under
 collector stress. An unchanged comparison is reported as `survived` and fails
 the control. A differing canonical reply or native signal crash is
-`detected`. Compiler refusal, missing recordings, malformed transport or
+`detected`. A `fail-stop`, every case exiting natively with status 4 (a
+runtime error in the host's setup chunk) while the baseline passes every
+case, also counts as detected; the classifier accepts any exit 4, because the
+host does not print the setup error. Compiler refusal, missing recordings, malformed transport or
 statistics, zero stress collections, timeouts and harness exceptions are
 `inconclusive` or `build-failed`, never detections by themselves. A completed
 comparison with at least one qualifying difference still detects the mutant
@@ -145,8 +148,11 @@ when other cases have unqualified failures. The classifier's positive
 and negative samples run in CI before baseline compilation; they include a changed
 reply, a signal crash, transport/setup exits and a semantic failure mixed
 with a zero collection count. The established isolated observations still
-run, 26 across 25 rows, and must retain their specific native exits.
-They are additional evidence and do not satisfy the oracle requirement.
+run, 26 across 25 rows, and must retain their specific native exits. For an
+edge whose omission changes no reply, the owner accepted its isolated
+observation as the validation, with the reason no script observes the edge
+recorded ([collector validation](../../../design/halo/heap/collector-validation.md));
+for every other edge it is evidence beside the oracle result.
 
 Every mutation starts from original sources. The copied runner and copied
 recordings make each report's source digest describe that mutation; read-only
@@ -207,28 +213,42 @@ does, and a new thread no longer copies its entry closure into stack slot
 zero, so existing scripts observe `explicit-close` and `thread-entry`. That
 leaves 25 rows. The full rerun (CI run 38223742481, source `319bf27`)
 detected 18 by a changed coroutine reply, stopped 3 in setup (`thread`,
-`stack`, `main`, counted as detected) and left 4 unchanged. Each of the four
-is observed by its isolated probe, and the owner accepted the probes for them
-([collector validation](../../../design/halo/heap/collector-validation.md)):
+`stack`, `main`, counted as detected) and left 4 unchanged. Read from the
+code, the three setup stops have one cause: under stress the engine's start
+collects before the setup chunk's first call, the omission leaves stack slot
+zero of the installed execution unmarked, so the chunk's main function, held
+only there, is freed and the call refuses it ("invalid Lua closure"). The
+collector's test of the installed cell's live flag is not what stops them;
+for `main` it would fire only at a later collection, which the setup chunk
+never reaches. Each of the four unchanged rows is observed by its isolated
+probe, and the owner accepted the probes for all four
+([collector validation](../../../design/halo/heap/collector-validation.md));
+three keep that acceptance:
 `pattern-replacement`, because gsub's replacement stays in its caller's
 argument registers for the whole call; `transfer-child` and
 `transfer-arguments`, because `coroutine_transfer` clears the pending request
 before saving the resumer, so those marks see a pending request only in the
 driver's over-limit collection between a request and its transfer, where the
 requesting call's registers also hold both (a wrapped child through the
-wrapper in the call's function register); and `stopped`.
+wrapper in the call's function register).
 
-`gc-stopped-over-limit` was written to make a reply depend on `stopped`, and
-it did not. It is the only script that takes the over-limit collection during
-a budget stop inside a callback, and at budget 1 its run records 246
-collections against 245 at budgets 7 and 1000, so the extra collection runs;
-with the `stopped` mark omitted its reply still matches Redis's. Why is not
-established: the table has another holder at that collection, and the live
-stack's marked length covering the deep registers is the most likely
-candidate, but it was not checked. The script stays as an observation of that
-collection, and the `stopped` row stays validated by its isolated probe.
-These four rows remain selected by `all` and their unchanged replies are
-reported as such; no all-edge detection is claimed.
+The fourth, `stopped`, now has a script. Its mark is not a duplicate holder. When a callback first stops
+inside a native level, `park_suspended_stack` copies the whole stack, and the
+returning native levels (`callback_values`, `callback` and
+`library_dispatch`) truncate the live stack to their entry lengths, so the
+callback's slots at or above the outermost entry length are held only by the
+copy, while the collector marks the live stack only below that length.
+`gc-stopped-over-limit` missed this: at budget 1 its callback's first stop
+comes at its first call, before the table exists; afterwards the callback
+continues from its saved record without a native level, so the over-limit
+collection at its later stop (246 collections at budget 1 against 245 at 7
+and 1000) finds the whole stack installed. `gc-stopped-high-register` puts the
+table about 80 slots above the coroutine stack's entry length and drops 40 MiB
+before the callback's first loop, so at budget 1 the over-limit collection runs
+at that first stop while only the copy holds the table. The `stopped` row is
+expected to change its reply; the controls have not been rerun since, so this
+is a prediction until they are. Rows that still change no reply remain
+selected by `all` and are reported as such; no all-edge detection is claimed.
 
 Owner-qualified observations in `upvalue-probe.wf` additionally check reads
 and writes against active, inactive and suspended stacks; capture reuse and

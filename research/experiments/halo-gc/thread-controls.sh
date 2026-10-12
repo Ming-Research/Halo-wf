@@ -1,6 +1,7 @@
 #!/bin/sh
 # CI-only, single-edge omissions. Keep isolated observations and require a
-# changed coroutine oracle reply or native crash under collector stress.
+# changed coroutine oracle reply, native crash or setup fail-stop under
+# collector stress.
 # The compiler has no source-mutator mode; copy/delete/build isolates each
 # omission. Remove with these research controls when maintained tests replace
 # them. Sample stack first, then select a bounded batch after reading its cost.
@@ -32,10 +33,15 @@ is_oracle_detection() (
   return "$difference"
 )
 
-# A fail-stop: every case stops in host setup (native exit 4) and none passes,
-# while the baseline passed every case. Removing a root of the running
-# execution frees a cell the collector then finds dead; the checked guard ends
-# the script before any reply, which is a reply change Redis would not make.
+# A fail-stop: every case exits natively with status 4 (a runtime error in the
+# host's setup chunk) and none passes, while the baseline passed every case.
+# The classifier accepts any exit 4: the host does not print the setup error.
+# Read from the code, the thread, stack and main omissions stop at the same
+# point: under stress the engine's start collects before the setup chunk's
+# first call, that chunk's main function is held only in stack slot zero of
+# the installed execution, the omission leaves that slot unmarked, and the call
+# refuses the freed closure ("invalid Lua closure"). No reply is produced,
+# which is a reply change Redis would not make.
 is_fail_stop() (
   stopped=1
   while IFS= read -r line || [ -n "$line" ]; do
@@ -265,8 +271,11 @@ while IFS='|' read -r label probes file line replacement flags; do
   else
     status=1
   fi
-  # Keep each established isolated observation, entry:exit; it is additional
-  # evidence, never a substitute for the oracle result.
+  # Keep each established isolated observation, entry:exit. For an edge whose
+  # omission changes no reply, the owner accepted this observation as its
+  # validation, with the reason recorded (design/halo/heap/collector-validation.md);
+  # for every other edge it is evidence beside the oracle result. A survived
+  # row still fails this run, so the report shows it.
   for probe in $probes; do
     entry=${probe%%:*}
     want=${probe#*:}

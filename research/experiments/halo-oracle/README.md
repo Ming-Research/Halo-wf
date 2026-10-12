@@ -7,8 +7,8 @@ Halo's `make check-core` compares the corpus through the `oracle` target;
 recording reference replies remains the job of
 [oracle-reference.yml](../../../.github/workflows/oracle-reference.yml).
 
-There are 143 scripts: 68 `lua-core`, 23 `redis-api`, 6 `apps`, 12 `libs`,
-and 34 `coroutines`.
+There are 145 scripts: 68 `lua-core`, 23 `redis-api`, 6 `apps`, 12 `libs`,
+and 36 `coroutines`.
 The scripts, replies and runner belong here until the oracle is replaced or
 Halo/firn scripting is retired. Each case is consumed by `run.sh`; the table
 below is the index of the observations it protects.
@@ -180,13 +180,15 @@ The coroutine `gc-*` cases are Lua-visible lifetime observations for the
 [thread omission controls](../halo-gc/README.md). They deliberately allocate
 while executions or captures are parked; collection is forced by Halo's
 `--gc-stress` runner, without inserting a reference-only `collectgarbage`
-call. `gc-error-over-limit` and `gc-stopped-over-limit` instead reach the
-collection Halo runs when a coroutine stops with the test host's 64 MiB heap
-limit exceeded, so they collect in ordinary runs too.
-`gc-error-over-limit` makes a reply depend on a dead coroutine's error value;
-`gc-stopped-over-limit` did not make one depend on the stopped stack copy (see
-the [thread omission controls](../halo-gc/README.md)), and stays as the only
-case that takes that collection during a budget stop inside a callback.
+call. `gc-error-over-limit`, `gc-stopped-high-register` and
+`gc-stopped-over-limit` instead reach the collection Halo runs when a
+coroutine stops with the test host's 64 MiB heap limit exceeded, so they
+collect in ordinary runs too. `gc-error-over-limit` makes a reply depend on a
+dead coroutine's error value, and `gc-stopped-high-register` on the copy of
+the stack a callback parks at its first stop. `gc-stopped-over-limit` takes
+that collection later, after the callback has continued from its saved record
+with the whole stack installed, so it does not depend on the copy (see the
+[thread omission controls](../halo-gc/README.md)).
 Their target descriptions identify the intended discrimination, not a
 claim that each individual omission has already changed a reply. Some saved
 fields have alternate retaining paths or are not live at a script-visible
@@ -217,7 +219,8 @@ report rather than being counted as detected by a probe alone.
 | coroutines | [gc-open-recapture](scripts/coroutines/gc-open-recapture.lua) | A discarded closure leaves an open capture that a suspended owner later recaptures and writes; targets the open-list omission. |
 | coroutines | [gc-pattern-coercion](scripts/coroutines/gc-pattern-coercion.lua) | gsub keeps strings converted from a numeric source and pattern while its replacement resumes an allocating child; targets pattern-source and pattern-pattern omissions. |
 | coroutines | [gc-sort-frames](scripts/coroutines/gc-sort-frames.lua) | sort keeps a compared pair and its pivot that a comparator removed from the table; targets sort-a, sort-b and sort-pivot omissions. |
-| coroutines | [gc-stopped-over-limit](scripts/coroutines/gc-stopped-over-limit.lua) | A table held only in a deep register of a foreach callback inside a coroutine survives a budget stop taken over the host's 64 MiB heap limit; exercises the over-limit collection during a budget stop in a callback (it does not detect omitting the stopped-copy mark). |
+| coroutines | [gc-stopped-high-register](scripts/coroutines/gc-stopped-high-register.lua) | A table held only in a high register of a foreach callback inside a coroutine survives the collection the host's 64 MiB heap limit forces at the callback's first budget stop, while only the parked stack copy holds it; targets the stopped omission. |
+| coroutines | [gc-stopped-over-limit](scripts/coroutines/gc-stopped-over-limit.lua) | A table held only in a deep register of a foreach callback inside a coroutine survives a budget stop taken over the host's 64 MiB heap limit after the callback has continued from its saved record; exercises the over-limit collection with the whole stack installed. |
 | coroutines | [gc-thread-roots](scripts/coroutines/gc-thread-roots.lua) | An unstarted thread retains a private entry capture, and normal parents retain private locals during nested child allocation. |
 | coroutines | [gc-transfer-values](scripts/coroutines/gc-transfer-values.lua) | Tail resume and yield carry 20 fresh table values and a trailing nil beyond the caller's fixed registers. |
 | coroutines | [generator-values](scripts/coroutines/generator-values.lua) | create, resume and yield exchange multiple values in both directions, counting nil holes. |
@@ -226,6 +229,7 @@ report rather than being counted as detected by a probe alone.
 | coroutines | [nested-resume-depth](scripts/coroutines/nested-resume-depth.lua) | Nested resumes reach the reference's own limit and report the reached depth and caught error text. |
 | coroutines | [redis-call-in-coroutine](scripts/coroutines/redis-call-in-coroutine.lua) | Redis reads and writes inside a coroutine survive yields and target declared keys. |
 | coroutines | [redis-resumer-callbacks](scripts/coroutines/redis-resumer-callbacks.lua) | Children resumed by sort and gsub callbacks perform Redis success, caught and uncaught command failure, redis.pcall and yield/return. |
+| coroutines | [refused-resume-state](scripts/coroutines/refused-resume-state.lua) | A resume refused at the nested-resume limit leaves a never-started coroutine dead and a yielded one suspended; later resumes see each state. |
 | coroutines | [results-as-eval-reply](scripts/coroutines/results-as-eval-reply.lua) | A coroutine's returned values become the script's direct EVAL reply. |
 | coroutines | [resume-state-errors](scripts/coroutines/resume-state-errors.lua) | Resuming dead, running and normal coroutines records failure results and exact messages. |
 | coroutines | [shared-upvalues-across](scripts/coroutines/shared-upvalues-across.lua) | Main and another coroutine read and write a shared closure's upvalue while its creator is suspended and after it dies. |

@@ -318,7 +318,7 @@ fn prepare<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
 }
 
 fn prepare_inner<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, stack: &Box<Slots<Value>>, env: &E, func: u64, argc: u64, wanted: i64, return_pc: u64, base: u64, kbase: u64, tail: Bool) -> r: Step reads(code), reads(consts), writes(vm), writes(stack), writes(env) {
-  doc "Prepares Lua, native and protected calls while retaining the invoking Lua frame through native tail calls.";
+  doc "Prepares Lua, native and protected calls while retaining the invoking Lua frame through native tail calls. A __call handler shifts the arguments one slot up, so the top is raised past the last one, as Lua 5.1's tryfuncTM raises it; a host call left pending through __call then keeps every argument below the top that a collection at the run's exit marks.";
   let fslot = func;
   let nargs = argc;
   let nr = wanted;
@@ -518,6 +518,9 @@ fn prepare_inner<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<
           set stack^.inner[fslot] = tm;
         }
         set nargs = nargs +sat 1_u64;
+        if vm^.top < room {
+          set vm^.top = room;
+        }
       }
     }
   }
