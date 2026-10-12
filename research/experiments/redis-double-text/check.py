@@ -18,7 +18,7 @@ GRISU_WITNESS = '44b52d02c7e14af6'
 # lost, added or changed, or a table recorded again, fails the check until
 # these two are updated together with the table.
 TABLE_ROWS = 18235
-TABLE_SHA256 = ''
+TABLE_SHA256 = 'e0df6c1e2353e6341d3554a75a21247366c64d43eeae5af039be7d91d9ae6e21'
 
 
 def load(path):
