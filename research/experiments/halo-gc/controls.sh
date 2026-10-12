@@ -130,7 +130,7 @@ EOF
 # a check that refused everything fails too.
 selection_self_test() {
   first=mutant-${mutants%% *}
-  for bad in "unknown-part 2" "$first 0" "$first 2" "base 1"; do
+  for bad in "unknown-part 1" "unknown-part 2" "mutant-unknown 1" "$first 0" "$first 2" "base 1"; do
     check_selection $bad 2>/dev/null
     got=$?
     if [ "$got" != 2 ]; then
