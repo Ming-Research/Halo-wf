@@ -1,0 +1,41 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "bulk",
+      "bytes": "user_script:12: Attempt to modify a readonly table"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:13: Attempt to modify a readonly table"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:14: Attempt to modify a readonly table"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:15: Attempt to modify a readonly table"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:16: Attempt to modify a readonly table"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:17: Attempt to modify a readonly table"
+    },
+    {
+      "type": "bulk",
+      "bytes": "Attempt to modify a readonly table"
+    },
+    {
+      "type": "bulk",
+      "bytes": "user_script:19: Attempt to modify a readonly table"
+    },
+    {
+      "type": "bulk",
+      "bytes": "function,number,table"
+    }
+  ]
+}
