@@ -123,3 +123,54 @@ python3 -B research/experiments/halo-bench/run.py --lua build/redis/redis-7.0.15
 
 The runner and retained cost observations serve the P1 cost-repair criteria in
 RESULTS.md and are removed when those comparisons no longer need reproduction.
+
+## Fastest-interpreter baseline
+
+The question, method and result are in
+[RESULTS.md](RESULTS.md#fastest-interpreter-baseline). Four files serve it
+beside the P1 runner, and are removed with it when that yardstick is no
+longer repeated:
+
+- `fastest-baseline-2026-10-12.json` is the recorded run: every launch,
+  the engines' digests, the manifests and CPU 2's state, kept while later
+  comparisons repeat this run against it. Its AWFY bundle digests are of
+  the bundles as generated at `9bff3d9`; `awfy.py` later changed only a
+  header comment, so bundles generated since differ in those digests while
+  the upstream per-file digests still match.
+
+- `awfy.py` fetches are-we-fast-yet's Lua port at its pinned commit (MIT,
+  the notice in each file; NBody from the Computer Language Benchmarks Game
+  under the revised BSD license of upstream's `LICENSE.md`, which it copies
+  beside the bundles) and writes one self-contained
+  script per benchmark that plain Lua 5.1 runs, plus `manifest.json` with
+  the inner iterations, per-file digests and the excluded benchmarks with
+  their reasons. The bundles are generated in CI from the pinned upstream
+  rather than vendored: the upstream files stay byte-identical and their
+  digests are recorded, and nothing derived from them needs review here.
+- `interpreters.sh` fetches and builds PUC Lua 5.4.9 (pinned SHA-256),
+  LuaJIT 2.1 and Luau (pinned commits) with each project's default release
+  build, and writes their versions, digests, compilers and a compile line
+  to `manifest.txt`. PUC Lua 5.1.5 comes from `fetch-redis.sh`.
+- `fastest.py` times Halo's bench host and any number of other
+  interpreters (`--engine ID=COMMAND`, the workload path appended) round-robin
+  on the kernels and the bundles, validates every result against PUC 5.1.5
+  (`--reference`), marks an interpreter whose result differs n/a for that
+  workload, and writes the raw launches as JSON and the medians with Halo's
+  ratio as a markdown table beside it. It is a sibling of `run.py` rather
+  than an extension, since it rotates N interpreters and excludes a
+  disagreeing cell instead of failing the run; it reuses `run.py`'s Halo
+  checks. `--sample` runs one round to time the run before `--rounds N`.
+
+The recorded run came from a temporary workflow, kept at
+[`9bff3d9`](https://github.com/Ming-Research/Halo-wf/blob/9bff3d991b4aee1327f720e03d55bc0c366f82b5/.github/workflows/fastest-baseline.yml): it built Halo's bench host with
+full LTO, ran `fetch-redis.sh`, `interpreters.sh` and `awfy.py`, then the
+sample and six rounds on the 14900K's CPU 2. A repetition runs the same
+steps; for example, the sample with two interpreters:
+
+```sh
+python3 -B research/experiments/halo-bench/fastest.py --halo build/fastest/halo \
+  --engine puc-5.1.5=build/redis/redis-7.0.15/deps/lua/src/lua \
+  --engine "luajit-2.1-joff=build/fastest/interpreters/luajit/src/luajit -joff" \
+  --reference puc-5.1.5 --kernels all --scale binary-trees=14 --awfy build/fastest/awfy \
+  --sample --out build/fastest/sample.json
+```
