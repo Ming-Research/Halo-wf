@@ -178,8 +178,9 @@ The gate run 38230219303 at source `29cd574` passed every oracle script,
 the 34 coroutine scripts among them: 429 of 429 runs (143 scripts at budgets
 1, 7 and 1000), both ordinary and under collector stress. Two coroutine
 scripts added after that revision, `refused-resume-state` and
-`gc-stopped-high-register` (both below), await their Redis 7.0.15 recording
-and a gate run.
+`gc-stopped-high-register` (both below), were recorded on Redis 7.0.15 by
+oracle-reference run 38234229680, each reply as predicted from PUC 5.1.5's
+source; their gate run is pending.
 
 A resume refused at the nested-resume limit. In PUC Lua 5.1.5, `lua_resume`
 refuses a resume past the C-depth limit through `resume_error`, which sets
@@ -189,6 +190,17 @@ it dead, and a later resume says "cannot resume dead coroutine". A yielded
 coroutine keeps its yield status and stays suspended. Halo left both
 suspended; it now ends a never-started coroutine whose resume is refused at
 the limit, and `refused-resume-state` checks both cases.
+
+Not modeled: PUC's `auxresume` raises "too many arguments to resume" when
+the values already on the coroutine (its function for one never started,
+none for a yielded one) plus the arguments exceed `LUAI_MAXCSTACK` (8000),
+and "too many results to resume" when the resumer's frame values (the
+coroutine argument for `coroutine.resume`, none for a wrapper) plus the
+results exceed it, after the coroutine has run. Both need at least 8000
+values in one call, more than `unpack` alone yields (7999), so a script
+must add explicit values to reach them, as in
+`coroutine.resume(co, 1, unpack(t))` with 7999 elements. Halo does not
+raise either; it is left until a script needs it.
 
 ### Collector validation
 
