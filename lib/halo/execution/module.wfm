@@ -1,0 +1,160 @@
+alias Value = pkg::value::Value;
+
+public struct Frame {
+  public func: u64;
+  public base: u64;
+  public return_pc: u64;
+  public kbase: u64;
+  public closure: u32;
+  public tailcalls: u32;
+  public nresults: i64;
+  public activation: u32;
+  public flags: u8;
+  public varbase: u64;
+  public varcount: u64;
+  public frame_top: u64;
+}
+
+public struct CallbackPlan {
+  public pc: u64;
+  public base: u64;
+  public kbase: u64;
+  public kind: u8;
+  public dest: u64;
+  public first: u64;
+  public index: u64;
+  public target: u64;
+  public expected: Bool;
+}
+
+public struct CallbackFrame {
+  public plan: CallbackPlan;
+  public scratch: u64;
+  public dest: u64;
+  public wanted: i64;
+  public length: u64;
+  public top: u64;
+  public activation: u32;
+  public mode: u8;
+}
+
+public struct LibraryContext {
+  public frame: Frame;
+  public tail: Bool;
+  public id: u32;
+  public phase: u8;
+  public count: u64;
+  public table: Value;
+  public comparator: Value;
+  public saved_error: Value;
+  public foreach_key: Value;
+}
+
+public struct SortFrame {
+  public context: u64;
+  public lower: i64;
+  public upper: i64;
+  public i: i64;
+  public j: i64;
+  public phase: u8;
+  public a: Value;
+  public b: Value;
+  public pivot: Value;
+}
+
+public struct PatternSubFrame {
+  public context: u64;
+  public source: Value;
+  public pattern: Value;
+  public replacement: Value;
+  public output: Box<Slots<u8>>;
+  public start: u64;
+  public end: u64;
+  public count: u64;
+  public maximum: i64;
+  public anchor: Bool;
+  public phase: u8;
+}
+
+public struct PendingCall {
+  public id: u32;
+  public argc: u64;
+  public func: u64;
+  public wanted: i64;
+  public return_pc: u64;
+  public base: u64;
+  public kbase: u64;
+  public tail: Bool;
+  public activation: u32;
+  public top: u64;
+}
+
+public struct CoroutineCall {
+  public child: u32;
+  public func: u64;
+  public argc: u64;
+  public wanted: i64;
+  public return_pc: u64;
+  public base: u64;
+  public kbase: u64;
+  public tail: Bool;
+  public activation: u32;
+  public top: u64;
+  public wrapping: Bool;
+}
+
+public struct Execution {
+  doc "Owned execution buffers and checkpoints. Installed execution still resides in Vm and Engine until a coroutine switch exchanges these owners; the heap cell retains its charged bytes while installed. A collection parks the installed execution in its cell for the mark phase, so the heap traces every execution through this one record.";
+  public stack: Box<Slots<Value>>;
+  public frames: Box<Slots<Frame>>;
+  public open_upvalues: Box<Slots<u32>>;
+  public pattern_subs: Box<Slots<PatternSubFrame>>;
+  public library_contexts: Box<Slots<LibraryContext>>;
+  public sort_frames: Box<Slots<SortFrame>>;
+  public callbacks: Box<Slots<CallbackFrame>>;
+  public stopped_stack: Box<Slots<Value>>;
+  public top: u64;
+  public saved_pc: u64;
+  public saved_base: u64;
+  public saved_kbase: u64;
+  public error: Value;
+  public activation: u32;
+  public callback_plan: CallbackPlan;
+  public suspended: Bool;
+  public pending: PendingCall;
+  public call_pending: Bool;
+  public raise_pc: u64;
+  public host_stopped: Bool;
+  public post_catch: u64;
+  public cjson_active_config: u64;
+  public transfer_kind: u8;
+  public transfer: CoroutineCall;
+  public resume_call: CoroutineCall;
+  public yield_call: CoroutineCall;
+  public c_depth: u32;
+}
+
+public fn empty() -> r: Execution pure contract {
+  ensures r.stack.inner.cap == 0_u64;
+  ensures r.stack.inner.len == 0_u64;
+  ensures r.frames.inner.cap == 0_u64;
+  ensures r.frames.inner.len == 0_u64;
+  ensures r.open_upvalues.inner.cap == 0_u64;
+  ensures r.open_upvalues.inner.len == 0_u64;
+  ensures r.pattern_subs.inner.cap == 0_u64;
+  ensures r.pattern_subs.inner.len == 0_u64;
+  ensures r.library_contexts.inner.cap == 0_u64;
+  ensures r.library_contexts.inner.len == 0_u64;
+  ensures r.sort_frames.inner.cap == 0_u64;
+  ensures r.sort_frames.inner.len == 0_u64;
+  ensures r.callbacks.inner.cap == 0_u64;
+  ensures r.callbacks.inner.len == 0_u64;
+  ensures r.stopped_stack.inner.cap == 0_u64;
+  ensures r.stopped_stack.inner.len == 0_u64;
+} doc "Empty counterpart owners and checkpoints for a thread cell; all buffer capacities are zero.";
+
+public fn storage_bytes(execution: &Execution) -> r: u64 reads(execution) doc "Logical execution estimate: 512 fixed bytes, 16 per stack or parked-stack capacity slot, 80 per frame, 4 per open handle, 120 per callback, 168 per library context, 96 per sort frame and 104 per pattern frame, plus each occupied pattern frame's output capacity. Saturation signals accounting exhaustion. These are logical estimates, not process-memory measurements.";
+
+public fn coroutine_call_empty() -> r: CoroutineCall pure doc "An inert coroutine continuation; kind zero selects no transfer.";
+
+public fn storage_buffers(stack: &Box<Slots<Value>>, stopped_stack: &Box<Slots<Value>>, frames: &Box<Slots<Frame>>, open_upvalues: &Box<Slots<u32>>, callbacks: &Box<Slots<CallbackFrame>>, library_contexts: &Box<Slots<LibraryContext>>, sort_frames: &Box<Slots<SortFrame>>, pattern_subs: &Box<Slots<PatternSubFrame>>) -> r: u64 reads(stack), reads(stopped_stack), reads(frames), reads(open_upvalues), reads(callbacks), reads(library_contexts), reads(sort_frames), reads(pattern_subs) doc "The same logical estimate for separately installed execution buffers, without exchanging ownership.";

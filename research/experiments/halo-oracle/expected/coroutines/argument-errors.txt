@@ -1,0 +1,39 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "bad argument #1 to '?' (Lua function expected)"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "integer",
+          "value": 2
+        },
+        {
+          "type": "bulk",
+          "bytes": "false"
+        },
+        {
+          "type": "bulk",
+          "bytes": "bad argument #1 to '?' (coroutine expected)"
+        }
+      ]
+    }
+  ]
+}

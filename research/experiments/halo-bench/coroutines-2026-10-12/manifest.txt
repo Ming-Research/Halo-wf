@@ -1,0 +1,8 @@
+main 3e86f0f9a76036f93074b106408391d483ac284a, branch 90d950be4a65934f67c3ac6124d5ad534a48ae56, compiler wf-d837678c6905
+19e5b96a992507097d0c8fcac404665b0125cd746e9e63a68427bc82a12730be  /home/runner/actions-runner/_work/Halo-wf/Halo-wf/build/whitefoot/wf-d837678c6905/whitefootc
+1ff10895415b872b23d3cb21f3c4068b09454637562619faecae3e7f68a49aed  /home/runner/actions-runner/_work/Halo-wf/Halo-wf/build/bench-out/halo-branch
+ddde8a4e60f8d5a7cd1ff3b13aa346535d13bb61a54a32f0bc4719f2a49d51ad  /home/runner/actions-runner/_work/Halo-wf/Halo-wf/build/bench-out/halo-main
+ddde8a4e60f8d5a7cd1ff3b13aa346535d13bb61a54a32f0bc4719f2a49d51ad  /home/runner/actions-runner/_work/Halo-wf/Halo-wf/build/bench-out/halo-main-twin
+Ubuntu clang version 22.1.8 (++20260714015917+ca7933e47d3a-1~exp1~20260714135927.17)
+timed processes pinned with: taskset -c 2
+     32 performance

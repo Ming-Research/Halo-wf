@@ -1,0 +1,25 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "integer",
+      "value": 4096
+    },
+    {
+      "type": "integer",
+      "value": 8390656
+    },
+    {
+      "type": "integer",
+      "value": 16781312
+    },
+    {
+      "type": "integer",
+      "value": 2098176
+    },
+    {
+      "type": "bulk",
+      "bytes": "dead"
+    }
+  ]
+}

@@ -163,6 +163,10 @@ stdout keeps the original typed RESP2 schema. The switch defaults off.
 See [the F4 experiment](../halo-gc/README.md#vm-stress-experiment-f4) for
 missing-root mutation and memory-limit evidence.
 
+`--case-timeout SECONDS` bounds each script run (default 900); a case that
+exceeds it fails with the subprocess timeout as its reason. The thread
+omission controls pass 60 so a looping mutant cannot exhaust their job.
+
 `--cases PATH` runs paired local `scripts/GROUP/*.lua` and
 `expected/GROUP/*.txt` files with the same comparator. `--verify-memory`
 adds F4's unbounded allocator and then a recovery script in the same engine

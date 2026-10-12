@@ -292,6 +292,9 @@ fn tag_value(v: Value) -> result_value: Tag pure {
     Builtin(id: handle_value) => {
       return Tag(tag: 7_u8, handle: handle_value, num: 0.0_f64);
     }
+    Thread(h: handle_value) => {
+      return Tag(tag: 8_u8, handle: handle_value, num: 0.0_f64);
+    }
   }
 }
 

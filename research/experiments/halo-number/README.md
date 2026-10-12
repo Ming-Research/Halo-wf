@@ -36,8 +36,8 @@ headers and `liblua.a` are under `build/redis/redis-7.2.16/deps/lua/src`.
 The default `NUMBER_SAMPLES=100` and `NUMBER_EXAMPLES=8` control random
 sampling and the maximum mismatch examples printed per group.
 `make check-reference` runs this comparison and the MessagePack comparison;
-CI runs it alongside `check-core` and `check-extended` as the three groups
-of `make check`.
+it is one of the parts of `make check`, and CI runs it as its own job beside
+the other parts (`.github/workflows/check.yml`).
 
 For a direct invocation with an existing compiler and reference build:
 

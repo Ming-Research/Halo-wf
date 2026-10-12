@@ -3,6 +3,7 @@ alias Cell = pkg::value::Cell;
 alias num_of = pkg::value::num_of;
 alias str_of = pkg::value::str_of;
 alias truthy = pkg::value::truthy;
+alias SortFrame = pkg::execution::SortFrame;
 
 const library_sort_sort_order_error: Array<u8, 34> = "invalid order function for sorting";
 

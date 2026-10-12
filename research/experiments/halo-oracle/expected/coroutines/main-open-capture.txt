@@ -1,0 +1,49 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "bulk",
+      "bytes": "true"
+    },
+    {
+      "type": "integer",
+      "value": 13
+    },
+    {
+      "type": "integer",
+      "value": 29
+    },
+    {
+      "type": "integer",
+      "value": 29
+    },
+    {
+      "type": "bulk",
+      "bytes": "true"
+    },
+    {
+      "type": "integer",
+      "value": 29
+    },
+    {
+      "type": "integer",
+      "value": 47
+    },
+    {
+      "type": "bulk",
+      "bytes": "true"
+    },
+    {
+      "type": "integer",
+      "value": 47
+    },
+    {
+      "type": "integer",
+      "value": 61
+    },
+    {
+      "type": "integer",
+      "value": 61
+    }
+  ]
+}

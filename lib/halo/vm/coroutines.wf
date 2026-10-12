@@ -1,0 +1,711 @@
+alias Value = pkg::value::Value;
+alias Cell = pkg::value::Cell;
+alias Frame = pkg::execution::Frame;
+alias CoroutineCall = pkg::execution::CoroutineCall;
+alias no_handle = pkg::heap::no_handle;
+
+const coroutine_lua_expected: Array<u8, 21> = "Lua function expected";
+
+const coroutine_expected: Array<u8, 18> = "coroutine expected";
+
+const coroutine_running: Array<u8, 31> = "cannot resume running coroutine";
+
+const coroutine_normal: Array<u8, 30> = "cannot resume normal coroutine";
+
+const coroutine_dead: Array<u8, 28> = "cannot resume dead coroutine";
+
+const coroutine_boundary: Array<u8, 50> = "attempt to yield across metamethod/C-call boundary";
+
+const coroutine_status_suspended: Array<u8, 9> = "suspended";
+
+const coroutine_status_running: Array<u8, 7> = "running";
+
+const coroutine_status_normal: Array<u8, 6> = "normal";
+
+const coroutine_status_dead: Array<u8, 4> = "dead";
+
+const coroutine_overflow: Array<u8, 16> = "C stack overflow";
+
+fn coroutine_swap_boxes(vm: &Vm, stack: &Box<Slots<Value>>, h: u32) -> r: unit writes(vm), writes(stack) {
+  doc "Exchanges only owned buffers with one live thread counterpart; scalars and identity remain untouched and no safepoint is entered.";
+  let index = cvt::<u32, u64>(h);
+  if index < vm^.heap.threads.inner.len {
+    if vm^.heap.threads.inner[index].live {
+      swap(first: stack, second: &vm^.heap.threads.inner[index].payload.stack);
+      swap(first: &vm^.frames, second: &vm^.heap.threads.inner[index].payload.frames);
+      swap(first: &vm^.open_upvalues, second: &vm^.heap.threads.inner[index].payload.open_upvalues);
+      swap(first: &vm^.pattern_subs, second: &vm^.heap.threads.inner[index].payload.pattern_subs);
+      swap(first: &vm^.library_contexts, second: &vm^.heap.threads.inner[index].payload.library_contexts);
+      swap(first: &vm^.sort_frames, second: &vm^.heap.threads.inner[index].payload.sort_frames);
+      swap(first: &vm^.callbacks, second: &vm^.heap.threads.inner[index].payload.callbacks);
+      swap(first: &vm^.stopped_stack, second: &vm^.heap.threads.inner[index].payload.stopped_stack);
+    }
+  }
+  return unit;
+}
+
+fn coroutine_save_scalars(vm: &Vm, h: u32) -> r: unit reads(vm), writes(vm.heap.threads) {
+  let index = cvt::<u32, u64>(h);
+  if index < vm^.heap.threads.inner.len {
+    set vm^.heap.threads.inner[index].payload.top = vm^.top;
+    set vm^.heap.threads.inner[index].payload.saved_pc = vm^.saved_pc;
+    set vm^.heap.threads.inner[index].payload.saved_base = vm^.saved_base;
+    set vm^.heap.threads.inner[index].payload.saved_kbase = vm^.saved_kbase;
+    set vm^.heap.threads.inner[index].payload.error = vm^.error;
+    set vm^.heap.threads.inner[index].payload.activation = vm^.activation;
+    set vm^.heap.threads.inner[index].payload.callback_plan = vm^.callback_plan;
+    set vm^.heap.threads.inner[index].payload.suspended = vm^.suspended;
+    set vm^.heap.threads.inner[index].payload.pending = vm^.pending;
+    set vm^.heap.threads.inner[index].payload.call_pending = vm^.call_pending;
+    set vm^.heap.threads.inner[index].payload.raise_pc = vm^.raise_pc;
+    set vm^.heap.threads.inner[index].payload.host_stopped = vm^.host_stopped;
+    set vm^.heap.threads.inner[index].payload.post_catch = vm^.post_catch;
+    set vm^.heap.threads.inner[index].payload.cjson_active_config = vm^.cjson_active_config;
+    set vm^.heap.threads.inner[index].payload.transfer_kind = vm^.transfer_kind;
+    set vm^.heap.threads.inner[index].payload.transfer = vm^.transfer;
+    set vm^.heap.threads.inner[index].payload.resume_call = vm^.resume_call;
+    set vm^.heap.threads.inner[index].payload.yield_call = vm^.yield_call;
+    set vm^.heap.threads.inner[index].payload.c_depth = vm^.c_depth;
+  }
+  return unit;
+}
+
+fn coroutine_load_scalars(vm: &Vm, h: u32) -> r: unit writes(vm) {
+  let index = cvt::<u32, u64>(h);
+  if index < vm^.heap.threads.inner.len {
+    set vm^.top = vm^.heap.threads.inner[index].payload.top;
+    set vm^.saved_pc = vm^.heap.threads.inner[index].payload.saved_pc;
+    set vm^.saved_base = vm^.heap.threads.inner[index].payload.saved_base;
+    set vm^.saved_kbase = vm^.heap.threads.inner[index].payload.saved_kbase;
+    set vm^.error = vm^.heap.threads.inner[index].payload.error;
+    set vm^.activation = vm^.heap.threads.inner[index].payload.activation;
+    set vm^.callback_plan = vm^.heap.threads.inner[index].payload.callback_plan;
+    set vm^.suspended = vm^.heap.threads.inner[index].payload.suspended;
+    set vm^.pending = vm^.heap.threads.inner[index].payload.pending;
+    set vm^.call_pending = vm^.heap.threads.inner[index].payload.call_pending;
+    set vm^.raise_pc = vm^.heap.threads.inner[index].payload.raise_pc;
+    set vm^.host_stopped = vm^.heap.threads.inner[index].payload.host_stopped;
+    set vm^.post_catch = vm^.heap.threads.inner[index].payload.post_catch;
+    set vm^.cjson_active_config = vm^.heap.threads.inner[index].payload.cjson_active_config;
+    set vm^.transfer_kind = vm^.heap.threads.inner[index].payload.transfer_kind;
+    set vm^.transfer = vm^.heap.threads.inner[index].payload.transfer;
+    set vm^.resume_call = vm^.heap.threads.inner[index].payload.resume_call;
+    set vm^.yield_call = vm^.heap.threads.inner[index].payload.yield_call;
+    set vm^.c_depth = vm^.heap.threads.inner[index].payload.c_depth;
+  }
+  return unit;
+}
+
+fn coroutine_exchange(vm: &Vm, stack: &Box<Slots<Value>>, target: u32) -> r: Bool writes(vm), writes(stack) {
+  doc "Saves the current execution, installs the target and publishes the new identity last. No collection or host entry may occur between these operations.";
+  let current = vm^.current_thread;
+  let source_index = cvt::<u32, u64>(current);
+  let target_index = cvt::<u32, u64>(target);
+  if current == target {
+    return True();
+  }
+  if source_index >= vm^.heap.threads.inner.len {
+    return False();
+  }
+  if target_index >= vm^.heap.threads.inner.len {
+    return False();
+  }
+  if bnot(vm^.heap.threads.inner[source_index].live) {
+    return False();
+  }
+  if bnot(vm^.heap.threads.inner[target_index].live) {
+    return False();
+  }
+  coroutine_save_scalars(vm: vm, h: current);
+  coroutine_swap_boxes(vm: vm, stack: stack, h: current);
+  let charged = pkg::heap::refresh_thread_storage(heap: &vm^.heap, h: current);
+  coroutine_swap_boxes(vm: vm, stack: stack, h: target);
+  coroutine_load_scalars(vm: vm, h: target);
+  if target_index < vm^.heap.threads.inner.len {
+    let empty = pkg::execution::empty();
+    set vm^.heap.threads.inner[target_index].payload = move empty;
+  }
+  set vm^.current_thread = target;
+  if target == vm^.main_thread {
+    let main_charged = pkg::heap::refresh_thread_storage(heap: &vm^.heap, h: target);
+    return band(charged, main_charged);
+  }
+  return charged;
+}
+
+fn coroutine_depth(vm: &Vm) -> r: u32 reads(vm) {
+  doc "Logical C depth is the resume baseline plus this execution's callbacks and stackless protected or post-catch native frames.";
+  let depth = vm^.c_depth +sat vm^.activation;
+  for (i in 0_u64..vm^.frames.inner.len) {
+    let flags = vm^.frames.inner[i].flags;
+    let protected = flags == protected_flag;
+    let native = flags == native_flag;
+    if bor(protected, native) {
+      set depth = depth +sat 1_u32;
+    }
+  }
+  return depth;
+}
+
+fn coroutine_lua_entry(vm: &Vm, value: Value) -> r: Bool reads(vm) {
+  match value {
+    Fun(h: closure_handle) => {
+      let index = cvt::<u32, u64>(closure_handle);
+      if index < vm^.heap.closures.inner.len {
+        if vm^.heap.closures.inner[index].live {
+          let callee = vm^.heap.closures.inner[index].payload.callee;
+          match callee {
+            Lua(..) => {
+              return True();
+            }
+            Native(..) => {
+            }
+          }
+        }
+      }
+    }
+    Nil() => {
+    }
+    False() => {
+    }
+    True() => {
+    }
+    Num(..) => {
+    }
+    Str(..) => {
+    }
+    Tab(..) => {
+    }
+    Builtin(..) => {
+    }
+    Thread(..) => {
+    }
+  }
+  return False();
+}
+
+fn coroutine_create(vm: &Vm, entry_value: Value) -> r: Value writes(vm) {
+  doc "Until the first resume writes the entry closure into function slot zero, the cell's entry_function is its only holder, so that one mark retains it.";
+  let accepted = coroutine_lua_entry(vm: vm, value: entry_value);
+  if bnot(accepted) {
+    return Value::Nil();
+  }
+  let execution = pkg::execution::empty();
+  let values = stack_new(size: 256_u64);
+  set execution.stack = move values;
+  set execution.top = 1_u64;
+  match pkg::heap::alloc_thread(heap: &vm^.heap, payload: move execution) {
+    Some(value: thread_handle) => {
+      let index = cvt::<u32, u64>(thread_handle);
+      if index < vm^.heap.threads.inner.len {
+        set vm^.heap.threads.inner[index].entry_function = entry_value;
+      }
+      return Value::Thread(h: thread_handle);
+    }
+    None() => {
+      return Value::Nil();
+    }
+  }
+}
+
+fn coroutine_is_wrapper(vm: &Vm, handle: u32) -> r: Bool reads(vm) {
+  let index = cvt::<u32, u64>(handle);
+  if index < vm^.heap.closures.inner.len {
+    if vm^.heap.closures.inner[index].live {
+      let callee = vm^.heap.closures.inner[index].payload.callee;
+      match callee {
+        Native(id: native_id) => {
+          return native_id == builtin_coroutine_wrapaux;
+        }
+        Lua(..) => {
+        }
+      }
+    }
+  }
+  return False();
+}
+
+fn coroutine_wrapper_thread(vm: &Vm, callable: Value) -> r: Value reads(vm) {
+  doc "Reads the wrapper's one closed thread capture from the original callable, before native binding discards closure identity.";
+  match func_of(v: callable) {
+    Lua(h: closure_handle) => {
+      let index = cvt::<u32, u64>(closure_handle);
+      if index < vm^.heap.closures.inner.len {
+        if vm^.heap.closures.inner[index].live {
+          if vm^.heap.closures.inner[index].payload.upvals.inner.len == 1_u64 {
+            let captured = vm^.heap.closures.inner[index].payload.upvals.inner[0_u64];
+            let capture_index = cvt::<u32, u64>(captured);
+            if capture_index < vm^.heap.upvalues.inner.len {
+              if vm^.heap.upvalues.inner[capture_index].live {
+                let payload = vm^.heap.upvalues.inner[capture_index].payload;
+                match payload {
+                  Closed(v: captured_value) => {
+                    return captured_value;
+                  }
+                  Open(..) => {
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    Native(..) => {
+    }
+    Other() => {
+    }
+  }
+  return Value::Nil();
+}
+
+fn coroutine_wrap(vm: &Vm, thread: Value) -> r: Value writes(vm) {
+  let payload = pkg::heap::Upval::Closed(v: thread);
+  match pkg::heap::new_upvalue(heap: &vm^.heap, value: payload) {
+    Some(value: capture_handle) => {
+      let captured = array_filled::<u32, 1>(value: capture_handle);
+      return pkg::heap::new_native_closure(heap: &vm^.heap, id: builtin_coroutine_wrapaux, upvals: &captured[0_u64..1_u64]);
+    }
+    None() => {
+      return Value::Nil();
+    }
+  }
+}
+
+fn coroutine_wrap_error(vm: &Vm, call: CoroutineCall, message: Value) -> r: unit writes(vm) {
+  doc "Lua's auxiliary wrapper coerces numeric errors to strings and prefixes strings at its immediate Lua caller even when the child supplied a location. A native caller has no prefix; other errors retain identity.";
+  let text = coerce_string(vm: vm, v: message);
+  set vm^.error = text;
+  let caller = lib_call_has_lua_caller(vm: vm);
+  if caller {
+    match text {
+      Str(..) => {
+        let pc = call.return_pc -sat 1_u64;
+        let located = error_location(vm: vm, pc: pc, level: 1_u64, message: text);
+        set vm^.error = located;
+      }
+      Nil() => {
+      }
+      False() => {
+      }
+      True() => {
+      }
+      Num(..) => {
+      }
+      Tab(..) => {
+      }
+      Fun(..) => {
+      }
+      Builtin(..) => {
+      }
+      Thread(..) => {
+      }
+    }
+  }
+  return unit;
+}
+
+fn coroutine_finish_call(vm: &Vm, stack: &Box<Slots<Value>>, call: CoroutineCall, count: u64) -> r: Step writes(vm), writes(stack) {
+  doc "Like native completion, a tail call retains its invoking frame until the transfer returns its explicit result count.";
+  set vm^.activation = call.activation;
+  set vm^.top = call.top;
+  if call.tail {
+    if vm^.frames.inner.len > 0_u64 {
+      let old = take_back(window: &vm^.frames.inner);
+      close_upvalues(vm: vm, stack: stack, level: old.base);
+      return finish(vm: vm, stack: stack, frame: old, src: call.func, count: count);
+    }
+  }
+  let frame = Frame(func: call.func, base: call.base, return_pc: call.return_pc, kbase: call.kbase, closure: no_handle, tailcalls: 0_u32, nresults: call.wanted, activation: call.activation, flags: 0_u8, varbase: 0_u64, varcount: 0_u64, frame_top: call.top);
+  return finish(vm: vm, stack: stack, frame: frame, src: call.func, count: count);
+}
+
+fn coroutine_reject_resume(vm: &Vm, stack: &Box<Slots<Value>>, call: CoroutineCall, text: &[u8]) -> r: Step reads(text), writes(vm), writes(stack) {
+  let message = pkg::heap::intern(heap: &vm^.heap, bytes: text);
+  if call.wrapping {
+    coroutine_wrap_error(vm: vm, call: call, message: message);
+    return Step::Error();
+  }
+  let second = call.func +sat 1_u64;
+  let room = second +sat 1_u64;
+  ensure_stack(stack: stack, size: room);
+  if call.func < stack^.inner.len {
+    set stack^.inner[call.func] = Value::False();
+  }
+  if second < stack^.inner.len {
+    set stack^.inner[second] = message;
+  }
+  return coroutine_finish_call(vm: vm, stack: stack, call: call, count: 2_u64);
+}
+
+fn coroutine_prepare(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, stack: &Box<Slots<Value>>, id: u32, callable: Value, func: u64, argc: u64, wanted: i64, return_pc: u64, base: u64, kbase: u64, tail: Bool) -> r: Step reads(code), reads(consts), writes(vm), writes(stack) {
+  doc "Public coroutine calls and the captured wrapper entry share deferred transfers; native callers always return with their original execution installed. A resume refused at the C-depth limit leaves a never-started coroutine dead, because Lua 5.1's resume_error resets the coroutine's top to its base and so drops its function, and leaves a yielded one suspended.";
+  let wrapping = id == builtin_coroutine_wrapaux;
+  let call = CoroutineCall(child: no_handle, func: func, argc: argc, wanted: wanted, return_pc: return_pc, base: base, kbase: kbase, tail: tail, activation: vm^.activation, top: vm^.top, wrapping: wrapping);
+  let pc = return_pc -sat 1_u64;
+  let creating = id == builtin_coroutine_create;
+  let making_wrapper = id == builtin_coroutine_wrap;
+  if bor(creating, making_wrapper) {
+    let entry_value = argument(stack: stack, func: func, argc: argc, index: 0_u64);
+    let accepted = coroutine_lua_entry(vm: vm, value: entry_value);
+    if bnot(accepted) {
+      let ignored = lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, text: &coroutine_lua_expected[0_u64..21_u64]);
+      library_call_error_location(vm: vm, id: id, pc: pc);
+      return Step::Error();
+    }
+    let created = coroutine_create(vm: vm, entry_value: entry_value);
+    if is_nil(v: created) {
+      let ignored = raise_text(vm: vm, text: &collection_memory_error[0_u64..17_u64]);
+      return Step::Error();
+    }
+    if making_wrapper {
+      set created = coroutine_wrap(vm: vm, thread: created);
+      if is_nil(v: created) {
+        let ignored = raise_text(vm: vm, text: &collection_memory_error[0_u64..17_u64]);
+        return Step::Error();
+      }
+    }
+    if func < stack^.inner.len {
+      set stack^.inner[func] = created;
+    }
+    return coroutine_finish_call(vm: vm, stack: stack, call: call, count: 1_u64);
+  }
+  if id == builtin_coroutine_running {
+    let running_value = Value::Nil();
+    if vm^.current_thread != vm^.main_thread {
+      let current = vm^.current_thread;
+      set running_value = Value::Thread(h: current);
+    }
+    if func < stack^.inner.len {
+      set stack^.inner[func] = running_value;
+    }
+    return coroutine_finish_call(vm: vm, stack: stack, call: call, count: 1_u64);
+  }
+  if id == builtin_coroutine_yield {
+    let depth = coroutine_depth(vm: vm);
+    let main = vm^.current_thread == vm^.main_thread;
+    let crossed = depth > vm^.c_depth;
+    if bor(main, crossed) {
+      let ignored = raise_text(vm: vm, text: &coroutine_boundary[0_u64..50_u64]);
+      return Step::Error();
+    }
+    set vm^.yield_call = call;
+    set vm^.transfer = call;
+    set vm^.transfer_kind = 2_u8;
+    return Step::Budget();
+  }
+  let value = argument(stack: stack, func: func, argc: argc, index: 0_u64);
+  if wrapping {
+    set value = coroutine_wrapper_thread(vm: vm, callable: callable);
+  }
+  let child = no_handle;
+  match value {
+    Thread(h: thread_handle) => {
+      set child = thread_handle;
+    }
+    Nil() => {
+    }
+    False() => {
+    }
+    True() => {
+    }
+    Num(..) => {
+    }
+    Str(..) => {
+    }
+    Tab(..) => {
+    }
+    Fun(..) => {
+    }
+    Builtin(..) => {
+    }
+  }
+  let index = cvt::<u32, u64>(child);
+  let live = False();
+  if index < vm^.heap.threads.inner.len {
+    set live = vm^.heap.threads.inner[index].live;
+  }
+  if bnot(live) {
+    let ignored = lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, text: &coroutine_expected[0_u64..18_u64]);
+    library_call_error_location(vm: vm, id: id, pc: pc);
+    return Step::Error();
+  }
+  if id == builtin_coroutine_status {
+    let status = 0_u8;
+    if index < vm^.heap.threads.inner.len {
+      set status = vm^.heap.threads.inner[index].status;
+    }
+    let status_value = pkg::heap::intern(heap: &vm^.heap, bytes: &coroutine_status_suspended[0_u64..9_u64]);
+    if status == 1_u8 {
+      set status_value = pkg::heap::intern(heap: &vm^.heap, bytes: &coroutine_status_running[0_u64..7_u64]);
+    } else if status == 2_u8 {
+      set status_value = pkg::heap::intern(heap: &vm^.heap, bytes: &coroutine_status_normal[0_u64..6_u64]);
+    } else if status == 3_u8 {
+      set status_value = pkg::heap::intern(heap: &vm^.heap, bytes: &coroutine_status_dead[0_u64..4_u64]);
+    }
+    if func < stack^.inner.len {
+      set stack^.inner[func] = status_value;
+    }
+    return coroutine_finish_call(vm: vm, stack: stack, call: call, count: 1_u64);
+  }
+  set call.child = child;
+  if child == vm^.current_thread {
+    return coroutine_reject_resume(vm: vm, stack: stack, call: call, text: &coroutine_running[0_u64..31_u64]);
+  }
+  if index < vm^.heap.threads.inner.len {
+    let status = vm^.heap.threads.inner[index].status;
+    if status == 1_u8 {
+      return coroutine_reject_resume(vm: vm, stack: stack, call: call, text: &coroutine_running[0_u64..31_u64]);
+    } else if status == 2_u8 {
+      return coroutine_reject_resume(vm: vm, stack: stack, call: call, text: &coroutine_normal[0_u64..30_u64]);
+    } else if status == 3_u8 {
+      return coroutine_reject_resume(vm: vm, stack: stack, call: call, text: &coroutine_dead[0_u64..28_u64]);
+    }
+  }
+  let depth = coroutine_depth(vm: vm);
+  if depth >= 199_u32 {
+    if index < vm^.heap.threads.inner.len {
+      if bnot(vm^.heap.threads.inner[index].started) {
+        pkg::heap::retire_thread(heap: &vm^.heap, owner: child);
+      }
+    }
+    return coroutine_reject_resume(vm: vm, stack: stack, call: call, text: &coroutine_overflow[0_u64..16_u64]);
+  }
+  set vm^.transfer = call;
+  set vm^.transfer_kind = 1_u8;
+  return Step::Budget();
+}
+
+fn coroutine_copy_saved(vm: &Vm, stack: &Box<Slots<Value>>, owner: u32, source: u64, dest: u64, count: u64) -> r: unit reads(vm), writes(stack) {
+  doc "Copies an explicit value count from an inactive execution, including every nil hole and trailing nil.";
+  let index = cvt::<u32, u64>(owner);
+  if index < vm^.heap.threads.inner.len {
+    for (i in 0_u64..count) {
+      let from = source +sat i;
+      let to = dest +sat i;
+      if from < vm^.heap.threads.inner[index].payload.stack.inner.len {
+        if to < stack^.inner.len {
+          let value = vm^.heap.threads.inner[index].payload.stack.inner[from];
+          set stack^.inner[to] = value;
+        }
+      }
+    }
+  }
+  return unit;
+}
+
+fn coroutine_transfer(vm: &Vm, stack: &Box<Slots<Value>>) -> r: Step writes(vm), writes(stack) {
+  doc "Consumes a deferred request only after every native caller has unwound and the complete parked stack has been restored. The child's stack is grown to the transfer's room before the exchange, but the checker loses that length across swap, so the slot-zero write and the argument copy after the exchange test their indices against the installed length, tests that never fail. This is the owner's ruled exception to routing around a Whitefoot gap: it waits on Whitefoot's swap length and capacity fact rule (status-board item coord-wfbl-09-04-rule, under wf-need-halo-coroutines), and its removal is tracked by Halo's item halo-coroutine-swap-workaround.";
+  if vm^.native_entries != 0_u32 {
+    return Step::Budget();
+  }
+  let kind = vm^.transfer_kind;
+  let call = vm^.transfer;
+  set vm^.transfer_kind = 0_u8;
+  set vm^.transfer = pkg::execution::coroutine_call_empty();
+  if kind == 2_u8 {
+    let source = call.func +sat 1_u64;
+    let failed = False();
+    let terminal = False();
+    return coroutine_deliver(vm: vm, stack: stack, source: source, count: call.argc, failed: failed, terminal: terminal);
+  }
+  let parent = vm^.current_thread;
+  let child = call.child;
+  let parent_index = cvt::<u32, u64>(parent);
+  let child_index = cvt::<u32, u64>(child);
+  if parent_index >= vm^.heap.threads.inner.len {
+    return Step::Error();
+  }
+  if child_index >= vm^.heap.threads.inner.len {
+    return Step::Error();
+  }
+  let depth = coroutine_depth(vm: vm);
+  let baseline = depth +sat 1_u32;
+  let started = vm^.heap.threads.inner[child_index].started;
+  let entry_value = vm^.heap.threads.inner[child_index].entry_function;
+  let count = call.argc -sat 1_u64;
+  let source = call.func +sat 2_u64;
+  if call.wrapping {
+    set count = call.argc;
+    set source = call.func +sat 1_u64;
+  }
+  let dest = 1_u64;
+  let yielded = vm^.heap.threads.inner[child_index].payload.yield_call;
+  if started {
+    set dest = yielded.func;
+  }
+  let end = dest +sat count;
+  let room = end +sat 256_u64;
+  if room == unlimited {
+    let ignored = raise_text(vm: vm, text: &calls_text_0[0_u64..14_u64]);
+    return unwind(vm: vm, stack: stack);
+  }
+  ensure_stack(stack: &vm^.heap.threads.inner[child_index].payload.stack, size: room);
+  set vm^.resume_call = call;
+  set vm^.heap.threads.inner[parent_index].status = 2_u8;
+  set vm^.heap.threads.inner[child_index].resumer = parent;
+  set vm^.heap.threads.inner[child_index].status = 1_u8;
+  let exchanged = coroutine_exchange(vm: vm, stack: stack, target: child);
+  set vm^.c_depth = baseline;
+  if bnot(exchanged) {
+    let ignored = raise_text(vm: vm, text: &collection_memory_error[0_u64..17_u64]);
+    return unwind(vm: vm, stack: stack);
+  }
+  coroutine_copy_saved(vm: vm, stack: stack, owner: parent, source: source, dest: dest, count: count);
+  if started {
+    set vm^.yield_call = pkg::execution::coroutine_call_empty();
+    let step = coroutine_finish_call(vm: vm, stack: stack, call: yielded, count: count);
+    let charged = coroutine_refresh_storage(vm: vm, stack: stack);
+    if bnot(charged) {
+      let ignored = raise_text(vm: vm, text: &collection_memory_error[0_u64..17_u64]);
+      return unwind(vm: vm, stack: stack);
+    }
+    return step;
+  }
+  if child_index < vm^.heap.threads.inner.len {
+    set vm^.heap.threads.inner[child_index].started = True();
+    set vm^.heap.threads.inner[child_index].entry_function = Value::Nil();
+  }
+  if stack^.inner.len > 0_u64 {
+    set stack^.inner[0_u64] = entry_value;
+  }
+  let closure = no_handle;
+  match entry_value {
+    Fun(h: closure_handle) => {
+      set closure = closure_handle;
+    }
+    Nil() => {
+    }
+    False() => {
+    }
+    True() => {
+    }
+    Num(..) => {
+    }
+    Str(..) => {
+    }
+    Tab(..) => {
+    }
+    Builtin(..) => {
+    }
+    Thread(..) => {
+    }
+  }
+  let tail = False();
+  let step = enter_lua(vm: vm, stack: stack, h: closure, func: 0_u64, argc: count, wanted: -1_i64, return_pc: 0_u64, tail: tail);
+  let charged = coroutine_refresh_storage(vm: vm, stack: stack);
+  if bnot(charged) {
+    let ignored = raise_text(vm: vm, text: &collection_memory_error[0_u64..17_u64]);
+    return unwind(vm: vm, stack: stack);
+  }
+  match step {
+    Error() => {
+      return unwind(vm: vm, stack: stack);
+    }
+    Jump(..) => {
+    }
+    Done(..) => {
+    }
+    Stop() => {
+    }
+    Budget() => {
+    }
+  }
+  return step;
+}
+
+fn coroutine_deliver(vm: &Vm, stack: &Box<Slots<Value>>, source: u64, count: u64, failed: Bool, terminal: Bool) -> r: Step writes(vm), writes(stack) {
+  doc "Restores the waiting resumer and finishes its delayed call. Only a real protected catch transforms a host error table; this boundary preserves the original value. The resumer's stack is grown to the delivery's room before the exchange, but the checker loses that length across swap, so the result writes after the exchange test their indices against the installed length, tests that never fail. This is the owner's ruled exception to routing around a Whitefoot gap: it waits on Whitefoot's swap length and capacity fact rule (status-board item coord-wfbl-09-04-rule, under wf-need-halo-coroutines), and its removal is tracked by Halo's item halo-coroutine-swap-workaround.";
+  let child = vm^.current_thread;
+  let child_index = cvt::<u32, u64>(child);
+  if child_index >= vm^.heap.threads.inner.len {
+    return Step::Error();
+  }
+  let parent = vm^.heap.threads.inner[child_index].resumer;
+  let parent_index = cvt::<u32, u64>(parent);
+  if parent_index >= vm^.heap.threads.inner.len {
+    return Step::Error();
+  }
+  let original_error = vm^.error;
+  let call = vm^.heap.threads.inner[parent_index].payload.resume_call;
+  let total = count +sat 1_u64;
+  if call.wrapping {
+    set total = count;
+  }
+  if failed {
+    set total = 2_u64;
+  }
+  let end = call.func +sat total;
+  let room = end +sat 256_u64;
+  if room == unlimited {
+    let ignored = raise_text(vm: vm, text: &calls_text_0[0_u64..14_u64]);
+    return unwind(vm: vm, stack: stack);
+  }
+  ensure_stack(stack: &vm^.heap.threads.inner[parent_index].payload.stack, size: room);
+  if terminal {
+    close_upvalues(vm: vm, stack: stack, level: 0_u64);
+  }
+  if child_index < vm^.heap.threads.inner.len {
+    set vm^.heap.threads.inner[child_index].resumer = no_handle;
+    if terminal {
+      set vm^.heap.threads.inner[child_index].status = 3_u8;
+      set vm^.heap.threads.inner[child_index].entry_function = Value::Nil();
+    } else {
+      set vm^.heap.threads.inner[child_index].status = 0_u8;
+    }
+  }
+  if parent_index < vm^.heap.threads.inner.len {
+    set vm^.heap.threads.inner[parent_index].status = 1_u8;
+  }
+  let exchanged = coroutine_exchange(vm: vm, stack: stack, target: parent);
+  if bnot(exchanged) {
+    let ignored = raise_text(vm: vm, text: &collection_memory_error[0_u64..17_u64]);
+    return unwind(vm: vm, stack: stack);
+  }
+  set vm^.resume_call = pkg::execution::coroutine_call_empty();
+  let dest = call.func +sat 1_u64;
+  if call.wrapping {
+    set dest = call.func;
+  } else if call.func < stack^.inner.len {
+    let success = bnot(failed);
+    set stack^.inner[call.func] = boolean(v: success);
+  }
+  if failed {
+    if dest < stack^.inner.len {
+      set stack^.inner[dest] = original_error;
+    }
+  } else {
+    coroutine_copy_saved(vm: vm, stack: stack, owner: child, source: source, dest: dest, count: count);
+  }
+  if terminal {
+    if child_index < vm^.heap.threads.inner.len {
+      let empty = pkg::execution::empty();
+      set vm^.heap.threads.inner[child_index].payload = move empty;
+    }
+    let released = pkg::heap::refresh_thread_storage(heap: &vm^.heap, h: child);
+    if bnot(released) {
+      let ignored = raise_text(vm: vm, text: &collection_memory_error[0_u64..17_u64]);
+      return unwind(vm: vm, stack: stack);
+    }
+  }
+  let wrapped_error = band(call.wrapping, failed);
+  if wrapped_error {
+    coroutine_wrap_error(vm: vm, call: call, message: original_error);
+    let pc = call.return_pc -sat 1_u64;
+    note_raise(vm: vm, pc: pc);
+    return unwind(vm: vm, stack: stack);
+  }
+  let step = coroutine_finish_call(vm: vm, stack: stack, call: call, count: total);
+  let charged = coroutine_refresh_storage(vm: vm, stack: stack);
+  if bnot(charged) {
+    let ignored = raise_text(vm: vm, text: &collection_memory_error[0_u64..17_u64]);
+    return unwind(vm: vm, stack: stack);
+  }
+  return step;
+}
+
+fn coroutine_complete(vm: &Vm, stack: &Box<Slots<Value>>, count: u64, failed: Bool) -> r: Step writes(vm), writes(stack) {
+  let source = vm^.top -sat count;
+  let terminal = True();
+  return coroutine_deliver(vm: vm, stack: stack, source: source, count: count, failed: failed, terminal: terminal);
+}

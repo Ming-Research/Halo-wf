@@ -1,0 +1,135 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 158  of event 'cpu_core/cycles/P'
+# Event count (approx.): 149281209
+#
+# Overhead  Command      Shared Object      Symbol                                                           
+# ........  ...........  .................  .................................................................
+#
+    19.14%  halo-branch  halo-branch        [.] wf_package.halo.heap.gc_mark
+            |          
+            |--13.99%--wf_package.halo.heap.gc_mark
+            |          
+             --5.15%--wf_package.halo.vm.collect_if_due
+
+    18.36%  halo-branch  halo-branch        [.] wf_package.halo.vm.collect_if_due
+            |          
+            |--17.03%--wf_package.halo.vm.collect_if_due
+            |          |          
+            |           --7.11%--0xffffffff
+            |          
+             --1.34%--wf_package.halo.heap.gc_mark
+
+     8.68%  halo-branch  halo-branch        [.] wf_package.halo.execution.storage_bytes
+            |
+            ---wf_package.halo.execution.storage_bytes
+               |          
+               |--6.67%--0xffffffff
+               |          
+                --2.00%--0
+
+     7.24%  halo-branch  halo-branch        [.] wf_package.halo.vm.coroutine_exchange
+            |          
+             --6.57%--wf_package.halo.vm.coroutine_exchange
+                       |          
+                        --5.90%--0xffffffff
+
+     4.59%  halo-branch  halo-branch        [.] wf_package.halo.vm.coroutine_transfer
+            |          
+             --3.93%--wf_package.halo.vm.coroutine_transfer
+                       |          
+                        --1.26%--0
+
+     4.00%  halo-branch  halo-branch        [.] wf_package.halo.vm.prepare$instance$2ead40aebe81bc32
+            |
+            ---wf_package.halo.vm.prepare$instance$2ead40aebe81bc32
+
+     4.00%  halo-branch  halo-branch        [.] wf_package.halo.vm.run$instance$2ead40aebe81bc32.body.arm.7
+            |
+            ---wf_package.halo.vm.run$instance$2ead40aebe81bc32.body.arm.7
+               |          
+                --2.66%--0
+
+     3.94%  halo-branch  halo-branch        [.] wf_package.halo.vm.slow$instance$2ead40aebe81bc32
+            |          
+             --3.29%--wf_package.halo.vm.slow$instance$2ead40aebe81bc32
+
+     3.29%  halo-branch  halo-branch        [.] wf_package.halo.vm.coroutine_refresh_storage
+            |
+            ---wf_package.halo.vm.coroutine_refresh_storage
+               |          
+                --1.31%--wf_package.halo.vm.drive$instance$2ead40aebe81bc32.body.arm.4
+                          0x20247c8948f58948
+
+     3.24%  halo-branch  halo-branch        [.] wf_package.halo.vm.finish
+            |          
+             --2.57%--wf_package.halo.vm.finish
+
+     2.67%  halo-branch  halo-branch        [.] wf_package.halo.vm.coroutine_deliver
+            |
+            ---wf_package.halo.vm.coroutine_deliver
+
+     2.63%  halo-branch  halo-branch        [.] wf_package.halo.vm.run$instance$2ead40aebe81bc32.body.arm.66
+            |
+            ---wf_package.halo.vm.run$instance$2ead40aebe81bc32.body.arm.66
+
+     2.58%  halo-branch  halo-branch        [.] wf_package.halo.heap.node_find
+            |
+            ---wf_package.halo.heap.node_find
+               0x7c5ba0006e60
+               0x100
+
+     2.00%  halo-branch  halo-branch        [.] wf_package.halo.vm.coroutine_save_scalars
+            |
+            ---wf_package.halo.vm.coroutine_save_scalars
+               0xffffffff
+
+     2.00%  halo-branch  halo-branch        [.] wf_package.halo.vm.run$instance$2ead40aebe81bc32.body.arm.63
+            |
+            ---wf_package.halo.vm.run$instance$2ead40aebe81bc32.body.arm.63
+
+     1.95%  halo-branch  halo-branch        [.] wf_package.halo.vm.dispatch_run$instance$2ead40aebe81bc32
+            |
+            ---wf_package.halo.vm.dispatch_run$instance$2ead40aebe81bc32
+               wf_package.halo.vm.drive$instance$2ead40aebe81bc32.body.arm.4
+               0x20247c8948f58948
+
+     1.87%  halo-branch  halo-branch        [.] wf_package.halo.vm.drive$instance$2ead40aebe81bc32.body.arm.1
+            |
+            ---wf_package.halo.vm.drive$instance$2ead40aebe81bc32.body.arm.1
+               wf_package.halo.vm.drive$instance$2ead40aebe81bc32.body.arm.4
+               0x20247c8948f58948
+
+     1.34%  halo-branch  halo-branch        [.] wf_package.halo.vm.coroutine_prepare
+            |
+            ---wf_package.halo.vm.coroutine_prepare
+
+     1.22%  halo-branch  halo-branch        [.] wf_package.halo.vm.coroutine_finish_call
+     1.15%  halo-branch  [kernel.kallsyms]  [k] smp_call_function_many_cond
+            |
+            ---smp_call_function_many_cond
+               on_each_cpu_cond_mask
+               smp_text_poke_batch_finish
+               arch_jump_label_transform_apply
+               __jump_label_update
+               jump_label_update
+               static_key_slow_inc_cpuslocked
+               static_key_slow_inc
+               io_uring_create
+               io_uring_setup.cold
+               __x64_sys_io_uring_setup
+               x64_sys_call
+               do_syscall_64
+               entry_SYSCALL_64_after_hwframe
+               syscall
+               wf__floor_entry
+               __clone3 (inlined)
+
+
+
+#
+# (Cannot load tips.txt file, please install perf!)
+#

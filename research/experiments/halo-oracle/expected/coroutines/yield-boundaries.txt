@@ -1,0 +1,402 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "__index"
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 2
+            },
+            {
+              "type": "bulk",
+              "bytes": "false"
+            },
+            {
+              "type": "bulk",
+              "bytes": "attempt to yield across metamethod/C-call boundary"
+            }
+          ]
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "__add"
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 2
+            },
+            {
+              "type": "bulk",
+              "bytes": "false"
+            },
+            {
+              "type": "bulk",
+              "bytes": "attempt to yield across metamethod/C-call boundary"
+            }
+          ]
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "__lt"
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 2
+            },
+            {
+              "type": "bulk",
+              "bytes": "false"
+            },
+            {
+              "type": "bulk",
+              "bytes": "attempt to yield across metamethod/C-call boundary"
+            }
+          ]
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "__concat"
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 2
+            },
+            {
+              "type": "bulk",
+              "bytes": "false"
+            },
+            {
+              "type": "bulk",
+              "bytes": "attempt to yield across metamethod/C-call boundary"
+            }
+          ]
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "__tostring"
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 2
+            },
+            {
+              "type": "bulk",
+              "bytes": "false"
+            },
+            {
+              "type": "bulk",
+              "bytes": "attempt to yield across metamethod/C-call boundary"
+            }
+          ]
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "__call"
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 3
+            },
+            {
+              "type": "bulk",
+              "bytes": "true"
+            },
+            {
+              "type": "bulk",
+              "bytes": "yield:__call"
+            },
+            {
+              "type": "bulk",
+              "bytes": "call-argument"
+            }
+          ]
+        },
+        {
+          "type": "bulk",
+          "bytes": "suspended"
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 3
+            },
+            {
+              "type": "bulk",
+              "bytes": "true"
+            },
+            {
+              "type": "bulk",
+              "bytes": "call-value"
+            },
+            {
+              "type": "bulk",
+              "bytes": "continued"
+            }
+          ]
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "pcall"
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 3
+            },
+            {
+              "type": "bulk",
+              "bytes": "true"
+            },
+            {
+              "type": "bulk",
+              "bytes": "false"
+            },
+            {
+              "type": "bulk",
+              "bytes": "attempt to yield across metamethod/C-call boundary"
+            }
+          ]
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "xpcall"
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 3
+            },
+            {
+              "type": "bulk",
+              "bytes": "true"
+            },
+            {
+              "type": "bulk",
+              "bytes": "false"
+            },
+            {
+              "type": "bulk",
+              "bytes": "attempt to yield across metamethod/C-call boundary"
+            }
+          ]
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "table.sort"
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 2
+            },
+            {
+              "type": "bulk",
+              "bytes": "false"
+            },
+            {
+              "type": "bulk",
+              "bytes": "attempt to yield across metamethod/C-call boundary"
+            }
+          ]
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "string.gsub"
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 2
+            },
+            {
+              "type": "bulk",
+              "bytes": "false"
+            },
+            {
+              "type": "bulk",
+              "bytes": "attempt to yield across metamethod/C-call boundary"
+            }
+          ]
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "table.foreach"
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 2
+            },
+            {
+              "type": "bulk",
+              "bytes": "false"
+            },
+            {
+              "type": "bulk",
+              "bytes": "attempt to yield across metamethod/C-call boundary"
+            }
+          ]
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "items": [
+        {
+          "type": "bulk",
+          "bytes": "generic-for"
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer",
+              "value": 2
+            },
+            {
+              "type": "bulk",
+              "bytes": "false"
+            },
+            {
+              "type": "bulk",
+              "bytes": "attempt to yield across metamethod/C-call boundary"
+            }
+          ]
+        },
+        {
+          "type": "bulk",
+          "bytes": "dead"
+        }
+      ]
+    }
+  ]
+}

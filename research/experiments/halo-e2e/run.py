@@ -111,9 +111,9 @@ def sensitivity():
             raise AssertionError('schema accepted injected defect')
 
 
-def run(command, **kwargs):
+def run(command, timeout=900, **kwargs):
     start = time.monotonic()
-    result = subprocess.run(command, cwd=ROOT, capture_output=True, timeout=900, **kwargs)
+    result = subprocess.run(command, cwd=ROOT, capture_output=True, timeout=timeout, **kwargs)
     return result, time.monotonic() - start
 
 
@@ -218,6 +218,8 @@ def main():
     parser.add_argument('--actual', type=Path, help='scratch directory for typed replies')
     parser.add_argument('--scratch-root', type=Path, default=Path('/private/tmp'), help='existing directory for temporary build and fixture files')
     parser.add_argument('--budgets', default='1000', help='comma-separated: 1,7,1000')
+    parser.add_argument('--case-timeout', type=int, default=900, metavar='SECONDS',
+                        help='per-case native run limit; a timeout fails that case')
     cache_arguments(parser, 'halo-e2e', timing=True)
     args = parser.parse_args()
     if args.omit_suspended_root and not (args.collect_suspended and args.gc_stress):
@@ -226,6 +228,8 @@ def main():
     budgets = [int(x) for x in args.budgets.split(',')]
     if any(b not in (1, 7, 1000) for b in budgets):
         parser.error('supported budgets are 1,7,1000')
+    if not args.case_timeout > 0:
+        parser.error('--case-timeout must be positive')
     case_root = args.cases.resolve()
     cases = sorted((case_root / 'scripts').glob('*/*.lua'))
     cases = [p for p in cases if str(p.relative_to(case_root / 'scripts').with_suffix('')).startswith(args.filter)]
@@ -247,7 +251,7 @@ def main():
     revision = subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True, capture_output=True, check=True).stdout.strip()
     report = ['# Halo end-to-end comparison', '',
               f'Local parent revision: `{revision}`. Source digest: `{digest.hexdigest()}`.',
-              f'GC stress: {args.gc_stress}; suspended checkpoint probe: {args.collect_suspended}; frame alias isolation: {args.isolate_frames}; parked root omitted: {args.omit_suspended_root}.',
+              f'GC stress: {args.gc_stress}; suspended checkpoint probe: {args.collect_suspended}; frame alias isolation: {args.isolate_frames}; parked root omitted: {args.omit_suspended_root}; case timeout: {args.case_timeout} seconds.',
               'The digest includes every Halo and fpconv module, the graph, host and runner; it identifies uncommitted source bytes too.', '']
     with tempfile.TemporaryDirectory(prefix='halo-e2e-', dir=args.scratch_root) as temporary:
         scratch = Path(temporary)
@@ -290,7 +294,7 @@ def main():
                     extra += ['--omit-suspended-root']
                 collections = None
                 try:
-                    result, seconds = run([str(binary)] + extra, input=fixture(source))
+                    result, seconds = run([str(binary)] + extra, timeout=args.case_timeout, input=fixture(source))
                     if result.returncode:
                         status, why, actual = 'FAIL', f'native exit {result.returncode} (2 transport/I/O, 3 setup compile, 4 setup runtime, 5 budget limit, 6 host stop)', None
                     else:

@@ -6,11 +6,12 @@ fn heap_new(limit: u64) -> r: Heap pure {
   let tables = box_slots_new::<TableCell>(capacity: 0_u64);
   let closures = box_slots_new::<ClosureCell>(capacity: 0_u64);
   let upvalues = box_slots_new::<UpvalCell>(capacity: 0_u64);
+  let threads = box_slots_new::<ThreadCell>(capacity: 0_u64);
   let interned = box_slots_new::<u32>(capacity: 0_u64);
   let gray = box_slots_new::<Value>(capacity: 0_u64);
   let stress = False();
   let stats = collection_stats_empty();
-  return Heap(strings: move strings, tables: move tables, closures: move closures, upvalues: move upvalues, strings_free: no_handle, tables_free: no_handle, closures_free: no_handle, upvalues_free: no_handle, interned: move interned, intern_count: 0_u64, bytes: 0_u64, bytes_since_gc: 0_u64, limit: limit, epoch: 0_u32, gray: move gray, threshold: collection_floor, gc_stress: stress, collections: 0_u64, gc_pause: 200_u64, gray_pops: 0_u64, last_collection: stats);
+  return Heap(strings: move strings, tables: move tables, closures: move closures, upvalues: move upvalues, threads: move threads, strings_free: no_handle, tables_free: no_handle, closures_free: no_handle, upvalues_free: no_handle, threads_free: no_handle, interned: move interned, intern_count: 0_u64, bytes: 0_u64, bytes_since_gc: 0_u64, limit: limit, epoch: 0_u32, gray: move gray, threshold: collection_floor, gc_stress: stress, collections: 0_u64, gc_pause: 200_u64, gray_pops: 0_u64, last_collection: stats);
 }
 
 fn charge(heap: &Heap, amount: u64) -> r: Bool writes(heap.bytes), writes(heap.bytes_since_gc) {

@@ -1,0 +1,25 @@
+{
+  "type": "array",
+  "items": [
+    {
+      "type": "bulk",
+      "bytes": "true"
+    },
+    {
+      "type": "bulk",
+      "bytes": "1"
+    },
+    {
+      "type": "bulk",
+      "bytes": "1=fresh/31457280"
+    },
+    {
+      "type": "integer",
+      "value": 32
+    },
+    {
+      "type": "integer",
+      "value": 41943040
+    }
+  ]
+}

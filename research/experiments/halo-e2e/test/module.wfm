@@ -4,3 +4,9 @@ alias ExitStatus = std::process::ExitStatus;
 public fn main(inputs: Inputs) -> status: ExitStatus pure waits doc "Runs one oracle script with a Whitefoot Redis test host and prints typed RESP2 JSON. With --double-text it instead reads 8-byte little-endian binary64 bit patterns from stdin and prints, for each, its RESP2 double reply text, a tab and its redis.call argument text on one line.";
 
 public fn smoke() -> status: ExitStatus pure doc "Checks embedding lifecycle, budget continuation, host outcomes and collector root retention and release.";
+
+public fn thread_smoke() -> status: ExitStatus pure doc "Runs isolated thread payload edges, allocation, main identity and limit observations for the missing-edge controls.";
+
+public fn upvalue_smoke() -> status: ExitStatus pure doc "Runs isolated owner-qualified capture lifetime and stack-access observations for the missing-edge controls.";
+
+public fn switch_smoke() -> status: ExitStatus pure doc "Runs isolated coroutine transfer, native-unwinding, depth and ownership observations.";
