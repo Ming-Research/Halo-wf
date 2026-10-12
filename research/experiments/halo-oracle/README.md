@@ -7,7 +7,7 @@ Halo's `make check-core` compares the corpus through the `oracle` target;
 recording reference replies remains the job of
 [oracle-reference.yml](../../../.github/workflows/oracle-reference.yml).
 
-There are 121 scripts: 69 `lua-core`, 34 `redis-api`, 6 `apps`, and 12 `libs`.
+There are 122 scripts: 70 `lua-core`, 34 `redis-api`, 6 `apps`, and 12 `libs`.
 The scripts, replies and runner belong here until the oracle is replaced or
 Halo/firn scripting is retired. Each case is consumed by `run.sh`; the table
 below is the index of the observations it protects.
@@ -200,6 +200,7 @@ not automatically used to overwrite this baseline.
 | lua-core | [array-holes](scripts/lua-core/array-holes.lua) | Lua 5.1 length selects a boundary for arrays with holes. |
 | lua-core | [assert](scripts/lua-core/assert.lua) | assert returns all successful arguments and raises a chosen message. |
 | lua-core | [call-kinds](scripts/lua-core/call-kinds.lua) | Ordinary calls reach native functions, native iterators and vararg Lua functions; number and nil callees raise errors checked apart from the variable description. |
+| lua-core | [callback-error-levels](scripts/lua-core/callback-error-levels.lua) | error levels count through native frames (pcall, sort, gsub) and metamethod calls: a native frame or a level past the top adds no location. |
 | lua-core | [concat-numbers](scripts/lua-core/concat-numbers.lua) | Concatenation coerces numbers with Lua number formatting. |
 | lua-core | [counter-closure](scripts/lua-core/counter-closure.lua) | Separate counter closures retain independent upvalue state. |
 | lua-core | [embedded-zero](scripts/lua-core/embedded-zero.lua) | Embedded NUL survives length, slicing, byte lookup and RESP bulk. |
