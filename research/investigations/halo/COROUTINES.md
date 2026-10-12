@@ -159,6 +159,66 @@ yields that must succeed beside those that must fail.
 - Mechanism A is tried first, B is the fallback if A fails comparison 2
   (card halo-card-coroutine-mechanism, option A).
 
+## Results
+
+All on 2026-10-12, Whitefoot `wf-d837678c6905`, full LTO.
+
+Comparison 1. The 31 coroutine oracle scripts, with their replies
+recorded on Redis 7.0.15, pass the gate together with every other oracle
+script: 420 of 420 runs at budgets 1, 7 and 1000, both ordinary and
+under collector stress (gate run 38207703397, source `d08f224`).
+
+Collector validation (work order step 2). Twenty-six controls each delete
+one marking line, or one closing call, of what coroutines added, and run
+the coroutine group under collector stress (run 38208572999, `d08f224`):
+
+- 14 change a recorded reply: a suspended frame, the open-upvalue list, a
+  captured value, an owner's close, the library contexts' comparator, key
+  and error, sort's two operands and pivot, a pattern's source and
+  pattern, the current thread and the waiting resumer.
+- 3 stop every case in host setup: the running thread's contents, its
+  stack and the main thread. All 93 runs fail with native exit 4 while
+  the baseline passes all 93, because the collector's live-cell guard
+  finds the installed execution's cell freed and ends the script before
+  any reply. `thread-controls.sh` now counts this fail-stop as detection.
+- 9 leave every reply unchanged: a library context's table and function,
+  a pattern's replacement, a dead coroutine's error value, a stopped
+  coroutine's value, the explicit close of a dead coroutine's upvalues,
+  the entry function, and the child and arguments of a transfer in
+  progress. The code-reading review predicted exactly these nine. Each
+  one's isolated probe observes the deletion. Whether a probe may stand
+  in for a reply change is the owner's ruling (status board, coroutine
+  item).
+
+Comparison 2 passes. The 14900K ran it on CPU 2 with governor
+`performance` (run 38213220871): main `3e86f0f` against branch `90d950b`,
+six interleaved pairs, and a twin of main. For each kernel, the branch
+over main against the allowance (larger relative range plus the twin's
+difference):
+
+| Kernel | Branch / main | Twin / main | Allowance | Verdict |
+|---|---:|---:|---:|---|
+| fib | 1.0079 | 1.0002 | 3.57% | pass |
+| loop | 0.9994 | 1.0002 | 0.09% | pass |
+| integer-table | 0.9977 | 1.0091 | 5.55% | pass |
+| string-key | 1.0012 | 0.9986 | 8.35% | pass |
+| concat | 1.0006 | 0.9966 | 2.48% | pass |
+| sort | 0.9835 | 0.9991 | 6.57% | pass |
+| binary-trees | 1.0029 | 0.9938 | 3.18% | pass |
+| captured-assignment | 0.9667 | 0.9947 | 3.96% | pass |
+
+Comparison 3 is exploratory. The producer-consumer kernel takes Halo
+3.59 times PUC 5.1.5's time: medians 0.0296 s against 0.0082 s, with
+ranges of 0.4% and 2.3%. Its profile has 158 samples, too few for more
+than a direction. 19% of them are in marking and 18% in the collection
+check, so collection, not the switch itself, takes the largest share.
+Coroutine exchange, transfer, storage refresh, deliver and scalar saves
+together take 20%.
+
+The run's JSON, manifest and profile are in
+[`coroutines-2026-10-12/`](../../experiments/halo-bench/coroutines-2026-10-12/),
+kept while the design node cites them.
+
 ## Work order
 
 1. Record the oracle group on Redis 7.0.15, failing on Halo (a red
