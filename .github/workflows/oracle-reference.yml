@@ -1,17 +1,21 @@
 # Records the oracle corpus on the reference platform: Redis 7.2.16, built
 # from source with its bundled Lua, on x86-64 Linux with glibc (AGENTS.md,
 # "The reference"). It compares the stored replies with that server, then
-# records every reply again and keeps both results and their difference as
-# an artifact; a person reviews the difference and commits the replies.
+# records every reply again, and the table of double texts
+# (research/experiments/redis-double-text), and keeps the results and their
+# differences from the committed files as an artifact; a person reviews the
+# differences and commits the replies and the table.
 #
-# A change to the corpus, its runner or this file runs it, as does a manual
-# dispatch on the default branch. It never writes to the repository.
+# A change to the corpus, the table, their recorders or this file runs it, as
+# does a manual dispatch on the default branch. It never writes to the
+# repository.
 name: oracle-reference
 
 on:
   push:
     paths:
       - research/experiments/halo-oracle/**
+      - research/experiments/redis-double-text/**
       - .github/workflows/oracle-reference.yml
   workflow_dispatch:
 
@@ -65,6 +69,16 @@ jobs:
           diff -r research/experiments/halo-oracle/expected build/oracle/expected > build/oracle/expected.diff || true
           echo "files that differ: $(grep -c '^diff -r' build/oracle/expected.diff || true)"
           cat build/oracle/expected.diff
+
+      - name: Record the double-text table again
+        run: |
+          python3 -B research/experiments/redis-double-text/record.py \
+            --server "$PWD/build/redis/redis-7.2.16/src/redis-server" \
+            --output "$PWD/build/oracle/redis-double-text/redis-7.2.16.tsv"
+          diff research/experiments/redis-double-text/redis-7.2.16.tsv \
+            build/oracle/redis-double-text/redis-7.2.16.tsv > build/oracle/redis-double-text/table.diff || true
+          echo "table lines that differ: $(grep -c '^[<>]' build/oracle/redis-double-text/table.diff || true)"
+          head -200 build/oracle/redis-double-text/table.diff
 
       - uses: actions/upload-artifact@v4
         if: always()

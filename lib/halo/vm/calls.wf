@@ -177,6 +177,7 @@ fn unwind(vm: &Vm, stack: &Box<Slots<Value>>) -> r: Step writes(vm), writes(stac
 }
 
 fn enter_lua(vm: &Vm, stack: &Box<Slots<Value>>, h: u32, func: u64, argc: u64, wanted: i64, return_pc: u64, tail: Bool) -> r: Step writes(vm), writes(stack) {
+  doc "Pushes a Lua frame. A tail call replaces the calling frame and keeps its destination, result count and return point, and the new frame counts the calls it replaced as OP_TAILCALL increments ci->tailcalls: the replaced frame's count plus one.";
   let hi = cvt::<u32, u64>(h);
   if hi < vm^.heap.closures.inner.len {
     if vm^.heap.closures.inner[hi].live {
@@ -195,7 +196,7 @@ fn enter_lua(vm: &Vm, stack: &Box<Slots<Value>>, h: u32, func: u64, argc: u64, w
         let dest = func;
         let results = wanted;
         let rp = return_pc;
-        let flags = 0_u8;
+        let tailcalls = 0_u32;
         if tail {
           if vm^.frames.inner.len > 0_u64 {
             let old = take_back(window: &vm^.frames.inner);
@@ -204,7 +205,7 @@ fn enter_lua(vm: &Vm, stack: &Box<Slots<Value>>, h: u32, func: u64, argc: u64, w
             set dest = old.func;
             set results = old.nresults;
             set rp = old.return_pc;
-            set flags = tail_flag;
+            set tailcalls = old.tailcalls +sat 1_u32;
           }
         }
         let args = dest +sat 1_u64;
@@ -269,7 +270,7 @@ fn enter_lua(vm: &Vm, stack: &Box<Slots<Value>>, h: u32, func: u64, argc: u64, w
         }
         let kb = cvt::<u32, u64>(p.kbase);
         let start = cvt::<u32, u64>(p.start);
-        let f = Frame(func: dest, base: b, return_pc: rp, kbase: kb, closure: h, nresults: results, activation: vm^.activation, flags: flags, varbase: vb, varcount: vc, frame_top: top);
+        let f = Frame(func: dest, base: b, return_pc: rp, kbase: kb, closure: h, tailcalls: tailcalls, nresults: results, activation: vm^.activation, flags: 0_u8, varbase: vb, varcount: vc, frame_top: top);
         if push_frame(vm: vm, frame: f) {
           set vm^.top = top;
           return Step::Jump(pc: start, base: b, kbase: kb);
@@ -329,7 +330,7 @@ fn prepare<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
             library_call_error_location(vm: vm, pc: call_pc);
             return Step::Error();
           }
-          let marker = Frame(func: fslot, base: base, return_pc: return_pc, kbase: kbase, closure: no_handle, nresults: nr, activation: vm^.activation, flags: protected_flag, varbase: 0_u64, varcount: 0_u64, frame_top: vm^.top);
+          let marker = Frame(func: fslot, base: base, return_pc: return_pc, kbase: kbase, closure: no_handle, tailcalls: 0_u32, nresults: nr, activation: vm^.activation, flags: protected_flag, varbase: 0_u64, varcount: 0_u64, frame_top: vm^.top);
           if push_frame(vm: vm, frame: marker) {
           } else {
             return Step::Error();
@@ -380,7 +381,7 @@ fn prepare<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
               let a = argument(stack: stack, func: fslot, argc: nargs, index: 0_u64);
               let b = argument(stack: stack, func: fslot, argc: nargs, index: 1_u64);
               let nil = Value::Nil();
-              let frame = Frame(func: fslot, base: base, return_pc: return_pc, kbase: kbase, closure: no_handle, nresults: nr, activation: vm^.activation, flags: 0_u8, varbase: 0_u64, varcount: 0_u64, frame_top: vm^.top);
+              let frame = Frame(func: fslot, base: base, return_pc: return_pc, kbase: kbase, closure: no_handle, tailcalls: 0_u32, nresults: nr, activation: vm^.activation, flags: 0_u8, varbase: 0_u64, varcount: 0_u64, frame_top: vm^.top);
               let context = LibraryContext(frame: frame, tail: tailing, id: bound_id_1, phase: 0_u8, count: 0_u64, table: a, comparator: b, saved_error: nil, foreach_key: nil);
               push_library_context(vm: vm, context: context);
               let expected = False();
@@ -432,7 +433,7 @@ fn prepare<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
                   return finish(vm: vm, stack: stack, frame: old, src: fslot, count: n);
                 }
               }
-              let frame = Frame(func: fslot, base: base, return_pc: return_pc, kbase: kbase, closure: no_handle, nresults: nr, activation: vm^.activation, flags: 0_u8, varbase: 0_u64, varcount: 0_u64, frame_top: vm^.top);
+              let frame = Frame(func: fslot, base: base, return_pc: return_pc, kbase: kbase, closure: no_handle, tailcalls: 0_u32, nresults: nr, activation: vm^.activation, flags: 0_u8, varbase: 0_u64, varcount: 0_u64, frame_top: vm^.top);
               return finish(vm: vm, stack: stack, frame: frame, src: fslot, count: n);
             }
           }
@@ -706,7 +707,7 @@ fn complete_call<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, 
     }
   }
   if bnot(finished) {
-    let frame = Frame(func: func, base: call.base, return_pc: call.return_pc, kbase: call.kbase, closure: no_handle, nresults: call.wanted, activation: call.activation, flags: 0_u8, varbase: 0_u64, varcount: 0_u64, frame_top: call.top);
+    let frame = Frame(func: func, base: call.base, return_pc: call.return_pc, kbase: call.kbase, closure: no_handle, tailcalls: 0_u32, nresults: call.wanted, activation: call.activation, flags: 0_u8, varbase: 0_u64, varcount: 0_u64, frame_top: call.top);
     set step = finish(vm: vm, stack: stack, frame: frame, src: func, count: count);
   }
   return drive::<Host<E>>(script: script, stack: stack, vm: vm, env: env, step: step);

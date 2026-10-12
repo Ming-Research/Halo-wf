@@ -12,6 +12,7 @@ public struct Frame {
   public return_pc: u64;
   public kbase: u64;
   public closure: u32;
+  public tailcalls: u32;
   public nresults: i64;
   public activation: u32;
   public flags: u8;
@@ -154,8 +155,6 @@ public interface Host<E> {
 }
 
 public const protected_flag: u8 = 1_u8;
-
-public const tail_flag: u8 = 2_u8;
 
 public const native_flag: u8 = 4_u8;
 

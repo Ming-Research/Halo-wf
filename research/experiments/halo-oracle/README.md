@@ -7,7 +7,7 @@ Halo's `make check-core` compares the corpus through the `oracle` target;
 recording reference replies remains the job of
 [oracle-reference.yml](../../../.github/workflows/oracle-reference.yml).
 
-There are 125 scripts: 69 `lua-core`, 38 `redis-api`, 6 `apps`, and 12 `libs`.
+There are 127 scripts: 71 `lua-core`, 38 `redis-api`, 6 `apps`, and 12 `libs`.
 The scripts, replies and runner belong here until the oracle is replaced or
 Halo/firn scripting is retired. Each case is consumed by `run.sh`; the table
 below is the index of the observations it protects.
@@ -200,6 +200,7 @@ not automatically used to overwrite this baseline.
 | lua-core | [array-holes](scripts/lua-core/array-holes.lua) | Lua 5.1 length selects a boundary for arrays with holes. |
 | lua-core | [assert](scripts/lua-core/assert.lua) | assert returns all successful arguments and raises a chosen message. |
 | lua-core | [call-kinds](scripts/lua-core/call-kinds.lua) | Ordinary calls reach native functions, native iterators and vararg Lua functions; number and nil callees raise errors checked apart from the variable description. |
+| lua-core | [callback-error-levels](scripts/lua-core/callback-error-levels.lua) | error levels count each native function (pcall, sort, gsub) between Lua frames as a level without a location; metamethods (__index, __add) add no level; a level past the top adds no location. |
 | lua-core | [concat-numbers](scripts/lua-core/concat-numbers.lua) | Concatenation coerces numbers with Lua number formatting. |
 | lua-core | [counter-closure](scripts/lua-core/counter-closure.lua) | Separate counter closures retain independent upvalue state. |
 | lua-core | [embedded-zero](scripts/lua-core/embedded-zero.lua) | Embedded NUL survives length, slicing, byte lookup and RESP bulk. |
@@ -261,6 +262,7 @@ not automatically used to overwrite this baseline.
 | lua-core | [table-parts](scripts/lua-core/table-parts.lua) | Array and hash entries coexist; hash entries do not add array length. |
 | lua-core | [table-sort](scripts/lua-core/table-sort.lua) | Default and custom comparator sort numbers into opposite orders. |
 | lua-core | [table-sort-order](scripts/lua-core/table-sort-order.lua) | Default auxsort permutation for duplicate numbers, signed zeros, strings with NUL, NaN, hash-backed indices and short arrays. |
+| lua-core | [tail-call-error-levels](scripts/lua-core/tail-call-error-levels.lua) | error levels count each call a Lua-to-Lua tail call replaced as a level without a location, one to three per frame and around sort comparators and pcall; a tail call into error or pcall keeps the calling frame. |
 | lua-core | [tail-recursion](scripts/lua-core/tail-recursion.lua) | Proper tail calls allow deep recursion without growing call stack. |
 | lua-core | [unpack-overflow-range](scripts/lua-core/unpack-overflow-range.lua) | unpack refuses ranges too long for an int with the too-many-results error; 7.0.15 overflows for three of four ranges. |
 | lua-core | [unpack-select-varargs](scripts/lua-core/unpack-select-varargs.lua) | unpack ranges and select preserve vararg count including nil. |
@@ -269,7 +271,7 @@ not automatically used to overwrite this baseline.
 | redis-api | [call-error-in-callback](scripts/redis-api/call-error-in-callback.lua) | A redis.call error inside a sort comparator ends the script with an error reply. |
 | redis-api | [call-in-callback](scripts/redis-api/call-in-callback.lua) | redis.call and redis.pcall return to sort, gsub and __tostring callbacks; pcall inside a comparator catches a redis.call error. |
 | redis-api | [call-success](scripts/redis-api/call-success.lua) | redis.call returns successful write and read replies. |
-| redis-api | [double-reply-table](scripts/redis-api/double-reply-table.lua) | Returned {double=x} tables become bulk strings with the host's double text; 7.2.16 prints the shortest round-trip digits where 7.0.15 printed %.17g. |
+| redis-api | [double-reply-table](scripts/redis-api/double-reply-table.lua) | Returned {double=x} tables become bulk strings with the host's double text; 7.2.16 writes fpconv's Grisu2 digits, which read back exactly but are not always the shortest, where 7.0.15 printed %.17g. |
 | redis-api | [double-score-reply](scripts/redis-api/double-score-reply.lua) | ZADD with a number score, then ZSCORE and WITHSCORES, reply with the host's double text (0.1 versus 0.10000000000000001). |
 | redis-api | [error-after-call-in-callback-line](scripts/redis-api/error-after-call-in-callback-line.lua) | A gsub error after a replacement that called redis.call returns is located at the gsub call. |
 | redis-api | [error-message-crlf](scripts/redis-api/error-message-crlf.lua) | A top-level runtime error whose message holds CR LF; 7.0.15 breaks the RESP framing, 7.2.16 replaces them with spaces. |
@@ -286,7 +288,7 @@ not automatically used to overwrite this baseline.
 | redis-api | [lua-nil](scripts/redis-api/lua-nil.lua) | A top-level Lua nil becomes a RESP nil bulk. |
 | redis-api | [lua-scalars](scripts/redis-api/lua-scalars.lua) | Lua numbers truncate toward zero; true is one and false is nil. |
 | redis-api | [number-argument-effects](scripts/redis-api/number-argument-effects.lua) | A number argument stored by SET is read back by INCR, and INCRBYFLOAT reads a fractional one; 7.0.15 and 7.2.16 format the argument differently. |
-| redis-api | [number-argument-format](scripts/redis-api/number-argument-format.lua) | ECHO returns number arguments as the host formats them: %.17g in 7.0.15, integers and shortest round-trip digits in 7.2.16. |
+| redis-api | [number-argument-format](scripts/redis-api/number-argument-format.lua) | ECHO returns number arguments as the host formats them: %.17g in 7.0.15, integers and fpconv's Grisu2 digits in 7.2.16. |
 | redis-api | [pcall-keeps-other-errors](scripts/redis-api/pcall-keeps-other-errors.lua) | pcall preserves error tables whose err field is neither string nor number, and nil and false errors. |
 | redis-api | [pcall-outside-comparator](scripts/redis-api/pcall-outside-comparator.lua) | A redis.call error from a sort comparator caught by pcall around sort is the err string. |
 | redis-api | [pcall-success-error](scripts/redis-api/pcall-success-error.lua) | redis.pcall returns successes and error tables without raising. |

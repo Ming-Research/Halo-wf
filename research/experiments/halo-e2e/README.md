@@ -203,6 +203,12 @@ reachable from them. `make roots` runs `redis-api/global-write`,
 with and without the matching flag; each must pass without it and fail by a
 reply difference with it.
 
+The executable's `--double-text` mode runs no script: it reads 8-byte
+little-endian binary64 bit patterns from stdin and prints, per pattern, the
+host's RESP2 double reply text, a tab and its `redis.call` argument text.
+`make check` compares them with the doubles measured on redis-server 7.2.16
+([fpconv package](../../../lib/fpconv/README.md#check)).
+
 `--scratch-root DIR` keeps temporary build and fixture files under an existing
 chosen directory. The cost-repair runs use the benchmark's `target/` so all
 new artifacts stay in the requested worktree; the default remains `/private/tmp`.

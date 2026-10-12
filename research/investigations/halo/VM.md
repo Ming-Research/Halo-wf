@@ -168,7 +168,8 @@ One value stack with overlapping frames and one frame-record stack:
 ```wf
 struct Frame {
   func: u64; base: u64; return_pc: u64; kbase: u64;
-  closure: u32; nresults: i64; activation: u32; flags: u8;  // PROTECTED, TAIL
+  closure: u32; tailcalls: u32; nresults: i64; activation: u32; flags: u8;  // PROTECTED
+  varbase: u64; varcount: u64; frame_top: u64;
 }
 ```
 
@@ -176,7 +177,7 @@ struct Frame {
 parameters up, Lua 5.1's layout) and grows the stack when
 `new_base + 256 > stack.len`; on a builtin it runs the library function in
 place with no frame. `RETURN` copies results to the popped frame's `func`,
-adjusts to `nresults` and closes upvalues. `TAILCALL` replaces the frame.
+adjusts to `nresults` and closes upvalues. `TAILCALL` replaces the frame and counts the calls it replaced, which `error`'s levels skip as Lua 5.1's `lua_getstack` does.
 `pcall` pushes a PROTECTED frame and continues the dispatch; `error` and
 every raise unwind to the nearest PROTECTED frame of the current
 activation, or return `Outcome::Error`. Lua-to-Lua calls, `pcall`, `error`

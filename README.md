@@ -30,6 +30,8 @@ a host binds it by path:
 - [lib/json](lib/json/): a pull decoder and a structured writer for JSON.
 - [lib/msgpack](lib/msgpack/): a pull decoder and an append writer for
   MessagePack.
+- [lib/fpconv](lib/fpconv/): a port of fpconv's Grisu2 `dtoa`, the
+  conversion Redis writes a double with; hosts share it.
 
 ## Compatibility target
 
@@ -56,8 +58,9 @@ make check
 
 `make check` is the gate every change to `main` passes in CI: it builds the
 end-to-end test program and compares the oracle corpus at three execution
-budgets, with the collector run normally and at every safepoint, and runs the
-collector's root controls, the research hosts and the number, JSON and
+budgets, with the collector run normally and at every safepoint, compares the
+test host's double texts with a table measured on redis-server 7.2.16, and runs
+the collector's root controls, the research hosts and the number, JSON and
 MessagePack comparisons. It needs git, curl, Python 3, a C compiler and the
 toolchain the compiler links with: `/usr/bin/clang`, and on Linux LLD of the
 LLVM major the pinned release names (`make toolchain` installs it).
