@@ -65,10 +65,14 @@ tables and leaves a read-only one to the slow executor, which locates the
 refusal. `rawset`, `setmetatable` and the table library raise it unlocated
 even when a script line calls them directly, as the reference's `lua_rawset`,
 `lua_rawseti` and `lua_setmetatable` do through `luaG_runerror` while the C
-function is the current call: the VM marks such an error as raised by a
-native function, and the library call's luaL_error location skips a marked
-error. The formatter adds no prefix (`redis-api/readonly-library-tables`
-under `pcall`, `redis-api/readonly-rawset-error` uncaught).
+function is the current call, and so does `next` with an invalid key, as
+`luaH_next` does: the native body marks such an error as it raises it and
+returns at once, and the error-location step that native call then takes
+consumes the mark and adds no location, so a refusal a callback catches
+cannot leave a library's own later `luaL_error` bare. The formatter adds no
+prefix (`redis-api/readonly-library-tables` under `pcall`,
+`redis-api/readonly-rawset-error` uncaught, `redis-api/library-error-location`
+for `next` and for library errors after a callback caught a refusal).
 
 Ordinary redis.member calls in this experiment use the member lookup's line
 from the continuation. A native Call/TailCall does not retain its PC in the
@@ -155,4 +159,6 @@ host then exits with its setup-runtime status (4).
 KEYS and ARGV, which the preparation chunk has already set, are taken out of
 the globals during the walk and put back after it, so they stay writable as
 Redis's per-call KEYS and ARGV do (`luaCallFunction` installs them after
-protection). `redis-api/readonly-library-tables` records the result.
+protection). `redis-api/readonly-library-tables` records the result for the
+library tables and `redis-api/keys-argv-writable` for KEYS and ARGV; `make
+roots` checks that the first fails when the host marks only the walks' roots.

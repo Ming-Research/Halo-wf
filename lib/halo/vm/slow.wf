@@ -155,7 +155,7 @@ fn is_readonly(vm: &Vm, v: Value) -> r: Bool reads(vm) {
 }
 
 fn raw_assign(vm: &Vm, t: Value, key: Value, v: Value) -> r: Bool writes(vm) {
-  doc "lapi.c lua_rawset and lua_rawseti for native callers: the read-only refusal and the table's own errors are raised as luaG_runerror with the native function current, so they are marked native_raise and take no caller location. Lua stores reject read-only tables and invalid keys in the slow executor with their instruction's callback plan.";
+  doc "lapi.c lua_rawset and lua_rawseti, called only from a native function's body: the read-only refusal and the table's own errors are raised as luaG_runerror with the native function current, so they are marked native_raise and take no caller location. The VM's own stores, which Lua 5.1 locates, use writable_assign and never set the mark.";
   if is_readonly(vm: vm, v: t) {
     return raise_native_text(vm: vm, text: &slow_text_0[0_u64..34_u64]);
   }
@@ -167,7 +167,7 @@ fn raw_assign(vm: &Vm, t: Value, key: Value, v: Value) -> r: Bool writes(vm) {
 }
 
 fn writable_assign(vm: &Vm, t: Value, key: Value, v: Value) -> r: Bool writes(vm) {
-  doc "raw_assign without its read-only test and native mark, for the VM's own stores into a table already found writable.";
+  doc "raw_assign without its read-only test and native mark, for the VM's own stores: into a table already found writable, or SETLIST's into the table its constructor's NEWTABLE created, which lvm.c stores with luaH_setnum and no read-only test.";
   match table_set(heap: &vm^.heap, t: t, key: key, val: v) {
     Ok(value: done) => {
       return True();

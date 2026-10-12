@@ -72,9 +72,10 @@ oracle: $(E2E_TEST)
 # The collector's removed-root controls (research/experiments/halo-gc): the
 # local root cases pass with the oracle's test program, and fail once a sole
 # root is hidden or one marking call is removed and rebuilt in a copy. The
-# same script runs the test host's protection controls: the global-write and
-# string-metatable-readonly oracle scripts fail once the host leaves the
-# globals table or the string metatable writable.
+# same script runs the test host's protection controls: the global-write,
+# string-metatable-readonly and readonly-library-tables oracle scripts fail
+# once the host leaves the globals table or the string metatable writable, or
+# marks only those two and no table reachable from them.
 roots: $(E2E_TEST)
 	@WHITEFOOTC=$(WHITEFOOTC) sh $(ROOT)/research/experiments/halo-gc/controls.sh $(E2E_TEST) $(BUILD)/halo-roots
 

@@ -3,10 +3,11 @@
 # the local root cases pass with every root, and each fails once its sole
 # root is hidden from the collector or one marking call of mark_roots
 # (lib/halo/vm/collect.wf) is removed. The same harness runs the test host's
-# protection controls: the oracle scripts global-write and
-# string-metatable-readonly pass, and fail once the host leaves the globals
-# table or the shared string metatable writable. An expected failure must be
-# detected:
+# protection controls: the oracle scripts global-write,
+# string-metatable-readonly and readonly-library-tables pass, and fail once the
+# host leaves the globals table or the shared string metatable writable, or
+# marks only those two tables and none reachable from them. An expected
+# failure must be detected:
 # every FAIL line must be a reply difference (any reason halo-e2e/run.py's
 # reason() gives, or a budget-dependent reply) or the engine's own setup
 # compile (3), setup runtime (4), budget (5) or host-stop (6) exit; a crash by
@@ -139,4 +140,6 @@ expect 0 globals-read-only compare --binary "$binary" --filter redis-api/global-
 expect 1 globals-writable compare --binary "$binary" --filter redis-api/global-write --budgets 1,7,1000 --omit-global-readonly
 expect 0 string-metatable-read-only compare --binary "$binary" --filter redis-api/string-metatable-readonly --budgets 1,7,1000
 expect 1 string-metatable-writable compare --binary "$binary" --filter redis-api/string-metatable-readonly --budgets 1,7,1000 --omit-string-readonly
+expect 0 library-tables-read-only compare --binary "$binary" --filter redis-api/readonly-library-tables --budgets 1,7,1000
+expect 1 library-tables-writable compare --binary "$binary" --filter redis-api/readonly-library-tables --budgets 1,7,1000 --omit-readonly-recursion
 exit $status

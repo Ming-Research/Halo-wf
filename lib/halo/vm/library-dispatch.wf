@@ -140,8 +140,9 @@ fn library_raw_error(vm: &Vm) -> r: unit writes(vm.library_contexts) {
 }
 
 fn library_call_error_location(vm: &Vm, pc: u64) -> r: unit writes(vm) {
-  doc "Locates luaL_error at the immediate Lua caller's call or metamethod instruction, sharing the caller rule with argument-error names. Native callers and errors raised as luaG_runerror with the native function current (native_raise) keep bare messages.";
+  doc "The error-location step every native call that returned Raised takes exactly once. Locates luaL_error at the immediate Lua caller's call or metamethod instruction, sharing the caller rule with argument-error names. Native callers and errors raised as luaG_runerror with the native function current (native_raise) keep bare messages; the mark describes only the error this call just raised, so it is consumed here, before any other code can run.";
   if vm^.native_raise {
+    set vm^.native_raise = False();
     return unit;
   }
   let caller = lib_call_has_lua_caller(vm: vm);

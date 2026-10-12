@@ -333,7 +333,7 @@ fn raise_text(vm: &Vm, text: &[u8]) -> r: Bool reads(text), writes(vm) {
 }
 
 fn raise_native_text(vm: &Vm, text: &[u8]) -> r: Bool reads(text), writes(vm) {
-  doc "raise_text for ldebug.c luaG_runerror while a native function is the current call, as lapi.c's lua_rawset, lua_rawseti and lua_setmetatable refuse a read-only table: addinfo finds no Lua frame, so library_call_error_location adds no caller location.";
+  doc "raise_text for ldebug.c luaG_runerror while a native function is the current call, as lapi.c's lua_rawset, lua_rawseti and lua_setmetatable refuse a read-only table and luaH_next an invalid key: addinfo finds no Lua frame, so the native call's error-location step adds no caller location. Only a native function's body raises this way, and it returns Raised at once, so the mark lives until that step of the same call, which consumes it.";
   set vm^.native_raise = True();
   return raise_text(vm: vm, text: text);
 }
@@ -643,7 +643,6 @@ fn reset(vm: &Vm, stack: &Box<Slots<Value>>) -> r: unit writes(stack), writes(vm
   set vm^.host_stopped = False();
   set vm^.call_pending = False();
   set vm^.raise_pc = 0_u64;
-  set vm^.native_raise = False();
   let empty = box_slots_new::<Value>(capacity: 0_u64);
   set vm^.stopped_stack = move empty;
   set vm^.error = Value::Nil();

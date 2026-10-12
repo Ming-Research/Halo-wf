@@ -283,7 +283,7 @@ fn enter_lua(vm: &Vm, stack: &Box<Slots<Value>>, h: u32, func: u64, argc: u64, w
 }
 
 fn prepare<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, stack: &Box<Slots<Value>>, env: &E, func: u64, argc: u64, wanted: i64, return_pc: u64, base: u64, kbase: u64, tail: Bool) -> r: Step reads(code), reads(consts), writes(vm), writes(stack), writes(env) {
-  doc "Prepares Lua, native and protected calls while retaining the invoking Lua frame through native tail calls. Each native call starts with native_raise clear, so the mark describes only an error that call raises as luaG_runerror.";
+  doc "Prepares Lua, native and protected calls while retaining the invoking Lua frame through native tail calls.";
   let fslot = func;
   let nargs = argc;
   let nr = wanted;
@@ -318,7 +318,6 @@ fn prepare<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
       }
       Native(id: bound_id_1) => {
         set vm^.cjson_active_config = codec_config;
-        set vm^.native_raise = False();
         if bound_id_1 == 111_u32 {
           let ignored = call_type_error(code: code, consts: consts, vm: vm, v: v, func: fslot, return_pc: return_pc);
           return Step::Error();

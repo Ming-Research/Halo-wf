@@ -3719,7 +3719,7 @@ fn instruction_set_list<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box
       let k = Value::Num(n: x);
       if s < stack^.inner.len {
         let v = stack^.inner[s];
-        set ok = raw_assign(vm: vm, t: t, key: k, v: v);
+        set ok = writable_assign(vm: vm, t: t, key: k, v: v);
       }
       if bnot(ok) {
         break;

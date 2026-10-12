@@ -212,6 +212,7 @@ def main():
     parser.add_argument('--omit-suspended-root', action='store_true', help='negative control: hide the parked snapshot only during the suspended collection probe')
     parser.add_argument('--omit-global-readonly', action='store_true', help='negative control: skip the read-only walk from the globals table')
     parser.add_argument('--omit-string-readonly', action='store_true', help='negative control: skip the read-only walk from the shared string metatable')
+    parser.add_argument('--omit-readonly-recursion', action='store_true', help='negative control: mark only the walks\' roots, the globals table and the string metatable, read-only')
     parser.add_argument('--collect-suspended', action='store_true', help='probe collection while callback stack is parked, before resume')
     parser.add_argument('--gc-stress', action='store_true', help='force full collection at every collector safepoint')
     parser.add_argument('--cases', type=Path, default=ORACLE, help='case root with scripts/GROUP/*.lua and expected/GROUP/*.txt')
@@ -249,7 +250,7 @@ def main():
     report = ['# Halo end-to-end comparison', '',
               f'Local parent revision: `{revision}`. Source digest: `{digest.hexdigest()}`.',
               f'GC stress: {args.gc_stress}; suspended checkpoint probe: {args.collect_suspended}; frame alias isolation: {args.isolate_frames}; parked root omitted: {args.omit_suspended_root}; '
-              f'globals writable: {args.omit_global_readonly}; string metatable writable: {args.omit_string_readonly}.',
+              f'globals writable: {args.omit_global_readonly}; string metatable writable: {args.omit_string_readonly}; reachable tables writable: {args.omit_readonly_recursion}.',
               'The digest includes every Halo module, the graph, host and runner; it identifies uncommitted source bytes too.', '']
     with tempfile.TemporaryDirectory(prefix='halo-e2e-', dir=args.scratch_root) as temporary:
         scratch = Path(temporary)
@@ -294,6 +295,8 @@ def main():
                     extra += ['--omit-global-readonly']
                 if args.omit_string_readonly:
                     extra += ['--omit-string-readonly']
+                if args.omit_readonly_recursion:
+                    extra += ['--omit-readonly-recursion']
                 collections = None
                 try:
                     result, seconds = run([str(binary)] + extra, input=fixture(source))

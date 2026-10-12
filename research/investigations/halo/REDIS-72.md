@@ -155,7 +155,10 @@ LLONG_MAX/2, nan, inf, zeros), so by reading:
   because their only fractional value is 0.1. They do not test the
   shortest-digit rule, and the first does not test INCRBYFLOAT's long double
   sum, which the host computes in double.
-- `string-metatable-readonly` is expected to pass with `halo-embed-protect`,
-  which marks the string metatable read-only through the embedding and
-  locates the refused assignment (`user_script:14:`); unverified until its
-  gate run.
+- `string-metatable-readonly` passes with `halo-embed-protect`, which marks
+  the string metatable read-only through the embedding and locates the
+  refused assignment (`user_script:14:`): it passes at budgets 1, 7 and 1000
+  in gate run
+  [38308617162](https://github.com/Ming-Research/Halo-wf/actions/runs/38308617162)
+  at fcab21e, whose oracle comparison fails only on `number-argument-format`
+  and `double-reply-table`.

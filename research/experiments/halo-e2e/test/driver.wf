@@ -471,8 +471,8 @@ fn push_value(out: &Box<Slots<Value>>, value: Value) -> r: unit writes(out) {
   return unit;
 }
 
-fn protect_reachable(engine: &Engine, root: Value, seen: Value) -> r: Bool writes(engine) {
-  doc "Marks root and every table reachable from it through table values and metatables read-only, as Redis 7.2.16's luaSetTableProtectionRecursively does. Each table is expanded once, only after it is recorded in seen, a host table whose keys are the tables already marked, which stops cycles such as _G._G and is shared between walks. Keys are not followed, as Redis follows only values. Each table's traversal records the keys table_next returned in a fresh host table and stops at the first repeat, so the walk ends after at most one step per stored key even when a table's hash invariants are broken, as when the collector has freed a key still in use; the repeat is refused. False when a call is refused or a traversal repeats a key.";
+fn protect_reachable(engine: &Engine, root: Value, seen: Value, recurse: Bool) -> r: Bool writes(engine) {
+  doc "Marks root and every table reachable from it through table values and metatables read-only, as Redis 7.2.16's luaSetTableProtectionRecursively does. Each table is expanded once, only after it is recorded in seen, a host table whose keys are the tables already marked, which stops cycles such as _G._G and is shared between walks. Keys are not followed, as Redis follows only values. Each table's traversal records the keys table_next returned in a fresh host table and stops at the first repeat, so the walk ends after at most one step per stored key even when a table's hash invariants are broken, as when the collector has freed a key still in use; the repeat is refused. A false recurse marks only root, as a negative control. False when a call is refused or a traversal repeats a key.";
   let ok = True();
   let pending = box_slots_new::<Value>(capacity: 0_u64);
   push_value(out: &pending, value: root);
@@ -500,6 +500,9 @@ fn protect_reachable(engine: &Engine, root: Value, seen: Value) -> r: Bool write
       Err(..) => {
         set ok = False();
       }
+    }
+    if bnot(recurse) {
+      continue;
     }
     let key = Value::Nil();
     let returned = halo::embed::new_table(engine: engine, asize: 0_u32, hsize: 0_u32);
@@ -547,8 +550,8 @@ fn protect_reachable(engine: &Engine, root: Value, seen: Value) -> r: Bool write
   return ok;
 }
 
-fn protect(engine: &Engine, globals_read_only: Bool, strings_read_only: Bool) -> r: Bool writes(engine) {
-  doc "Protects the script environment as Redis 7.2.16's scriptingInit does, through the embedding interface: globals get an __index that rejects undeclared names, then the globals table and every table reachable from it, metatables included, become read-only, then so do the metatables of the basic types (only strings have one) and the tables reachable from them. KEYS and ARGV are left out of the walk and stay writable, as Redis installs them per call after protecting the environment. A false flag skips the walk from the globals, or the walk from the basic types' metatables, as a negative control. False when a call is refused.";
+fn protect(engine: &Engine, globals_read_only: Bool, strings_read_only: Bool, recurse: Bool) -> r: Bool writes(engine) {
+  doc "Protects the script environment as Redis 7.2.16's scriptingInit does, through the embedding interface: globals get an __index that rejects undeclared names, then the globals table and every table reachable from it, metatables included, become read-only, then so do the metatables of the basic types (only strings have one) and the tables reachable from them. KEYS and ARGV are left out of the walk and stay writable, as Redis installs them per call after protecting the environment. A false flag skips the walk from the globals, or the walk from the basic types' metatables, or (recurse) every step of both walks past their roots, as a negative control. False when a call is refused.";
   let ok = True();
   let rejecting_v85 = halo::embed::new_table(engine: engine, asize: 0_u32, hsize: 1_u32);
   let index_v87 = halo::embed::intern(engine: engine, bytes: &s_50[0_u64..7_u64]);
@@ -589,7 +592,7 @@ fn protect(engine: &Engine, globals_read_only: Bool, strings_read_only: Bool) ->
   }
   let seen = halo::embed::new_table(engine: engine, asize: 0_u32, hsize: 0_u32);
   if globals_read_only {
-    let walked = protect_reachable(engine: engine, root: globals_v89, seen: seen);
+    let walked = protect_reachable(engine: engine, root: globals_v89, seen: seen, recurse: recurse);
     if bnot(walked) {
       set ok = False();
     }
@@ -605,7 +608,7 @@ fn protect(engine: &Engine, globals_read_only: Bool, strings_read_only: Bool) ->
       let meta = halo::embed::metatable_of(engine: engine, value: sample);
       let tag = halo::embed::kind(value: meta);
       if tag == 4_u8 {
-        let walked = protect_reachable(engine: engine, root: meta, seen: seen);
+        let walked = protect_reachable(engine: engine, root: meta, seen: seen, recurse: recurse);
         if bnot(walked) {
           set ok = False();
         }
@@ -672,6 +675,7 @@ fn main(inputs: Inputs) -> status: ExitStatus pure waits {
   let recover = False();
   let globals_read_only = True();
   let strings_read_only = True();
+  let readonly_recursion = True();
   let omit_refresh = 0_u8;
   let positional = 0_u64;
   for (index in 1_u64..modes) {
@@ -689,6 +693,8 @@ fn main(inputs: Inputs) -> status: ExitStatus pure waits {
       set globals_read_only = False();
     } else if argument_is(args: &args_v99, index: index, text: &string_readonly_option[0_u64..22_u64]) {
       set strings_read_only = False();
+    } else if argument_is(args: &args_v99, index: index, text: &recursion_readonly_option[0_u64..25_u64]) {
+      set readonly_recursion = False();
     } else if argument_is(args: &args_v99, index: index, text: &pin_refresh_option[0_u64..18_u64]) {
       set omit_refresh = 1_u8;
     } else if argument_is(args: &args_v99, index: index, text: &compile_refresh_option[0_u64..22_u64]) {
@@ -762,7 +768,7 @@ fn main(inputs: Inputs) -> status: ExitStatus pure waits {
       }
     }
   }
-  let protected_env = protect(engine: &engine_v114, globals_read_only: globals_read_only, strings_read_only: strings_read_only);
+  let protected_env = protect(engine: &engine_v114, globals_read_only: globals_read_only, strings_read_only: strings_read_only, recurse: readonly_recursion);
   if bnot(protected_env) {
     return std::process::exit_status(code: 4_u8);
   }
@@ -880,6 +886,8 @@ const stress_option: Array<u8, 11> = "--gc-stress";
 const global_readonly_option: Array<u8, 22> = "--omit-global-readonly";
 
 const string_readonly_option: Array<u8, 22> = "--omit-string-readonly";
+
+const recursion_readonly_option: Array<u8, 25> = "--omit-readonly-recursion";
 
 const keys_name: Array<u8, 4> = "KEYS";
 

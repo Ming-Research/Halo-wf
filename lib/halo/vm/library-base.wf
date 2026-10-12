@@ -328,7 +328,8 @@ fn library_base<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<V
         }
       }
       Err(..) => {
-        return lib_failure(vm: vm, text: &library_base_lib_text_16[0_u64..21_u64]);
+        let ignored = raise_native_text(vm: vm, text: &library_base_lib_text_16[0_u64..21_u64]);
+        return HostOutcome::Raised();
       }
     }
   }
