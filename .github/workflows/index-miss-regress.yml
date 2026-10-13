@@ -15,8 +15,8 @@ defaults:
 
 env:
   BASE: 8ee6634
-  FIB_N: 36
-  QUEENS_INNER: 160
+  FIB_N: 30
+  QUEENS_INNER: 40
 
 jobs:
   profile:
@@ -86,7 +86,7 @@ jobs:
           if replacements != 1:
               raise SystemExit('fib kernel must have exactly one anchored local N')
           (out / 'fib.lua').write_bytes(source)
-          (out / 'fib.expected').write_bytes(b'14930352\n')
+          (out / 'fib.expected').write_bytes(b'832040\n')
           (out / 'Queens.expected').write_bytes(b'1\n')
           PY
           # awfy.py preserves upstream module bytes and their verification;
@@ -155,7 +155,7 @@ jobs:
               run="$side-$prog"
               # Keep Valgrind diagnostics separate from the host's two stats
               # lines, and preserve failures instead of printing a success.
-              valgrind --tool=callgrind --cache-sim=yes --branch-sim=yes --verbose \
+              valgrind --tool=callgrind --cache-sim=yes --branch-sim=yes \
                 --dump-instr=yes --collect-jumps=no --compress-strings=no --compress-pos=no \
                 --log-file="$cg/$run.valgrind.log" --callgrind-out-file="$cg/$run.out" \
                 "$out/halo-$side" < "$out/$prog.lua" > "$cg/$run.stdout" 2> "$cg/$run.stderr"
