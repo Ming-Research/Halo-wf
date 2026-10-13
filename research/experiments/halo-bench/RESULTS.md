@@ -6621,8 +6621,8 @@ savings become time.
 
 ## Fast hit paths for SelfK and GetGlobal
 
-Status: not yet measured. The falsifier and keep rule below are recorded
-before any measurement.
+Status: measured and kept (see Result). The falsifier and keep rule below
+were recorded before any measurement.
 
 Question: do raw-hit paths for `SelfK` and `GetGlobal` that continue the
 dispatch loop directly remove enough instructions to make Towers faster?
