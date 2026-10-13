@@ -3449,7 +3449,9 @@ fn instruction_return<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   } else {
     set count = b - 1_u64;
   }
-  close_upvalues(vm: vm, stack: stack, level: base);
+  if base < vm^.open_limit {
+    close_upvalues(vm: vm, stack: stack, level: base);
+  }
   if vm^.frames.inner.len == 0_u64 {
     return Step::Done(count: count);
   }

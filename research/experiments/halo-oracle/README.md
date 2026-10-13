@@ -7,8 +7,8 @@ Halo's `make check-core` compares the corpus through the `oracle` target;
 recording reference replies remains the job of
 [oracle-reference.yml](../../../.github/workflows/oracle-reference.yml).
 
-There are 165 scripts: 71 `lua-core`, 39 `redis-api`, 6 `apps`, 13 `libs`,
-and 36 `coroutines`.
+There are 166 scripts: 71 `lua-core`, 39 `redis-api`, 6 `apps`, 13 `libs`,
+and 37 `coroutines`.
 The scripts, replies and runner belong here until the oracle is replaced or
 Halo/firn scripting is retired. Each case is consumed by `run.sh`; the table
 below is the index of the observations it protects.
@@ -231,6 +231,7 @@ report rather than being counted as detected by a probe alone.
 | coroutines | [main-open-capture](scripts/coroutines/main-open-capture.lua) | Children write a main-chunk local through the same open capture while main is their normal resumer. |
 | coroutines | [mixed-resume-depth](scripts/coroutines/mixed-resume-depth.lua) | pcall, sort, gsub and protected callback combinations inserted at resume depths 190 and 197 expose their contribution to the C-depth limit. |
 | coroutines | [nested-resume-depth](scripts/coroutines/nested-resume-depth.lua) | Nested resumes reach the reference's own limit and report the reached depth and caught error text. |
+| coroutines | [open-limit-per-execution](scripts/coroutines/open-limit-per-execution.lua) | A returning function's open capture is still closed when a yielded coroutine holds a higher open capture and a finished one closed its own, so the returned closure survives the caller's overwrite of the frame; guards the open limit being kept per execution. |
 | coroutines | [redis-call-in-coroutine](scripts/coroutines/redis-call-in-coroutine.lua) | Redis reads and writes inside a coroutine survive yields and target declared keys. |
 | coroutines | [redis-resumer-callbacks](scripts/coroutines/redis-resumer-callbacks.lua) | Children resumed by sort and gsub callbacks perform Redis success, caught and uncaught command failure, redis.pcall and yield/return. |
 | coroutines | [refused-resume-state](scripts/coroutines/refused-resume-state.lua) | A resume refused at the nested-resume limit leaves a never-started coroutine dead and a yielded one suspended; later resumes see each state. |

@@ -235,7 +235,9 @@ fn enter_lua(vm: &Vm, stack: &Box<Slots<Value>>, h: u32, func: u64, argc: u64, w
           if vm^.frames.inner.len > 0_u64 {
             let old = take_back(window: &vm^.frames.inner);
             let ob = old.base;
-            close_upvalues(vm: vm, stack: stack, level: ob);
+            if ob < vm^.open_limit {
+              close_upvalues(vm: vm, stack: stack, level: ob);
+            }
             set dest = old.func;
             set results = old.nresults;
             set rp = old.return_pc;

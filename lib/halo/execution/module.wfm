@@ -132,6 +132,7 @@ public struct Execution {
   public resume_call: CoroutineCall;
   public yield_call: CoroutineCall;
   public c_depth: u32;
+  public open_limit: u64;
 }
 
 public fn empty() -> r: Execution pure contract {

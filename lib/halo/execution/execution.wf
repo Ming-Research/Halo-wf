@@ -31,7 +31,7 @@ fn empty() -> r: Execution pure contract {
   let plan = CallbackPlan(pc: 0_u64, base: 0_u64, kbase: 0_u64, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: no);
   let pending = PendingCall(id: 0_u32, argc: 0_u64, func: 0_u64, wanted: 0_i64, return_pc: 0_u64, base: 0_u64, kbase: 0_u64, tail: no, activation: 0_u32, top: 0_u64);
   let transfer = coroutine_call_empty();
-  return Execution(stack: move stack, frames: move frames, open_upvalues: move open_upvalues, pattern_subs: move pattern_subs, library_contexts: move library_contexts, sort_frames: move sort_frames, callbacks: move callbacks, stopped_stack: move stopped_stack, top: 0_u64, saved_pc: 0_u64, saved_base: 0_u64, saved_kbase: 0_u64, error: nil, activation: 0_u32, callback_plan: plan, suspended: no, pending: pending, call_pending: no, raise_pc: 0_u64, host_stopped: no, post_catch: 18446744073709551615_u64, cjson_active_config: 0_u64, transfer_kind: 0_u8, transfer: transfer, resume_call: transfer, yield_call: transfer, c_depth: 0_u32);
+  return Execution(stack: move stack, frames: move frames, open_upvalues: move open_upvalues, pattern_subs: move pattern_subs, library_contexts: move library_contexts, sort_frames: move sort_frames, callbacks: move callbacks, stopped_stack: move stopped_stack, top: 0_u64, saved_pc: 0_u64, saved_base: 0_u64, saved_kbase: 0_u64, error: nil, activation: 0_u32, callback_plan: plan, suspended: no, pending: pending, call_pending: no, raise_pc: 0_u64, host_stopped: no, post_catch: 18446744073709551615_u64, cjson_active_config: 0_u64, transfer_kind: 0_u8, transfer: transfer, resume_call: transfer, yield_call: transfer, c_depth: 0_u32, open_limit: 0_u64);
 }
 
 fn storage_bytes(execution: &Execution) -> r: u64 reads(execution) {

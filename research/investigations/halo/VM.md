@@ -139,9 +139,12 @@ object kind is a `Box<Slots<Cell>>` with a free list; a cell is
   The hash part is revised to PUC's own (open ruling H1).
 - **Closures** `{ proto: u32; upvals }`; prototypes belong to the compiled
   script and die with `SCRIPT FLUSH`.
-- **Upvalues** `enum Upval { Open(slot: u64); Closed(v: Value) }`; the open
-  ones are kept sorted by slot and closed by `CLOSE`, `RETURN` and error
-  unwinding.
+- **Upvalues** `enum Upval { Open(owner: u32, slot: u64); Closed(v: Value) }`,
+  where `owner` is the thread cell whose stack holds the slot; each execution
+  lists its open cells sorted by slot, highest first, and closes them on
+  `CLOSE`, `RETURN`, a tail call's frame pop and error unwinding. A return
+  skips the close when its frame base is at or above the execution's open
+  limit (see the open-upvalues section at the end).
 
 Collector: stop-the-world mark and sweep with an explicit gray stack and
 epoch marks (E1). Roots: the stack below the current frame's
@@ -428,9 +431,12 @@ H3 is a Whitefoot checker gap kept in Whitefoot's `docs/todo.md`.
   program is sound, so this is a precision gap, recorded in docs/todo.md.
   Slice 1 does not depend on it.
 
-## Open upvalues: a cheaper nothing-to-close test (proposal)
+## Open upvalues: a cheaper nothing-to-close test (implemented on the branch claude/halo-return-frame, pending the owner's card)
 
-Status: proposal, not measured, not in the design tree.
+Status: P3 below is implemented on that branch (`open_limit` in the execution
+record and the `Vm`; the `RETURN` arm and a Lua tail call's frame pop test it).
+It is not measured and not in the design tree; the owner's card and the
+measurement decide whether it stays.
 
 Problem. Callgrind of fib(32) at main `56878ac` (hosted x86-64, full LTO;
 [A cheaper Lua return](../../experiments/halo-bench/RESULTS.md#a-cheaper-lua-return))
