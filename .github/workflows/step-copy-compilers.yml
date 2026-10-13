@@ -1,0 +1,325 @@
+# Temporary, on this branch only: removed before the branch is ready. Board
+# item halo-beat-puc-work. It tests Whitefoot#408 (call results reuse a
+# by-copy argument's storage): fib(30) on the 14900K pays a failed store
+# forward once per Lua call because ed0dc3b's `let entered = enter_lua(...);
+# set step = entered` in the CALL and TAILCALL arms makes the 32-byte Step
+# land in a stack temporary written as four 8-byte stores and copied with a
+# 16-byte load across two of them. One Halo bench host, this branch's head
+# (lib/ equals bb2a10f), is built twice with full LTO: `pinned` by the
+# compiler whitefoot.pin names (wf-d837678c6905) and `exp` by the experimental
+# release wf-exp-1e2d6fa09265 of the Whitefoot#408 change; `twin` is a byte
+# copy of the pinned binary, the noise control. perf stat counts user-space
+# events of fib(30) on P-core CPU 2, five interleaved rounds, in two event
+# sets so that no counter multiplexes. Predicted: ld_blocks.store_forward per
+# Lua call 4.0 with pinned, about 3.0 with exp, and twin equal to pinned.
+name: step-copy-compilers
+
+on:
+  push:
+    branches: [claude/halo-beat-puc-fib]
+    paths:
+      - .github/workflows/step-copy-compilers.yml
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  SLOW_LIB: bb2a10f
+  EXP_RELEASE: wf-exp-1e2d6fa09265
+  FIB_N: 30
+  ROUNDS: 5
+  CPU: 2
+  # Two event sets, each at most four general-purpose counters plus the fixed
+  # cycles and instructions counters, measured in separate runs rather than
+  # multiplexed; duration_time is perf's wall clock and takes no counter.
+  EVENTS_A: cpu_core/cycles/u,cpu_core/instructions/u,cpu_core/ld_blocks.store_forward/u,cpu_core/br_misp_retired.all_branches/u,duration_time
+  EVENTS_B: cpu_core/cycles/u,cpu_core/instructions/u,cpu_core/frontend_retired.dsb_miss/u,cpu_core/idq.dsb_uops/u,cpu_core/idq.mite_uops/u,duration_time
+
+jobs:
+  compare:
+    runs-on: [self-hosted, 14900k]
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Check perf and every event on CPU 2
+        run: |
+          set -uo pipefail
+          out="$PWD/build/step-copy"
+          rm -rf "$out"; mkdir -p "$out/perf" "$out/preflight"
+          if ! perf --version; then
+            echo "::error::perf is missing or does not match the running kernel $(uname -r); the runner needs perf installed for it"
+            exit 1
+          fi
+          paranoid=$(cat /proc/sys/kernel/perf_event_paranoid 2>/dev/null || echo unknown)
+          {
+            perf --version
+            echo "kernel $(uname -r), kernel.perf_event_paranoid = $paranoid (counting user space of an own process needs 2 or lower)"
+            echo "cpu_core PMU CPUs: $(cat /sys/devices/cpu_core/cpus 2>/dev/null || echo 'no cpu_core PMU')"
+            echo "cpu_atom PMU CPUs: $(cat /sys/devices/cpu_atom/cpus 2>/dev/null || echo 'no cpu_atom PMU')"
+            echo "nmi_watchdog: $(cat /proc/sys/kernel/nmi_watchdog 2>/dev/null || echo unknown)"
+          } | tee "$out/preflight/perf.txt"
+          perf list --no-desc > "$out/preflight/perf-list.txt" 2>&1 || perf list > "$out/preflight/perf-list.txt" 2>&1 || true
+          IFS=, read -ra events <<< "$EVENTS_A,$EVENTS_B"
+          for ev in $(printf '%s\n' "${events[@]}" | sort -u); do
+            bare=${ev#cpu_core/}; bare=${bare%%/*}
+            listed=$(grep -ciwF -- "$bare" "$out/preflight/perf-list.txt" || true)
+            if taskset -c "$CPU" perf stat -x, -o "$out/preflight/one.csv" -e "$ev" -- true 2> "$out/preflight/one.err" \
+               && ! grep -qE '<not supported>|<not counted>' "$out/preflight/one.csv"; then
+              echo "ok      $ev (perf list lines naming it: $listed): $(grep -v '^#' "$out/preflight/one.csv" | grep -v '^$' | head -n 1)"
+            else
+              echo "MISSING $ev (perf list lines naming it: $listed)"
+              cat "$out/preflight/one.err" "$out/preflight/one.csv" 2>/dev/null | sed 's/^/        /'
+            fi
+          done | tee "$out/preflight/events.txt"
+          missing=$( (grep '^MISSING' "$out/preflight/events.txt" || true) | awk '{print $2}' | tr '\n' ' ')
+          for es in A B; do
+            var="EVENTS_$es"
+            taskset -c "$CPU" perf stat -x, -o "$out/preflight/set-$es.csv" -e "${!var}" -- true 2>&1 || true
+            echo "== event set $es on true"; cat "$out/preflight/set-$es.csv"
+          done
+          if [ -n "$missing" ]; then
+            echo "== perf list entries near the missing events"
+            grep -iE 'cycle_activity|memory_activity|ld_blocks|frontend_retired\.dsb|idq\.(dsb|mite)|br_misp_retired' "$out/preflight/perf-list.txt" | sort -u | head -n 60
+            echo "::error::perf cannot count on CPU $CPU:$missing (kernel.perf_event_paranoid = $paranoid); change EVENTS_A or EVENTS_B, or the runner's perf setup"
+            exit 1
+          fi
+
+      - name: Check the source and record the revisions
+        run: |
+          set -euo pipefail
+          out="$PWD/build/step-copy"
+          # The bench host is built from the checkout itself, whose Halo source
+          # and bench host must equal bb2a10f's.
+          if ! git diff --quiet "$SLOW_LIB" HEAD -- lib/ research/experiments/halo-bench/; then
+            git diff --stat "$SLOW_LIB" HEAD -- lib/ research/experiments/halo-bench/
+            echo "::error::lib/ or the bench host differs between $SLOW_LIB and HEAD"
+            exit 1
+          fi
+          {
+            echo "source    $(git rev-parse HEAD) (lib/ and bench host equal $(git rev-parse "$SLOW_LIB"))"
+            echo "pinned    $(tr '\n' ' ' < whitefoot.pin)"
+            echo "exp       release = $EXP_RELEASE"
+          } | tee "$out/manifest.txt"
+
+      - name: Build the bench host with both compilers and full LTO, and copy the pinned binary
+        run: |
+          set -euo pipefail
+          out="$PWD/build/step-copy"
+          # The pinned release comes from whitefoot.pin. The experimental one
+          # is fetched and verified by the same make target (downloaded from
+          # the release, checked against its SHA256SUMS and manifest), with
+          # RELEASE overridden on the command line as downstream.md's trial of
+          # an unmerged change does it in CI, and downloads to its own
+          # directory; whitefoot.pin stays as it is.
+          make compiler
+          make toolchain-check
+          make compiler RELEASE="$EXP_RELEASE"
+          make toolchain-check RELEASE="$EXP_RELEASE"
+          pinned_release=$(sed -n 's/^release = //p' whitefoot.pin)
+          wfc_pinned="$PWD/build/whitefoot/$pinned_release/whitefootc"
+          wfc_exp="$PWD/build/whitefoot/$EXP_RELEASE/whitefootc"
+          test -x "$wfc_pinned" && test -x "$wfc_exp"
+          test "$wfc_pinned" != "$wfc_exp"
+          # Same source on both sides; only the compiler differs. The two
+          # builds run at once, each with its own TMPDIR and log; nothing is
+          # timed while they run.
+          declare -A pids
+          for side in pinned exp; do
+            wfc="$wfc_pinned"; [ "$side" = exp ] && wfc="$wfc_exp"
+            tmp="$PWD/build/sf-tmp/$side"; mkdir -p "$tmp"
+            (
+              start=$SECONDS
+              status=0
+              TMPDIR="$tmp" "$wfc" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-$side" \
+                > "$out/build-$side.log" 2>&1 || status=$?
+              echo "$side full-LTO build: exit $status, $((SECONDS - start)) s" > "$out/build-$side.time"
+              exit $status
+            ) &
+            pids[$side]=$!
+          done
+          failed=0
+          for side in pinned exp; do
+            wait "${pids[$side]}" || failed=1
+            cat "$out/build-$side.time" 2>/dev/null || echo "$side build: no timing (the build shell stopped early)"
+          done
+          if [ "$failed" != 0 ]; then
+            for side in pinned exp; do echo "== build $side"; tail -n 40 "$out/build-$side.log"; done
+            exit 1
+          fi
+          # The twin control: the same bytes under another name.
+          cp "$out/halo-pinned" "$out/halo-twin"
+          cmp "$out/halo-pinned" "$out/halo-twin"
+          {
+            echo "compilers pinned $pinned_release, exp $EXP_RELEASE"
+            cat "$out"/build-*.time
+            sha256sum "$wfc_pinned" "$wfc_exp" "$out"/halo-*
+            cmp -s "$out/halo-pinned" "$out/halo-exp" && echo "pinned and exp binaries are identical" || echo "pinned and exp binaries differ"
+            /usr/bin/clang --version | head -n 1
+            uname -a
+          } | tee -a "$out/manifest.txt"
+
+      - name: Check every binary prints fib(30)
+        run: |
+          set -euo pipefail
+          out="$PWD/build/step-copy"
+          sed -n '1p' research/experiments/halo-bench/kernels/fib.lua | grep -qx "local N = $FIB_N"
+          cp research/experiments/halo-bench/kernels/fib.lua "$out/fib.lua"
+          expected=$(python3 -c "a,b=0,1
+          for _ in range($FIB_N): a,b=b,a+b
+          print(a)")
+          for side in pinned exp twin; do
+            taskset -c "$CPU" "$out/halo-$side" < "$out/fib.lua" > "$out/check-$side.out" 2> "$out/check-$side.err"
+            echo "expected $expected; $side $(cat "$out/check-$side.out"); stderr: $(tr '\n' ' ' < "$out/check-$side.err")"
+            test "$(cat "$out/check-$side.out")" = "$expected"
+          done
+
+      - name: Count events, five interleaved rounds on CPU 2
+        run: |
+          set -euo pipefail
+          out="$PWD/build/step-copy"
+          expected=$(cat "$out/check-pinned.out")
+          # The 14900K is a hybrid part (P-cores CPU 0-15, E-cores 16-31): perf
+          # and the measured process run on one ordinary P-core thread.
+          lscpu -e=CPU,CORE,MAXMHZ > "$out/lscpu.txt" 2>&1 || true
+          cat /sys/devices/system/cpu/cpufreq/policy*/scaling_governor 2>/dev/null | sort | uniq -c > "$out/governor.txt" || true
+          { echo "measured with: taskset -c $CPU perf stat -x, -e <set> -- halo-<side> < fib.lua"; cat "$out/governor.txt"; } | tee -a "$out/manifest.txt"
+          bins=(pinned exp twin)
+          : > "$out/perf/order.txt"
+          for round in $(seq 1 "$ROUNDS"); do
+            # Rotate the order each round so no binary always runs first.
+            rot=$(( (round - 1) % ${#bins[@]} ))
+            order=("${bins[@]:rot}" "${bins[@]:0:rot}")
+            for es in A B; do
+              var="EVENTS_$es"
+              for side in "${order[@]}"; do
+                f="$out/perf/$side-$es-$round"
+                taskset -c "$CPU" perf stat -x, -o "$f.csv" -e "${!var}" -- "$out/halo-$side" < "$out/fib.lua" > "$f.out" 2> "$f.err" \
+                  || { echo "::error::perf stat of $side round $round set $es failed"; cat "$f.err"; exit 1; }
+                if [ "$(cat "$f.out")" != "$expected" ]; then
+                  echo "::error::$side round $round set $es printed $(cat "$f.out")"
+                  exit 1
+                fi
+                echo "$round $es $side" >> "$out/perf/order.txt"
+              done
+            done
+          done
+          echo "$(wc -l < "$out/perf/order.txt") runs"
+
+      - name: Summarise per binary and per Lua call
+        run: |
+          set -euo pipefail
+          out="$PWD/build/step-copy"
+          calls=$(python3 -c "a,b=0,1
+          for _ in range($FIB_N + 1): a,b=b,a+b
+          print(2 * a - 1)")
+          cat > "$out/summarise.py" <<'PY'
+          # Medians, per-Lua-call values and ratios to pinned of perf stat's CSV
+          # output. Lives only in this temporary workflow.
+          import csv, json, statistics, sys
+
+          out, calls, rounds, fib_n = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), sys.argv[4]
+          bins = ['pinned', 'exp', 'twin']
+          rows = [
+              ('wall time s', 'A', 'duration_time', 1e-9),
+              ('cycles', 'A', 'cycles', 1),
+              ('instructions', 'A', 'instructions', 1),
+              ('ld_blocks.store_forward', 'A', 'ld_blocks.store_forward', 1),
+              ('br_misp_retired.all_branches', 'A', 'br_misp_retired.all_branches', 1),
+              ('wall time s (set B)', 'B', 'duration_time', 1e-9),
+              ('cycles (set B)', 'B', 'cycles', 1),
+              ('instructions (set B)', 'B', 'instructions', 1),
+              ('frontend_retired.dsb_miss', 'B', 'frontend_retired.dsb_miss', 1),
+              ('idq.dsb_uops', 'B', 'idq.dsb_uops', 1),
+              ('idq.mite_uops', 'B', 'idq.mite_uops', 1),
+          ]
+
+          def key(event):
+              event = event.strip()
+              if event.startswith('cpu_core/'):
+                  event = event[len('cpu_core/'):]
+              return event.split('/')[0].split(':')[0]
+
+          values, notes = {}, []
+          for b in bins:
+              for s in 'AB':
+                  for r in range(1, rounds + 1):
+                      with open(f'{out}/perf/{b}-{s}-{r}.csv') as f:
+                          for row in csv.reader(f):
+                              if len(row) < 3 or row[0].startswith('#'):
+                                  continue
+                              try:
+                                  v = float(row[0])
+                              except ValueError:
+                                  notes.append(f'{b} set {s} round {r}: {row[2]} reads {row[0]}')
+                                  continue
+                              pct = row[4].strip() if len(row) > 4 else ''
+                              if key(row[2]) != 'duration_time' and pct and float(pct) < 100.0:
+                                  notes.append(f'{b} set {s} round {r}: {row[2]} counted {pct}% of the run (multiplexed)')
+                              values.setdefault(f'{b}|{s}|{key(row[2])}', []).append(v)
+
+          def med(b, s, e):
+              vs = values.get(f'{b}|{s}|{e}', [])
+              return statistics.median(vs) if len(vs) == rounds else None
+
+          def fmt(x, digits=0):
+              if x is None:
+                  return 'n/a'
+              return f'{x:,.{digits}f}'
+
+          lines = [f'## Store-forwarding counters of two compilers, fib({fib_n}) = {calls:,} Lua calls, {rounds} interleaved rounds on CPU 2', '']
+          with open(f'{out}/manifest.txt') as f:
+              lines += ['```', f.read().rstrip(), '```', '']
+          lines += ['Predicted: ld_blocks.store_forward per Lua call 4.0 with pinned and about 3.0 with exp; '
+                    'twin equal to pinned within the spread; the other counters about equal.', '']
+          lines += ['### Median per binary', '', '| counter | ' + ' | '.join(bins) + ' |', '|---|' + '---:|' * len(bins)]
+          for label, s, e, scale in rows:
+              cells = [fmt(None if med(b, s, e) is None else med(b, s, e) * scale, 4 if scale != 1 else 0) for b in bins]
+              lines.append(f'| {label} | ' + ' | '.join(cells) + ' |')
+          lines += ['', '### Per Lua call (time in ns), and difference from pinned', '',
+                    '| counter | ' + ' | '.join(bins) + ' | exp − pinned | twin − pinned |', '|---|' + '---:|' * (len(bins) + 2)]
+          for label, s, e, scale in rows:
+              unit = 1e9 * scale if scale != 1 else 1
+              per = {b: (None if med(b, s, e) is None else med(b, s, e) * unit / calls) for b in bins}
+              diff = [None if per[b] is None or per['pinned'] is None else per[b] - per['pinned'] for b in bins[1:]]
+              lines.append(f'| {label} | ' + ' | '.join(fmt(per[b], 3) for b in bins) + ' | ' + ' | '.join(fmt(d, 3) for d in diff) + ' |')
+          lines += ['', '### Ratio to pinned (median / pinned median)', '', '| counter | ' + ' | '.join(bins[1:]) + ' |', '|---|' + '---:|' * 2]
+          for label, s, e, scale in rows:
+              f0 = med('pinned', s, e)
+              cells = ['n/a' if f0 in (None, 0) or med(b, s, e) is None else f'{med(b, s, e) / f0:.3f}' for b in bins[1:]]
+              lines.append(f'| {label} | ' + ' | '.join(cells) + ' |')
+          lines += ['', '### Spread over the rounds ((max − min) / median, %)', '', '| counter | ' + ' | '.join(bins) + ' |', '|---|' + '---:|' * len(bins)]
+          for label, s, e, scale in rows:
+              cells = []
+              for b in bins:
+                  vs = values.get(f'{b}|{s}|{e}', [])
+                  m = statistics.median(vs) if vs else 0
+                  cells.append('n/a' if not vs or m == 0 else f'{100 * (max(vs) - min(vs)) / m:.1f}')
+              lines.append(f'| {label} | ' + ' | '.join(cells) + ' |')
+          lines += ['', '### Counting notes', '']
+          lines += [f'- {n}' for n in notes] or ['- every counter counted for the whole run (no multiplexing) and every read was a number']
+          text = '\n'.join(lines) + '\n'
+          with open(f'{out}/summary.md', 'w') as f:
+              f.write(text)
+          with open(f'{out}/values.json', 'w') as f:
+              json.dump({'calls': calls, 'rounds': rounds, 'values': values}, f, indent=1, sort_keys=True)
+          print(text)
+          PY
+          python3 -I "$out/summarise.py" "$out" "$calls" "$ROUNDS" "$FIB_N"
+          cat "$out/summary.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: halo-step-copy-compilers
+          path: build/step-copy/
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Remove the scratch build directories
+        if: always()
+        run: rm -rf build/sf-tmp
