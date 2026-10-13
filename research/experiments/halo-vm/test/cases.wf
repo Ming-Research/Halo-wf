@@ -1186,7 +1186,269 @@ fn suite() -> r: ExitStatus pure {
   if string_table_failed {
     return exit_status(code: 23_u8);
   }
+  let fast_hits = fixture_self_global_hits(budget: unlimited);
+  if bnot(fast_hits) {
+    return exit_status(code: 24_u8);
+  }
+  let fast_hits_finite = fixture_self_global_hits(budget: 1_u64);
+  if bnot(fast_hits_finite) {
+    return exit_status(code: 25_u8);
+  }
+  let lookup_misses = fixture_self_global_misses(budget: unlimited);
+  if bnot(lookup_misses) {
+    return exit_status(code: 26_u8);
+  }
+  let lookup_misses_finite = fixture_self_global_misses(budget: 1_u64);
+  if bnot(lookup_misses_finite) {
+    return exit_status(code: 27_u8);
+  }
   return exit_status(code: 0_u8);
+}
+
+fn table_is(stack: &Box<Slots<Value>>, slot: u64, expected: Value) -> r: Bool reads(stack) {
+  if slot < stack^.inner.len {
+    match tab_of(v: stack^.inner[slot]) {
+      Handle(h: actual) => {
+        match tab_of(v: expected) {
+          Handle(h: wanted) => {
+            return actual == wanted;
+          }
+          NoHandle() => {
+          }
+        }
+      }
+      NoHandle() => {
+      }
+    }
+  }
+  return False();
+}
+
+fn fixture_self_global_hits(budget: u64) -> r: Bool pure {
+  doc "PUC Lua 5.1 lvm.c OP_SELF saves the original receiver before writing the method; luaV_gettable accepts every non-nil raw value, including false. Halo charges no budget for SELF or GETGLOBAL. The two SELF overlaps are A=B and A+1=B; numeric keys exercise generic lookup, and the wide global uses constant 256.";
+  let vm = halo::vm::vm_new(limit: 67108864_u64);
+  let stack = halo::vm::stack_new(size: 1024_u64);
+  let no = False();
+  let env = Env(stopped: no, mode: 0_u8, calls: 0_u64, last_func: 0_u64, last_len: 0_u64);
+  let code = box_slots_new::<Cell>(capacity: 16_u64);
+  let consts = box_slots_new::<Value>(capacity: 512_u64);
+  let protos = box_slots_new::<Proto>(capacity: 1_u64);
+  let lines = box_slots_new::<u32>(capacity: 0_u64);
+  let key = halo::heap::intern(heap: &vm.heap, bytes: &text_1[0_u64..3_u64]);
+  let false_key = halo::heap::intern(heap: &vm.heap, bytes: &text_3[0_u64..1_u64]);
+  let wide_key = halo::heap::intern(heap: &vm.heap, bytes: &text_2[0_u64..6_u64]);
+  let numeric_key = Value::Num(n: 1.0_f64);
+  let receiver = halo::heap::new_table(heap: &vm.heap, asize: 1_u32, hsize: 4_u32);
+  let globals = Value::Tab(h: vm.globals);
+  let meta = halo::heap::new_table(heap: &vm.heap, asize: 0_u32, hsize: 2_u32);
+  let index_key = halo::heap::intern(heap: &vm.heap, bytes: &text_4[0_u64..7_u64]);
+  let unexpected_callback = Value::Builtin(id: 4096_u32);
+  raw(vm: &vm, t: meta, key: index_key, val: unexpected_callback);
+  attach(vm: &vm, t: receiver, mt: meta);
+  attach(vm: &vm, t: globals, mt: meta);
+  let answer = Value::Num(n: 42.0_f64);
+  let false_value = Value::False();
+  let numeric_answer = Value::Num(n: 9.0_f64);
+  let wide_answer = Value::Num(n: 73.0_f64);
+  raw(vm: &vm, t: receiver, key: key, val: answer);
+  raw(vm: &vm, t: receiver, key: false_key, val: false_value);
+  raw(vm: &vm, t: receiver, key: numeric_key, val: numeric_answer);
+  raw(vm: &vm, t: globals, key: key, val: answer);
+  raw(vm: &vm, t: globals, key: false_key, val: false_value);
+  raw(vm: &vm, t: globals, key: numeric_key, val: numeric_answer);
+  raw(vm: &vm, t: globals, key: wide_key, val: wide_answer);
+  put_const(consts: &consts, value: receiver);
+  put_const(consts: &consts, value: key);
+  put_const(consts: &consts, value: false_key);
+  put_const(consts: &consts, value: numeric_key);
+  for (i in 4_u64..256_u64) {
+    let nil = Value::Nil();
+    put_const(consts: &consts, value: nil);
+  }
+  put_const(consts: &consts, value: wide_key);
+  let c0 = Cell::LoadK(a: 0_u8, k: 0_u8);
+  let c1 = Cell::SelfK(a: 0_u8, b: 0_u8, k: 1_u8);
+  let c2 = Cell::LoadK(a: 3_u8, k: 0_u8);
+  let c3 = Cell::SelfK(a: 2_u8, b: 3_u8, k: 1_u8);
+  let c4 = Cell::LoadK(a: 4_u8, k: 0_u8);
+  let c5 = Cell::SelfK(a: 4_u8, b: 4_u8, k: 2_u8);
+  let c6 = Cell::LoadK(a: 7_u8, k: 0_u8);
+  let c7 = Cell::SelfK(a: 6_u8, b: 7_u8, k: 3_u8);
+  let c8 = Cell::GetGlobal(a: 8_u8, k: 1_u8);
+  let c9 = Cell::GetGlobal(a: 9_u8, k: 2_u8);
+  let c10 = Cell::GetGlobal(a: 10_u8, k: 3_u8);
+  let c11 = Cell::GetGlobalX(a: 11_u8, k: 256_u32);
+  let c12 = Cell::GetGlobalX(a: 12_u8, k: 2_u32);
+  let c13 = Cell::Return(a: 0_u8, b: 14_u8);
+  put_code(code: &code, cell: c0);
+  put_code(code: &code, cell: c1);
+  put_code(code: &code, cell: c2);
+  put_code(code: &code, cell: c3);
+  put_code(code: &code, cell: c4);
+  put_code(code: &code, cell: c5);
+  put_code(code: &code, cell: c6);
+  put_code(code: &code, cell: c7);
+  put_code(code: &code, cell: c8);
+  put_code(code: &code, cell: c9);
+  put_code(code: &code, cell: c10);
+  put_code(code: &code, cell: c11);
+  put_code(code: &code, cell: c12);
+  put_code(code: &code, cell: c13);
+  put_proto(protos: &protos, start: 0_u32, params: 0_u8, vararg: no, ups: 0_u8, maxstack: 13_u8);
+  let debug_names = box_slots_new::<u8>(capacity: 0_u64);
+  let local_variables = box_slots_new::<LocalVariable>(capacity: 0_u64);
+  let upvalue_names = box_slots_new::<DebugName>(capacity: 0_u64);
+  let source = chunk_source();
+  let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source, debug_names: move debug_names, local_variables: move local_variables, upvalue_names: move upvalue_names);
+  let out = halo::vm::start::<TestHost>(script: &script, stack: &stack, vm: &vm, env: &env, proto: 0_u32, argc: 0_u64, budget: budget);
+  match out {
+    Done(count: got) => {
+      if got != 13_u64 {
+        return False();
+      }
+      if vm.budget != budget {
+        return False();
+      }
+      if env.calls != 0_u64 {
+        return False();
+      }
+      for (i in 0_u64..4_u64) {
+        let doubled = i * 2_u64;
+        let slot = doubled + 1_u64;
+        let saved_receiver = table_is(stack: &stack, slot: slot, expected: receiver);
+        if bnot(saved_receiver) {
+          return False();
+        }
+      }
+      let first_alias = number_is(stack: &stack, slot: 0_u64, expected: 42.0_f64);
+      let second_alias = number_is(stack: &stack, slot: 2_u64, expected: 42.0_f64);
+      let false_method = false_is(stack: &stack, slot: 4_u64);
+      let numeric_method = number_is(stack: &stack, slot: 6_u64, expected: 9.0_f64);
+      let global_hit = number_is(stack: &stack, slot: 8_u64, expected: 42.0_f64);
+      let false_global = false_is(stack: &stack, slot: 9_u64);
+      let numeric_global = number_is(stack: &stack, slot: 10_u64, expected: 9.0_f64);
+      let wide_global = number_is(stack: &stack, slot: 11_u64, expected: 73.0_f64);
+      let wide_false = false_is(stack: &stack, slot: 12_u64);
+      let aliases = band(first_alias, second_alias);
+      let methods = band(false_method, numeric_method);
+      let narrow_first = band(global_hit, false_global);
+      let narrow_globals = band(narrow_first, numeric_global);
+      let wide_globals = band(wide_global, wide_false);
+      let receiver_side = band(aliases, methods);
+      let global_side = band(narrow_globals, wide_globals);
+      let all = band(receiver_side, global_side);
+      return all;
+    }
+    Error() => {
+    }
+    Budget() => {
+    }
+    HostStopped() => {
+    }
+    HostCall() => {
+    }
+  }
+  return False();
+}
+
+fn fixture_self_global_misses(budget: u64) -> r: Bool pure {
+  doc "Lua 5.1 __index receives the original receiver and missing key. Its Lua callback uses both to read a marker map, so lost receivers, wrong keys or bypassed callbacks fail independently of the raw-hit tests; both SELF overlaps preserve the receiver, and narrow/wide GETGLOBAL return the globals callback's value.";
+  let vm = halo::vm::vm_new(limit: 67108864_u64);
+  let stack = halo::vm::stack_new(size: 1024_u64);
+  let no = False();
+  let env = Env(stopped: no, mode: 0_u8, calls: 0_u64, last_func: 0_u64, last_len: 0_u64);
+  let code = box_slots_new::<Cell>(capacity: 16_u64);
+  let consts = box_slots_new::<Value>(capacity: 512_u64);
+  let protos = box_slots_new::<Proto>(capacity: 2_u64);
+  let lines = box_slots_new::<u32>(capacity: 0_u64);
+  let key = halo::heap::intern(heap: &vm.heap, bytes: &text_1[0_u64..3_u64]);
+  let marker_key = halo::heap::intern(heap: &vm.heap, bytes: &text_3[0_u64..1_u64]);
+  let index_key = halo::heap::intern(heap: &vm.heap, bytes: &text_4[0_u64..7_u64]);
+  let receiver = halo::heap::new_table(heap: &vm.heap, asize: 0_u32, hsize: 2_u32);
+  let globals = Value::Tab(h: vm.globals);
+  let receiver_map = halo::heap::new_table(heap: &vm.heap, asize: 0_u32, hsize: 2_u32);
+  let globals_map = halo::heap::new_table(heap: &vm.heap, asize: 0_u32, hsize: 2_u32);
+  let meta = halo::heap::new_table(heap: &vm.heap, asize: 0_u32, hsize: 2_u32);
+  let upvals = array_filled::<u32, 0>(value: 0_u32);
+  let callback = halo::heap::new_closure(heap: &vm.heap, proto: 1_u32, upvals: &upvals[0_u64..0_u64]);
+  let receiver_answer = Value::Num(n: 42.0_f64);
+  let global_answer = Value::Num(n: 73.0_f64);
+  raw(vm: &vm, t: receiver_map, key: key, val: receiver_answer);
+  raw(vm: &vm, t: globals_map, key: key, val: global_answer);
+  raw(vm: &vm, t: receiver, key: marker_key, val: receiver_map);
+  raw(vm: &vm, t: globals, key: marker_key, val: globals_map);
+  raw(vm: &vm, t: meta, key: index_key, val: callback);
+  attach(vm: &vm, t: receiver, mt: meta);
+  attach(vm: &vm, t: globals, mt: meta);
+  put_const(consts: &consts, value: receiver);
+  put_const(consts: &consts, value: key);
+  put_const(consts: &consts, value: marker_key);
+  for (i in 3_u64..256_u64) {
+    let nil = Value::Nil();
+    put_const(consts: &consts, value: nil);
+  }
+  put_const(consts: &consts, value: key);
+  let c0 = Cell::LoadK(a: 0_u8, k: 0_u8);
+  let c1 = Cell::SelfK(a: 0_u8, b: 0_u8, k: 1_u8);
+  let c2 = Cell::LoadK(a: 3_u8, k: 0_u8);
+  let c3 = Cell::SelfK(a: 2_u8, b: 3_u8, k: 1_u8);
+  let c4 = Cell::GetGlobal(a: 4_u8, k: 1_u8);
+  let c5 = Cell::GetGlobalX(a: 5_u8, k: 256_u32);
+  let c6 = Cell::Return(a: 0_u8, b: 7_u8);
+  let c7 = Cell::GetTableK(a: 2_u8, t: 0_u8, k: 2_u8);
+  let c8 = Cell::GetTableR(a: 2_u8, t: 2_u8, c: 1_u8);
+  let c9 = Cell::Return(a: 2_u8, b: 2_u8);
+  put_code(code: &code, cell: c0);
+  put_code(code: &code, cell: c1);
+  put_code(code: &code, cell: c2);
+  put_code(code: &code, cell: c3);
+  put_code(code: &code, cell: c4);
+  put_code(code: &code, cell: c5);
+  put_code(code: &code, cell: c6);
+  put_code(code: &code, cell: c7);
+  put_code(code: &code, cell: c8);
+  put_code(code: &code, cell: c9);
+  put_proto(protos: &protos, start: 0_u32, params: 0_u8, vararg: no, ups: 0_u8, maxstack: 6_u8);
+  put_proto(protos: &protos, start: 7_u32, params: 2_u8, vararg: no, ups: 0_u8, maxstack: 3_u8);
+  let debug_names = box_slots_new::<u8>(capacity: 0_u64);
+  let local_variables = box_slots_new::<LocalVariable>(capacity: 0_u64);
+  let upvalue_names = box_slots_new::<DebugName>(capacity: 0_u64);
+  let source = chunk_source();
+  let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source, debug_names: move debug_names, local_variables: move local_variables, upvalue_names: move upvalue_names);
+  let out = halo::vm::start::<TestHost>(script: &script, stack: &stack, vm: &vm, env: &env, proto: 0_u32, argc: 0_u64, budget: budget);
+  loop {
+    match out {
+      Done(count: got) => {
+        if got != 6_u64 {
+          return False();
+        }
+        let first_value = number_is(stack: &stack, slot: 0_u64, expected: 42.0_f64);
+        let first_receiver = table_is(stack: &stack, slot: 1_u64, expected: receiver);
+        let second_value = number_is(stack: &stack, slot: 2_u64, expected: 42.0_f64);
+        let second_receiver = table_is(stack: &stack, slot: 3_u64, expected: receiver);
+        let global_value = number_is(stack: &stack, slot: 4_u64, expected: 73.0_f64);
+        let wide_value = number_is(stack: &stack, slot: 5_u64, expected: 73.0_f64);
+        let first_alias = band(first_value, first_receiver);
+        let second_alias = band(second_value, second_receiver);
+        let global_values = band(global_value, wide_value);
+        let alias_values = band(first_alias, second_alias);
+        let all = band(alias_values, global_values);
+        return all;
+      }
+      Error() => {
+        return False();
+      }
+      HostStopped() => {
+        return False();
+      }
+      HostCall() => {
+        return False();
+      }
+      Budget() => {
+        set out = halo::vm::resume::<TestHost>(script: &script, stack: &stack, vm: &vm, env: &env, budget: budget);
+      }
+    }
+  }
 }
 
 fn false_is(stack: &Box<Slots<Value>>, slot: u64) -> r: Bool reads(stack) {
