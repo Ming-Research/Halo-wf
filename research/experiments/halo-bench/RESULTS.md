@@ -5734,3 +5734,82 @@ prepared; the merged revision makes the direct entry charge it the same way
 after `enter_lua` when a coroutine is running, which adds to every Lua call
 on the main thread one comparison of the running thread with the main
 thread, and is measured again below.
+
+## Store-forwarding blocks of fib under the pinned and an experimental compiler
+
+### Question, recorded before it runs
+
+Whether the experimental Whitefoot release `wf-exp-1e2d6fa09265`, which
+carries the change that lets a call's result reuse a by-copy argument's
+storage, removes one failed store forward per Lua call of fib on the
+14900K. The reading: in the `Call` and `TailCall` arms, `let entered =
+enter_lua(...); set step = entered` makes the 32-byte `Step` land in a stack
+temporary written as four 8-byte stores and copied with a 16-byte load
+across two of them. The prediction was written in the header of the
+temporary workflow `step-copy-compilers.yml` (commit `cb10012`, before the
+run), not in this file: `ld_blocks.store_forward` per Lua call 4.0 with the
+pinned compiler (`wf-d837678c6905`) and about 3.0 with the experimental
+release, the twin equal to the pinned build within the spread, and the other
+counters about equal.
+
+### Result
+
+[Run 38353157292](https://github.com/Ming-Research/Halo-wf/actions/runs/38353157292)
+on the 14900K (artifact `halo-step-copy-compilers`; Linux 7.0.0-38, clang
+22.1.8, governor `performance`). Source `cb1001292c47` (`lib/` and the bench
+host equal `bb2a10f`), built twice with full LTO: pinned by
+`wf-d837678c6905` and experimental by `wf-exp-1e2d6fa09265`; the twin is a
+byte copy of the pinned binary (the same SHA-256 as the pinned build, which
+differs from the experimental one). `perf stat` counted user-space events of
+fib(30), 2,692,537 Lua calls (the run's own figure), on CPU 2 (a P-core),
+five interleaved rounds, in two event sets so that no counter multiplexes.
+Five rounds only. Medians; ratio is the side's median over the pinned
+median, below one meaning fewer or faster.
+
+| Counter | Pinned | Experimental | Twin | Experimental / pinned | Twin / pinned |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| wall time (s) | 0.1012 | 0.0789 | 0.1012 | 0.780 | 1.000 |
+| cycles | 503,425,336 | 391,289,670 | 503,449,572 | 0.777 | 1.000 |
+| instructions | 2,155,935,102 | 2,139,782,015 | 2,155,934,536 | 0.993 | 1.000 |
+| `ld_blocks.store_forward` | 10,787,337 | 8,078,475 | 10,791,293 | 0.749 | 1.000 |
+| `br_misp_retired.all_branches` | 523,316 | 525,373 | 523,404 | 1.004 | 1.000 |
+| `frontend_retired.dsb_miss` (set B) | 33,275 | 33,916 | 33,192 | 1.019 | 0.998 |
+| `idq.dsb_uops` (set B) | 2,243,700,558 | 2,176,078,303 | 2,243,355,699 | 0.970 | 1.000 |
+| `idq.mite_uops` (set B) | 739,065 | 725,811 | 733,834 | 0.982 | 0.993 |
+
+Set B also counted wall time, cycles and instructions; they agree with set A
+(ratios 0.780, 0.777 and 0.993; twin 1.001, 1.000 and 1.000).
+
+Per Lua call (the medians divided by 2,692,537):
+
+| Counter | Pinned | Experimental | Twin |
+| --- | ---: | ---: | ---: |
+| wall time (ns) | 37.584 | 29.306 | 37.596 |
+| cycles | 186.971 | 145.324 | 186.980 |
+| instructions | 800.708 | 794.708 | 800.707 |
+| `ld_blocks.store_forward` | 4.006 | 3.000 | 4.008 |
+| `br_misp_retired.all_branches` | 0.194 | 0.195 | 0.194 |
+
+The range over the five rounds, (max - min) / median, was in set A at most 0.3% for
+wall time, cycles and `ld_blocks.store_forward` on every side and 0.0% for
+instructions. The branch-misprediction count's was 2.5% (pinned), 0.7%
+(experimental) and 1.2% (twin); the set-B front-end counters ranged up to
+14.3% (`idq.mite_uops`, experimental), on counts below 0.04% of the
+instructions.
+
+### Outcome
+
+The prediction held. Blocked store forwards per Lua call fell from 4.006 to
+3.000, one fewer per call (1.006), against the predicted 4.0 and about 3.0;
+the twin's 4.008 differs from the pinned build's by 0.001 per call, inside
+the spread. The branch-misprediction count was about equal (1.004), as
+predicted. Instructions were 6.0 per call fewer (0.7%), and cycles fell
+22.3% and wall time 22.0% (29.306 against 37.584 ns per call), 41.6 cycles
+per call for one removed blocked forward per call; this run does not
+attribute how much of that is the removed stall and how much any other
+difference in the experimental compiler's code. This is one workload (fib(30)), one machine and
+five rounds, with no PUC run.
+
+The direct-call change and the upvalue-read change on this branch stay
+unmerged until the Whitefoot fix is in a formal release that Halo pins; each
+is then timed again against its own recorded criterion on that release.
