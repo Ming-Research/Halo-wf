@@ -431,14 +431,16 @@ H3 is a Whitefoot checker gap kept in Whitefoot's `docs/todo.md`.
   program is sound, so this is a precision gap, recorded in docs/todo.md.
   Slice 1 does not depend on it.
 
-## Open upvalues: a cheaper nothing-to-close test (implemented on the branch claude/halo-return-frame, pending the owner's card)
+## Open upvalues: a cheaper nothing-to-close test
 
-Status: P3 below is implemented on that branch (`open_limit` in the execution
+Status: P3 below is implemented on `claude/halo-return-frame` (`open_limit` in the execution
 record and the `Vm`; the `RETURN` arm and a Lua tail call's frame pop test it).
-The owner approved its direction on the board (the open-limit card, option
-A); its instruction count is recorded in RESULTS.md ("A cheaper Lua
-return"), it is not yet timed, and its design-tree node waits for the
-timing and a second card.
+The owner approved its direction on 2026-10-13 (the open-limit card, option
+A). The combined change passed its timing keep rule in
+[A cheaper Lua return](../../experiments/halo-bench/RESULTS.md#a-cheaper-lua-return).
+The proposed [return-upvalue decision](../../../design/halo/calls/return-upvalues.md)
+records the bound and its ownership; the separate design-tree approval
+card is still required.
 
 Problem. Callgrind of fib(32) at main `56878ac` (hosted x86-64, full LTO;
 [A cheaper Lua return](../../experiments/halo-bench/RESULTS.md#a-cheaper-lua-return))
@@ -509,7 +511,8 @@ kernel shows the shifting; it is not needed for this saving and changes the
 accounting of every coroutine-using script's buffers. P1 is dominated: two
 buffers whose shared length the checker loses at every switch.
 
-Design tree. No existing decision changes:
+Design tree. The new return-upvalue decision leaves these existing decisions
+unchanged:
 - `design/halo/calls/coroutines.md`, "A coroutine owns its execution record,
   the value stack, frame records, open-upvalue list, library continuation
   records and the run's checkpoints, in a thread cell ...": the limit is one
@@ -527,11 +530,10 @@ Design tree. No existing decision changes:
   by capacity toward the logical bytes ...": unaffected by P3 (P2 would keep
   the rule but change the bytes charged).
 
-It needs one new decision, proposed under `design/halo/calls.md` or
-`calls/coroutines.md`: each execution keeps an upper bound on its open
-captures' slots so that a return tests one value, because the open list
-holds handles and reaching a slot costs three dependent loads, instead of
-storing slots in the list (P1, P2).
+The proposed [return-upvalue decision](../../../design/halo/calls/return-upvalues.md)
+belongs under calls because both main and coroutine returns use it: each
+execution keeps an upper bound on its open captures' slots so that a return
+tests one value, rather than storing slots in the list (P1, P2).
 
 Measurement. Question: does testing a per-execution open limit instead of
 reading the first open cell cut fib's return path, and is the time saving

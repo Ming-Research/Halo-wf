@@ -5665,7 +5665,7 @@ Validity conditions on the count, checked before any timing is interpreted:
 
 ### Part one's instruction count
 
-Callgrind of fib(32) by the temporary workflow `return-profile.yml`
+Callgrind of fib(32)
 ([run 38329252298](https://github.com/Ming-Research/Halo-wf/actions/runs/38329252298);
 hosted x86-64 runner, full LTO, `make check` run 38329252332 on the same
 revision passing) counts 866.5 executed instructions per Lua call with part
@@ -5685,8 +5685,10 @@ the first handle into the heap's upvalue records and tests `live`, the `Open`
 tag, the owning thread and finally the slot against `base`. PUC Lua compares
 its open-upvalue pointer with `base` once. The design proposal, with the
 three candidates and why this one, is in
-[VM.md](../../investigations/halo/VM.md#open-upvalues-a-cheaper-nothing-to-close-test)
-and waits for the owner's card.
+[VM.md](../../investigations/halo/VM.md#open-upvalues-a-cheaper-nothing-to-close-test).
+The owner approved this direction on 2026-10-13; the corresponding
+design-tree change awaits its separate approval after implementation and
+measurement.
 
 Change. Each execution record keeps `open_limit`: 0 when its open list is
 empty, otherwise greater than every listed open slot. `capture` only raises
@@ -5740,8 +5742,7 @@ Comparison: this branch's base `56878ac` against the branch with both parts,
 both built by `wf-d837678c6905`, with a twin of the base, every timed process
 on CPU 2 of the 14900K, six interleaved pairs over the seven kernels as
 `run.py` runs them (binary-trees at depth 14, fib at N = 30); and callgrind
-of fib(32) on a hosted runner, before and after, by the temporary
-`return-profile.yml`.
+of fib(32) on a hosted runner, before and after.
 
 The 4.6% to 5.0% expected here is mostly loads, compares and branches off the
 critical path, so a time saving in proportion to the count is an upper
@@ -5752,3 +5753,85 @@ the twin's difference on the 14900K; no other kernel is slower beyond its
 larger range and the twin's difference; and `make check` passes on the
 measured revision. Otherwise the change is reverted with its measurements
 kept.
+
+### Result
+
+[Run 38360546976](https://github.com/Ming-Research/Halo-wf/actions/runs/38360546976)
+on the 14900K compared base
+`56878ac4d607f7496c8e23a4c2ffe2d45e9cb552` with measured revision
+`b564ac79380a968980feca12d5afae6a3557cb58`, both built with
+`wf-d837678c6905` and full LTO. The artifact `manifest.txt` records those
+revisions, compiler, Clang 22.1.8 and CPU 2 affinity; the base and base twin
+have identical binary hashes. The workloads and settings are the comparison
+above. The one-, three- and six-pair samples below are separate batches,
+not prefixes of the six-pair batch.
+
+The table is recomputed from the raw `pairs` in `return-1.json`,
+`return-3.json` and `return-6.json`, with the corresponding `twin-1.json`,
+`twin-3.json` and `twin-6.json`. Medians are seconds; ratio is change median
+/ base median; each range is (maximum - minimum) / that side's median.
+Twin is twin median / its interleaved base median, so its difference is
+`abs(twin - 1)`. Allowance is the larger base/change range plus that twin
+difference. Verdicts use the unrounded values: **fib pass** means at least
+3% faster than base and a saving greater than each range and the twin's
+difference; **pass** for another kernel means its slowdown is no greater
+than the allowance. The allowance is also shown for fib as a stricter
+combined-noise comparison, which it clears in every batch.
+
+| Pairs | Kernel | Base median s | Change median s | Ratio | Base range | Change range | Twin | Allowance | Timing clause |
+|---:|---|---:|---:|---:|---:|---:|---:|---:|---|
+| 1 | fib | 0.088647 | 0.083263 | 0.9393 | 0.00% | 0.00% | 0.9966 | 0.34% | fib pass |
+| 1 | loop | 0.501436 | 0.502516 | 1.0022 | 0.00% | 0.00% | 1.0019 | 0.19% | fail |
+| 1 | integer-table | 0.355986 | 0.354894 | 0.9969 | 0.00% | 0.00% | 0.9928 | 0.72% | pass |
+| 1 | string-key | 0.023210 | 0.021903 | 0.9437 | 0.00% | 0.00% | 0.9896 | 1.04% | pass |
+| 1 | concat | 0.074022 | 0.072628 | 0.9812 | 0.00% | 0.00% | 1.1059 | 10.59% | pass |
+| 1 | sort | 0.184489 | 0.183346 | 0.9938 | 0.00% | 0.00% | 0.9902 | 0.98% | pass |
+| 1 | binary-trees | 1.213891 | 1.190891 | 0.9811 | 0.00% | 0.00% | 0.9988 | 0.12% | pass |
+| 3 | fib | 0.088579 | 0.083426 | 0.9418 | 0.45% | 1.20% | 1.0129 | 2.50% | fib pass |
+| 3 | loop | 0.501712 | 0.501505 | 0.9996 | 0.08% | 0.22% | 1.0002 | 0.24% | pass |
+| 3 | integer-table | 0.338961 | 0.337850 | 0.9967 | 1.73% | 0.64% | 0.9997 | 1.75% | pass |
+| 3 | string-key | 0.021856 | 0.021884 | 1.0013 | 6.40% | 0.27% | 1.0408 | 10.48% | pass |
+| 3 | concat | 0.073666 | 0.072896 | 0.9896 | 1.48% | 1.49% | 1.0146 | 2.95% | pass |
+| 3 | sort | 0.184192 | 0.183264 | 0.9950 | 1.04% | 0.49% | 0.9999 | 1.05% | pass |
+| 3 | binary-trees | 1.214576 | 1.202393 | 0.9900 | 2.37% | 2.71% | 1.0009 | 2.80% | pass |
+| 6 | fib | 0.088888 | 0.083250 | 0.9366 | 3.24% | 1.57% | 0.9904 | 4.21% | fib pass |
+| 6 | loop | 0.501449 | 0.501484 | 1.0001 | 0.11% | 0.25% | 1.0006 | 0.31% | pass |
+| 6 | integer-table | 0.355800 | 0.354026 | 0.9950 | 3.16% | 0.57% | 1.0024 | 3.40% | pass |
+| 6 | string-key | 0.021870 | 0.021908 | 1.0017 | 6.44% | 5.21% | 1.0196 | 8.40% | pass |
+| 6 | concat | 0.072639 | 0.072635 | 0.9999 | 2.03% | 0.68% | 1.0011 | 2.14% | pass |
+| 6 | sort | 0.183896 | 0.182204 | 0.9908 | 1.07% | 0.64% | 0.9899 | 2.08% | pass |
+| 6 | binary-trees | 1.214274 | 1.192086 | 0.9817 | 3.50% | 3.29% | 0.9984 | 3.66% | pass |
+
+The one-pair batch gives fib a 6.07% saving over base, but its loop clause
+fails provisionally: loop is 0.2155% slower than base, above the 0.1864%
+twin difference, while one pair necessarily reports zero ranges. The
+three-pair batch gives fib a 5.82% saving and every other kernel passes.
+The six-pair batch gives fib a 6.34% saving, larger than its base range
+(3.24%), change range (1.57%) and twin difference (0.96%), and also larger
+than the combined allowance (4.21%). Every other kernel passes in that
+final batch. These are results for the two return changes together; they
+do not attribute the time saving between the two parts.
+
+Correctness clause: every launch in all six JSON files exits zero and its
+stdout equals its kernel's independent-reference stdout; each independent
+reference also exits zero. This covers 280 launches across the three
+comparison batches and their twins. The owner reports the check workflow
+passing on the measured revision; that CI status was not independently
+retrieved while writing this result. The measurement run is not substituted
+for the project gate.
+
+### Outcome
+
+Kept under the unchanged rule, using the final six-pair measurement and
+the owner's reported passing gate on the measured revision:
+
+> Kept only if: fib's median falls at least 3%, by more than both ranges and
+> the twin's difference on the 14900K; no other kernel is slower beyond its
+> larger range and the twin's difference; and `make check` passes on the
+> measured revision. Otherwise the change is reverted with its measurements
+> kept.
+
+The combined change clears the fib and other-kernel clauses in the final
+batch. The temporary measurement workflows are removed; the linked runs
+and their artifacts preserve the evidence. The design-tree change still
+needs its separate owner approval.
