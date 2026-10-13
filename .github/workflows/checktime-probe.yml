@@ -28,6 +28,34 @@ jobs:
           done
           ls build/whitefoot
           build/whitefoot/wf-af7665be672d/whitefootc --help 2>&1 | head -80 || true
+      - name: Check only, per graph and per module, interleaved
+        run: |
+          set -u
+          mkdir -p out
+          printf 'target\trelease\tseconds\texit\n' > out/check.tsv
+          tm() { # label rel dir args...
+            label=$1; rel=$2; dir=$3; shift 3
+            echo "release = $rel" > whitefoot.pin
+            make toolchain >/dev/null 2>&1
+            s=$(date +%s.%N)
+            (cd $dir && "$GITHUB_WORKSPACE/build/whitefoot/$rel/whitefootc" "$@") > "out/check-$(echo $label | tr ':/' '__')-$rel.log" 2>&1
+            rc=$?
+            printf '%s\t%s\t%s\t%s\n' "$label" $rel $(echo "$(date +%s.%N) - $s" | bc) $rc | tee -a out/check.tsv
+          }
+          for dir in lib/halo tests/halo-vm tests/halo-lib tests/halo-bench; do
+            for rel in wf-d837678c6905 wf-af7665be672d; do
+              tm "$dir --check-modules" $rel $dir --graph modules.wfg --check-modules
+            done
+          done
+          for m in value execution number lex heap compile vm embed; do
+            for rel in wf-d837678c6905 wf-af7665be672d; do
+              tm "lib/halo pkg::$m" $rel lib/halo --graph modules.wfg --check-module pkg::$m --report
+            done
+          done
+          for rel in wf-d837678c6905 wf-af7665be672d; do
+            tm "tests/halo-vm pkg::test" $rel tests/halo-vm --graph modules.wfg --check-module pkg::test --report
+          done
+          echo; column -t -s $'\t' out/check.tsv
       - name: Time each host program, interleaved
         run: |
           set -u
