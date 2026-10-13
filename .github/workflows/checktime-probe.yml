@@ -1,104 +1,41 @@
-# Temporary (board item wf-req-halo-check-time): times each Halo host
-# program's build under the old and the new Whitefoot release on one hosted
-# runner, interleaved, and records the new compiler's check-work TSV for the
-# slowest. Removed once Whitefoot has the numbers.
+# Temporary (board item wf-req-halo-check-time): records the new compiler's
+# check-work TSV for Halo's VM test module (pkg::test), whose check time
+# rose 225x between wf-d837678c6905 and wf-af7665be672d (run 38408841823).
+# Removed once Whitefoot has the TSV.
 name: checktime-probe
 on:
   push:
     branches: [claude/halo-checktime-probe]
-  workflow_dispatch:
 jobs:
   probe:
     runs-on: ubuntu-24.04
-    timeout-minutes: 180
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: true
-      - name: Machine
-        run: lscpu | grep 'Model name'; nproc
-      - name: Compilers
+      - name: Compiler
         run: |
-          set -e
-          for rel in wf-d837678c6905 wf-af7665be672d; do
-            echo "release = $rel" > whitefoot.pin
-            make toolchain >/dev/null
-            make compiler
-            echo "$rel clang: $(/usr/bin/clang --version | head -1)"
-          done
-          ls build/whitefoot
-          build/whitefoot/wf-af7665be672d/whitefootc --help 2>&1 | head -80 || true
-      - name: Check only, per graph and per module, interleaved
-        run: |
-          set -u
-          mkdir -p out
-          printf 'target\trelease\tseconds\texit\n' > out/check.tsv
-          tm() { # label rel dir args...
-            label=$1; rel=$2; dir=$3; shift 3
-            echo "release = $rel" > whitefoot.pin
-            make toolchain >/dev/null 2>&1
-            s=$(date +%s.%N)
-            (cd $dir && "$GITHUB_WORKSPACE/build/whitefoot/$rel/whitefootc" "$@") > "out/check-$(echo $label | tr ':/' '__')-$rel.log" 2>&1
-            rc=$?
-            printf '%s\t%s\t%s\t%s\n' "$label" $rel $(echo "$(date +%s.%N) - $s" | bc) $rc | tee -a out/check.tsv
-          }
-          for dir in lib/halo tests/halo-vm tests/halo-lib tests/halo-bench; do
-            for rel in wf-d837678c6905 wf-af7665be672d; do
-              tm "$dir --check-modules" $rel $dir --graph modules.wfg --check-modules
-            done
-          done
-          for m in value execution number lex heap compile vm embed; do
-            for rel in wf-d837678c6905 wf-af7665be672d; do
-              tm "lib/halo pkg::$m" $rel lib/halo --graph modules.wfg --check-module pkg::$m --report
-            done
-          done
-          for rel in wf-d837678c6905 wf-af7665be672d; do
-            tm "tests/halo-vm pkg::test" $rel tests/halo-vm --graph modules.wfg --check-module pkg::test --report
-          done
-          echo; column -t -s $'\t' out/check.tsv
-      - name: Time each host program, interleaved
-        run: |
-          set -u
-          mkdir -p out
-          printf 'program\trelease\tphase\tseconds\texit\n' > out/times.tsv
-          progs="halo-vm:smoke halo-vm:suite halo-lib:run halo-bench:bench"
-          for p in $progs; do
-            dir=${p%%:*}; entry=${p##*:}
-            for rel in wf-d837678c6905 wf-af7665be672d; do
-              echo "release = $rel" > whitefoot.pin
-              make toolchain >/dev/null 2>&1
-              wfc=$PWD/build/whitefoot/$rel/whitefootc
-              exe=$PWD/out/$dir-$entry-$rel
-              s=$(date +%s.%N)
-              (cd tests/$dir && "$wfc" --graph modules.wfg --entry $entry -o "$exe") > out/$dir-$entry-$rel.log 2>&1
-              rc=$?
-              e=$(date +%s.%N)
-              t=$(echo "$e - $s" | bc)
-              printf '%s:%s\t%s\tbuild\t%s\t%s\n' $dir $entry $rel $t $rc | tee -a out/times.tsv
-              if [ $dir = halo-vm ] && [ $rc = 0 ]; then
-                s=$(date +%s.%N); "$exe" > /dev/null 2>&1; rc=$?; e=$(date +%s.%N)
-                printf '%s:%s\t%s\trun\t%s\t%s\n' $dir $entry $rel $(echo "$e - $s" | bc) $rc | tee -a out/times.tsv
-              fi
-            done
-          done
-          echo; column -t out/times.tsv
-      - name: Check-work TSV for the slowest program under the new release
-        run: |
-          slow=$(awk -F'\t' '$2=="wf-af7665be672d" && $3=="build"{print $4"\t"$1}' out/times.tsv | sort -rn | head -1 | cut -f2)
-          echo "slowest: $slow"
-          dir=${slow%%:*}; entry=${slow##*:}
+          lscpu | grep 'Model name'
           echo "release = wf-af7665be672d" > whitefoot.pin
-          make toolchain >/dev/null 2>&1
+          make toolchain >/dev/null
+          make compiler
+      - name: Check pkg::test with check-work recording
+        run: |
+          mkdir -p "$RUNNER_TEMP/out"
+          export WHITEFOOT_CHECK_WORK="$RUNNER_TEMP/out/work-pkg-test.tsv"
           s=$(date +%s.%N)
-          (cd tests/$dir && WHITEFOOT_CHECK_WORK=$GITHUB_WORKSPACE/out/check-work-$dir-$entry.tsv $GITHUB_WORKSPACE/build/whitefoot/wf-af7665be672d/whitefootc --graph modules.wfg --entry $entry -o $GITHUB_WORKSPACE/out/cw-exe) > out/check-work-build.log 2>&1
+          set +e
+          build/whitefoot/wf-af7665be672d/whitefootc --graph tests/halo-vm/modules.wfg --check-module pkg::test --report > "$RUNNER_TEMP/out/report.txt" 2> "$RUNNER_TEMP/out/stderr.txt"
           echo "exit $? seconds $(echo "$(date +%s.%N) - $s" | bc)"
-          ls -la out/check-work-* || true
-          head -5 out/check-work-$dir-$entry.tsv || true
+          ls -la "$RUNNER_TEMP/out"
+          wc -l "$WHITEFOOT_CHECK_WORK" || true
+          head -3 "$WHITEFOOT_CHECK_WORK" || true
+          tail -5 "$RUNNER_TEMP/out/stderr.txt"
+          sort -t$'\t' -k2 -rn "$WHITEFOOT_CHECK_WORK" 2>/dev/null | head -15 || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: checktime-probe
-          path: |
-            out/*.tsv
-            out/*.log
+          name: check-work-pkg-test
+          path: ${{ runner.temp }}/out/
           retention-days: 14
