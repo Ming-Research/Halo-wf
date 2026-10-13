@@ -5542,6 +5542,9 @@ stage 2, which is set aside as stated.
 
 ## Plain arithmetic and proven slot bounds at the Lua function entry
 
+Status: measured and rejected; the code change is reverted. Both runs are
+retained below; [the outcome](#lua-entry-outcome) records the decision.
+
 The change has two parts, both in `enter_lua` (the Lua callee entry, which
 sets up the callee's frame), and is timed as one change:
 
@@ -5828,3 +5831,88 @@ decide. One rerun with the same workflow and the same rule above, unchanged,
 decides: the change is kept if it passes, or reverted with both runs'
 measurements kept if it fails. There will be no further rerun. The first
 run does not establish that the change is kept, and no sample is discarded.
+
+### Rerun result
+
+[Run 38365880677](https://github.com/Ming-Research/Halo-wf/actions/runs/38365880677)
+measured both parts at `9ac2a19` against the same base `56878ac`, on the
+14900K, with `wf-d837678c6905` and full LTO on both sides. The workflow and
+keep rule are unchanged. `manifest.txt` records CPU 2 pinning, performance
+governors and matching base and twin executable digests. The workload is
+the same seven kernels, fib at N = 30 and binary-trees at depth 14.
+
+The tables are recomputed from raw pairs in artifact `halo-bench-entry`:
+`entry-1.json`, `entry-3.json`, `entry-6.json` and the matching twin JSON
+files. They use the same definitions and unrounded verdict calculations
+as the first-run tables. Each pair count is a separate batch. The gate's
+result on this measured revision is not established by these artifacts;
+the timing clauses below suffice to reject the change regardless of that
+result.
+
+#### 1 pair (`entry-1.json`, `twin-1.json`)
+
+| Kernel | Base median (s) | Halo median (s) | Ratio | Base range | Halo range | Twin ratio (difference) | Verdict |
+|---|---:|---:|---:|---:|---:|---:|---|
+| fib | 0.088769 | 0.086165 | 0.971 | 0.00% | 0.00% | 0.995 (0.501%) | 3%: fail; base range: pass; Halo range: pass; twin: pass |
+| loop | 0.501675 | 0.501401 | 0.999 | 0.00% | 0.00% | 1.002 (0.229%) | No regression: pass |
+| integer-table | 0.355243 | 0.355480 | 1.001 | 0.00% | 0.00% | 1.002 (0.224%) | No regression: pass |
+| string-key | 0.023404 | 0.023002 | 0.983 | 0.00% | 0.00% | 0.991 (0.865%) | No regression: pass |
+| concat | 0.072678 | 0.072635 | 0.999 | 0.00% | 0.00% | 0.989 (1.076%) | No regression: pass |
+| sort | 0.184949 | 0.182796 | 0.988 | 0.00% | 0.00% | 0.998 (0.173%) | No regression: pass |
+| binary-trees | 1.214909 | 1.205751 | 0.992 | 0.00% | 0.00% | 1.088 (8.784%) | No regression: pass |
+
+#### 3 pairs (`entry-3.json`, `twin-3.json`)
+
+| Kernel | Base median (s) | Halo median (s) | Ratio | Base range | Halo range | Twin ratio (difference) | Verdict |
+|---|---:|---:|---:|---:|---:|---:|---|
+| fib | 0.091171 | 0.087230 | 0.957 | 3.25% | 1.15% | 0.999 (0.146%) | 3%: pass; base range: pass; Halo range: pass; twin: pass |
+| loop | 0.501873 | 0.501864 | 1.000 | 0.08% | 2.19% | 1.001 (0.059%) | No regression: pass |
+| integer-table | 0.342091 | 0.356381 | 1.042 | 4.62% | 4.81% | 1.001 (0.093%) | No regression: pass |
+| string-key | 0.022892 | 0.023050 | 1.007 | 5.65% | 5.14% | 1.047 (4.746%) | No regression: pass |
+| concat | 0.072711 | 0.072475 | 0.997 | 1.73% | 1.54% | 1.011 (1.096%) | No regression: pass |
+| sort | 0.184375 | 0.184096 | 0.998 | 0.77% | 0.26% | 0.998 (0.155%) | No regression: pass |
+| binary-trees | 1.215128 | 1.208087 | 0.994 | 0.14% | 0.24% | 1.007 (0.657%) | No regression: pass |
+
+#### 6 pairs (`entry-6.json`, `twin-6.json`)
+
+| Kernel | Base median (s) | Halo median (s) | Ratio | Base range | Halo range | Twin ratio (difference) | Verdict |
+|---|---:|---:|---:|---:|---:|---:|---|
+| fib | 0.088908 | 0.087095 | 0.980 | 2.14% | 1.54% | 1.015 (1.512%) | 3%: fail; base range: fail; Halo range: pass; twin: pass |
+| loop | 0.501712 | 0.501559 | 1.000 | 0.20% | 0.09% | 1.000 (0.011%) | No regression: pass |
+| integer-table | 0.355523 | 0.355875 | 1.001 | 4.77% | 3.04% | 1.003 (0.258%) | No regression: pass |
+| string-key | 0.022393 | 0.022451 | 1.003 | 6.37% | 4.97% | 1.002 (0.203%) | No regression: pass |
+| concat | 0.072521 | 0.072406 | 0.998 | 2.06% | 2.03% | 0.999 (0.094%) | No regression: pass |
+| sort | 0.183182 | 0.183170 | 1.000 | 0.63% | 1.08% | 0.994 (0.620%) | No regression: pass |
+| binary-trees | 1.215754 | 1.207361 | 0.993 | 0.93% | 0.15% | 0.999 (0.100%) | No regression: pass |
+
+At six pairs, fib's ratio is 0.980: its median is 2.04% faster than the
+base, rounded to 2.0%, short of the rule's 3% threshold. Halo is faster in
+all six pairs. The fall also does not exceed the base range (2.14%); it
+exceeds the Halo range (1.54%) and the twin's difference (1.51%). Every
+other kernel's no-regression clause passes. These comparisons come from
+`entry-6.json` and `twin-6.json`, retaining every sample. The three-pair
+batch clears fib's timing clauses, but the six-pair batch is the
+preregistered comparison that decides. As in the first run, the one-pair
+batch's zero ranges do not establish zero spread.
+
+The compiler's `--check-module pkg::vm` times in `check-times.txt` are
+3.327 and 3.360 s for the base, 3.334 and 3.371 s for the change. Their
+median ratio is 1.003; this compiler-time observation is not a clause of
+the keep rule.
+
+<a id="lua-entry-outcome"></a>
+
+### Outcome
+
+The rerun decides under the unchanged rule recorded before it ran. Fib's
+median falls by 2.0%, below the required 3%, and the base-range comparison
+also fails. The entry change is rejected and reverted, with both runs'
+measurements kept. There is no further rerun.
+
+The first six-pair run measured fib 3.7% faster than its base, with one
+outlier base sample and a base range too large to clear the rule. The
+rerun measured fib 2.0% faster than its base. Together these runs do not
+establish the required saving on the 14900K under this workload and setup.
+The earlier callgrind whole-program count fell from 884.6 to 846.6
+instructions per Lua call; that count reduction did not translate into
+the required time saving on this machine.
