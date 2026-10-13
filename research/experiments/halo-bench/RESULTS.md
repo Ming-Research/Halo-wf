@@ -5722,16 +5722,21 @@ kept.
 Callgrind of fib(32) on the same hosted setup
 ([run 38327829731](https://github.com/Ming-Research/Halo-wf/actions/runs/38327829731),
 gate [run 38327829671](https://github.com/Ming-Research/Halo-wf/actions/runs/38327829671)
-green on the same revision): 834.5 executed instructions per Lua call for
-both parts against the base's 884.5, 50 fewer (5.7%); `enter_lua` 189 to
-139. Part two alone saved 25, outside the 6 to 9 predicted, so part two's
-reading was wrong by its own rule. The listing shows why: with the per-slot
-branches gone, each fill loop has no exit but its counter, and LLVM
-simplifies the loop's induction and address arithmetic as a whole, which the
-reading, counting only a compare and a branch per slot, did not foresee.
-No `memset` call and no conditional move remain on the entry's hot path, so
-the other validity conditions hold. The prediction is corrected here, before
-any timing; the keep rule above is unchanged.
+green on the same revision). The executable's own count is 834.5 per Lua
+call against the base's 884.5, but that count leaves out shared libraries:
+with the per-slot tests gone, LLVM turned the nil fills into calls to the C
+library's `memset`, two per Lua call of fib, whose instructions run in libc.
+The whole-program count is 846.6 per Lua call against the base's 884.6, 38
+fewer (4.3%); part one's whole-program count was 859.6, equal to its
+executable count, so part two saves 13, not 25. `enter_lua` itself goes
+from 164 to 139.
+
+Part two's reading was wrong on both of its own conditions: it predicted 6
+to 9 saved and named a `memset` call as a falsifier. The saving is larger
+than read, and the fill is now a library call, whose cost for three slots
+the instruction count does not show the way the time will. The correction
+is recorded here, before any timing; the keep rule above is unchanged, and
+the timing decides whether the change, `memset` included, is kept.
 
 The two new stack-overflow branches need a destination at or above
 2^64 - 258 slots, which no Lua program can reach, and no test reaches them;
