@@ -6799,3 +6799,187 @@ predicted gain is about 1%.
 
 Outcome: rejected. List is only 1.5% faster than the base (threshold 3%, tolerance 1.5%), although the callgrind falsifier passed first ([run 38370247961](https://github.com/Ming-Research/Halo-wf/actions/runs/38370247961)): List's instructions fell 13.01% and Towers' 0.71%. A 13% instruction saving bought about a ninth of that in time on this machine. The likely reason, inferred and not measured, is that the instructions the jump arms stopped executing (the shared exit's window re-checks) are cheap, well-predicted work; no cache or branch counts were taken to confirm it. The source change is reverted; this record stays.
 
+## Metamethod names interned once and the known raw miss passed to the slow path
+
+Status: measured and rejected (see the split run result); the source change
+is reverted. The question, prediction, comparison, falsifier and keep rule
+below were recorded before measurement.
+
+### Question
+
+Does List run faster when Halo interns its metamethod names once and carries
+an already-known raw table miss from `GetTableK` into the shared slow path,
+instead of interning the name and repeating that raw read on every miss?
+
+### What changes
+
+The VM interns all 17 names used by `metamethod` at creation and retains
+those keys as collector roots through the existing root-tracing mechanism.
+`metamethod` reads the cached key. A `GetTableK` raw miss passes through its
+full handler to the shared slow executor, so neither the full handler nor
+the first iteration of the `__index` loop repeats that table's raw read.
+Later tables in the chain still receive their normal raw lookup.
+
+The chain remains in the shared slow executor. Function-valued `__index`,
+errors and error locations, the 100-hop limit, budget charging and collection
+safepoints retain their required behaviour. Accounting rules are unchanged:
+the cached names count as ordinary live strings, with no special-case
+exclusion, as PUC Lua's fixed metamethod names created by `luaT_init` count in
+`totalbytes`.
+
+The 17 names contain 104 payload bytes. Each string has a 24-byte logical
+cell charge, so the cache contributes `104 + 17 * 24 = 512` logical bytes to
+a bare VM. Relative to an initialized standard engine, the net increase is
+481 logical bytes: its string metatable already roots `__index`, whose
+7-byte payload and 24-byte cell charge total 31 bytes. Additional live bytes
+can change when collection becomes due or a memory limit is reached; actual
+collection timing and limit boundaries are therefore not claimed identical.
+
+### Reading that motivates it
+
+[Where List and Towers spend their instructions](#where-list-and-towers-spend-their-instructions)
+records callgrind counts from main 1f90750 plus the profiling workflow
+([run 38367862157](https://github.com/Ming-Research/Halo-wf/actions/runs/38367862157);
+full LTO, `wf-d837678c6905`). List executes 670,400 reads that miss and
+follow an `__index` table. A miss costs Halo about 838 instructions against
+about 85 in PUC Lua 5.1.5. Halo repeats the first table's raw lookup in its
+full `GetTableK` handler (about 65M instructions) and in the first slow-loop
+iteration (about 62M), and hashes and interns the metamethod name on each
+lookup (about 135M). Those three costs motivate this smaller change; the
+fast path does not acquire its own metamethod-chain executor.
+
+### Prediction
+
+Inferred from those counts, not measured: List saves about 262M of its
+3,308M instructions, about 8%. Towers saves approximately zero; its hot reads
+do not have List's repeated raw misses through `__index`. Whether List's
+instruction saving turns into time is the question the timing comparison
+answers.
+
+### Comparison
+
+First, before any timing, compare callgrind instruction counts of List and
+Towers on a GitHub-hosted runner. Build the base and after from the same
+source apart from this change, with full LTO and the pinned compiler
+`wf-d837678c6905`, and run identical Lua bundles at the attribution's reduced
+iterations (List 200, Towers 60). The base is main
+`8ee6634fa608ddb13aa8272b51c0a2a696fa22e3`; the after is this change's
+revision, to be recorded with the results.
+
+Falsifier, recorded before measuring: List's callgrind instruction count must
+fall by at least 5% against that base. If it falls by less than 5%, no timing
+is run.
+
+If the count passes, compare the same base and after on the 14900K, pinned to
+CPU 2, both built with full LTO and the same pinned compiler:
+
+- the seven halo-bench kernels through
+  `run.py --before-binary --collections-may-change`, binary-trees at depth 14,
+  six interleaved pairs with a byte-copy twin of the base as the noise
+  control. The existing option records both collection counts because the
+  ordinary cached live strings can legitimately change those counts;
+- the six are-we-fast-yet bundles through `fastest.py` with three `--engine`
+  entries (base, after, byte-copy base twin), `--reference` the base, six
+  interleaved pairs.
+
+Record the exact revisions, binaries, compiler and settings with the
+comparison so the counts and timings identify the same source change.
+
+### Keep rule
+
+The change is kept only if all of these hold:
+
+1. List's median time falls by at least 3% against the base, beyond both
+   ranges (the base's and the after's) and beyond the twin's difference from
+   the base;
+2. no other kernel and no are-we-fast-yet bundle is slower beyond its larger
+   range plus the twin's difference;
+3. `make check` passes on the measured revision.
+
+Otherwise the change is reverted, with any measurements retained in this
+section. Towers is reported but has no gain requirement, since its predicted
+saving is approximately zero.
+
+### Result
+
+14900K run [38378472981](https://github.com/Ming-Research/Halo-wf/actions/runs/38378472981) at 4b456fa, CPU 2, full LTO, six interleaved pairs (halo-bench kernels through `run.py`, binary-trees at depth 14) and six rounds (are-we-fast-yet bundles through `fastest.py`). Ratio is after over base; below 1 is faster. Tolerance is the larger of the two ranges plus the twin's difference from 1.
+
+| Program | After / base | Base range | After range | Twin / base | Tolerance | Verdict |
+|---|---:|---:|---:|---:|---:|---|
+| fib | 1.022 | 1.5% | 1.4% | 0.999 | 1.5% | slower beyond tolerance |
+| loop | 1.001 | 0.1% | 2.2% | 1.000 | 2.2% |  |
+| integer-table | 0.985 | 4.5% | 4.2% | 0.972 | 7.3% |  |
+| string-key | 0.978 | 6.1% | 5.7% | 0.956 | 10.5% |  |
+| concat | 1.017 | 2.0% | 1.7% | 1.001 | 2.1% |  |
+| sort | 0.998 | 1.9% | 2.2% | 0.997 | 2.5% |  |
+| binary-trees | 1.000 | 0.5% | 0.5% | 0.998 | 0.7% |  |
+| List | 0.946 | 0.4% | 3.7% | 0.999 | 3.8% | target met |
+| NBody | 1.002 | 1.4% | 0.2% | 1.000 | 1.4% |  |
+| Permute | 1.027 | 0.4% | 4.7% | 1.001 | 4.8% |  |
+| Queens | 1.038 | 0.5% | 1.0% | 1.001 | 1.1% | slower beyond tolerance |
+| Sieve | 1.001 | 0.4% | 1.3% | 1.001 | 1.4% |  |
+| Towers | 0.997 | 2.7% | 1.1% | 0.988 | 4.0% |  |
+
+Outcome: not kept in this revision. List is 5.4% faster (tolerance 3.8%), meeting the target, but fib is 2.2% slower (tolerance 1.5%) and Queens 3.8% slower (tolerance 1.1%), and neither program reaches a metamethod.
+
+### Why fib and Queens slowed
+
+Hosted callgrind with cache and branch simulation ([run 38382468410](https://github.com/Ming-Research/Halo-wf/actions/runs/38382468410)), fib at N=30 and Queens at 40 inner iterations, base 8ee6634 against this branch. The reading recorded in the workflow before it ran: if head/base Ir rises at least 1.5%, executed work grew (A); if Ir changes under 0.5% while D1 misses or mispredicts rise at least 10%, placement or prediction (B); otherwise inconclusive.
+
+| Program | Ir | D1 misses | Conditional mispredicts (Bcm) | Reading |
+|---|---:|---:|---:|---|
+| fib | +0.36% | +1.65% (76 more) | +1.74% (190 more) | inconclusive |
+| Queens | +0.29% | +2.31% | +21.99% (292,633 more) | B |
+
+So the change does not add work on either program. Queens' slowdown matches more mispredicted conditional branches in unchanged code, a placement effect of the new build. fib's is not explained by any simulated count. Callgrind's branch predictor is a simple model, not the 14900K's, so B is a lead, not a measured cause.
+
+### Split run, recorded before it runs
+
+The next 14900K run adds a third build, `names`: this head with the known-miss flag turned off (`let raw_miss = False();` in `instruction_get_table_k_miss`), so it keeps only the interned-name cache and the larger VM record. Same tolerance rule as above.
+- If `names` is slower than the base beyond tolerance on fib or Queens, the name cache (and the VM record it enlarges) causes the slowdown. Then try placing the names outside the VM's hot record.
+- If `names` is not, and `after` still is, the known-miss path causes it.
+- If neither `after` nor `names` is slower beyond tolerance this time, the first run's fib and Queens results were not reproducible. Then the full change is judged by the keep rule on this run.
+
+### Split run result
+
+14900K [run 38389545724](https://github.com/Ming-Research/Halo-wf/actions/runs/38389545724) at cadebdf. Same tolerance rule as above.
+
+Full change (`after`):
+
+| Program | After / base | Base range | After range | Twin / base | Tolerance | Verdict |
+|---|---:|---:|---:|---:|---:|---|
+| fib | 1.014 | 2.4% | 1.2% | 1.009 | 3.4% |  |
+| loop | 1.002 | 0.1% | 0.2% | 1.000 | 0.2% |  |
+| integer-table | 0.998 | 4.0% | 3.6% | 0.984 | 5.7% |  |
+| string-key | 0.980 | 5.8% | 5.0% | 0.978 | 8.0% |  |
+| concat | 1.020 | 2.1% | 1.7% | 0.999 | 2.2% |  |
+| sort | 1.000 | 0.9% | 0.9% | 1.013 | 2.1% |  |
+| binary-trees | 1.005 | 2.7% | 2.6% | 1.006 | 3.3% |  |
+| List | 0.931 | 2.0% | 0.9% | 1.003 | 2.3% | target met |
+| NBody | 1.003 | 2.3% | 0.5% | 1.001 | 2.4% |  |
+| Permute | 1.025 | 0.5% | 0.8% | 0.999 | 0.9% | slower beyond tolerance |
+| Queens | 1.038 | 1.1% | 0.9% | 1.000 | 1.2% | slower beyond tolerance |
+| Sieve | 0.994 | 1.5% | 1.2% | 1.003 | 1.8% |  |
+| Towers | 1.004 | 0.3% | 2.0% | 1.012 | 3.2% |  |
+
+Names only (`names`, the known-miss flag off):
+
+| Program | After / base | Base range | After range | Twin / base | Tolerance | Verdict |
+|---|---:|---:|---:|---:|---:|---|
+| fib | 1.024 | 1.5% | 1.4% | 1.009 | 2.4% |  |
+| loop | 1.002 | 0.2% | 0.1% | 1.000 | 0.2% |  |
+| integer-table | 0.992 | 4.3% | 3.7% | 0.984 | 6.0% |  |
+| string-key | 1.005 | 6.8% | 5.1% | 0.978 | 9.0% |  |
+| concat | 1.026 | 3.2% | 2.2% | 0.999 | 3.2% |  |
+| sort | 0.996 | 3.4% | 0.6% | 1.013 | 4.6% |  |
+| binary-trees | 1.010 | 2.7% | 2.4% | 1.006 | 3.3% |  |
+| List | 0.960 | 2.0% | 0.1% | 1.003 | 2.3% | target met |
+| NBody | 1.003 | 2.3% | 1.4% | 1.001 | 2.4% |  |
+| Permute | 1.037 | 0.5% | 4.9% | 0.999 | 5.0% |  |
+| Queens | 1.037 | 1.1% | 1.4% | 1.000 | 1.4% | slower beyond tolerance |
+| Sieve | 1.002 | 1.5% | 4.8% | 1.003 | 5.1% |  |
+| Towers | 1.011 | 0.3% | 2.3% | 1.012 | 3.4% |  |
+
+Reading, by the rule recorded before the run: `names` is slower than the base beyond tolerance on Queens (+3.7%, tolerance 1.4%), so the interned-name cache, and the larger VM record it adds, causes the Queens slowdown. The full change repeats it (Queens +3.8%, tolerance 1.2%) and this time also slows Permute (+2.5%, tolerance 0.9%); fib is within tolerance in both. List gains 6.9% with the full change and 4.0% with names alone.
+
+Outcome: rejected. The full change fails the keep rule on Queens and Permute. The source change is reverted and these measurements stay. A later attempt would keep the names outside the VM's frequently used record (the next step this record named); the owner has since moved Halo's beat-PUC goal to Halo's candidate list, so that attempt is not scheduled.
