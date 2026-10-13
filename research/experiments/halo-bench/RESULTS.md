@@ -5652,3 +5652,80 @@ ubuntu-24.04, no timing evidence) built both Luas with identical build
 commands, printed the recorded checksum of every program on all three
 engines, and refused a doctored fib checksum (`--expect`) and an engine
 printing an extra line (`--strict`), each with its intended message.
+
+### Result
+
+[Run 38353159628](https://github.com/Ming-Research/Halo-wf/actions/runs/38353159628)
+on the 14900K (source `574ad60ce16c`, gcc 15.2.0, governor `performance`,
+every timed process on CPU 2, `fastest.py` without Halo, 21 rounds after
+one sample round). Both Luas were built with identical compile lines
+(`-O2`, no LTO), the twin is a byte copy of the 7.0.15 binary (same
+SHA-256), and the 7.2.16 binary differs from it. All 819 launches (3 engines
+x 13 programs x 21 rounds) exited 0 without a timeout or stderr output and
+printed the reference's checksum. Medians in seconds per launch; r is
+7.2.16's median over 7.0.15's, a range is (max - min) / median over the 21
+rounds, R the larger of the two ranges, t the twin's median over 7.0.15's
+minus 1 in absolute value, and "inside" means |r - 1| <= max(R, t).
+
+| Program | 7.0.15 | 7.2.16 | Range 7.0.15 | Range 7.2.16 | R | t | max(R, t) | r | \|r - 1\| | Rule |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| fib | 0.0484 | 0.0482 | 5.65% | 3.31% | 5.65% | 0.16% | 5.65% | 0.996 | 0.43% | inside |
+| loop | 0.3298 | 0.3298 | 0.36% | 3.65% | 3.65% | 0.01% | 3.65% | 1.000 | 0.01% | inside |
+| integer-table | 0.2599 | 0.2606 | 2.91% | 2.10% | 2.91% | 0.18% | 2.91% | 1.003 | 0.26% | inside |
+| string-key | 0.0268 | 0.0262 | 6.83% | 4.81% | 6.83% | 0.03% | 6.83% | 0.978 | 2.20% | inside |
+| concat | 0.0545 | 0.0549 | 1.71% | 2.47% | 2.47% | 0.01% | 2.47% | 1.007 | 0.73% | inside |
+| sort | 0.2916 | 0.2985 | 1.04% | 1.26% | 1.26% | 0.16% | 1.26% | 1.024 | 2.39% | **outside** |
+| binary-trees | 0.9283 | 0.9235 | 2.46% | 3.14% | 3.14% | 0.79% | 3.14% | 0.995 | 0.51% | inside |
+| List | 0.4354 | 0.4368 | 2.66% | 3.82% | 3.82% | 0.02% | 3.82% | 1.003 | 0.34% | inside |
+| NBody | 0.6696 | 0.6824 | 1.36% | 3.47% | 3.47% | 0.06% | 3.47% | 1.019 | 1.91% | inside |
+| Permute | 0.3655 | 0.3679 | 1.24% | 1.31% | 1.31% | 0.04% | 1.31% | 1.007 | 0.66% | inside |
+| Queens | 0.4649 | 0.4643 | 1.72% | 5.69% | 5.69% | 0.35% | 5.69% | 0.999 | 0.14% | inside |
+| Sieve | 0.5615 | 0.5632 | 1.11% | 1.03% | 1.11% | 0.00% | 1.11% | 1.003 | 0.30% | inside |
+| Towers | 0.4465 | 0.4450 | 1.44% | 1.06% | 1.44% | 0.17% | 1.44% | 0.997 | 0.33% | inside |
+
+Geometric mean over the 13 programs of the median ratio to 7.0.15: 7.2.16
+1.002, twin 0.999.
+
+Checks of the checks, from the run's sample step (artifact
+`puc-baseline-72-sample`). With a wrong expected file for fib (`832041`
+recorded, `832040` printed), `--expect` stopped the run with
+`RuntimeError: fib: puc-7.0.15 printed '832040\n', .../wrong-expect.json recorded '832041\n'`.
+With an engine that printed an extra line before the result, `--strict`
+stopped it with
+`RuntimeError: fib: wrong, round 1: checksum '0\n832040\n', PUC 5.1.5 '832040\n'`.
+Each refused the wrong result for the intended reason, before any timing
+counted.
+
+Addresses of `luaV_execute` (the interpreter loop), from the run's symbol
+listing: 7.0.15 at `0x16750`, 7.2.16 at `0x16810`, both of size `0x1683`
+and both 16 modulo 64. `luaH_getnum` is `0x90` bytes in 7.0.15 and `0xa4`
+in 7.2.16. The manifest lists the files that differ under `deps/`: `lbaselib.c`,
+`ldump.c`, `llex.c`, `lparser.c`, `ltable.c`, `lua_bit.c`, `lua_cjson.c`,
+`strbuf.c` and `deps/Makefile`.
+
+The manifest's frequency line before the timed run reads `4663651 kHz (min
+5000000, max 5000000)`, a current frequency below the stated minimum; the
+JSON's own reading before the run is 5000000 kHz, and the readings after
+the run are 5000000 kHz (manifest) and 5000099 kHz (JSON). This is recorded as read; no conclusion is drawn from it.
+
+### Outcome
+
+Twelve of the 13 programs are inside the rule. Sort is outside: r = 1.024
+against max(R, t) = 1.26% (R from 7.2.16's own 1.26% range, 7.0.15's being
+1.04%; t = 0.16%), so |r - 1| = 2.39%. 7.2.16 was slower on all 21 rounds
+(per-round ratio 1.014 to 1.034), and its fastest sort run (0.2976 s) is
+slower than 7.0.15's slowest (0.2934 s), so the two builds' sort times
+do not overlap. NBody is inside (r = 1.019, 1.91% against 3.47%)
+though 7.2.16 was slower in all 21 rounds there too. By the decision rule
+the baseline does not switch by itself: the owner decides on the status
+board's card `halo-card-baseline-sort`, whose recommendation is A, to
+switch the baseline to 7.2.16 and keep reporting sort against 7.0.15 as
+well.
+
+`luaV_execute` has the same size in both builds and sits at 16 modulo 64 in
+both, so the code placement of the main loop is not the likely cause. The
+likely cause, not separately verified, is 7.2.16's rewrite of the
+integer-key table lookup (`luaH_getnum`, B5), which sort exercises; the
+fastest-interpreter baseline and every earlier record keep their 7.0.15
+numbers. This is one machine, one build with gcc 15.2.0 at `-O2`, and 21
+rounds.
