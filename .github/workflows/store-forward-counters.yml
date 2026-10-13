@@ -37,7 +37,7 @@ env:
   # Two event sets, each at most four general-purpose counters plus the fixed
   # cycles and instructions counters, measured in separate runs rather than
   # multiplexed; duration_time is perf's wall clock and takes no counter.
-  EVENTS_A: cpu_core/cycles/u,cpu_core/instructions/u,cpu_core/ld_blocks.store_forward/u,cpu_core/ld_blocks_partial.address_alias/u,cpu_core/br_misp_retired.all_branches/u,duration_time
+  EVENTS_A: cpu_core/cycles/u,cpu_core/instructions/u,cpu_core/ld_blocks.store_forward/u,cpu_core/br_misp_retired.all_branches/u,duration_time
   EVENTS_B: cpu_core/cycles/u,cpu_core/instructions/u,cpu_core/frontend_retired.dsb_miss/u,cpu_core/idq.dsb_uops/u,cpu_core/idq.mite_uops/u,duration_time
 
 jobs:
@@ -251,7 +251,6 @@ jobs:
               ('cycles', 'A', 'cycles', 1),
               ('instructions', 'A', 'instructions', 1),
               ('ld_blocks.store_forward', 'A', 'ld_blocks.store_forward', 1),
-              ('ld_blocks_partial.address_alias', 'A', 'ld_blocks_partial.address_alias', 1),
               ('br_misp_retired.all_branches', 'A', 'br_misp_retired.all_branches', 1),
               ('wall time s (set B)', 'B', 'duration_time', 1e-9),
               ('cycles (set B)', 'B', 'cycles', 1),
