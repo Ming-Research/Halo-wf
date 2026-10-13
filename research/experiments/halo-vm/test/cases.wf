@@ -1331,9 +1331,13 @@ fn fixture_self_global_hits(budget: u64) -> r: Bool pure {
       let wide_false = false_is(stack: &stack, slot: 12_u64);
       let aliases = band(first_alias, second_alias);
       let methods = band(false_method, numeric_method);
-      let narrow_globals = band(band(global_hit, false_global), numeric_global);
+      let narrow_first = band(global_hit, false_global);
+      let narrow_globals = band(narrow_first, numeric_global);
       let wide_globals = band(wide_global, wide_false);
-      return band(band(aliases, methods), band(narrow_globals, wide_globals));
+      let receiver_side = band(aliases, methods);
+      let global_side = band(narrow_globals, wide_globals);
+      let all = band(receiver_side, global_side);
+      return all;
     }
     Error() => {
     }
@@ -1427,7 +1431,9 @@ fn fixture_self_global_misses(budget: u64) -> r: Bool pure {
         let first_alias = band(first_value, first_receiver);
         let second_alias = band(second_value, second_receiver);
         let global_values = band(global_value, wide_value);
-        return band(band(first_alias, second_alias), global_values);
+        let alias_values = band(first_alias, second_alias);
+        let all = band(alias_values, global_values);
+        return all;
       }
       Error() => {
         return False();
