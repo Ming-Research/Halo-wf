@@ -6618,3 +6618,49 @@ PUC case-body blocks matched by exact count. Inferred: PUC per-opcode costs
 for unmatched blocks, PUC's cost per miss (~85), every target cost and so
 every saving above, all code-generation explanations, and whether instruction
 savings become time.
+
+## Fast hit paths for SelfK and GetGlobal
+
+Status: not yet measured. The falsifier and keep rule below are recorded
+before any measurement.
+
+Question: do raw-hit paths for `SelfK` and `GetGlobal` that continue the
+dispatch loop directly remove enough instructions to make Towers faster?
+
+Reading. [Where List and Towers spend their instructions](#where-list-and-towers-spend-their-instructions)
+counts 122 instructions in the `SelfK` arm against 68 in a `GetTableK` hit
+arm. `GetGlobal` always enters `slow` and builds `CallbackPlan`, costing
+297 instructions per read. The recorded whole-program counts are 3,583M
+instructions for Towers and 3,308M for List.
+
+Change. Model both hit paths on `GetTableK`: a non-nil raw lookup writes the
+destination registers and continues directly. `SelfK` first copies the
+receiver into a local, then writes R(A+1) before R(A), preserving the case
+where A+1 equals B. A nil lookup writes nothing and leaves the existing
+handler to handle misses and callbacks. Raw hits allocate nothing and add
+no budget charge or collection safepoint.
+
+Observed caveat: the old `GetGlobal` slow path asks for the `__index`
+metamethod even on a raw hit. If the globals table has a metatable and
+`__index` has not yet been interned, that lookup allocates the name. The
+requested raw-hit path omits this unused allocation. Collection safepoint
+sites stay unchanged, but identical allocation-triggered collection timing
+is not guaranteed in this case.
+
+Expected: `SelfK` saves about 50 instructions per operation, or about 98M
+for Towers' 1.97M operations and 57M for List's 1.13M operations.
+`GetGlobal` saves about 112M for Towers: (297 - about 70) x 491K reads.
+Together these are about 210M of Towers' 3,583M instructions (5.9%) and
+57M of List's 3,308M instructions (1.7%). These are estimates from the
+attribution, not measured savings.
+
+Falsifier, recorded before measuring: Towers' callgrind `Ir` must fall by
+at least 4% against the base, using the same workload and full LTO on both
+sides. If it falls by less than 4%, no timing is run.
+
+Keep rule: the gate is green, and timing on the 14900K, CPU 2, with full
+LTO uses six interleaved pairs of the same-source before and after builds,
+with a byte-copy twin of the base as the noise control. Towers must be at
+least 3% faster than the base, beyond both ranges and the twin's difference.
+No other halo-bench kernel or are-we-fast-yet bundle may be slower than the
+base beyond its larger range plus the twin's difference.
