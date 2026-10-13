@@ -6422,9 +6422,9 @@ the required time saving on this machine.
 
 ## Jump instructions continue the dispatch loop directly
 
-Status: recorded before the change was built or measured. The question, the
-prediction, the comparison and the keep rule below were written first; the
-code change follows them and no measurement exists yet.
+Status: measured and rejected (see Result); the source change is reverted.
+The question, the prediction, the comparison and the keep rule below were
+written before the change was built or measured.
 
 ### Question
 
@@ -6530,5 +6530,5 @@ predicted gain is about 1%.
 | Sieve | 0.994 | 2.8% | 0.4% | 1.000 | 2.9% |  |
 | Towers | 0.977 | 1.8% | 1.6% | 0.995 | 2.3% |  |
 
-Outcome: rejected. List is only 1.5% faster than the base (threshold 3%, tolerance 1.5%), although the callgrind falsifier passed first ([run 38370247961](https://github.com/Ming-Research/Halo-wf/actions/runs/38370247961)): List's instructions fell 13.01% and Towers' 0.71%. The instructions the jump arms stopped executing (the shared exit's window re-checks) were cheap, well-predicted work, so a 13% instruction saving bought about a ninth of that in time on this machine. The source change is reverted; this record stays.
+Outcome: rejected. List is only 1.5% faster than the base (threshold 3%, tolerance 1.5%), although the callgrind falsifier passed first ([run 38370247961](https://github.com/Ming-Research/Halo-wf/actions/runs/38370247961)): List's instructions fell 13.01% and Towers' 0.71%. A 13% instruction saving bought about a ninth of that in time on this machine. The likely reason, inferred and not measured, is that the instructions the jump arms stopped executing (the shared exit's window re-checks) are cheap, well-predicted work; no cache or branch counts were taken to confirm it. The source change is reverted; this record stays.
 
