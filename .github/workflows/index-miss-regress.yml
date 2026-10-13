@@ -67,8 +67,8 @@ jobs:
           set -euo pipefail
           out="$PWD/build/index-miss-regress"
           # run.py reads the kernel as bytes and replaces its anchored first
-          # local N. N=36 is estimated at about 1.56 s on the 14900K from the
-          # recorded N=30 Halo sample (0.087 s), within the requested 1-3 s.
+          # local N. N=30 (fib 832040) is used because the first attempt at
+          # N=36 lost its hosted runner under callgrind with cache simulation.
           # Both binaries receive these exact bytes on stdin, with no args;
           # PUC's run.py path instead uses -e and its loadstring/io.read wrapper.
           python3 - "$out" <<'PY'
@@ -79,7 +79,7 @@ jobs:
 
           out = Path(sys.argv[1])
           n = int(os.environ['FIB_N'])
-          if n != 36:
+          if n != 30:
               raise SystemExit('update the independent fib checksum before changing FIB_N')
           source = Path('research/experiments/halo-bench/kernels/fib.lua').read_bytes()
           source, replacements = re.subn(rb'\Alocal N = [0-9]+', f'local N = {n}'.encode(), source)
