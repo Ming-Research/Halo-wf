@@ -5542,7 +5542,23 @@ stage 2, which is set aside as stated.
 
 ## A cheaper Lua return
 
-Recorded before the change.
+The change has two parts, both on the Lua `RETURN` path, and is timed as one
+change:
+
+1. no full-frame copy on return: `RETURN` reads only the three fields of the
+   returning frame that `finish` (which completes a return) uses, and the
+   results move with checker-proved slot positions instead of saturating sums
+   and per-slot length tests;
+2. an open-upvalue limit per execution: one scalar, an upper bound on the
+   slots of the open upvalues, lets a return that is above every open slot
+   skip the `close_upvalues` call after one compare.
+
+The criterion below was first written for part one alone, before part one
+was made. It was revised after part one's instruction count and before any
+timing, to add part two; [the revision](#criterion-revised-after-part-ones-count)
+says why. The keep rule is unchanged.
+
+### Part one: no full-frame copy, recorded before the change
 
 Question: does fib get faster when a Lua `RETURN` reads only the three
 fields of the returning frame that it uses, instead of copying the whole
@@ -5647,11 +5663,89 @@ Validity conditions on the count, checked before any timing is interpreted:
   operation is not put back to `+sat` or a run-time test to make the build
   pass.
 
-Comparison: this branch's base `56878ac` against the branch, both built by
-`wf-d837678c6905`, with a twin of the base, every timed process on CPU 2 of
-the 14900K, six interleaved pairs over the seven kernels as `run.py` runs
-them (binary-trees at depth 14, fib at N = 30); and callgrind of fib(32) on
-a hosted runner, before and after, by the temporary `return-profile.yml`.
+### Part one's instruction count
+
+Callgrind of fib(32) by the temporary workflow `return-profile.yml`
+([run 38329252298](https://github.com/Ming-Research/Halo-wf/actions/runs/38329252298);
+hosted x86-64 runner, full LTO, `make check` run 38329252332 on the same
+revision passing) counts 866.5 executed instructions per Lua call with part
+one against 884.5 at the base `56878ac`: 18 fewer, 2.0% of the base's count.
+The `RETURN` arm falls from 129 to 117 and `finish` from 93 to 87. The
+saving is at the low end of the expected 17 to 30 and above the falsifier's
+floor of 10, so the reading stands on the count. A time saving in proportion
+to it would be about 2.0%, below the 3% the keep rule asks.
+
+### Part two: an open-upvalue limit per execution
+
+Reading. Of the 884.5 instructions per Lua call, 28 are `close_upvalues` in
+the `RETURN` arm finding nothing to close (the upvalue close test row of the
+table above). fib's own local in the main chunk keeps the open list
+non-empty, and the list holds only heap handles, so the test bounds-checks
+the first handle into the heap's upvalue records and tests `live`, the `Open`
+tag, the owning thread and finally the slot against `base`. PUC Lua compares
+its open-upvalue pointer with `base` once. The design proposal, with the
+three candidates and why this one, is in
+[VM.md](../../investigations/halo/VM.md#open-upvalues-a-cheaper-nothing-to-close-test)
+and waits for the owner's card.
+
+Change. Each execution record keeps `open_limit`: 0 when its open list is
+empty, otherwise greater than every listed open slot. `capture` only raises
+it; `close_upvalues` lowers it only to one more than a slot it has just read
+from a live, `Open` cell this execution owns, or to 0 when the list empties;
+a coroutine switch exchanges it with the execution record, and a dead thread
+and engine reset set it to 0. The `RETURN` arm and a Lua tail call's frame
+pop call `close_upvalues` only when `base < open_limit`. The limit is an
+upper bound, so an overstated one only sends a return into the checked loop
+that runs today; every cell access stays index-checked.
+
+Expected: callgrind counts 23 to 26 fewer executed instructions per Lua call
+of fib than part one alone (28 less 2 to 5 for the load, compare and branch,
+inlined into the `RETURN` arm), so about 840.5 to 843.5 for both parts,
+41 to 44 fewer than the base's 884.5 (4.6% to 5.0%). If part two saves fewer
+than 15 per call, or a load from the upvalue slab remains on fib's return,
+this reading was wrong and is corrected before any timing is interpreted.
+The falsifiers are in `make check`: the oracle corpus at budgets 1, 7 and
+1000, ordinary and under collector stress, and the new oracle script
+`coroutines/open-limit-per-execution` (a coroutine captures at a slot higher
+than its resumer's frames, yields, and the resumer returns and reads a
+closure over its own local).
+
+### Part two's instruction count
+
+Callgrind of fib(32) with both parts
+([run 38330151462](https://github.com/Ming-Research/Halo-wf/actions/runs/38330151462);
+hosted x86-64 runner, full LTO) counts 836.5 executed instructions per Lua
+call against 884.5 at the base: 48 fewer, 5.4% of the base's count. The
+`RETURN` arm falls from 129 to 88. Part two alone saves 30 against part
+one's 866.5, above the expected 23 to 26 (the compare, load and branch cost
+fewer instructions than allowed for). The new oracle script, recorded on
+Redis 7.2.16, equals the prediction
+([run 38330151455](https://github.com/Ming-Research/Halo-wf/actions/runs/38330151455)).
+
+### Criterion revised after part one's count
+
+The first criterion covered part one alone and said it would probably fall
+short of the 3% threshold. Part one's count confirmed that: 18 instructions
+saved are 2.0% of the base's count, below the 3% threshold, and the saved
+loads and compares sit mostly off the critical path, so its time saving is
+expected below 2.0%. Timing it alone would most likely only show it below the
+threshold. Part two removes the remaining Halo-side cost on the same return
+path, the upvalue close test the first criterion listed as not addressed, so
+the two are one change to the return path. The criterion was therefore
+revised to time both parts together. It was revised after part one's
+instruction counts and before any timing of either part. The threshold is not
+lowered; the keep rule is unchanged word for word.
+
+Comparison: this branch's base `56878ac` against the branch with both parts,
+both built by `wf-d837678c6905`, with a twin of the base, every timed process
+on CPU 2 of the 14900K, six interleaved pairs over the seven kernels as
+`run.py` runs them (binary-trees at depth 14, fib at N = 30); and callgrind
+of fib(32) on a hosted runner, before and after, by the temporary
+`return-profile.yml`.
+
+The 4.6% to 5.0% expected here is mostly loads, compares and branches off the
+critical path, so a time saving in proportion to the count is an upper
+estimate. **The change may still fall short of the 3% threshold.**
 
 Kept only if: fib's median falls at least 3%, by more than both ranges and
 the twin's difference on the 14900K; no other kernel is slower beyond its
