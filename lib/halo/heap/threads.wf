@@ -171,6 +171,21 @@ fn refresh_thread_storage(heap: &Heap, h: u32) -> r: Bool writes(heap) {
 }
 
 fn refresh_thread_bytes(heap: &Heap, h: u32, amount: u64) -> r: Bool writes(heap) {
+  let allocation = True();
+  return reconcile_thread_bytes(heap: heap, h: h, amount: amount, allocation: allocation);
+}
+
+fn reconcile_thread_storage(heap: &Heap, h: u32) -> r: Bool writes(heap) {
+  let i = cvt::<u32, u64>(h);
+  if i < heap^.threads.inner.len {
+    let amount = pkg::execution::storage_bytes(execution: &heap^.threads.inner[i].payload);
+    let allocation = False();
+    return reconcile_thread_bytes(heap: heap, h: h, amount: amount, allocation: allocation);
+  }
+  return False();
+}
+
+fn reconcile_thread_bytes(heap: &Heap, h: u32, amount: u64, allocation: Bool) -> r: Bool writes(heap) {
   doc "A failed growth charge leaves the accounting intact; its caller must handle exhaustion before any safepoint can accept the changed payload.";
   let i = cvt::<u32, u64>(h);
   if i < heap^.threads.inner.len {
@@ -181,7 +196,12 @@ fn refresh_thread_bytes(heap: &Heap, h: u32, amount: u64) -> r: Bool writes(heap
       }
       if amount > previous {
         let growth = amount - previous;
-        let charged = charge(heap: heap, amount: growth);
+        let charged = False();
+        if allocation {
+          set charged = charge(heap: heap, amount: growth);
+        } else {
+          set charged = charge_live(heap: heap, amount: growth);
+        }
         let failed = bnot(charged);
         if failed {
           return False();

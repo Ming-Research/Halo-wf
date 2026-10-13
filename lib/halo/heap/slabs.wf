@@ -28,6 +28,16 @@ fn charge(heap: &Heap, amount: u64) -> r: Bool writes(heap.bytes), writes(heap.b
   return False();
 }
 
+fn charge_live(heap: &Heap, amount: u64) -> r: Bool writes(heap.bytes) {
+  let b = heap^.bytes;
+  let room = 18446744073709551615_u64 - amount;
+  if b <= room {
+    set heap^.bytes = b + amount;
+    return True();
+  }
+  return False();
+}
+
 fn uncharge(heap: &Heap, amount: u64) -> r: unit writes(heap.bytes) {
   let b = heap^.bytes;
   if amount <= b {
