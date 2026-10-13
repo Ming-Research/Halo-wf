@@ -1,14 +1,14 @@
 # Temporary, on this branch only: removed before the branch is ready. Board
-# item halo-beat-puc-work. It counts instructions per Lua call of fib for
-# Whitefoot#408 (call results reuse a by-copy argument's storage). One Halo
-# bench host, this branch's head (lib/ and the bench host equal bb2a10f), is
-# built twice with full LTO on a hosted x86-64 runner: `base` by the compiler
-# whitefoot.pin names and `head` by the experimental release
-# wf-exp-1e2d6fa09265 of the Whitefoot#408 change. It reads instruction counts
-# and code, never times: callgrind of fib(32) per side joined with objdump of
-# the hot functions and the dispatch function's frame and prologue. Expected:
-# the Call arm's 8+16+8-byte Step copy (a 16-byte movups load across two
-# 8-byte stores) disappears with head.
+# item halo-beat-puc-work. It counts instructions per Lua call of fib for a
+# Whitefoot compiler change: first Whitefoot#408 (wf-exp-1e2d6fa09265, run
+# 38334973034: the Call arm's Step copy disappeared), now Whitefoot#405
+# (release wf-93e97efdc27b, main 93e97efdc: frame slots that never cross a
+# transfer between split-dispatch parts belong to each part). One Halo bench
+# host, this branch's head (lib/ and the bench host equal bb2a10f), is built
+# twice with full LTO on a hosted x86-64 runner: `base` by the compiler
+# whitefoot.pin names and `head` by EXP_RELEASE. It reads instruction counts
+# and code, never times. Expected for #405: no stores of the Result or the
+# cursor at the Call and Return join, 14 fewer stores per Lua call.
 name: step-copy-profile
 
 on:
@@ -23,7 +23,7 @@ defaults:
 
 env:
   SLOW_LIB: bb2a10f
-  EXP_RELEASE: wf-exp-1e2d6fa09265
+  EXP_RELEASE: wf-93e97efdc27b
   FIB_N: 32
 
 jobs:
