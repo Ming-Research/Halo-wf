@@ -5,7 +5,8 @@
 # compiler with full LTO, six interleaved pairs over the seven kernels (fib at
 # N = 30, binary-trees at depth 14) with a twin of the base, every timed process
 # on CPU 2. The 14900K job runs only for a push whose head commit subject
-# starts with [bench] and that touches this file.
+# starts with [bench] and that touches this file. Rerun once, unchanged, as
+# RESULTS.md's "Rerun, recorded before it runs" states.
 name: bench-entry
 
 on:
