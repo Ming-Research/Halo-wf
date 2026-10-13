@@ -5743,3 +5743,88 @@ The two new stack-overflow branches need a destination at or above
 they are trusted on the equivalence argument in part one (the old saturated
 `room` test fired on exactly the same conditions, at the same point after
 the tail-call pop), which the completion review checked by reading.
+
+### Result, first run
+
+[Run 38360542545](https://github.com/Ming-Research/Halo-wf/actions/runs/38360542545)
+measured both parts at `fb05098` against base `56878ac`, on the 14900K,
+with `wf-d837678c6905` and full LTO on both sides. Every timed process was
+pinned to CPU 2; the artifact records performance governors. The base twin
+is a second copy of the same executable (its digest matches the base's).
+The seven kernels, fib at N = 30 and binary-trees at depth 14, are unchanged
+from the comparison above. The gate (`make check`) is green on the measured
+revision ([check run 38360542658](https://github.com/Ming-Research/Halo-wf/actions/runs/38360542658)).
+
+The tables are recomputed from the raw pairs in artifact `halo-bench-entry`:
+`entry-1.json`, `entry-3.json`, `entry-6.json` and the matching
+`twin-1.json`, `twin-3.json`, `twin-6.json`. Each pair count is a separate
+batch, not a prefix of the six-pair batch. Medians are seconds; ratio is
+Halo / base; each range is (maximum - minimum) / that side's median. The
+twin column gives twin / base and, in parentheses, its absolute difference
+from 1 as a percentage. Verdicts use unrounded values. For fib, the verdict
+checks the 3% fall, the fall against each range, and the fall against the
+twin's difference separately. For every other kernel it checks the
+no-regression clause. The green gate applies to all three batches.
+
+#### 1 pair (`entry-1.json`, `twin-1.json`)
+
+| Kernel | Base median (s) | Halo median (s) | Ratio | Base range | Halo range | Twin ratio (difference) | Verdict |
+|---|---:|---:|---:|---:|---:|---:|---|
+| fib | 0.090317 | 0.086021 | 0.952 | 0.00% | 0.00% | 0.994 (0.581%) | 3%: pass; base range: pass; Halo range: pass; twin: pass |
+| loop | 0.501299 | 0.502180 | 1.002 | 0.00% | 0.00% | 1.002 (0.224%) | No regression: pass |
+| integer-table | 0.338712 | 0.338059 | 0.998 | 0.00% | 0.00% | 1.005 (0.462%) | No regression: pass |
+| string-key | 0.023132 | 0.022977 | 0.993 | 0.00% | 0.00% | 0.990 (0.955%) | No regression: pass |
+| concat | 0.073372 | 0.072714 | 0.991 | 0.00% | 0.00% | 0.947 (5.308%) | No regression: pass |
+| sort | 0.182859 | 0.180047 | 0.985 | 0.00% | 0.00% | 0.994 (0.568%) | No regression: pass |
+| binary-trees | 1.228372 | 1.207825 | 0.983 | 0.00% | 0.00% | 0.998 (0.162%) | No regression: pass |
+
+#### 3 pairs (`entry-3.json`, `twin-3.json`)
+
+| Kernel | Base median (s) | Halo median (s) | Ratio | Base range | Halo range | Twin ratio (difference) | Verdict |
+|---|---:|---:|---:|---:|---:|---:|---|
+| fib | 0.088834 | 0.086142 | 0.970 | 1.25% | 0.43% | 1.011 (1.074%) | 3%: pass; base range: pass; Halo range: pass; twin: pass |
+| loop | 0.501686 | 0.501875 | 1.000 | 0.09% | 0.03% | 1.000 (0.002%) | No regression: pass |
+| integer-table | 0.339037 | 0.338218 | 0.998 | 4.83% | 0.92% | 0.979 (2.053%) | No regression: pass |
+| string-key | 0.022958 | 0.021954 | 0.956 | 4.63% | 4.51% | 1.001 (0.121%) | No regression: pass |
+| concat | 0.072992 | 0.072394 | 0.992 | 2.01% | 0.25% | 1.006 (0.568%) | No regression: pass |
+| sort | 0.180232 | 0.182313 | 1.012 | 2.65% | 1.52% | 0.995 (0.483%) | No regression: pass |
+| binary-trees | 1.214709 | 1.208756 | 0.995 | 4.49% | 0.21% | 1.000 (0.038%) | No regression: pass |
+
+#### 6 pairs (`entry-6.json`, `twin-6.json`)
+
+| Kernel | Base median (s) | Halo median (s) | Ratio | Base range | Halo range | Twin ratio (difference) | Verdict |
+|---|---:|---:|---:|---:|---:|---:|---|
+| fib | 0.089531 | 0.086245 | 0.963 | 40.82% | 1.33% | 1.003 (0.327%) | 3%: pass; base range: fail; Halo range: pass; twin: pass |
+| loop | 0.501871 | 0.501935 | 1.000 | 1.05% | 1.30% | 1.000 (0.004%) | No regression: pass |
+| integer-table | 0.339920 | 0.338150 | 0.995 | 4.55% | 2.37% | 1.012 (1.198%) | No regression: pass |
+| string-key | 0.022943 | 0.022438 | 0.978 | 6.43% | 5.61% | 1.001 (0.090%) | No regression: pass |
+| concat | 0.072826 | 0.072549 | 0.996 | 2.05% | 0.75% | 1.000 (0.027%) | No regression: pass |
+| sort | 0.182188 | 0.181522 | 0.996 | 2.13% | 1.73% | 0.999 (0.095%) | No regression: pass |
+| binary-trees | 1.216067 | 1.210048 | 0.995 | 0.66% | 0.91% | 0.998 (0.204%) | No regression: pass |
+
+At six pairs, fib's ratio is 0.963 (3.67% faster than the base), and Halo
+is faster in all six pairs. One base sample, in pair 2, is 0.125071 s;
+the other five are 0.0885-0.0902 s. The base range is therefore 40.8%,
+so the fall is not "by more than both ranges": that clause is not met.
+The 3% threshold, the Halo-range comparison (1.33%), the twin comparison
+(0.33%), every other kernel's no-regression clause, and the green gate all
+pass. These samples and comparisons come from `entry-6.json` and
+`twin-6.json`; the slow sample is retained in the calculation. At three
+pairs, the ratio rounds to 0.970 but the unrounded fall is 3.0301%, so that
+batch clears the 3% threshold (`entry-3.json`). The one-pair batch's zero
+ranges reflect one observation per side, not evidence of zero spread.
+
+The compiler's `--check-module pkg::vm` times in `check-times.txt` are
+3.297 and 3.325 s for the base, 3.308 and 3.282 s for the change. The ratio
+of their medians is 0.995; this compiler-time observation is not a clause
+of the keep rule.
+
+### Rerun, recorded before it runs
+
+This run is undecided by one base sample: fib's observed fall clears every
+other clause, but its base spread is too large to decide the range clause.
+The evidence standard allows a repeat where the spread is too large to
+decide. One rerun with the same workflow and the same rule above, unchanged,
+decides: the change is kept if it passes, or reverted with both runs'
+measurements kept if it fails. There will be no further rerun. The first
+run does not establish that the change is kept, and no sample is discarded.
