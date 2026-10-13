@@ -5339,6 +5339,12 @@ The pin moves to `wf-d837678c6905`; status-board item halo-pin-357.
 
 ## Fastest-interpreter baseline
 
+The PUC numbers below were measured on Redis 7.0.15's build; the baseline
+now uses Redis 7.2.16's. Across the 13 programs, 7.2.16 was 0.2% slower
+by geometric mean and sort was 2.4% slower than 7.0.15
+([comparison](#puc-515-from-redis-7015-against-redis-7216s)). The recorded
+numbers below are unchanged.
+
 ### Question, recorded before it runs
 
 The owner's performance goal is for Halo to be the fastest Lua interpreter,
@@ -5539,3 +5545,205 @@ Permute 16% and concat 15%, LuaJIT List 17.5% (two launches at 0.188 s,
 four at 0.226 s). No conclusion above rests on a cell whose ratio
 sits within its range of the threshold it is compared with, except List in
 stage 2, which is set aside as stated.
+
+## PUC 5.1.5 from Redis 7.0.15 against Redis 7.2.16's
+
+### Question, recorded before measuring
+
+Every comparison above, the fastest-interpreter baseline included, times
+PUC Lua 5.1.5 as Redis 7.0.15 bundles it. Halo's compatibility reference
+moved to Redis 7.2.16 ([REDIS-72.md](../../investigations/halo/REDIS-72.md)),
+whose bundled Lua is the same PUC 5.1.5 with Redis's patches and later
+fixes. Is the 7.2.16 build as fast as the 7.0.15 build on the baseline's 13
+programs, so that the performance baseline can use the reference's Lua
+without moving the yardstick? Status-board item `halo-bench-baseline-72`.
+
+### What differs in the source
+
+REDIS-72.md's B1 to B7, read from both releases' sources, list every
+difference in the bundled Lua; the build flags are the same. By where the
+13 programs meet them:
+
+- Per operation, B5 only. `luaH_getnum` (`ltable.c`), which every table
+  read and write with a number key reaches, tests whether the key is in
+  the array part with one unsigned comparison in 7.0.15,
+  `cast(unsigned int, key-1) < cast(unsigned int, t->sizearray)`, and with
+  two signed comparisons in 7.2.16, `1 <= key && key <= t->sizearray`,
+  which avoids the signed overflow of `key-1` at the smallest int. The
+  results are the same. Integer-table, sort, Sieve, Queens, Permute and
+  Towers index arrays in their inner loops; whether gcc `-O2` folds the
+  two comparisons into one is not known before the run, which records the
+  size of `luaH_getnum` in both binaries.
+- Once per launch, B3 and B4: the lexer's long-bracket count widened to
+  `size_t` (`llex.c`) and the parser anchoring the chunk name
+  (`lparser.c`) run while the program is compiled, not per operation.
+- Not on these programs' paths: B2 (`bit.tohex`), B6 (`string.dump`'s
+  `DumpString`) and B7 (cjson); none of the kernels calls `unpack` (B1,
+  one more comparison per call), and whether a bundle does is not checked
+  here.
+- Code placement. The changed object files change size, so functions the
+  linker places after them, possibly `luaV_execute`, the interpreter
+  loop, may sit at another address modulo 64 bytes in 7.2.16's binary,
+  which can change their speed with no source change in them. The run records both binaries' addresses
+  of `luaV_execute`. The question is the speed of the build as Redis
+  builds it, so a difference counts whatever its cause; the cause matters
+  only for the card the rule below may raise.
+
+The run diffs `deps/lua` and `deps/Makefile` of the two verified tarballs
+(`lua-source.diff` in its artifact) and lists the files that differ in its
+manifest; a file outside B1 to B7's is reported with the result.
+
+### Builds
+
+Both Luas are built as the current baseline's was, by
+`fetch-redis.sh <directory> <version>`: the Redis tarball from
+download.redis.io, its SHA-256 checked against the one Redis publishes in
+its redis-hashes repository (the repository pins no digest of its own; the
+run's manifest records each tarball's), then Redis's own `make -C deps
+lua`. The baseline run's manifest records that build's compile line, `cc
+-Wall -DLUA_ANSI -DENABLE_CJSON_GLOBAL -DREDIS_STATIC='' -DLUA_USE_MKSTEMP
+-O2 -c -o lvm.o lvm.c` with gcc 15.2.0 on the 14900K: `-O2`, no LTO. Both
+builds run in the same job on the same machine, and the run stops before
+timing unless the compiler, archiver and deps Makefile command lines of
+the two build logs are identical. The twin is a byte copy of the 7.0.15
+binary under the same file name, as the twins above were copies of the
+base binary: it measures the run's own noise (drift, launch order, file
+placement). A second build from the same tarball with the same compiler
+and no LTO would be expected to give the same bytes, so it would add no
+source of noise a copy lacks.
+
+### Comparison
+
+`fastest.py` without Halo, three engines: `puc-7.0.15` (the reference),
+`puc-7.0.15-twin` and `puc-7.2.16`, on the baseline's 13 programs at its
+sizes (the seven kernels, binary-trees at depth 14, and the six
+are-we-fast-yet bundles at the baseline's inner iterations). The reference
+must print the checksums the baseline run recorded
+(`fastest-baseline-2026-10-12.json`, `--expect`), and every engine must
+print the reference's (`--strict`); a mismatch stops the run before its
+timings count. On the 14900K with every timed process on CPU 2 and the
+governor recorded, one sample round, then 21 rounds; each round launches
+the three in an order rotated by one position, so each engine takes each
+position 7 times. Medians and relative ranges (max − min) / median per
+engine and program, and each engine's median over the reference's.
+
+Round count. The baseline's PUC 5.1.5 medians add up to 4.86 s per round,
+so three engines take about 14.6 s a round: 21 rounds about 5.1 minutes,
+the sample 15 s, fetching and building both Luas and the bundles about 1
+to 2 minutes, about 7 minutes in all. Six rounds of the baseline gave PUC
+5.1.5 relative ranges from 0.18% (Permute) to 8.61% (concat), with fib
+3.78%, List 3.62% and integer-table 3.32%, larger than the effect B5 could
+plausibly have (about 1% on the array-heavy programs). A median of 21 has
+about half the scatter of a median of 6 (√(21/6) ≈ 1.9). More rounds also
+widen min–max ranges, which are extremes, so the rule below tolerates
+somewhat more than the baseline's six-round ranges suggest.
+
+### Decision rule, recorded before measuring
+
+For each program, r is 7.2.16's median over 7.0.15's, R the larger of the
+two builds' relative ranges and t the twin's median over 7.0.15's minus 1,
+in absolute value. If |r − 1| ≤ max(R, t) on all 13 programs, the baseline
+switches to 7.2.16's build: `fetch-redis.sh` builds 7.2.16 for both the
+reference group and the benchmarks, the README and `interpreters.sh` say
+so, and the earlier records keep their 7.0.15 numbers. Otherwise the owner
+chooses on a card that lists the programs outside, with r, R, t and the
+recorded addresses of `luaV_execute`. A failed check (different build
+commands, a checksum mismatch) is investigated before any timing is read.
+
+Expected: the switch, with B5 inside the ranges on the array-heavy
+programs and nothing else moving.
+
+The hosted sample ([run 38325955988](https://github.com/Ming-Research/Halo-wf/actions/runs/38325955988),
+ubuntu-24.04, no timing evidence) built both Luas with identical build
+commands, printed the recorded checksum of every program on all three
+engines, and refused a doctored fib checksum (`--expect`) and an engine
+printing an extra line (`--strict`), each with its intended message.
+
+### Result
+
+[Run 38353159628](https://github.com/Ming-Research/Halo-wf/actions/runs/38353159628)
+on the 14900K (source `574ad60ce16c`, gcc 15.2.0, governor `performance`,
+every timed process on CPU 2, `fastest.py` without Halo, 21 rounds after
+one sample round). Both Luas were built with identical compile lines
+(`-O2`, no LTO), the twin is a byte copy of the 7.0.15 binary (same
+SHA-256), and the 7.2.16 binary differs from it. All 819 launches (3 engines
+x 13 programs x 21 rounds) exited 0 without a timeout or stderr output and
+printed the reference's checksum. Medians in seconds per launch; r is
+7.2.16's median over 7.0.15's, a range is (max - min) / median over the 21
+rounds, R the larger of the two ranges, t the twin's median over 7.0.15's
+minus 1 in absolute value, and "inside" means |r - 1| <= max(R, t).
+
+| Program | 7.0.15 | 7.2.16 | Range 7.0.15 | Range 7.2.16 | R | t | max(R, t) | r | \|r - 1\| | Rule |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| fib | 0.0484 | 0.0482 | 5.65% | 3.31% | 5.65% | 0.16% | 5.65% | 0.996 | 0.43% | inside |
+| loop | 0.3298 | 0.3298 | 0.36% | 3.65% | 3.65% | 0.01% | 3.65% | 1.000 | 0.01% | inside |
+| integer-table | 0.2599 | 0.2606 | 2.91% | 2.10% | 2.91% | 0.18% | 2.91% | 1.003 | 0.26% | inside |
+| string-key | 0.0268 | 0.0262 | 6.83% | 4.81% | 6.83% | 0.03% | 6.83% | 0.978 | 2.20% | inside |
+| concat | 0.0545 | 0.0549 | 1.71% | 2.47% | 2.47% | 0.01% | 2.47% | 1.007 | 0.73% | inside |
+| sort | 0.2916 | 0.2985 | 1.04% | 1.26% | 1.26% | 0.16% | 1.26% | 1.024 | 2.39% | **outside** |
+| binary-trees | 0.9283 | 0.9235 | 2.46% | 3.14% | 3.14% | 0.79% | 3.14% | 0.995 | 0.51% | inside |
+| List | 0.4354 | 0.4368 | 2.66% | 3.82% | 3.82% | 0.02% | 3.82% | 1.003 | 0.34% | inside |
+| NBody | 0.6696 | 0.6824 | 1.36% | 3.47% | 3.47% | 0.06% | 3.47% | 1.019 | 1.91% | inside |
+| Permute | 0.3655 | 0.3679 | 1.24% | 1.31% | 1.31% | 0.04% | 1.31% | 1.007 | 0.66% | inside |
+| Queens | 0.4649 | 0.4643 | 1.72% | 5.69% | 5.69% | 0.35% | 5.69% | 0.999 | 0.14% | inside |
+| Sieve | 0.5615 | 0.5632 | 1.11% | 1.03% | 1.11% | 0.00% | 1.11% | 1.003 | 0.30% | inside |
+| Towers | 0.4465 | 0.4450 | 1.44% | 1.06% | 1.44% | 0.17% | 1.44% | 0.997 | 0.33% | inside |
+
+Geometric mean over the 13 programs of the median ratio to 7.0.15: 7.2.16
+1.002, twin 0.999.
+
+Checks of the checks, from the run's sample step (artifact
+`puc-baseline-72-sample`). With a wrong expected file for fib (`832041`
+recorded, `832040` printed), `--expect` stopped the run with
+`RuntimeError: fib: puc-7.0.15 printed '832040\n', .../wrong-expect.json recorded '832041\n'`.
+With an engine that printed an extra line before the result, `--strict`
+stopped it with
+`RuntimeError: fib: wrong, round 1: checksum '0\n832040\n', PUC 5.1.5 '832040\n'`.
+Each refused the wrong result for the intended reason, before any timing
+counted.
+
+Addresses of `luaV_execute` (the interpreter loop), from the run's symbol
+listing: 7.0.15 at `0x16750`, 7.2.16 at `0x16810`, both of size `0x1683`
+and both 16 modulo 64. `luaH_getnum` is `0x90` bytes in 7.0.15 and `0xa4`
+in 7.2.16. The manifest lists the files that differ under `deps/`: `lbaselib.c`,
+`ldump.c`, `llex.c`, `lparser.c`, `ltable.c`, `lua_bit.c`, `lua_cjson.c`,
+`strbuf.c` and `deps/Makefile`.
+
+The manifest's frequency line before the timed run reads `4663651 kHz (min
+5000000, max 5000000)`, a current frequency below the stated minimum; the
+JSON's own reading before the run is 5000000 kHz, and the readings after
+the run are 5000000 kHz (manifest) and 5000099 kHz (JSON). This is recorded as read; no conclusion is drawn from it.
+
+### Outcome
+
+Twelve of the 13 programs are inside the rule. Sort is outside: r = 1.024
+against max(R, t) = 1.26% (R from 7.2.16's own 1.26% range, 7.0.15's being
+1.04%; t = 0.16%), so |r - 1| = 2.39%. 7.2.16 was slower on all 21 rounds
+(per-round ratio 1.014 to 1.034), and its fastest sort run (0.2976 s) is
+slower than 7.0.15's slowest (0.2934 s), so the two builds' sort times
+do not overlap. NBody is inside (r = 1.019, 1.91% against 3.47%)
+though 7.2.16 was slower in all 21 rounds there too. By the decision rule
+the baseline does not switch by itself: the owner decides on the status
+board's card `halo-card-baseline-sort`, whose recommendation is A, to
+switch the baseline to 7.2.16 and keep reporting sort against 7.0.15 as
+well.
+
+`luaV_execute` has the same size in both builds and sits at 16 modulo 64 in
+both, so the code placement of the main loop is not the likely cause. The
+likely cause, not separately verified, is 7.2.16's rewrite of the
+integer-key table lookup (`luaH_getnum`, B5), which sort exercises; the
+fastest-interpreter baseline and every earlier record keep their 7.0.15
+numbers. This is one machine, one build with gcc 15.2.0 at `-O2`, and 21
+rounds.
+
+### Owner decision
+
+On 2026-10-13, the owner chose option A on status-board card
+`halo-card-baseline-sort`: "switch to 7.2.16, so the performance baseline
+and the compatibility reference use one Lua; keep 7.0.15's sort number in
+the performance record and report sort against both, so the 2.4% is not
+hidden." From now on, the PUC column in new performance
+reports is Redis 7.2.16's build. A report on sort also lists 7.0.15's sort
+time from this comparison (0.2916 s, against 7.2.16's 0.2985 s) and this
+comparison's ratio r = 1.024 (7.2.16 / 7.0.15). Earlier measurements keep
+their recorded numbers and build identities.

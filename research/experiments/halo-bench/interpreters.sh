@@ -9,8 +9,8 @@
 #   Luau 0.742      release tag at its commit; `make config=release luau`
 #                   (g++ -O2 -DNDEBUG -fno-math-errno), the CLI without
 #                   --codegen, so its interpreter runs every function
-# PUC Lua 5.1.5 comes from Redis 7.0.15 through
-# research/experiments/halo-oracle/fetch-redis.sh <dir> 7.0.15. <directory>/manifest.txt
+# PUC Lua 5.1.5 comes from Redis 7.2.16 through the default version of
+# research/experiments/halo-oracle/fetch-redis.sh <dir>. <directory>/manifest.txt
 # records versions, digests, compilers and one compile line of each build.
 # Linux only (nproc, sha256sum); CI runs it.
 set -eu
