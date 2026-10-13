@@ -168,7 +168,7 @@ The reference check group (`REFERENCE_LUA`, the number library and the
 MessagePack package against Redis's bundled Lua) now builds 7.2.16's Lua;
 neither behavior fix in the bundled Lua (B1, B2) is reachable from its tests,
 which the oracle scripts `unpack-overflow-range` and `bit-tohex-extrema`
-cover instead. The performance baseline still builds PUC Lua 5.1.5 from Redis
-7.0.15 (`fetch-redis.sh <directory> 7.0.15`): moving it changes the numbers
-every earlier comparison reports against, so a measurement of both bundled
-Lua builds decides it (`halo-bench-baseline-72`).
+cover instead. The performance baseline at the time of this move still built
+PUC Lua 5.1.5 from Redis 7.0.15; a measurement of both bundled Lua builds then
+decided it, and the baseline now uses 7.2.16's build, with sort also reported
+against 7.0.15's ([comparison and the owner's decision](../../experiments/halo-bench/RESULTS.md#owner-decision)).

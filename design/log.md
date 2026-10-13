@@ -4,6 +4,14 @@ Newest first. One entry per approved change of the tree: a dated title,
 `Nodes:` naming every node changed, `Owner-approved:` and `Summary:`; the
 owner-wide instructions' *Log format* owns the form.
 
+## 2026-10-13 Halo's speed is measured against Redis 7.2.16's PUC Lua 5.1.5
+
+Nodes: halo
+
+Owner-approved: 2026-10-13 on the WF status board, under item "Halo's performance baseline and compatibility reference use one PUC Lua 5.1.5, decided by a same-session measurement": card "Should Halo's performance baseline switch to Redis 7.2.16's bundled PUC Lua 5.1.5? Only sort fell outside the range written before measuring: it is 2.4% slower on 7.2.16's build", option A, "switch to 7.2.16, so the performance baseline and the compatibility reference use one Lua; keep 7.0.15's sort number in the performance record and report sort against both, so the 2.4% is not hidden".
+
+Summary: The performance yardstick had stayed on Redis 7.0.15's bundled PUC Lua 5.1.5 after the reference moved to 7.2.16. A comparison recorded before measuring timed both builds with a twin over 13 programs and 21 rounds on the 14900K: twelve stayed within their noise, and sort was 2.4% slower on 7.2.16's build in every round. The owner chose one Lua for the reference and the yardstick, with sort also reported against 7.0.15's build; keeping 7.0.15's build is recorded as rejected. Earlier measurements keep their numbers (`research/experiments/halo-bench/RESULTS.md`, "PUC 5.1.5 from Redis 7.0.15 against Redis 7.2.16's").
+
 ## 2026-10-12 Halo's reference moves to Redis 7.2.16, with its double texts, error levels and table protection
 
 Nodes: halo, halo/calls, halo/double-text, halo/embedding/table-protection, halo/heap/collector-validation, halo/operand-names
