@@ -2,8 +2,9 @@
 
 Question: does the current Halo match dispatch meet the P1 median thresholds
 in [VM.md sections 4, 5, 10 and 11](../../investigations/halo/VM.md)?
-Criterion fixed before measurement: each Halo median must be at most Redis
-7.0.15's bundled PUC Lua 5.1.5 median. A ratio above 1.5 on fib or the
+Current criterion, using the baseline the owner chose on 2026-10-13
+([decision](RESULTS.md#owner-decision)): each Halo median must be at most
+Redis 7.2.16's bundled PUC Lua 5.1.5 median. A ratio above 1.5 on fib or the
 numeric loop triggers attribution, inspecting value width and handle checks
 first. Profile every measured kernel above 1.5; report sampled work in
 value/handle access, dispatch, slow execution, GC and budget handling. Sampling
@@ -69,7 +70,7 @@ Halo launch; those timings are calibration, not a checksum-verified baseline. If
 recorded. `--budget realistic` measures Halo at 1000 instead of 2^64−1.
 
 ```sh
-python3 -B research/experiments/halo-bench/run.py --lua build/redis/redis-7.0.15/deps/lua/src/lua --compiler "$wfc" --kernels fib --runs 1 --out research/experiments/halo-bench/target/fib-one.json
+python3 -B research/experiments/halo-bench/run.py --lua build/redis/redis-7.2.16/deps/lua/src/lua --compiler "$wfc" --kernels fib --runs 1 --out research/experiments/halo-bench/target/fib-one.json
 ```
 
 Select `--kernels captured-assignment --runs 1` for its initial CI sample;
@@ -118,7 +119,7 @@ pairs cannot be profiled or reference-only. `before` replaces `puc` in this
 mode's timing summaries; the PUC check is not a timed pair member.
 
 ```sh
-python3 -B research/experiments/halo-bench/run.py --lua build/redis/redis-7.0.15/deps/lua/src/lua --compiler "$wfc" --before-binary research/experiments/halo-bench/target/halo-before --binary research/experiments/halo-bench/target/halo-roots --before-budget realistic --budget realistic --kernels loop --runs 1 --out research/experiments/halo-bench/target/roots-one.json
+python3 -B research/experiments/halo-bench/run.py --lua build/redis/redis-7.2.16/deps/lua/src/lua --compiler "$wfc" --before-binary research/experiments/halo-bench/target/halo-before --binary research/experiments/halo-bench/target/halo-roots --before-budget realistic --budget realistic --kernels loop --runs 1 --out research/experiments/halo-bench/target/roots-one.json
 ```
 
 The runner and retained cost observations serve the P1 cost-repair criteria in
@@ -150,9 +151,12 @@ longer repeated:
 - `interpreters.sh` fetches and builds PUC Lua 5.4.9 (pinned SHA-256),
   LuaJIT 2.1 and Luau (pinned commits) with each project's default release
   build, and writes their versions, digests, compilers and a compile line
-  to `manifest.txt`. PUC Lua 5.1.5 is Redis 7.0.15's bundled Lua, built by
-  `fetch-redis.sh <directory> 7.0.15`; the oracle reference moved to 7.2.16,
-  and the baseline stays until a measurement decides it (`halo-bench-baseline-72`).
+  to `manifest.txt`. PUC Lua 5.1.5 is Redis 7.2.16's bundled Lua, built by
+  `fetch-redis.sh <directory>` at its default version, shared with the
+  compatibility reference. Earlier measurements retain their original
+  build's numbers. Reports on sort also list 7.0.15's recorded sort time
+  and the comparison ratio r = 1.024, as the owner decided on 2026-10-13
+  ([RESULTS.md](RESULTS.md#owner-decision)).
 - `fastest.py` times Halo's bench host and any number of other
   interpreters (`--engine ID=COMMAND`, the workload path appended) round-robin
   on the kernels and the bundles, validates every result against PUC 5.1.5
@@ -162,6 +166,11 @@ longer repeated:
   than an extension, since it rotates N interpreters and excludes a
   disagreeing cell instead of failing the run; it reuses `run.py`'s Halo
   checks. `--sample` runs one round to time the run before `--rounds N`.
+  Without `--halo` it times only the `--engine` interpreters and reports
+  each one's median over `--reference`'s, to three decimals, as the
+  comparison of two PUC 5.1.5 builds does; `--expect RUN.json` requires
+  the reference to print the checksums a recorded run holds, and `--strict`
+  fails the run on any disagreement instead of marking the cell n/a.
 
 The recorded run came from a temporary workflow, kept at
 [`9bff3d9`](https://github.com/Ming-Research/Halo-wf/blob/9bff3d991b4aee1327f720e03d55bc0c366f82b5/.github/workflows/fastest-baseline.yml): it built Halo's bench host with
@@ -171,8 +180,12 @@ steps; for example, the sample with two interpreters:
 
 ```sh
 python3 -B research/experiments/halo-bench/fastest.py --halo build/fastest/halo \
-  --engine puc-5.1.5=build/redis/redis-7.0.15/deps/lua/src/lua \
+  --engine puc-5.1.5=build/redis/redis-7.2.16/deps/lua/src/lua \
   --engine "luajit-2.1-joff=build/fastest/interpreters/luajit/src/luajit -joff" \
-  --reference puc-5.1.5 --kernels all --scale binary-trees=14 --awfy build/fastest/awfy \
-  --sample --out build/fastest/sample.json
+  --reference puc-5.1.5 --kernels fib,loop,integer-table,string-key,concat,sort,binary-trees \
+  --scale binary-trees=14 --awfy build/fastest/awfy --sample --out build/fastest/sample.json
 ```
+
+The kernels are named because `--kernels all` now also selects
+captured-assignment and producer-consumer, which the recorded run did not
+time.

@@ -7,6 +7,12 @@ semantics and fails on any disagreement, while this runner rotates any
 number of interpreters and marks one n/a on a workload whose result differs
 from PUC Lua 5.1.5's, so that a semantic difference excludes that cell
 instead of the run. It reuses run.py's Halo output and stats check.
+
+Without --halo it times only the --engine interpreters and reports each
+one's median over the reference's, as the comparison of two PUC 5.1.5
+builds does (RESULTS.md, "PUC 5.1.5 from Redis 7.0.15 against Redis
+7.2.16's"). --expect checks the reference's checksums against a recorded
+run, and --strict fails the run on any disagreement instead of marking n/a.
 """
 import argparse
 import hashlib
@@ -77,6 +83,8 @@ def self_check():
     assert check(HALO, b'1\n', halo) is None
     assert check(HALO, b'1\n', dict(halo, stdout='1.0\n')) is not None
     assert check(HALO, b'1\n', dict(halo, stderr='2\n3\n')) is not None
+    assert ratio(HALO, 2.0, 1.0) == 2.0
+    assert ratio('puc-5.1.5', 2.0, 1.0) == 0.5
 
 
 def cpu_state(cpus):
@@ -157,16 +165,31 @@ def materialize(out, name, path, source):
     return scaled
 
 
+def ratio_mode(engines, reference):
+    """(base, result key, wording, decimals) of the reported ratios: Halo
+    over each interpreter when Halo runs, otherwise each interpreter over
+    the reference, both above 1 when the first is slower. The second mode
+    compares builds of one interpreter, whose differences are small, so it
+    prints three decimals."""
+    if HALO in engines:
+        return HALO, 'halo_over', 'Halo / interpreter, above 1 when Halo is slower', 2
+    return reference, 'over_reference', f'interpreter / {reference}, above 1 when the interpreter is slower', 3
+
+
+def ratio(base, base_median, median):
+    """The ratio of ratio_mode for one engine's median against the base's."""
+    return base_median / median if base == HALO else median / base_median
+
+
 def geomean(values):
     return math.exp(sum(math.log(x) for x in values) / len(values)) if values else None
 
 
 def markdown(data, engines):
-    others = [e for e in engines if e != HALO]
-    head = '| Workload | Halo | ' + ' | '.join(others) + ' |'
-    rule = '|---|' + '---:|' * (len(others) + 1)
-    lines = ['Median seconds per launch; in parentheses Halo / interpreter, above 1 when Halo is slower.',
-             '', head, rule]
+    base, key, wording, decimals = ratio_mode(engines, data['reference'])
+    head = '| Workload | ' + ' | '.join('Halo' if e == HALO else e for e in engines) + ' |'
+    rule = '|---|' + '---:|' * len(engines)
+    lines = [f'Median seconds per launch; in parentheses {wording}.', '', head, rule]
     ranges = ['Relative range (max-min)/median of each median above.', '', head, rule]
     for name, record in data['workloads'].items():
         cells, spread = [], []
@@ -177,18 +200,19 @@ def markdown(data, engines):
                 spread.append('n/a')
                 continue
             cell = f'{result["median"]:.4f}'
-            if engine != HALO:
-                ratio = result.get('halo_over')
-                cell += f' ({ratio:.2f})' if ratio is not None else ' (n/a)'
+            if engine != base:
+                value = result.get(key)
+                cell += f' ({value:.{decimals}f})' if value is not None else ' (n/a)'
             cells.append(cell)
             spread.append(f'{100 * result["relative_range"]:.2f}%')
         lines.append(f'| {name} | ' + ' | '.join(cells) + ' |')
         ranges.append(f'| {name} | ' + ' | '.join(spread) + ' |')
     means = []
-    for engine in others:
-        item = data['geomean_halo_over'].get(engine)
-        means.append('n/a' if item is None or item['value'] is None else f'{item["value"]:.2f} over {item["workloads"]}')
-    lines.append('| geometric mean of Halo / interpreter | | ' + ' | '.join(means) + ' |')
+    for engine in engines:
+        item = None if engine == base else data[f'geomean_{key}'].get(engine)
+        means.append('' if engine == base else 'n/a' if item is None or item['value'] is None
+                     else f'{item["value"]:.{decimals}f} over {item["workloads"]}')
+    lines.append(f'| geometric mean of {wording.partition(",")[0]} | ' + ' | '.join(means) + ' |')
     reasons = [f'- {name}, {engine}: {result["reason"]}'
                for name, record in data['workloads'].items()
                for engine, result in record['engines'].items() if result['status'] != 'ok']
@@ -199,7 +223,9 @@ def markdown(data, engines):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('--halo', type=Path, required=True, help='the bench host built from host/ (reads the script on stdin)')
+    parser.add_argument('--halo', type=Path,
+                        help='the bench host built from host/ (reads the script on stdin); without it, only the '
+                             '--engine interpreters run and each is reported over --reference')
     parser.add_argument('--engine', action='append', default=[], metavar='ID=COMMAND',
                         help='an interpreter; the workload file path is appended to COMMAND')
     parser.add_argument('--reference', required=True, help='the engine ID of PUC Lua 5.1.5, whose checksum every engine must match')
@@ -210,6 +236,10 @@ def main():
     rounds = parser.add_mutually_exclusive_group(required=True)
     rounds.add_argument('--rounds', type=int, help='round-robin rounds per workload')
     rounds.add_argument('--sample', action='store_true', help='one round, to time the run before choosing --rounds')
+    parser.add_argument('--expect', type=Path,
+                        help="a recorded run's JSON: every selected workload's reference checksum must equal the one recorded there")
+    parser.add_argument('--strict', action='store_true',
+                        help='an engine that fails or disagrees with the reference fails the run instead of being marked n/a')
     parser.add_argument('--timeout', type=float, default=180.0, help='seconds per launch')
     parser.add_argument('--manifest', type=Path, action='append', default=[], help='text file recorded verbatim (versions, flags)')
     parser.add_argument('--compiler', type=Path, help='the whitefootc that built --halo, recorded by its digest')
@@ -219,7 +249,7 @@ def main():
     count = 1 if args.sample else args.rounds
     if count < 1:
         parser.error('rounds must be positive')
-    commands = {HALO: [str(args.halo.resolve())]}
+    commands = {HALO: [str(args.halo.resolve())]} if args.halo else {}
     for item in args.engine:
         engine, _, command = item.partition('=')
         if not engine or not command or engine in commands:
@@ -236,7 +266,15 @@ def main():
         name, scale = value.split('=')
         args.scales[name] = int(scale)
     selected = workloads(args)
+    recorded = None
+    if args.expect:
+        recorded = {name: record['reference']
+                    for name, record in json.loads(args.expect.read_text())['workloads'].items()}
+        missing = [name for name, _, _ in selected if name not in recorded]
+        if missing:
+            parser.error(f'{args.expect} records no checksum for {missing}')
     engines = list(commands)
+    base, key, _, _ = ratio_mode(engines, args.reference)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     cpus = sorted(os.sched_getaffinity(0)) if hasattr(os, 'sched_getaffinity') else None
     data = dict(revision=subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(),
@@ -246,7 +284,9 @@ def main():
                 engines={e: dict(command=c, sha256=digest(c[0])) for e, c in commands.items()},
                 compiler_sha256=digest(args.compiler) if args.compiler else None,
                 host_sources_sha256={str(p.relative_to(HERE)): digest(p) for p in
-                                     (HERE/'modules.wfg', HERE/'host/module.wfm', HERE/'host/driver.wf')},
+                                     (HERE/'modules.wfg', HERE/'host/module.wfm', HERE/'host/driver.wf')}
+                if args.halo else None,
+                expect=dict(path=str(args.expect), sha256=digest(args.expect)) if args.expect else None,
                 scales=args.scales, manifests={str(p): p.read_text() for p in args.manifest},
                 awfy_manifest=json.loads((args.awfy/'manifest.json').read_text()) if args.awfy else None,
                 workloads={}, launches=[])
@@ -277,11 +317,16 @@ def main():
                                        f'stdout={puc["stdout"]!r}, stderr={puc["stderr"][-300:]!r}')
                 if record['reference'] not in (None, puc['stdout']):
                     raise RuntimeError(f'{name}: PUC 5.1.5 checksum changed between rounds')
+                if recorded is not None and puc['stdout'] != recorded[name]:
+                    raise RuntimeError(f'{name}: {args.reference} printed {puc["stdout"]!r}, '
+                                       f'{args.expect} recorded {recorded[name]!r}')
                 record['reference'] = puc['stdout']
                 for engine, item in results.items():
                     reason = check(engine, expected, item)
                     if reason is None:
                         times[engine].append(item['seconds'])
+                    elif args.strict:
+                        raise RuntimeError(f'{name}: {engine}, round {index + 1}: {reason}')
                     else:
                         failed[engine] = f'round {index + 1}: {reason}'
             for engine in engines:
@@ -289,11 +334,11 @@ def main():
                     record['engines'][engine] = dict(status='n/a', reason=failed[engine])
                 else:
                     record['engines'][engine] = dict(status='ok', **run.summary(times[engine]))
-            halo = record['engines'][HALO]
+            anchor = record['engines'][base]
             for engine in engines:
                 result = record['engines'][engine]
-                if engine != HALO and result['status'] == 'ok' and halo['status'] == 'ok':
-                    result['halo_over'] = halo['median'] / result['median']
+                if engine != base and result['status'] == 'ok' and anchor['status'] == 'ok':
+                    result[key] = ratio(base, anchor['median'], result['median'])
             print(f'{name}: ' + ', '.join(
                 f'{e}={r["median"]:.4f}' if r['status'] == 'ok' else f'{e}=n/a'
                 for e, r in record['engines'].items()), flush=True)
@@ -301,13 +346,13 @@ def main():
         failure = str(error)
         data['failure'] = failure
     data['cpu_after'] = cpu_state(cpus) if cpus and len(cpus) <= 4 else None
-    data['geomean_halo_over'] = {}
+    data[f'geomean_{key}'] = {}
     for engine in engines:
-        if engine == HALO:
+        if engine == base:
             continue
-        ratios = [record['engines'][engine]['halo_over'] for record in data['workloads'].values()
-                  if 'halo_over' in record['engines'].get(engine, {})]
-        data['geomean_halo_over'][engine] = dict(value=geomean(ratios), workloads=len(ratios))
+        ratios = [record['engines'][engine][key] for record in data['workloads'].values()
+                  if key in record['engines'].get(engine, {})]
+        data[f'geomean_{key}'][engine] = dict(value=geomean(ratios), workloads=len(ratios))
     args.out.write_text(json.dumps(data, indent=2) + '\n')
     table = markdown(data, engines)
     args.out.with_suffix('.md').write_text(table)

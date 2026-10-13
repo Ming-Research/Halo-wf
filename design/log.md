@@ -12,6 +12,14 @@ Owner-approved: 2026-10-13 on the WF status board. Under item "Every slow spot i
 
 Summary: A Lua return or a tail call that replaces its frame used to inspect the open-upvalue list, through checked cell loads, even when nothing needed closing. Each execution state, the main one and every coroutine, now keeps an exclusive upper bound on its open-upvalue stack positions, saved and restored on a switch; a frame whose base is at or above it skips closing after one comparison. The bound may be too high, costing a scan, but never too low. Measured together with the return reading only the fields it needs instead of copying the whole frame, fib ran 6.34% faster on the 14900K and no other kernel slowed beyond its noise (`research/experiments/halo-bench/RESULTS.md`, "A cheaper Lua return"). A scan of the list on every return, a parallel buffer of positions and position-and-handle entries are recorded as rejected.
 
+## 2026-10-13 Halo's speed is measured against Redis 7.2.16's PUC Lua 5.1.5
+
+Nodes: halo
+
+Owner-approved: 2026-10-13 on the WF status board, under item "Halo's performance baseline and compatibility reference use one PUC Lua 5.1.5, decided by a same-session measurement": card "Should Halo's performance baseline switch to Redis 7.2.16's bundled PUC Lua 5.1.5? Only sort fell outside the range written before measuring: it is 2.4% slower on 7.2.16's build", option A, "switch to 7.2.16, so the performance baseline and the compatibility reference use one Lua; keep 7.0.15's sort number in the performance record and report sort against both, so the 2.4% is not hidden".
+
+Summary: The performance yardstick had stayed on Redis 7.0.15's bundled PUC Lua 5.1.5 after the reference moved to 7.2.16. A comparison recorded before measuring timed both builds with a twin over 13 programs and 21 rounds on the 14900K: twelve stayed within their noise, and sort was 2.4% slower on 7.2.16's build in every round. The owner chose one Lua for the reference and the yardstick, with sort also reported against 7.0.15's build; keeping 7.0.15's build is recorded as rejected. Earlier measurements keep their numbers (`research/experiments/halo-bench/RESULTS.md`, "PUC 5.1.5 from Redis 7.0.15 against Redis 7.2.16's").
+
 ## 2026-10-12 Halo's reference moves to Redis 7.2.16, with its double texts, error levels and table protection
 
 Nodes: halo, halo/calls, halo/double-text, halo/embedding/table-protection, halo/heap/collector-validation, halo/operand-names

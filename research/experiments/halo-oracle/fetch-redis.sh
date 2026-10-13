@@ -4,8 +4,9 @@
 # tarball against the hash Redis publishes in its redis-hashes repository, an
 # independent source, and builds its bundled Lua with Redis's own deps
 # Makefile: <directory>/redis-<version>/deps/lua/src holds lua, liblua.a and
-# the headers. `make reference-lua` runs it for the reference; the performance
-# baseline still builds PUC Lua 5.1.5 from Redis 7.0.15 (halo-bench/README.md).
+# the headers. `make reference-lua` runs it for the reference and the
+# performance baseline, both using Redis 7.2.16's PUC Lua 5.1.5
+# (halo-bench/README.md).
 # It does nothing when that Lua exists.
 set -eu
 dir=${1:?usage: fetch-redis.sh <directory> [version]}
