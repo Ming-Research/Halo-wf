@@ -1,0 +1,169 @@
+# Temporary, on this branch only: removed before the branch is ready. Board
+# item halo-pin-af7665b; whitefoot-kit downstream.md upgrade step 5. Same Halo
+# source (this head) built with the old pinned compiler wf-d837678c6905 (base)
+# and the new wf-af7665be672d (after), full LTO, timed on the 14900K on CPU 2.
+# Part 1: the seven halo-bench kernels through run.py --before-binary at 1, 3
+# and 6 interleaved pairs, with a byte-copy twin of the base as the noise
+# control. Part 2: the six are-we-fast-yet bundles through fastest.py with
+# three engines, the base as --reference, six rounds. Runs only for a push
+# whose head commit subject starts with [bench] and that touches this file.
+name: bench-pin
+
+on:
+  push:
+    branches: [claude/halo-pin-af7665b]
+    paths:
+      - .github/workflows/bench-pin.yml
+
+env:
+  OLD: wf-d837678c6905
+  ROUNDS: 6
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  bench:
+    if: startsWith(github.event.head_commit.message, '[bench]')
+    runs-on: [self-hosted, 14900k]
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+      - name: Build the same source with the old and the new compiler
+        run: |
+          set -euo pipefail
+          out="$PWD/build/bench-out"
+          rm -rf "$out"; mkdir -p "$out"
+          make compiler
+          make toolchain-check
+          release=$(sed -n 's/^release = //p' whitefoot.pin)
+          wfc="$PWD/build/whitefoot/$release/whitefootc"
+          # PUC Lua 5.1.5 from Redis 7.2.16, the performance baseline.
+          sh tests/halo-oracle/fetch-redis.sh "$PWD/build/redis"
+          # Same source on both sides; only the compiler differs. The old
+          # release has the same LLVM major (22) as the new one.
+          cp whitefoot.pin "$out/pin.new"
+          echo "release = $OLD" > whitefoot.pin
+          make compiler
+          cp "$out/pin.new" whitefoot.pin
+          oldwfc="$PWD/build/whitefoot/$OLD/whitefootc"
+          "$oldwfc" --graph tests/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-base"
+          cp "$out/halo-base" "$out/halo-base-twin"
+          "$wfc" --graph tests/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-after"
+          {
+            echo "source $(git rev-parse HEAD), base compiler $OLD, after compiler $release"
+            sha256sum "$oldwfc" "$wfc" "$out"/halo-*
+            /usr/bin/clang --version | head -n 1
+          } | tee "$out/manifest.txt"
+          cmp "$out/halo-base" "$out/halo-base-twin"
+          ! cmp -s "$out/halo-base" "$out/halo-after"
+
+      - name: Time the seven kernels on CPU 2
+        run: |
+          set -euo pipefail
+          out="$PWD/build/bench-out"
+          release=$(sed -n 's/^release = //p' whitefoot.pin)
+          wfc="$PWD/build/whitefoot/$release/whitefootc"
+          lua=$(echo "$PWD"/build/redis/redis-*/deps/lua/src/lua)
+          # The 14900K is a hybrid part (P-cores CPU 0-15, E-cores 16-31): run
+          # every timed process on one ordinary P-core thread, CPU 2, and
+          # record the topology and frequency policy.
+          lscpu -e=CPU,CORE,MAXMHZ > "$out/lscpu.txt" 2>&1 || true
+          cat /sys/devices/system/cpu/cpufreq/policy*/scaling_governor 2>/dev/null | sort | uniq -c > "$out/governor.txt" || true
+          pin="taskset -c 2"
+          echo "timed processes pinned with: $pin" | tee -a "$out/manifest.txt"
+          cat "$out/governor.txt" | tee -a "$out/manifest.txt"
+          kernels=fib,loop,integer-table,string-key,concat,sort,binary-trees
+          compare() {
+            label=$1; before=$2; after=$3; extra=${4:-}
+            for runs in 1 3 6; do
+              $pin python3 -B research/experiments/halo-bench/run.py --lua "$lua" \
+                --before-binary "$before" --binary "$after" --kernels "$kernels" \
+                --scale binary-trees=14 --runs "$runs" $extra --out "$out/$label-$runs.json" --compiler "$wfc" \
+                > "$out/$label-$runs.log" 2>&1 || { cat "$out/$label-$runs.log"; exit 1; }
+              echo "== kernels, $label, $runs pair(s)"
+              grep 'ratio=' "$out/$label-$runs.log" | sed 's/ before=.*//'
+            done
+          }
+          compare twin "$out/halo-base" "$out/halo-base-twin"
+          compare after "$out/halo-base" "$out/halo-after"
+
+      - name: Time the six are-we-fast-yet bundles on CPU 2
+        run: |
+          set -euo pipefail
+          out="$PWD/build/bench-out"
+          release=$(sed -n 's/^release = //p' whitefoot.pin)
+          wfc="$PWD/build/whitefoot/$release/whitefootc"
+          # The bundles at the bench's normal iteration counts, as awfy.py writes them.
+          python3 -B research/experiments/halo-bench/awfy.py --checkout build/awfy-src --out build/awfy-bundles
+          cp -r build/awfy-bundles "$out/awfy"
+          # fastest.py runs Halo's bench host (--halo) with the script on stdin,
+          # but only one binary can be --halo and the reference must be an
+          # --engine. So all three Halo hosts are --engine entries, whose
+          # command gets the bundle path appended: this wrapper (the
+          # binary, then the path) feeds the bundle to the host on stdin
+          # exactly as --halo does. The wrapper's launch cost is the same for all three.
+          cat > "$out/halo-stdin.sh" <<'WRAP'
+          #!/bin/sh
+          exec "$1" < "$2"
+          WRAP
+          chmod +x "$out/halo-stdin.sh"
+          for side in base after base-twin; do
+            "$out/halo-stdin.sh" "$out/halo-$side" "$out/awfy/List.lua" | tee "$out/awfy-check-$side.out"
+            test "$(cat "$out/awfy-check-$side.out")" = 1
+          done
+          pin="taskset -c 2"
+          # --kernels '' selects the bundles only; --strict stops the run if any
+          # engine fails or prints a checksum other than the reference's (the base).
+          SECONDS=0
+          $pin python3 -B research/experiments/halo-bench/fastest.py \
+            --engine "base=$out/halo-stdin.sh $out/halo-base" \
+            --engine "after=$out/halo-stdin.sh $out/halo-after" \
+            --engine "base-twin=$out/halo-stdin.sh $out/halo-base-twin" \
+            --reference base --kernels '' --awfy "$out/awfy" --strict \
+            --manifest "$out/manifest.txt" --compiler "$wfc" \
+            --rounds "$ROUNDS" --out "$out/awfy-times.json" > "$out/awfy-times.log" 2>&1 \
+            || { cat "$out/awfy-times.log"; exit 1; }
+          echo "== are-we-fast-yet, 3 engines, $ROUNDS rounds, took ${SECONDS}s"
+          cat "$out/awfy-times.md"
+
+      - name: Summary of ratios
+        run: |
+          set -euo pipefail
+          out="$PWD/build/bench-out"
+          python3 -B - "$out" <<'PY' | tee "$out/summary.txt"
+          import json, sys
+          out = sys.argv[1]
+          # Medians of ratios as written by run.py are in its logs; print the
+          # AWFY medians over the base here, with the twin as the noise reference.
+          data = json.load(open(f'{out}/awfy-times.json'))
+          print('are-we-fast-yet: median over the base (below 1 is faster), [relative range]')
+          for name, record in data['workloads'].items():
+              cells = []
+              for engine in ('after', 'base-twin'):
+                  r = record['engines'][engine]
+                  cells.append(f'{engine} {r["over_reference"]:.3f} [{100 * r["relative_range"]:.1f}%]')
+              base = record['engines']['base']
+              print(f'  {name}: base {base["median"]:.4f}s [{100 * base["relative_range"]:.1f}%], ' + ', '.join(cells))
+          for engine, item in data['geomean_over_reference'].items():
+              print(f'  geometric mean {engine}: {item["value"]:.3f} over {item["workloads"]}')
+          PY
+          for label in twin after; do
+            echo "== kernels, $label, 6 pairs"
+            grep 'ratio=' "$out/$label-6.log" | sed 's/ before=.*//'
+          done | tee -a "$out/summary.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bench-pin
+          path: |
+            build/bench-out/
+            !build/bench-out/halo-base
+            !build/bench-out/halo-base-twin
+            !build/bench-out/halo-after
+          retention-days: 30
