@@ -427,3 +427,124 @@ H3 is a Whitefoot checker gap kept in Whitefoot's `docs/todo.md`.
   path (`witnesses/vm/join.wf`): the join keeps only identical facts. The
   program is sound, so this is a precision gap, recorded in docs/todo.md.
   Slice 1 does not depend on it.
+
+## Open upvalues: a cheaper nothing-to-close test (proposal)
+
+Status: proposal, not measured, not in the design tree.
+
+Problem. Callgrind of fib(32) at main `56878ac` (hosted x86-64, full LTO;
+[A cheaper Lua return](../../experiments/halo-bench/RESULTS.md#a-cheaper-lua-return))
+counts 884.5 instructions per Lua call, PUC Lua 5.1.5 403.0. Of these, 28 are
+`close_upvalues` in the `RETURN` arm finding nothing to close. fib's own
+local in the main chunk keeps the open list non-empty, and the list holds
+only heap handles (`open_upvalues: Box<Slots<u32>>` in the `execution` and
+`vm` module interfaces), so the test bounds-checks the first handle into the
+heap's upvalue slab, tests `live`, the `Open` tag and the owning thread, and
+only then compares the slot with `base`. PUC compares `L->openupval`'s stack
+pointer with `base` once. The same test runs on a Lua tail call's frame pop,
+`CLOSE`, and each coroutine and error unwind.
+
+Current representation. `capture` scans the whole list, keeps it sorted by
+slot with the highest at index 0, and inserts with `insert_at`;
+`close_upvalues` reads index 0 and removes it with `remove_at`, which shifts
+the rest. The collector marks each listed handle through its cell (the
+thread-cell marker in `gc.wf`); `close_thread_upvalues` closes a dead
+thread's list from the back; a coroutine switch swaps the list box with the
+other thread cell's; memory accounting charges the list at 4 bytes of
+capacity. The cell `Upval::Open(owner, slot)` is the authority for reads,
+writes and marking; the list only says which cells this execution must close.
+
+Candidates. Each keeps every cell access as it is now, index-checked into
+the slab. A cached slot only decides whether the existing checked close loop
+runs, so no candidate adds an unchecked access; the question is only the
+cost and how the Lua semantics of closing are kept.
+
+| | P1. Parallel slot buffer | P2. (slot, handle) entries | P3. Open limit per execution |
+|---|---|---|---|
+| Representation | `open_slots: Box<Slots<u64>>` beside the handle list, same order | `open_upvalues: Box<Slots<OpenEntry>>`, `OpenEntry { slot: u64, handle: u32 }`, kept ascending so the highest is at the back | one scalar `open_limit: u64`: 0 when the list is empty, otherwise at least 1 + the highest open slot |
+| Interfaces | new field in `Execution` and `Vm`, `empty()` ensures, `storage_buffers` gains an argument | element type of the existing field changes in `Execution`, `Vm`, `storage_buffers` | new scalar in `Execution` and `Vm`; buffers unchanged |
+| Collector | unchanged (marks handles) | reads `.handle` per entry | unchanged |
+| Coroutine switch | one more box swap; the two boxes' equal length is lost across `swap` (the open Whitefoot rule coord-wfbl-09-04-rule), so every paired index needs its own test | unchanged (one swap) | one more scalar in `coroutine_save_scalars` and `coroutine_load_scalars` |
+| Accounting | +8 bytes per capacity slot | 4 → 16 bytes per capacity slot (padding) | none |
+| Per return, nothing to close | length test, load, compare, plus a second length test (about 6) | length test, `len - 1`, load, compare (about 5) | one load, one compare (2 to 3), PUC's form |
+| Capture | two inserts | one 16-byte insert; ascending order lets the scan stop early from the back | one compare and a conditional store |
+| Close | two removals | `take_back`, O(1) instead of the current shifting `remove_at` | the loop already reads the next open cell's slot when it stops, so the update is one store; 0 when the list empties |
+| Invariant the code holds | entry slot equals its cell's slot | entry slot equals its cell's slot | `open_limit` > every listed open slot (an upper bound, not an equality) |
+
+Safety and semantics. Memory safety is the same in all three: the cached
+value gates a loop whose every index stays checked. The Lua semantics need
+the cache never to understate: if it said "nothing to close" while a capture
+at or above `base` was open, a later closure would read the slot after a new
+frame reused it. P1 and P2 need equality between the entry and the cell,
+written at capture and dropped when the entry is removed, with the cell's
+slot never changing while `Open`. P3 needs only an upper bound, which is
+easier to keep: `capture` can only raise it, `close_upvalues` lowers it only
+to 1 + a slot it has just read from a live, `Open`, owned cell, and an
+overstated limit only sends a return into the checked slow loop, which
+reaches the same result as today. Neither invariant crosses the slab
+boundary in a way the checker can state today (it would quantify over cells
+the list names), so it is held by construction and tested, as the list's
+sort order is now; the owner check on every open-upvalue access stays.
+Per-execution ownership follows the coroutine decision: the limit belongs to
+the execution record like `c_depth`, so a coroutine's high captures never
+hide or force closes in its resumer; `close_thread_upvalues` sets a dead
+thread's limit to 0 and engine reset closes at level 0, which sets it to 0.
+
+Recommendation: P3, the open limit. It gives PUC's single compare on the
+path that matters, changes no buffer, no accounting and no marking, keeps
+the cell the only authority, and its invariant is a one-sided bound: an
+overstated limit costs only a slower return, and the one harmful error,
+understating, can come only from `close_upvalues` lowering it, which it does
+only to a slot it has just read from the cell. P2 is the better list in its own right (O(1) close,
+early-stopping capture) and could follow separately if a capture-heavy
+kernel shows the shifting; it is not needed for this saving and changes the
+accounting of every coroutine-using script's buffers. P1 is dominated: two
+buffers whose shared length the checker loses at every switch.
+
+Design tree. No existing decision changes:
+- `design/halo/calls/coroutines.md`, "A coroutine owns its execution record,
+  the value stack, frame records, open-upvalue list, library continuation
+  records and the run's checkpoints, in a thread cell ...": the limit is one
+  more checkpoint of that record and is exchanged with it; the decision's
+  measured claim that coroutines left no kernel slower stands, since the
+  owner check stays.
+- the same node's Rejected item "An open upvalue that names only a stack
+  slot, read in whichever stack is running": not reopened; cells keep their
+  owner, and the limit is never used to read a slot.
+- `design/halo/heap/execution-marking.md`, "The collector traces every
+  execution ... a collection parks the installed execution's buffers and
+  checkpoints in its cell ...": marking still reads the list; the parked
+  scalar is unused by marking.
+- `design/halo/heap.md`, "The execution buffers a thread cell owns ... count
+  by capacity toward the logical bytes ...": unaffected by P3 (P2 would keep
+  the rule but change the bytes charged).
+
+It needs one new decision, proposed under `design/halo/calls.md` or
+`calls/coroutines.md`: each execution keeps an upper bound on its open
+captures' slots so that a return tests one value, because the open list
+holds handles and reaching a slot costs three dependent loads, instead of
+storing slots in the list (P1, P2).
+
+Measurement. Question: does testing a per-execution open limit instead of
+reading the first open cell cut fib's return path, and is the time saving
+real? Expected: callgrind of fib(32) counts 23 to 26 fewer instructions per
+Lua call (28 less 2 to 5 for the load, compare and branch, inlined into the
+`RETURN` arm), about 2.6% to 2.9% of 884.5, or a larger share of the count
+the return-frame change leaves. Validity, checked before any timing: on
+fib's return no load from the upvalue slab remains; capture-heavy and
+coroutine kernels change their per-call counts only in `capture`,
+`close_upvalues` and the scalar save/load; every other function keeps its
+count within 1; both sides print fib(32). Fewer than 15 saved means the
+reading was wrong and is corrected first. Falsifiers, in `make check` on
+the measured revision: the oracle corpus at budgets 1, 7 and 1000, ordinary
+and under collector stress, and a case where a coroutine captures at a slot
+higher than its resumer's frames, yields, and the resumer then returns and
+reads a closure over its own local (fails if the limit is not exchanged
+per execution). Comparison: base against branch with a twin of the base,
+built by the same Whitefoot release, every timed process on CPU 2 of the
+14900K, six interleaved pairs over the seven kernels as `run.py` runs them.
+Kept only if: fib's median falls at least 2%, by more than both ranges and
+the twin's difference; no other kernel is slower beyond its larger range and
+the twin's difference; and `make check` passes. The 2% bar is below the 3%
+used for the frame change because the expected count saving is 2.6% to 2.9%;
+a smaller fall is reverted with its measurements kept.
