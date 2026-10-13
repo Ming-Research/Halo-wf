@@ -6619,6 +6619,185 @@ for unmatched blocks, PUC's cost per miss (~85), every target cost and so
 every saving above, all code-generation explanations, and whether instruction
 savings become time.
 
+## Fast hit paths for SelfK and GetGlobal
+
+Status: measured and kept (see Result). The falsifier and keep rule below
+were recorded before any measurement.
+
+Question: do raw-hit paths for `SelfK` and `GetGlobal` that continue the
+dispatch loop directly remove enough instructions to make Towers faster?
+
+Reading. [Where List and Towers spend their instructions](#where-list-and-towers-spend-their-instructions)
+counts 122 instructions in the `SelfK` arm against 68 in a `GetTableK` hit
+arm. `GetGlobal` always enters `slow` and builds `CallbackPlan`, costing
+297 instructions per read. The recorded whole-program counts are 3,583M
+instructions for Towers and 3,308M for List.
+
+Change. Model both hit paths on `GetTableK`: a non-nil raw lookup writes the
+destination registers and continues directly. `SelfK` first copies the
+receiver into a local, then writes R(A+1) before R(A), preserving the case
+where A+1 equals B. A nil lookup writes nothing and leaves the existing
+handler to handle misses and callbacks. Raw hits allocate nothing and add
+no budget charge or collection safepoint.
+
+Observed caveat: the old `GetGlobal` slow path asks for the `__index`
+metamethod even on a raw hit. If the globals table has a metatable and
+`__index` has not yet been interned, that lookup allocates the name. The
+requested raw-hit path omits this unused allocation. Collection safepoint
+sites stay unchanged, but identical allocation-triggered collection timing
+is not guaranteed in this case.
+
+Expected: `SelfK` saves about 50 instructions per operation, or about 98M
+for Towers' 1.97M operations and 57M for List's 1.13M operations.
+`GetGlobal` saves about 112M for Towers: (297 - about 70) x 491K reads.
+Together these are about 210M of Towers' 3,583M instructions (5.9%) and
+57M of List's 3,308M instructions (1.7%). These are estimates from the
+attribution, not measured savings.
+
+Falsifier, recorded before measuring: Towers' callgrind `Ir` must fall by
+at least 4% against the base, using the same workload and full LTO on both
+sides. If it falls by less than 4%, no timing is run.
+
+Keep rule: the gate is green, and timing on the 14900K, CPU 2, with full
+LTO uses six interleaved pairs of the same-source before and after builds,
+with a byte-copy twin of the base as the noise control. Towers must be at
+least 3% faster than the base, beyond both ranges and the twin's difference.
+No other halo-bench kernel or are-we-fast-yet bundle may be slower than the
+base beyond its larger range plus the twin's difference.
+
+### Result
+
+14900K run [38378966099](https://github.com/Ming-Research/Halo-wf/actions/runs/38378966099) at bbd62fe, CPU 2, full LTO, six interleaved pairs (halo-bench kernels through `run.py`, binary-trees at depth 14) and six rounds (are-we-fast-yet bundles through `fastest.py`). Ratio is after over base; below 1 is faster. Tolerance is the larger of the two ranges plus the twin's difference from 1.
+
+| Program | After / base | Base range | After range | Twin / base | Tolerance | Verdict |
+|---|---:|---:|---:|---:|---:|---|
+| fib | 1.002 | 1.7% | 1.3% | 0.999 | 1.8% |  |
+| loop | 1.000 | 0.2% | 0.2% | 1.000 | 0.3% |  |
+| integer-table | 1.004 | 5.2% | 5.1% | 0.977 | 7.5% |  |
+| string-key | 1.022 | 6.1% | 4.9% | 0.976 | 8.4% |  |
+| concat | 1.001 | 1.5% | 1.8% | 0.998 | 2.0% |  |
+| sort | 0.963 | 1.8% | 2.5% | 0.999 | 2.5% |  |
+| binary-trees | 1.020 | 2.2% | 0.8% | 0.999 | 2.3% |  |
+| List | 0.993 | 0.2% | 1.0% | 1.001 | 1.1% |  |
+| NBody | 1.008 | 0.2% | 1.1% | 1.000 | 1.1% |  |
+| Permute | 1.011 | 2.5% | 1.9% | 1.002 | 2.6% |  |
+| Queens | 1.015 | 0.1% | 2.6% | 1.000 | 2.6% |  |
+| Sieve | 0.998 | 1.1% | 1.6% | 1.008 | 2.3% |  |
+| Towers | 0.939 | 4.1% | 2.2% | 0.990 | 5.1% | target met |
+
+Outcome: kept. Towers is 6.1% faster than the base, beyond its 5.1% tolerance and the 3% threshold, and no other program is slower beyond its tolerance. The callgrind falsifier passed first ([run 38374347895](https://github.com/Ming-Research/Halo-wf/actions/runs/38374347895)): Towers' instructions fell 4.05% (threshold 4%), List's 0.95%.
+
+## Jump instructions continue the dispatch loop directly
+
+Status: measured and rejected (see Result); the source change is reverted.
+The question, the prediction, the comparison and the keep rule below were
+written before the change was built or measured.
+
+### Question
+
+Do List and Towers run faster when the jump-family arms of `run` (the
+dispatch loop) continue the loop directly, instead of ending through the
+shared `Step` exit?
+
+### What changes
+
+Four arms, `TestJmp`, `Jmp`, `TestSetJmp` and `LoadBool`, move to the
+direct-continue form that `Move` and `ForLoop` already use. Each arm's helper
+returns `Result<u64, Step>` instead of `Step`, with
+`ensures when Ok(value: next): next < code^.inner.len` and the stack-length
+postcondition `base + 256_u64 <= stack^.inner.len` that the `Move` and
+`ForLoop` helpers carry. The arm matches `Ok` to `set pc = next; continue;`
+and `Err` to `set step = failure;`, so every failure still reaches the shared
+exit.
+
+What stays: every runtime check and every behaviour. The suspension test, the
+out-of-range error with its text and the `Err` results of the budget stop and
+of the stopped host are unchanged. The backward `Jmp` keeps its budget charge
+and its collection-due test and collection exactly where they are, as
+`ForLoop`'s helper does. The one test of the shared exit that remains is the
+next-pc-in-range check, now the helper's contract. The exit's tests of the
+base and constant windows are dropped for these arms because they never
+change `base` or `kbase`, so the loop's header invariants still hold, and
+`collect_if_due` guarantees the stack length is unchanged. No other arm
+changes; `Call`, `TailCall` and `Return` keep `Step` because they change
+`base` and `kbase`. The compare-jump arms that already have a fast variant
+are untouched, and the full compare-jump helpers, which can call back into
+Lua through `slow`, keep `Step`.
+
+### Reading that motivates it
+
+The hosted-runner callgrind counts of main at 1f90750 plus the profiling
+workflow ([run 38367862157](https://github.com/Ming-Research/Halo-wf/actions/runs/38367862157);
+full LTO, `wf-d837678c6905`) give, per execution, `TestJmp` 57 instructions
+over 8.49M executions in List, `Jmp` 76 over 3.61M (all backward) and
+`LoadBool` 58 over 562K, against 23 for `Move`, which continues directly.
+The gap is the shared exit's re-test of the base and constant windows, which
+these arms never change, and the `Step` value returned through memory.
+
+### Prediction
+
+Inferred from those counts, not measured: List falls by about 10% of its
+instructions (`TestJmp` 57 to about 30, `Jmp` 76 to about 45 with its budget
+charge and collection test kept, `LoadBool` 58 to about 28; about 358M of
+3,308M). Towers falls by about 1% (about 30M of 3,583M). Moving other arms to
+the direct-continue form gave the numeric loop kernel 54% before; whether
+instruction savings in these arms turn into time is the open question the
+timing answers (the lua-entry change saved instructions and little time).
+
+### Comparison
+
+First, before any timing: a callgrind instruction count of List and Towers on
+the hosted runner, base and after built from the same source apart from this
+change, full LTO with the pinned compiler. Falsifier of the attribution: if
+List's instruction count falls by less than 5%, the attribution was wrong and
+timing is not run.
+
+If the count passes, on the 14900K pinned to CPU 2, with the base (main
+1f90750) and the after (this branch's head) built from the same source, both
+with full LTO and the pinned compiler:
+
+- the seven halo-bench kernels through `run.py --before-binary`, binary-trees
+  at depth 14, six interleaved pairs with a twin of the base as the noise
+  control;
+- the six are-we-fast-yet bundles through `fastest.py` with three `--engine`
+  entries (base, after, base twin), `--reference` the base, six interleaved
+  pairs.
+
+### Keep rule
+
+The change is kept only if all of these hold:
+
+1. List's median falls by at least 3% beyond both ranges (the base's and the
+   after's) and beyond the twin's difference from the base;
+2. no other kernel and no bundle is slower beyond its larger range plus the
+   twin's difference;
+3. `make check` passes on the measured revision.
+
+Otherwise the change is reverted, with its measurements kept in this
+section. Towers is reported but has no clause of its own, since its
+predicted gain is about 1%.
+
+### Result
+
+14900K run [38377991232](https://github.com/Ming-Research/Halo-wf/actions/runs/38377991232) at 965fc51, CPU 2, full LTO, six interleaved pairs (halo-bench kernels through `run.py`, binary-trees at depth 14) and six rounds (are-we-fast-yet bundles through `fastest.py`). Ratio is after over base; below 1 is faster. Tolerance is the larger of the two ranges plus the twin's difference from 1.
+
+| Program | After / base | Base range | After range | Twin / base | Tolerance | Verdict |
+|---|---:|---:|---:|---:|---:|---|
+| fib | 1.002 | 1.2% | 2.4% | 1.001 | 2.4% |  |
+| loop | 1.000 | 0.1% | 2.2% | 1.000 | 2.3% |  |
+| integer-table | 1.000 | 4.4% | 0.4% | 1.005 | 4.9% |  |
+| string-key | 0.977 | 6.0% | 5.0% | 1.040 | 10.0% |  |
+| concat | 1.000 | 1.7% | 2.0% | 0.993 | 2.7% |  |
+| sort | 0.990 | 1.3% | 1.2% | 0.996 | 1.7% |  |
+| binary-trees | 1.006 | 2.2% | 1.2% | 1.000 | 2.2% |  |
+| List | 0.985 | 1.5% | 0.1% | 1.000 | 1.5% | target missed |
+| NBody | 1.002 | 1.3% | 1.7% | 1.000 | 1.7% |  |
+| Permute | 1.007 | 0.5% | 0.4% | 1.003 | 0.8% |  |
+| Queens | 1.016 | 3.6% | 1.5% | 0.995 | 4.1% |  |
+| Sieve | 0.994 | 2.8% | 0.4% | 1.000 | 2.9% |  |
+| Towers | 0.977 | 1.8% | 1.6% | 0.995 | 2.3% |  |
+
+Outcome: rejected. List is only 1.5% faster than the base (threshold 3%, tolerance 1.5%), although the callgrind falsifier passed first ([run 38370247961](https://github.com/Ming-Research/Halo-wf/actions/runs/38370247961)): List's instructions fell 13.01% and Towers' 0.71%. A 13% instruction saving bought about a ninth of that in time on this machine. The likely reason, inferred and not measured, is that the instructions the jump arms stopped executing (the shared exit's window re-checks) are cheap, well-predicted work; no cache or branch counts were taken to confirm it. The source change is reverted; this record stays.
 
 ## Metamethod names interned once and the known raw miss passed to the slow path
 
