@@ -94,9 +94,7 @@ gate-parts:
 # by a script on the same engine. The target exits nonzero on any probe
 # failure or difference in either mode, after running all three, and keeps
 # each mode's report and actual replies under build/halo-e2e/ for
-# inspection. The test
-# program is built once, with the graph always named by the same relative
-# path so that the compiler's cache key stays stable.
+# inspection. The test program is built once.
 E2E := $(BUILD)/halo-e2e
 E2E_TEST := $(E2E)/test
 E2E_RUN = cd $(ROOT) && $(PY) -B research/experiments/halo-e2e/run.py \
