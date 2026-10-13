@@ -40,7 +40,7 @@ jobs:
           make toolchain-check
           release=$(sed -n 's/^release = //p' whitefoot.pin)
           wfc="$PWD/build/whitefoot/$release/whitefootc"
-          sh research/experiments/halo-oracle/fetch-redis.sh "$PWD/build/redis"
+          sh research/experiments/halo-oracle/fetch-redis.sh "$PWD/build/redis" 7.0.15
           lua="$PWD/build/redis/redis-7.0.15/deps/lua/src/lua"
           # Same compiler on both sides; only the source differs.
           # The self-hosted runner keeps .git between jobs; drop a registration a
