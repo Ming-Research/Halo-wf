@@ -5716,3 +5716,25 @@ the twin's difference on the 14900K; no other kernel is slower beyond its
 larger range and the twin's difference; and `make check` passes on the
 measured revision. Otherwise the change is reverted with its measurements
 kept.
+
+### Part two's instruction count, recorded before timing
+
+Callgrind of fib(32) on the same hosted setup
+([run 38327829731](https://github.com/Ming-Research/Halo-wf/actions/runs/38327829731),
+gate [run 38327829671](https://github.com/Ming-Research/Halo-wf/actions/runs/38327829671)
+green on the same revision): 834.5 executed instructions per Lua call for
+both parts against the base's 884.5, 50 fewer (5.7%); `enter_lua` 189 to
+139. Part two alone saved 25, outside the 6 to 9 predicted, so part two's
+reading was wrong by its own rule. The listing shows why: with the per-slot
+branches gone, each fill loop has no exit but its counter, and LLVM
+simplifies the loop's induction and address arithmetic as a whole, which the
+reading, counting only a compare and a branch per slot, did not foresee.
+No `memset` call and no conditional move remain on the entry's hot path, so
+the other validity conditions hold. The prediction is corrected here, before
+any timing; the keep rule above is unchanged.
+
+The two new stack-overflow branches need a destination at or above
+2^64 - 258 slots, which no Lua program can reach, and no test reaches them;
+they are trusted on the equivalence argument in part one (the old saturated
+`room` test fired on exactly the same conditions, at the same point after
+the tail-call pop), which the completion review checked by reading.
