@@ -6618,3 +6618,93 @@ PUC case-body blocks matched by exact count. Inferred: PUC per-opcode costs
 for unmatched blocks, PUC's cost per miss (~85), every target cost and so
 every saving above, all code-generation explanations, and whether instruction
 savings become time.
+
+## Table stores look the key up once
+
+Status: criterion recorded before measurement; not measured. The single-lookup
+implementation is blocked by the contract restriction described below; the
+fast `SetTableKK` arm is prepared independently. The owner will run the builds,
+CI checks and measurements.
+
+### Question, recorded before measuring
+
+Does one raw slot lookup and store for an existing array slot or a retained
+hash key, together with a fast `SetTableKK`, reduce table-store overhead
+while preserving Lua behavior? A retained hash key may have a nil value;
+that value must still trigger `__newindex` when Lua requires it. Read-only
+refusal and its error location, nil and NaN key errors, and the table's
+`flags` reset must retain their current behavior.
+
+The [List and Towers attribution](#where-list-and-towers-spend-their-instructions)
+measured Towers at 3,583,098,494 whole-program instructions (`Ir`), with
+`SetTableKR`, `SetTableRR` and `SetTableKK` costing 307, 252 and 357
+instructions per store respectively. Its candidate estimate is about 150
+instructions per store after the change, saving about 357M instructions in
+Towers (10% of that measured total) and about 4M in List. These target costs
+and savings are hypotheses, not results for this change.
+
+### Instruction-count falsifier
+
+Compare full-LTO builds of the base immediately before the change and the
+candidate, with the same compiler, settings and Lua bundles; only the
+table-store change differs. First count Towers with callgrind (`Ir` only),
+using the attribution's reduced workload of 60 iterations. The candidate's
+whole-program `Ir` must be at most 95% of this same-source base's count: a
+fall of at least 5%. If it falls less than 5%, reject the instruction-saving
+hypothesis and do not proceed to timing. The historical count above motivates
+the hypothesis; the newly measured base decides this comparison.
+
+### Timing and correctness criterion
+
+If the instruction-count criterion passes, compare the same base and
+candidate in six interleaved full-LTO pairs on the 14900K, with every timed
+process pinned to CPU 2. Run a byte-copy twin of the base as the noise
+control. Use the seven kernels and the are-we-fast-yet bundles from the
+[fastest-interpreter baseline](#fastest-interpreter-baseline), keeping each
+workload and its iteration count identical between the two sides.
+
+Keep the change only if Towers' median time falls by at least 3% relative to
+the base, with that saving greater than both sides' relative ranges and the
+twin's absolute median difference from the base. No other kernel or
+are-we-fast-yet bundle may be slower than the base beyond the larger of its
+two relative ranges plus its twin difference. `make check` must pass on the
+candidate revision. No instruction count, timing or gate result for this
+change is available yet.
+
+### Implementation boundary before measurement
+
+The single-lookup implementation is blocked by a language restriction found
+by reading Whitefoot's specification at the pinned commit `d837678c6905`:
+FN-9 admits conditional postconditions only for the prelude's `Some(value:)`
+and `Ok(value:)` success variants. A natural slot result has array, node and
+missing variants, with each successful variant's index bounded by its own
+storage length. It cannot publish those bounds through this contract rule.
+This is a specification finding, not an observed compiler diagnostic; no
+compiler was run locally.
+
+The [minimal semantic witness](../../investigations/halo/witnesses/table-slot-contract.wf)
+contains both successful variants and a caller that stores through the
+returned slot. It is deliberately outside the passing gate while the pinned
+language excludes its contracts. Acceptance requires the witness to compile
+and exit zero, and requires rejection if either success returns its storage
+length instead of an in-bounds index or if the caller empties that storage
+before using the index. No redundant run-time bounds check or
+alternative result encoding was added to conceal this limitation. Keep the
+witness as regression evidence after the language change.
+
+The independent fast `SetTableKK` arm and VM behavior cases can be prepared
+with the existing lookup path. They do not complete the one-lookup proposal;
+the estimates and keep rule above apply to the complete experiment. Whitefoot
+must support the slot's conditional bounds before that part resumes. Filing
+the gap on the status board remains pending because this session has no
+`wf-board` tools.
+
+Reference inspection also found an existing difference outside this change:
+PUC clears the target table's flags in `luaH_set` before following
+`__newindex`, while Halo's slow store redirects without assigning to that
+target. Halo currently does not consult those flags during metamethod lookup,
+so this inspection establishes no changed Lua reply. The new cases assert
+flags reset for direct stores and preserve the existing redirection path.
+Revisit the difference before enabling the absence cache, comparing direct
+and redirected stores with the reference; no cache change is proposed here.
+This deferred observation also awaits a board backlog entry.
