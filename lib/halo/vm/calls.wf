@@ -26,54 +26,82 @@ const calls_text_4: Array<u8, 6> = "__call";
 
 const calls_text_5: Array<u8, 16> = "invalid bytecode";
 
-fn adjust_results(vm: &Vm, stack: &Box<Slots<Value>>, dest: u64, src: u64, count: u64, wanted: i64) -> r: u64 writes(vm), writes(stack) contract {
+fn move_results(stack: &Box<Slots<Value>>, dest: u64, src: u64, count: u64, wanted: i64) -> r: u64 writes(stack) contract {
   ensures stack^.inner.len == entry(stack)^.inner.len;
 } {
+  doc "Moves count results from src to dest, cut or padded with nil to wanted when wanted is not negative, and returns that many. Slots at or past the stack's end are neither read nor written; the slots inside it are clamped first, so every position is a plain sum the checker proves below the stack's length. Moves and nil stores run in ascending slot order.";
   let n = count;
   if wanted >= 0_i64 {
     set n = cvt::<i64, u64>(wanted);
   }
-  for (i in 0_u64..n) {
-    let d = dest +sat i;
-    let s = src +sat i;
-    if d < stack^.inner.len {
-      let v = Value::Nil();
-      if i < count {
-        if s < stack^.inner.len {
-          set v = stack^.inner[s];
-        }
+  let length = stack^.inner.len;
+  if dest < length {
+    let room = length - dest;
+    let filled = n;
+    if filled > room {
+      set filled = room;
+    }
+    let copied = 0_u64;
+    if src < length {
+      let avail = length - src;
+      set copied = count;
+      if copied > avail {
+        set copied = avail;
       }
-      set stack^.inner[d] = v;
+      if copied > filled {
+        set copied = filled;
+      }
+      for (i in 0_u64..copied) {
+        let d = dest + i;
+        let s = src + i;
+        let v = stack^.inner[s];
+        set stack^.inner[d] = v;
+      }
+    }
+    for (i in copied..filled) {
+      let d = dest + i;
+      set stack^.inner[d] = Value::Nil();
     }
   }
+  return n;
+}
+
+fn adjust_results(vm: &Vm, stack: &Box<Slots<Value>>, dest: u64, src: u64, count: u64, wanted: i64) -> r: u64 writes(vm), writes(stack) contract {
+  ensures stack^.inner.len == entry(stack)^.inner.len;
+} {
+  let n = move_results(stack: stack, dest: dest, src: src, count: count, wanted: wanted);
   set vm^.top = dest +sat n;
   return n;
 }
 
-fn finish(vm: &Vm, stack: &Box<Slots<Value>>, frame: Frame, src: u64, count: u64) -> r: Step writes(vm), writes(stack) contract {
+fn finish(vm: &Vm, stack: &Box<Slots<Value>>, dest: u64, wanted: i64, return_pc: u64, src: u64, count: u64) -> r: Step writes(vm), writes(stack) contract {
   ensures stack^.inner.len == entry(stack)^.inner.len;
 } {
+  doc "Completes a return from a frame already taken off the frame buffer, given the three fields a return reads: its result slot dest, its result count wanted and its return point return_pc. Moves the results, completes each protected call frame whose callee was the returning frame, and sets the top once at the exit: past the results for a native caller or a caller taking every result, the caller's frame top for a fixed count.";
   let length = stack^.inner.len;
-  let f = frame;
+  let to = dest;
+  let want = wanted;
+  let resume_pc = return_pc;
   let source = src;
   let got = count;
+  let n = 0_u64;
   loop (
     invariant preserved: stack^.inner.len == length
   ) {
-    let dest = f.func;
-    let wanted = f.nresults;
-    let n = adjust_results(vm: vm, stack: stack, dest: dest, src: source, count: got, wanted: wanted);
+    set n = move_results(stack: stack, dest: to, src: source, count: got, wanted: want);
     if vm^.frames.inner.len > 0_u64 {
       let i = vm^.frames.inner.len - 1_u64;
       if vm^.frames.inner[i].flags == protected_flag {
         let pfunc = vm^.frames.inner[i].func;
         let inner = pfunc +sat 1_u64;
-        if inner == dest {
-          let p = take_back(window: &vm^.frames.inner);
+        if inner == to {
+          set want = vm^.frames.inner[i].nresults;
+          set resume_pc = vm^.frames.inner[i].return_pc;
+          let discarded = take_back(window: &vm^.frames.inner);
           if pfunc < stack^.inner.len {
             set stack^.inner[pfunc] = Value::True();
           }
-          set f = p;
+          set to = pfunc;
           set source = pfunc;
           set got = n +sat 1_u64;
         } else {
@@ -86,22 +114,24 @@ fn finish(vm: &Vm, stack: &Box<Slots<Value>>, frame: Frame, src: u64, count: u64
       break;
     }
   }
-  let dest = f.func;
-  let total = vm^.top -sat dest;
+  let top = to +sat n;
+  let total = top -sat to;
   if vm^.frames.inner.len == 0_u64 {
+    set vm^.top = top;
     return Step::Done(count: total);
   }
   let i = vm^.frames.inner.len - 1_u64;
   if vm^.frames.inner[i].activation != vm^.activation {
+    set vm^.top = top;
     return Step::Done(count: total);
   }
   let b = vm^.frames.inner[i].base;
   let kb = vm^.frames.inner[i].kbase;
-  if f.nresults >= 0_i64 {
-    set vm^.top = vm^.frames.inner[i].frame_top;
+  if want >= 0_i64 {
+    set top = vm^.frames.inner[i].frame_top;
   }
-  let pc = f.return_pc;
-  return Step::Jump(pc: pc, base: b, kbase: kb);
+  set vm^.top = top;
+  return Step::Jump(pc: resume_pc, base: b, kbase: kb);
 }
 
 fn unwind_frame(vm: &Vm, stack: &Box<Slots<Value>>) -> r: Option<Frame> reads(stack), writes(vm) {
@@ -141,7 +171,7 @@ fn unwind_finish(vm: &Vm, stack: &Box<Slots<Value>>, frame: Frame) -> r: Step wr
     let caught = vm^.error;
     set stack^.inner[err] = caught;
   }
-  let outcome = finish(vm: vm, stack: stack, frame: frame, src: dest, count: 2_u64);
+  let outcome = finish(vm: vm, stack: stack, dest: dest, wanted: frame.nresults, return_pc: frame.return_pc, src: dest, count: 2_u64);
   resize_stack(stack: stack, size: length);
   return outcome;
 }
@@ -205,7 +235,9 @@ fn enter_lua(vm: &Vm, stack: &Box<Slots<Value>>, h: u32, func: u64, argc: u64, w
           if vm^.frames.inner.len > 0_u64 {
             let old = take_back(window: &vm^.frames.inner);
             let ob = old.base;
-            close_upvalues(vm: vm, stack: stack, level: ob);
+            if ob < vm^.open_limit {
+              close_upvalues(vm: vm, stack: stack, level: ob);
+            }
             set dest = old.func;
             set results = old.nresults;
             set rp = old.return_pc;
@@ -474,11 +506,10 @@ fn prepare_inner<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<
                   let old = take_back(window: &vm^.frames.inner);
                   let oldbase = old.base;
                   close_upvalues(vm: vm, stack: stack, level: oldbase);
-                  return finish(vm: vm, stack: stack, frame: old, src: fslot, count: n);
+                  return finish(vm: vm, stack: stack, dest: old.func, wanted: old.nresults, return_pc: old.return_pc, src: fslot, count: n);
                 }
               }
-              let frame = Frame(func: fslot, base: base, return_pc: return_pc, kbase: kbase, closure: no_handle, tailcalls: 0_u32, nresults: nr, activation: vm^.activation, flags: 0_u8, varbase: 0_u64, varcount: 0_u64, frame_top: vm^.top);
-              return finish(vm: vm, stack: stack, frame: frame, src: fslot, count: n);
+              return finish(vm: vm, stack: stack, dest: fslot, wanted: nr, return_pc: return_pc, src: fslot, count: n);
             }
           }
         }
@@ -831,13 +862,12 @@ fn complete_call<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, 
       let old = take_back(window: &vm^.frames.inner);
       let oldbase = old.base;
       close_upvalues(vm: vm, stack: stack, level: oldbase);
-      set step = finish(vm: vm, stack: stack, frame: old, src: func, count: count);
+      set step = finish(vm: vm, stack: stack, dest: old.func, wanted: old.nresults, return_pc: old.return_pc, src: func, count: count);
       set finished = True();
     }
   }
   if bnot(finished) {
-    let frame = Frame(func: func, base: call.base, return_pc: call.return_pc, kbase: call.kbase, closure: no_handle, tailcalls: 0_u32, nresults: call.wanted, activation: call.activation, flags: 0_u8, varbase: 0_u64, varcount: 0_u64, frame_top: call.top);
-    set step = finish(vm: vm, stack: stack, frame: frame, src: func, count: count);
+    set step = finish(vm: vm, stack: stack, dest: func, wanted: call.wanted, return_pc: call.return_pc, src: func, count: count);
   }
   return drive::<Host<E>>(script: script, stack: stack, vm: vm, env: env, step: step);
 }

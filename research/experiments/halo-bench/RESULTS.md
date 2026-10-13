@@ -5546,6 +5546,301 @@ four at 0.226 s). No conclusion above rests on a cell whose ratio
 sits within its range of the threshold it is compared with, except List in
 stage 2, which is set aside as stated.
 
+## A cheaper Lua return
+
+The change has two parts, both on the Lua `RETURN` path, and is timed as one
+change:
+
+1. no full-frame copy on return: `RETURN` reads only the three fields of the
+   returning frame that `finish` (which completes a return) uses, and the
+   results move with checker-proved slot positions instead of saturating sums
+   and per-slot length tests;
+2. an open-upvalue limit per execution: one scalar, an upper bound on the
+   slots of the open upvalues, lets a return that is above every open slot
+   skip the `close_upvalues` call after one compare.
+
+The criterion below was first written for part one alone, before part one
+was made. It was revised after part one's instruction count and before any
+timing, to add part two; [the revision](#criterion-revised-after-part-ones-count)
+says why. The keep rule is unchanged.
+
+### Part one: no full-frame copy, recorded before the change
+
+Question: does fib get faster when a Lua `RETURN` reads only the three
+fields of the returning frame that it uses, instead of copying the whole
+frame out of the frame buffer, and moves its results with checker-proved
+slot positions instead of saturating sums and per-slot length tests?
+
+Reading. Callgrind of fib(32) at main `56878ac` (the base side of the
+temporary `entry-profile` workflow on branch `claude/halo-entry-saturation`,
+[run 38327829731](https://github.com/Ming-Research/Halo-wf/actions/runs/38327829731);
+hosted x86-64 runner, `wf-d837678c6905`, full LTO, 7,049,155 Lua calls of
+fib) counts 884.5 executed instructions per Lua call; PUC Lua 5.1.5 executes
+403.0. The return path is 222 of them: 129 in the `RETURN` arm of the
+dispatch loop (`instruction_return`, inlined into the arm) and 93 in
+`finish`, which completes a return. Per Lua call, by block:
+
+| Where | Instructions | What they do | Whose |
+|---|---:|---|---|
+| arm entry | 19 | stack frame and six spills of the dispatch loop's live registers, decoding A and B, `ra = base + a`, `count = b - 1`, two spills | Whitefoot: the dispatch loop's arms are separate functions that save the loop state |
+| upvalue close test | 28 | `close_upvalues` finding nothing to close: the open-upvalue list is non-empty (fib's own local in the main chunk), so it bounds-checks the first handle into the heap's upvalue records, tests `live`, the `Open` tag, the owning thread and finally the slot against `base` | Halo: the open list holds handles only, so the slot is three dependent loads away; PUC tests one pointer |
+| frame pop and copy | 36 | 4 address reloads, 4 for the empty-buffer test, 4 for the pop, **16 to copy the whole 80-byte `Frame` onto the arm's stack** (8 loads, 8 stores), 8 to set up the call of `finish` | Halo: `take_back` copies the frame and passes it by value, but `finish` reads only `func`, `return_pc` and `nresults` |
+| `finish` entry | 15 | six callee-saved pushes, three spills, the three field loads from the copy, the frame buffer's address | the three loads are Halo's; the rest is the call |
+| result move | 38 | `adjust_results` inlined, one result: choose `n`, set up, then one iteration of 27: two saturating sums (`dest +sat i`, `src +sat i`, three instructions each), the destination tested against the stack's length, `i < count`, the source tested against the stack's length, a two-word load and store, loop control | Halo: saturating sums and per-slot tests where positions can be proved |
+| protected-frame test | 8 | is the caller a `pcall` frame whose callee this was | Lua semantics |
+| top after the move | 5 | `vm.top = dest +sat n`, overwritten below whenever the caller wants a fixed count | Halo: a store that fib's path always overwrites |
+| activation test | 5 | is the caller in this activation (else return to the native caller) | Lua semantics |
+| caller restore | 8 | caller's base and kbase, `nresults >= 0`, `vm.top = frame_top` | Lua semantics |
+| `Step::Jump` out | 7 + 5 | `finish` stores the four-word `Step` through memory, the arm reloads its tag and dispatches on it | Whitefoot: a returned four-word enum goes through memory (a known Whitefoot item) |
+| `finish` exit | 7 | six pops and `ret` | call |
+| next instruction | 41 | `checked_step`: the three `Step` fields reloaded, base and kbase each tested below 2^64 - 256 and their sums against the stack's and constants' lengths, `pc` against the code length (22); seven stores of the loop state into the dispatch loop's frame, the `Step` and then `pc`, `base`, `kbase` again (7); fetch and dispatch of the next instruction (12) | Halo re-tests every jump target because a frame carries no proven bounds; the doubled stores are Whitefoot's outlined arm |
+
+Halo's own spelling, which this change addresses: the whole-frame copy (16
+in the arm, and the 3 loads in `finish` that read the copy), the saturating
+sums and per-slot tests of the result move, and the overwritten store of
+`vm.top`. Not addressed here: the upvalue close test (28), whose cheap form
+needs each open-upvalue list entry to carry its slot, a change to the
+`open_upvalues` field that the `execution` and `vm` module interfaces
+declare, so it is a separate change; and the dispatch loop's handling of a
+returned `Step` (72 of the 222: the arm entry, the `Step` through
+memory, `checked_step` and the doubled stores), which is shared by
+every handler that returns a `Step` and is mostly Whitefoot code generation
+already recorded as Whitefoot items.
+
+Change.
+
+1. `finish` takes the returning frame's `func`, `nresults` and `return_pc`
+   as three arguments instead of a `Frame`. The `RETURN` arm reads those
+   three fields from the top of the frame buffer, pops it, and passes them;
+   every other caller passes the same three fields of the frame it already
+   holds, and the native-call and coroutine completions no longer build a
+   twelve-field `Frame` just to pass three of them. On x86-64 `finish` now
+   takes seven arguments and the hidden `Step` pointer, so two arguments
+   travel on the stack: about 2 stores and 2 loads in place of the 16-word
+   copy.
+2. The result move (`move_results`, split out of `adjust_results`, which
+   keeps its contract and now calls it and sets `vm.top`) computes how many
+   destination slots lie inside the stack (`length - dest`, only when
+   `dest < length`) and how many source slots do (`length - src`, only when
+   `src < length`), clamps the results moved and the slots filled to them,
+   and then copies and nil-fills with plain sums `dest + i` and `src + i`,
+   which the checker proves below the stack's length from the loop bound
+   and the clamps. The moves and nil stores happen in the same order, to the
+   same slots, with the same values as before: the old loop skipped exactly
+   the destinations at or past the stack's end and read nil exactly where
+   `i >= count` or the source was at or past the end.
+3. `finish` sets `vm.top` once, at each exit, from the final destination and
+   count: `dest +sat n` for a return to the native caller or a caller that
+   takes every result, and the caller's `frame_top` when it takes a fixed
+   count, which are the values it held before at each exit.
+
+Expected: callgrind counts 17 to 30 fewer executed instructions per Lua call
+of fib, in the `RETURN` arm, `finish` and the result move together (any of
+it may move between them if LLVM inlines differently): 10 to 15 from the frame copy (the 16
+copy instructions, the address of the copy and `finish`'s 3 loads from it,
+less 3 loads from the frame buffer and about 4 for the two stack-passed
+arguments), 4 to 10 from the result move, 3 to 5 from the overwritten
+`vm.top` store. That is 1.9% to 3.4% of 884.5, about 2.6% in the middle.
+**The expected saving is about 23 instructions per call, under the 25 (3%)
+that would make a 3% time saving plausible; the change will probably fall
+short of the keep rule's threshold on time.** It is recorded and measured
+anyway because the frame copy is the largest piece of the return path that
+is Halo's own spelling, and its count tells whether the remaining Halo-side
+item, the upvalue close test, is needed to clear 3% together with it.
+
+Validity conditions on the count, checked before any timing is interpreted:
+
+- the `RETURN` arm no longer stores frame fields onto its own stack (no
+  16-byte copy of the frame before the call of `finish`), and `finish` reads
+  `func`, `return_pc` and `nresults` from its arguments;
+- the one-result move has no conditional move or compare-with-all-ones of a
+  saturating sum, no compare of the slot index with the stack's length inside
+  the loop, and no call of `memmove` or `memset` (LLVM's loop idiom pass
+  could form one once the loops have no branch; a library call for one slot
+  costs more than it saves);
+- every function other than the `RETURN` arm, `finish` and the result
+  move (`move_results`, if LLVM does not inline it) keeps its per-call count
+  within 1, since the change touches only the return path, and both sides
+  print fib(32);
+- if callgrind counts fewer than 10 instructions saved per Lua call, or any
+  condition above fails, this reading was wrong and is corrected before any
+  timing is interpreted. If the checker refuses a plain sum or an index,
+  the refusal is reported as a missing proof or a Whitefoot gap, and the
+  operation is not put back to `+sat` or a run-time test to make the build
+  pass.
+
+### Part one's instruction count
+
+Callgrind of fib(32)
+([run 38329252298](https://github.com/Ming-Research/Halo-wf/actions/runs/38329252298);
+hosted x86-64 runner, full LTO, `make check` run 38329252332 on the same
+revision passing) counts 866.5 executed instructions per Lua call with part
+one against 884.5 at the base `56878ac`: 18 fewer, 2.0% of the base's count.
+The `RETURN` arm falls from 129 to 117 and `finish` from 93 to 87. The
+saving is at the low end of the expected 17 to 30 and above the falsifier's
+floor of 10, so the reading stands on the count. A time saving in proportion
+to it would be about 2.0%, below the 3% the keep rule asks.
+
+### Part two: an open-upvalue limit per execution
+
+Reading. Of the 884.5 instructions per Lua call, 28 are `close_upvalues` in
+the `RETURN` arm finding nothing to close (the upvalue close test row of the
+table above). fib's own local in the main chunk keeps the open list
+non-empty, and the list holds only heap handles, so the test bounds-checks
+the first handle into the heap's upvalue records and tests `live`, the `Open`
+tag, the owning thread and finally the slot against `base`. PUC Lua compares
+its open-upvalue pointer with `base` once. The design proposal, with the
+three candidates and why this one, is in
+[VM.md](../../investigations/halo/VM.md#open-upvalues-a-cheaper-nothing-to-close-test).
+The owner approved this direction on 2026-10-13; the corresponding
+design-tree change awaits its separate approval after implementation and
+measurement.
+
+Change. Each execution record keeps `open_limit`: 0 when its open list is
+empty, otherwise greater than every listed open slot. `capture` only raises
+it; `close_upvalues` lowers it only to one more than a slot it has just read
+from a live, `Open` cell this execution owns, or to 0 when the list empties;
+a coroutine switch exchanges it with the execution record, and a dead thread
+and engine reset set it to 0. The `RETURN` arm and a Lua tail call's frame
+pop call `close_upvalues` only when `base < open_limit`. The limit is an
+upper bound, so an overstated one only sends a return into the checked loop
+that runs today; every cell access stays index-checked.
+
+Expected: callgrind counts 23 to 26 fewer executed instructions per Lua call
+of fib than part one alone (28 less 2 to 5 for the load, compare and branch,
+inlined into the `RETURN` arm), so about 840.5 to 843.5 for both parts,
+41 to 44 fewer than the base's 884.5 (4.6% to 5.0%). If part two saves fewer
+than 15 per call, or a load from the upvalue slab remains on fib's return,
+this reading was wrong and is corrected before any timing is interpreted.
+The falsifiers are in `make check`: the oracle corpus at budgets 1, 7 and
+1000, ordinary and under collector stress, and the new oracle script
+`coroutines/open-limit-per-execution` (a coroutine captures at a slot higher
+than its resumer's frames, yields, and the resumer returns and reads a
+closure over its own local).
+
+### Part two's instruction count
+
+Callgrind of fib(32) with both parts
+([run 38330151462](https://github.com/Ming-Research/Halo-wf/actions/runs/38330151462);
+hosted x86-64 runner, full LTO) counts 836.5 executed instructions per Lua
+call against 884.5 at the base: 48 fewer, 5.4% of the base's count. The
+`RETURN` arm falls from 129 to 88. Part two alone saves 30 against part
+one's 866.5, above the expected 23 to 26 (the compare, load and branch cost
+fewer instructions than allowed for). The new oracle script, recorded on
+Redis 7.2.16, equals the prediction
+([run 38330151455](https://github.com/Ming-Research/Halo-wf/actions/runs/38330151455)).
+
+### Criterion revised after part one's count
+
+The first criterion covered part one alone and said it would probably fall
+short of the 3% threshold. Part one's count confirmed that: 18 instructions
+saved are 2.0% of the base's count, below the 3% threshold, and the saved
+loads and compares sit mostly off the critical path, so its time saving is
+expected below 2.0%. Timing it alone would most likely only show it below the
+threshold. Part two removes the remaining Halo-side cost on the same return
+path, the upvalue close test the first criterion listed as not addressed, so
+the two are one change to the return path. The criterion was therefore
+revised to time both parts together. It was revised after part one's
+instruction counts and before any timing of either part. The threshold is not
+lowered; the keep rule is unchanged word for word.
+
+Comparison: this branch's base `56878ac` against the branch with both parts,
+both built by `wf-d837678c6905`, with a twin of the base, every timed process
+on CPU 2 of the 14900K, six interleaved pairs over the seven kernels as
+`run.py` runs them (binary-trees at depth 14, fib at N = 30); and callgrind
+of fib(32) on a hosted runner, before and after.
+
+The 4.6% to 5.0% expected here is mostly loads, compares and branches off the
+critical path, so a time saving in proportion to the count is an upper
+estimate. **The change may still fall short of the 3% threshold.**
+
+Kept only if: fib's median falls at least 3%, by more than both ranges and
+the twin's difference on the 14900K; no other kernel is slower beyond its
+larger range and the twin's difference; and `make check` passes on the
+measured revision. Otherwise the change is reverted with its measurements
+kept.
+
+### Result
+
+[Run 38360546976](https://github.com/Ming-Research/Halo-wf/actions/runs/38360546976)
+on the 14900K compared base
+`56878ac4d607f7496c8e23a4c2ffe2d45e9cb552` with measured revision
+`b564ac79380a968980feca12d5afae6a3557cb58`, both built with
+`wf-d837678c6905` and full LTO. The artifact `manifest.txt` records those
+revisions, compiler, Clang 22.1.8 and CPU 2 affinity; the base and base twin
+have identical binary hashes. The workloads and settings are the comparison
+above. The one-, three- and six-pair samples below are separate batches,
+not prefixes of the six-pair batch.
+
+The table is recomputed from the raw `pairs` in `return-1.json`,
+`return-3.json` and `return-6.json`, with the corresponding `twin-1.json`,
+`twin-3.json` and `twin-6.json`. Medians are seconds; ratio is change median
+/ base median; each range is (maximum - minimum) / that side's median.
+Twin is twin median / its interleaved base median, so its difference is
+`abs(twin - 1)`. Allowance is the larger base/change range plus that twin
+difference. Verdicts use the unrounded values: **fib pass** means at least
+3% faster than base and a saving greater than each range and the twin's
+difference; **pass** for another kernel means its slowdown is no greater
+than the allowance. The allowance is also shown for fib as a stricter
+combined-noise comparison, which it clears in every batch.
+
+| Pairs | Kernel | Base median s | Change median s | Ratio | Base range | Change range | Twin | Allowance | Timing clause |
+|---:|---|---:|---:|---:|---:|---:|---:|---:|---|
+| 1 | fib | 0.088647 | 0.083263 | 0.9393 | 0.00% | 0.00% | 0.9966 | 0.34% | fib pass |
+| 1 | loop | 0.501436 | 0.502516 | 1.0022 | 0.00% | 0.00% | 1.0019 | 0.19% | fail |
+| 1 | integer-table | 0.355986 | 0.354894 | 0.9969 | 0.00% | 0.00% | 0.9928 | 0.72% | pass |
+| 1 | string-key | 0.023210 | 0.021903 | 0.9437 | 0.00% | 0.00% | 0.9896 | 1.04% | pass |
+| 1 | concat | 0.074022 | 0.072628 | 0.9812 | 0.00% | 0.00% | 1.1059 | 10.59% | pass |
+| 1 | sort | 0.184489 | 0.183346 | 0.9938 | 0.00% | 0.00% | 0.9902 | 0.98% | pass |
+| 1 | binary-trees | 1.213891 | 1.190891 | 0.9811 | 0.00% | 0.00% | 0.9988 | 0.12% | pass |
+| 3 | fib | 0.088579 | 0.083426 | 0.9418 | 0.45% | 1.20% | 1.0129 | 2.50% | fib pass |
+| 3 | loop | 0.501712 | 0.501505 | 0.9996 | 0.08% | 0.22% | 1.0002 | 0.24% | pass |
+| 3 | integer-table | 0.338961 | 0.337850 | 0.9967 | 1.73% | 0.64% | 0.9997 | 1.75% | pass |
+| 3 | string-key | 0.021856 | 0.021884 | 1.0013 | 6.40% | 0.27% | 1.0408 | 10.48% | pass |
+| 3 | concat | 0.073666 | 0.072896 | 0.9896 | 1.48% | 1.49% | 1.0146 | 2.95% | pass |
+| 3 | sort | 0.184192 | 0.183264 | 0.9950 | 1.04% | 0.49% | 0.9999 | 1.05% | pass |
+| 3 | binary-trees | 1.214576 | 1.202393 | 0.9900 | 2.37% | 2.71% | 1.0009 | 2.80% | pass |
+| 6 | fib | 0.088888 | 0.083250 | 0.9366 | 3.24% | 1.57% | 0.9904 | 4.21% | fib pass |
+| 6 | loop | 0.501449 | 0.501484 | 1.0001 | 0.11% | 0.25% | 1.0006 | 0.31% | pass |
+| 6 | integer-table | 0.355800 | 0.354026 | 0.9950 | 3.16% | 0.57% | 1.0024 | 3.40% | pass |
+| 6 | string-key | 0.021870 | 0.021908 | 1.0017 | 6.44% | 5.21% | 1.0196 | 8.40% | pass |
+| 6 | concat | 0.072639 | 0.072635 | 0.9999 | 2.03% | 0.68% | 1.0011 | 2.14% | pass |
+| 6 | sort | 0.183896 | 0.182204 | 0.9908 | 1.07% | 0.64% | 0.9899 | 2.08% | pass |
+| 6 | binary-trees | 1.214274 | 1.192086 | 0.9817 | 3.50% | 3.29% | 0.9984 | 3.66% | pass |
+
+The one-pair batch gives fib a 6.07% saving over base, but its loop clause
+fails provisionally: loop is 0.2155% slower than base, above the 0.1864%
+twin difference, while one pair necessarily reports zero ranges. The
+three-pair batch gives fib a 5.82% saving and every other kernel passes.
+The six-pair batch gives fib a 6.34% saving, larger than its base range
+(3.24%), change range (1.57%) and twin difference (0.96%), and also larger
+than the combined allowance (4.21%). Every other kernel passes in that
+final batch. These are results for the two return changes together; they
+do not attribute the time saving between the two parts.
+
+Correctness clause: every launch in all six JSON files exits zero and its
+stdout equals its kernel's independent-reference stdout; each independent
+reference also exits zero. This covers 280 launches across the three
+comparison batches and their twins. The gate passed on the measured
+revision `b564ac7` ([check run 38360546953](https://github.com/Ming-Research/Halo-wf/actions/runs/38360546953)). The measurement run is
+not substituted for the project gate.
+
+### Outcome
+
+Kept under the unchanged rule, using the final six-pair measurement and
+the owner's reported passing gate on the measured revision:
+
+> Kept only if: fib's median falls at least 3%, by more than both ranges and
+> the twin's difference on the 14900K; no other kernel is slower beyond its
+> larger range and the twin's difference; and `make check` passes on the
+> measured revision. Otherwise the change is reverted with its measurements
+> kept.
+
+The combined change clears the fib and other-kernel clauses in the final
+batch. The temporary measurement workflows are removed; the linked runs
+and their artifacts preserve the evidence. The owner approved the design-tree
+change on 2026-10-13.
+
 ## PUC 5.1.5 from Redis 7.0.15 against Redis 7.2.16's
 
 ### Question, recorded before measuring

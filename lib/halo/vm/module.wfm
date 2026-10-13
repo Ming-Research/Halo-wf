@@ -23,6 +23,7 @@ public struct Vm {
   public resume_call: CoroutineCall;
   public yield_call: CoroutineCall;
   public c_depth: u32;
+  public open_limit: u64;
   public pattern_subs: Box<Slots<PatternSubFrame>>;
   public cjson_configs: Box<Slots<CjsonConfig>>;
   public cjson_active_config: u64;

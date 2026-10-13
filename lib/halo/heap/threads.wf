@@ -41,6 +41,7 @@ fn close_thread_upvalues(heap: &Heap, h: u32) -> r: unit writes(heap.upvalues), 
       loop {
         let count = heap^.threads.inner[ti].payload.open_upvalues.inner.len;
         if count == 0_u64 {
+          set heap^.threads.inner[ti].payload.open_limit = 0_u64;
           return unit;
         }
         let last = count - 1_u64;
