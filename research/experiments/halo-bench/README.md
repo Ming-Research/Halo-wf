@@ -152,7 +152,8 @@ longer repeated:
   build, and writes their versions, digests, compilers and a compile line
   to `manifest.txt`. PUC Lua 5.1.5 is Redis 7.0.15's bundled Lua, built by
   `fetch-redis.sh <directory> 7.0.15`; the oracle reference moved to 7.2.16,
-  and the baseline stays until a measurement decides it (`halo-bench-baseline-72`).
+  and the baseline stays until a measurement decides it (`halo-bench-baseline-72`,
+  [RESULTS.md](RESULTS.md#puc-515-from-redis-7015-against-redis-7216s)).
 - `fastest.py` times Halo's bench host and any number of other
   interpreters (`--engine ID=COMMAND`, the workload path appended) round-robin
   on the kernels and the bundles, validates every result against PUC 5.1.5
@@ -162,6 +163,11 @@ longer repeated:
   than an extension, since it rotates N interpreters and excludes a
   disagreeing cell instead of failing the run; it reuses `run.py`'s Halo
   checks. `--sample` runs one round to time the run before `--rounds N`.
+  Without `--halo` it times only the `--engine` interpreters and reports
+  each one's median over `--reference`'s, to three decimals, as the
+  comparison of two PUC 5.1.5 builds does; `--expect RUN.json` requires
+  the reference to print the checksums a recorded run holds, and `--strict`
+  fails the run on any disagreement instead of marking the cell n/a.
 
 The recorded run came from a temporary workflow, kept at
 [`9bff3d9`](https://github.com/Ming-Research/Halo-wf/blob/9bff3d991b4aee1327f720e03d55bc0c366f82b5/.github/workflows/fastest-baseline.yml): it built Halo's bench host with
@@ -173,6 +179,10 @@ steps; for example, the sample with two interpreters:
 python3 -B research/experiments/halo-bench/fastest.py --halo build/fastest/halo \
   --engine puc-5.1.5=build/redis/redis-7.0.15/deps/lua/src/lua \
   --engine "luajit-2.1-joff=build/fastest/interpreters/luajit/src/luajit -joff" \
-  --reference puc-5.1.5 --kernels all --scale binary-trees=14 --awfy build/fastest/awfy \
-  --sample --out build/fastest/sample.json
+  --reference puc-5.1.5 --kernels fib,loop,integer-table,string-key,concat,sort,binary-trees \
+  --scale binary-trees=14 --awfy build/fastest/awfy --sample --out build/fastest/sample.json
 ```
+
+The kernels are named because `--kernels all` now also selects
+captured-assignment and producer-consumer, which the recorded run did not
+time.

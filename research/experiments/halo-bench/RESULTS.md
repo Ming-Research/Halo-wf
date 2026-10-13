@@ -5539,3 +5539,110 @@ Permute 16% and concat 15%, LuaJIT List 17.5% (two launches at 0.188 s,
 four at 0.226 s). No conclusion above rests on a cell whose ratio
 sits within its range of the threshold it is compared with, except List in
 stage 2, which is set aside as stated.
+
+## PUC 5.1.5 from Redis 7.0.15 against Redis 7.2.16's
+
+### Question, recorded before measuring
+
+Every comparison above, the fastest-interpreter baseline included, times
+PUC Lua 5.1.5 as Redis 7.0.15 bundles it. Halo's compatibility reference
+moved to Redis 7.2.16 ([REDIS-72.md](../../investigations/halo/REDIS-72.md)),
+whose bundled Lua is the same PUC 5.1.5 with Redis's patches and later
+fixes. Is the 7.2.16 build as fast as the 7.0.15 build on the baseline's 13
+programs, so that the performance baseline can use the reference's Lua
+without moving the yardstick? Status-board item `halo-bench-baseline-72`.
+
+### What differs in the source
+
+REDIS-72.md's B1 to B7, read from both releases' sources, list every
+difference in the bundled Lua; the build flags are the same. By where the
+13 programs meet them:
+
+- Per operation, B5 only. `luaH_getnum` (`ltable.c`), which every table
+  read and write with a number key reaches, tests whether the key is in
+  the array part with one unsigned comparison in 7.0.15,
+  `cast(unsigned int, key-1) < cast(unsigned int, t->sizearray)`, and with
+  two signed comparisons in 7.2.16, `1 <= key && key <= t->sizearray`,
+  which avoids the signed overflow of `key-1` at the smallest int. The
+  results are the same. Integer-table, sort, Sieve, Queens, Permute and
+  Towers index arrays in their inner loops; whether gcc `-O2` folds the
+  two comparisons into one is not known before the run, which records the
+  size of `luaH_getnum` in both binaries.
+- Once per launch, B3 and B4: the lexer's long-bracket count widened to
+  `size_t` (`llex.c`) and the parser anchoring the chunk name
+  (`lparser.c`) run while the program is compiled, not per operation.
+- Not on these programs' paths: B2 (`bit.tohex`), B6 (`string.dump`'s
+  `DumpString`) and B7 (cjson); none of the kernels calls `unpack` (B1,
+  one more comparison per call), and whether a bundle does is not checked
+  here.
+- Code placement. The changed object files change size, so functions the
+  linker places after them, possibly `luaV_execute`, the interpreter
+  loop, may sit at another address modulo 64 bytes in 7.2.16's binary,
+  which can change their speed with no source change in them. The run records both binaries' addresses
+  of `luaV_execute`. The question is the speed of the build as Redis
+  builds it, so a difference counts whatever its cause; the cause matters
+  only for the card the rule below may raise.
+
+The run diffs `deps/lua` and `deps/Makefile` of the two verified tarballs
+(`lua-source.diff` in its artifact) and lists the files that differ in its
+manifest; a file outside B1 to B7's is reported with the result.
+
+### Builds
+
+Both Luas are built as the current baseline's was, by
+`fetch-redis.sh <directory> <version>`: the Redis tarball from
+download.redis.io, its SHA-256 checked against the one Redis publishes in
+its redis-hashes repository (the repository pins no digest of its own; the
+run's manifest records each tarball's), then Redis's own `make -C deps
+lua`. The baseline run's manifest records that build's compile line, `cc
+-Wall -DLUA_ANSI -DENABLE_CJSON_GLOBAL -DREDIS_STATIC='' -DLUA_USE_MKSTEMP
+-O2 -c -o lvm.o lvm.c` with gcc 15.2.0 on the 14900K: `-O2`, no LTO. Both
+builds run in the same job on the same machine, and the run stops before
+timing unless the compiler, archiver and deps Makefile command lines of
+the two build logs are identical. The twin is a byte copy of the 7.0.15
+binary under the same file name, as the twins above were copies of the
+base binary: it measures the run's own noise (drift, launch order, file
+placement). A second build from the same tarball with the same compiler
+and no LTO would be expected to give the same bytes, so it would add no
+source of noise a copy lacks.
+
+### Comparison
+
+`fastest.py` without Halo, three engines: `puc-7.0.15` (the reference),
+`puc-7.0.15-twin` and `puc-7.2.16`, on the baseline's 13 programs at its
+sizes (the seven kernels, binary-trees at depth 14, and the six
+are-we-fast-yet bundles at the baseline's inner iterations). The reference
+must print the checksums the baseline run recorded
+(`fastest-baseline-2026-10-12.json`, `--expect`), and every engine must
+print the reference's (`--strict`); a mismatch stops the run before its
+timings count. On the 14900K with every timed process on CPU 2 and the
+governor recorded, one sample round, then 21 rounds; each round launches
+the three in an order rotated by one position, so each engine takes each
+position 7 times. Medians and relative ranges (max − min) / median per
+engine and program, and each engine's median over the reference's.
+
+Round count. The baseline's PUC 5.1.5 medians add up to 4.86 s per round,
+so three engines take about 14.6 s a round: 21 rounds about 5.1 minutes,
+the sample 15 s, fetching and building both Luas and the bundles about 1
+to 2 minutes, about 7 minutes in all. Six rounds of the baseline gave PUC
+5.1.5 relative ranges from 0.18% (Permute) to 8.61% (concat), with fib
+3.78%, List 3.62% and integer-table 3.32%, larger than the effect B5 could
+plausibly have (about 1% on the array-heavy programs). A median of 21 has
+about half the scatter of a median of 6 (√(21/6) ≈ 1.9). More rounds also
+widen min–max ranges, which are extremes, so the rule below tolerates
+somewhat more than the baseline's six-round ranges suggest.
+
+### Decision rule, recorded before measuring
+
+For each program, r is 7.2.16's median over 7.0.15's, R the larger of the
+two builds' relative ranges and t the twin's median over 7.0.15's minus 1,
+in absolute value. If |r − 1| ≤ max(R, t) on all 13 programs, the baseline
+switches to 7.2.16's build: `fetch-redis.sh` builds 7.2.16 for both the
+reference group and the benchmarks, the README and `interpreters.sh` say
+so, and the earlier records keep their 7.0.15 numbers. Otherwise the owner
+chooses on a card that lists the programs outside, with r, R, t and the
+recorded addresses of `luaV_execute`. A failed check (different build
+commands, a checksum mismatch) is investigated before any timing is read.
+
+Expected: the switch, with B5 inside the ranges on the array-heavy
+programs and nothing else moving.

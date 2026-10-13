@@ -1,0 +1,198 @@
+# Temporary, on this branch only (status-board item halo-bench-baseline-72):
+# the comparison recorded in research/experiments/halo-bench/RESULTS.md,
+# "PUC 5.1.5 from Redis 7.0.15 against Redis 7.2.16's". Both jobs build the
+# bundled Lua of Redis 7.0.15 (today's performance baseline) and of Redis
+# 7.2.16 (the compatibility reference) with fetch-redis.sh, each tarball
+# checked against the SHA-256 Redis publishes, with Redis's own deps Makefile
+# on the same machine; they refuse to measure unless both builds ran the same
+# compiler commands, keep the source diff of deps/lua, and copy the 7.0.15
+# binary as the twin. The hosted job checks every checksum and the runner's
+# two new checks, then runs one round to size the run. The 14900K job runs
+# only for a commit whose subject starts with [bench]: it rebuilds there, runs
+# the sample and then ROUNDS rounds with every timed process on CPU 2.
+# Remove before the branch is ready.
+name: puc-baseline-72
+
+on:
+  push:
+    branches: [claude/halo-bench-baseline-72]
+    paths:
+      - .github/workflows/puc-baseline-72.yml
+      - research/experiments/halo-bench/fastest.py
+      - research/experiments/halo-bench/run.py
+      - research/experiments/halo-bench/awfy.py
+      - research/experiments/halo-bench/RESULTS.md
+      - research/experiments/halo-oracle/fetch-redis.sh
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  # The baseline's seven kernels; run.py's list has since gained two the
+  # baseline did not time.
+  KERNELS: fib,loop,integer-table,string-key,concat,sort,binary-trees
+  # The baseline run, whose recorded checksums the 7.0.15 build must print.
+  EXPECT: research/experiments/halo-bench/fastest-baseline-2026-10-12.json
+  ROUNDS: 21
+  OUT: build/puc72
+
+jobs:
+  sample:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build both Luas and the twin; compare their sources and builds
+        run: &build |
+          set -euo pipefail
+          out="$PWD/$OUT"
+          rm -rf "$out"; mkdir -p "$out/twin"
+          for v in 7.0.15 7.2.16; do
+            sh research/experiments/halo-oracle/fetch-redis.sh "$out/$v" "$v"
+          done
+          lua70="$out/7.0.15/redis-7.0.15/deps/lua/src/lua"
+          lua72="$out/7.2.16/redis-7.2.16/deps/lua/src/lua"
+          # The twin is a byte copy of the 7.0.15 binary under the same file
+          # name, as the earlier twins were copies of the base binary.
+          cp "$lua70" "$out/twin/lua"
+          cmp "$lua70" "$out/twin/lua"
+          # Built identically: the compiler, archiver and deps Makefile
+          # commands of both builds must be the same lines.
+          for v in 7.0.15 7.2.16; do
+            grep -E '^(cd lua/src|cc |gcc |ar |ranlib )' "$out/$v/lua-build.log" > "$out/build-commands-$v.txt" || true
+            grep -q -e ' -c -o lvm\.o lvm\.c$' "$out/build-commands-$v.txt" \
+              || { echo "no lvm.c compile line in the $v build log" >&2; cat "$out/$v/lua-build.log" >&2; exit 1; }
+          done
+          diff -u "$out/build-commands-7.0.15.txt" "$out/build-commands-7.2.16.txt" \
+            || { echo "the two bundled Luas were built with different commands" >&2; exit 1; }
+          # The source difference, from fresh copies of the verified tarballs.
+          for v in 7.0.15 7.2.16; do
+            mkdir -p "$out/src-$v"
+            tar -xzf "$out/$v/redis-$v.tar.gz" -C "$out/src-$v" "redis-$v/deps/lua" "redis-$v/deps/Makefile"
+          done
+          status=0
+          (cd "$out" && diff -ruN src-7.0.15/redis-7.0.15/deps src-7.2.16/redis-7.2.16/deps) > "$out/lua-source.diff" || status=$?
+          [ "$status" -le 1 ] || { echo "diff failed with $status" >&2; exit 1; }
+          python3 -B research/experiments/halo-bench/awfy.py --checkout "$out/awfy-src" --out "$out/awfy"
+          {
+            echo "source $(git rev-parse HEAD)"
+            echo "cc: $(cc --version | head -n 1)"
+            for v in 7.0.15 7.2.16; do
+              echo "redis-$v.tar.gz sha256 $(sha256sum "$out/$v/redis-$v.tar.gz" | awk '{ print $1 }')" \
+                "(fetch-redis.sh checked it against redis/redis-hashes)"
+            done
+            echo "compile (both builds): $(grep -m1 -e ' -c -o lvm\.o lvm\.c$' "$out/build-commands-7.0.15.txt")"
+            sha256sum "$lua70" "$out/twin/lua" "$lua72"
+            echo "files that differ under deps/ (lua-source.diff):"
+            { grep '^diff ' "$out/lua-source.diff" || echo "diff none"; } | awk '{ print "  " $NF }' | sed 's|src-7.2.16/redis-7.2.16/||'
+            for binary in "$lua70" "$lua72"; do
+              echo "symbols of $binary (address, size):"
+              nm -S "$binary" | grep -E ' (luaV_execute|luaH_getnum|luaH_get|luaH_setnum)$' || echo "  none found"
+            done
+          } | tee "$out/manifest.txt"
+      - name: Check the runner's --expect and --strict refuse a wrong result
+        run: |
+          set -euo pipefail
+          out="$PWD/$OUT"
+          lua70="$out/7.0.15/redis-7.0.15/deps/lua/src/lua"
+          fastest=research/experiments/halo-bench/fastest.py
+          # A recorded fib checksum one off must stop the run.
+          sed 's/"reference": "832040\\n"/"reference": "832041\\n"/' "$EXPECT" > "$out/wrong-expect.json"
+          grep -q '"reference": "832041' "$out/wrong-expect.json"
+          if python3 -B "$fastest" --engine "puc-7.0.15=$lua70" --reference puc-7.0.15 --kernels fib \
+              --expect "$out/wrong-expect.json" --sample --out "$out/negative-expect.json" > "$out/negative-expect.log" 2>&1; then
+            echo "--expect accepted a checksum the recorded run does not have" >&2; exit 1
+          fi
+          grep -q "recorded '832041" "$out/negative-expect.log" || { cat "$out/negative-expect.log"; exit 1; }
+          # An engine that prints an extra line must stop a --strict run.
+          if python3 -B "$fastest" --engine "puc-7.0.15=$lua70" --engine "wrong=$lua70 -e print(0)" \
+              --reference puc-7.0.15 --kernels fib --strict --sample \
+              --out "$out/negative-strict.json" > "$out/negative-strict.log" 2>&1; then
+            echo "--strict accepted an engine that disagrees" >&2; exit 1
+          fi
+          grep -q 'fib: wrong, round 1: checksum' "$out/negative-strict.log" || { cat "$out/negative-strict.log"; exit 1; }
+          echo "both checks refused the wrong result for the intended reason"
+      - name: Sample mode, one round
+        run: |
+          set -euo pipefail
+          out="$PWD/$OUT"
+          SECONDS=0
+          python3 -B research/experiments/halo-bench/fastest.py \
+            --engine "puc-7.0.15=$out/7.0.15/redis-7.0.15/deps/lua/src/lua" \
+            --engine "puc-7.0.15-twin=$out/twin/lua" \
+            --engine "puc-7.2.16=$out/7.2.16/redis-7.2.16/deps/lua/src/lua" \
+            --reference puc-7.0.15 --kernels "$KERNELS" --scale binary-trees=14 --awfy "$out/awfy" \
+            --expect "$EXPECT" --strict --manifest "$out/manifest.txt" \
+            --sample --out "$out/sample.json"
+          echo "sample mode took ${SECONDS}s on the hosted runner"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: puc-baseline-72-sample
+          path: &artifacts |
+            build/puc72/*.json
+            build/puc72/*.md
+            build/puc72/*.log
+            build/puc72/*.txt
+            build/puc72/*.diff
+            build/puc72/*-sources/
+            build/puc72/awfy/
+            build/puc72/7.0.15/lua-build.log
+            build/puc72/7.2.16/lua-build.log
+          if-no-files-found: ignore
+          retention-days: 30
+
+  bench:
+    needs: sample
+    if: startsWith(github.event.head_commit.message, '[bench]')
+    runs-on: [self-hosted, 14900k]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build both Luas and the twin; compare their sources and builds
+        run: *build
+      - name: Measure on CPU 2
+        run: |
+          set -euo pipefail
+          out="$PWD/$OUT"
+          # The 14900K is a hybrid part (P-cores CPU 0-15, E-cores 16-31): run
+          # every timed process on one ordinary P-core thread, CPU 2.
+          pin="taskset -c 2"
+          cpu2=/sys/devices/system/cpu/cpu2/cpufreq
+          cpu_state() {
+            echo "$1: CPU 2 governor $(cat $cpu2/scaling_governor 2>/dev/null || echo unknown)," \
+              "frequency $(cat $cpu2/scaling_cur_freq 2>/dev/null || echo unknown) kHz" \
+              "(min $(cat $cpu2/scaling_min_freq 2>/dev/null || echo unknown)," \
+              "max $(cat $cpu2/scaling_max_freq 2>/dev/null || echo unknown))"
+          }
+          lscpu -e=CPU,CORE,MAXMHZ > "$out/lscpu.txt" 2>&1 || true
+          cat /sys/devices/system/cpu/cpufreq/policy*/scaling_governor 2>/dev/null | sort | uniq -c > "$out/governor.txt" || true
+          {
+            echo "timed processes pinned with: $pin"
+            cat "$out/governor.txt"
+            cpu_state before
+          } | tee -a "$out/manifest.txt"
+          measure() {
+            label=$1; shift
+            SECONDS=0
+            $pin python3 -B research/experiments/halo-bench/fastest.py \
+              --engine "puc-7.0.15=$out/7.0.15/redis-7.0.15/deps/lua/src/lua" \
+              --engine "puc-7.0.15-twin=$out/twin/lua" \
+              --engine "puc-7.2.16=$out/7.2.16/redis-7.2.16/deps/lua/src/lua" \
+              --reference puc-7.0.15 --kernels "$KERNELS" --scale binary-trees=14 --awfy "$out/awfy" \
+              --expect "$EXPECT" --strict --manifest "$out/manifest.txt" \
+              "$@" --out "$out/$label.json" > "$out/$label.log" 2>&1 || { cat "$out/$label.log"; exit 1; }
+            echo "== $label took ${SECONDS}s"
+            cat "$out/$label.md"
+          }
+          measure sample --sample
+          measure full --rounds "$ROUNDS"
+          cpu_state after | tee -a "$out/manifest.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: puc-baseline-72
+          path: *artifacts
+          if-no-files-found: ignore
+          retention-days: 30
