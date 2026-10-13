@@ -1,0 +1,121 @@
+# Temporary nil-fill investigation: remove this workflow before the branch is ready.
+name: nilfill-disasm
+
+on:
+  push:
+    paths:
+      - .github/workflows/nilfill-disasm.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nilfill-disasm-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  disassemble:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      # Match check.yml: the kit downloads/verifies the pin and installs
+      # the LLVM major its release manifest requires at /usr/bin/clang.
+      - name: Fetch the pinned compiler and install its toolchain
+        run: |
+          mkdir -p build/nilfill-disasm
+          cp whitefoot.pin build/nilfill-disasm/
+          git rev-parse HEAD > build/nilfill-disasm/revision.txt
+          git submodule status > build/nilfill-disasm/submodules.txt
+          uname -m > build/nilfill-disasm/architecture.txt
+          sha256sum whitefoot.pin research/experiments/halo-bench/modules.wfg \
+            lib/halo/vm/calls.wf research/investigations/halo/witnesses/nilfill-*.wf \
+            > build/nilfill-disasm/sources.sha256
+          run_logged() {
+            log=$1
+            shift
+            if "$@" > "$log" 2>&1; then rc=0; else rc=$?; fi
+            cat "$log"
+            printf '%s\n' "$rc" > "$log.exit-code"
+            return "$rc"
+          }
+          run_logged build/nilfill-disasm/toolchain.log make toolchain
+          run_logged build/nilfill-disasm/compiler.log make compiler
+          release=$(sed -n 's/^release = //p' whitefoot.pin)
+          cp "build/whitefoot/$release/whitefoot-release.json" build/nilfill-disasm/
+          sha256sum "build/whitefoot/$release/whitefootc" > build/nilfill-disasm/compiler.sha256
+          /usr/bin/clang --version > build/nilfill-disasm/clang-version.txt
+          ld.lld --version > build/nilfill-disasm/lld-version.txt
+          objdump --version > build/nilfill-disasm/objdump-version.txt
+          nm --version > build/nilfill-disasm/nm-version.txt
+
+      - name: Build the bench host and both standalone witnesses with full LTO
+        run: |
+          release=$(sed -n 's/^release = //p' whitefoot.pin)
+          wfc="build/whitefoot/$release/whitefootc"
+          failed=0
+          run_logged() {
+            log=$1
+            shift
+            printf '%q ' "$@" > "$log.command"
+            printf '\n' >> "$log.command"
+            if "$@" > "$log" 2>&1; then rc=0; else rc=$?; fi
+            cat "$log"
+            printf '%s\n' "$rc" > "$log.exit-code"
+            return "$rc"
+          }
+          # Exact benchmark command from halo-bench/README.md; only -o differs.
+          if ! run_logged build/nilfill-disasm/halo-build.log "$wfc" \
+            --graph research/experiments/halo-bench/modules.wfg --entry bench \
+            --full-lto -o build/nilfill-disasm/halo; then failed=1; fi
+          for variant in checked proved; do
+            if ! run_logged "build/nilfill-disasm/nilfill-$variant-build.log" "$wfc" \
+              "research/investigations/halo/witnesses/nilfill-$variant.wf" \
+              --full-lto -o "build/nilfill-disasm/nilfill-$variant"; then failed=1; fi
+          done
+          for binary in halo nilfill-checked nilfill-proved; do
+            if [ -f "build/nilfill-disasm/$binary" ]; then
+              sha256sum "build/nilfill-disasm/$binary" >> build/nilfill-disasm/binaries.sha256
+            fi
+          done
+          exit "$failed"
+
+      - name: Verify the extraction helper against synthetic disassembly
+        if: always()
+        run: |
+          mkdir -p build/nilfill-disasm
+          if python3 -B research/investigations/halo/witnesses/nilfill-disasm.py \
+            --self-check > build/nilfill-disasm/parser-self-check.log 2>&1; then rc=0; else rc=$?; fi
+          cat build/nilfill-disasm/parser-self-check.log
+          printf '%s\n' "$rc" > build/nilfill-disasm/parser-self-check.log.exit-code
+          exit "$rc"
+
+      - name: Print whole functions and innermost backward-edge candidates
+        if: always()
+        run: |
+          failed=0
+          for binary in halo nilfill-checked nilfill-proved; do
+            log="build/nilfill-disasm/$binary-extraction.log"
+            if python3 -B research/investigations/halo/witnesses/nilfill-disasm.py \
+              --binary "build/nilfill-disasm/$binary" \
+              --kind "$binary" --out "build/nilfill-disasm/$binary-disassembly" \
+              > "$log" 2>&1; then rc=0; else rc=$?; fi
+            cat "$log"
+            printf '%s\n' "$rc" > "$log.exit-code"
+            if [ "$rc" -ne 0 ]; then failed=1; fi
+          done
+          exit "$failed"
+
+      - name: Keep binaries, build failures, symbols, whole functions and loop counts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nilfill-disasm-${{ github.sha }}
+          path: build/nilfill-disasm/
+          if-no-files-found: error
+          retention-days: 14

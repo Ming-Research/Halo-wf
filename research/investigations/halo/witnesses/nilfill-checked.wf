@@ -1,0 +1,60 @@
+alias ExitStatus = std::process::ExitStatus;
+alias Inputs = std::process::Inputs;
+alias exit_status = std::process::exit_status;
+
+enum SlotValue {
+  Nil();
+  Num(n: f64);
+}
+
+fn nilfill_checked(stack: &Box<Slots<SlotValue>>, b: u64, fixed: u64, maxstack: u64) -> result: unit writes(stack) {
+  doc "Reproduces Halo's saturating offset and per-slot bounds branch without the interpreter.";
+  for (i in fixed..maxstack) {
+    let j = b +sat i;
+    if j < stack^.inner.len {
+      set stack^.inner[j] = SlotValue::Nil();
+    }
+  }
+  return unit;
+}
+
+fn checksum(stack: &Box<Slots<SlotValue>>) -> result: u8 reads(stack) {
+  let length = stack^.inner.len;
+  let total = 0_u8;
+  for (at in 0_u64..length) {
+    match stack^.inner[at] {
+      Nil() => {
+        set total = total +wrap 1_u8;
+      }
+      Num(n: number) => {
+        set total = total +wrap 2_u8;
+      }
+    }
+  }
+  return total;
+}
+
+fn main(inputs: Inputs) -> status: ExitStatus pure waits {
+  doc "Keeps the fill observable with runtime invocation arguments; CI builds and disassembles this program without running it.";
+  let Inputs(args: arguments, cwd: directory, handles: factory, ..) = move inputs;
+  let std::fs::Directory(read: directory_read, write: directory_write) = move directory;
+  std::fs::close_directory_write(factory: &factory, directory: move directory_write);
+  std::fs::close_directory(factory: &factory, directory: move directory_read);
+  let count = std::text::args_count(args: &arguments);
+  let b = count *wrap 11400714819323198485_u64;
+  let fixed = count % 32_u64;
+  let groups = count / 32_u64;
+  let extra = groups % 32_u64;
+  let maxstack = extra + 32_u64;
+  let stack = box_slots_new::<SlotValue>(capacity: 96_u64);
+  for (
+    slot in 0_u64..96_u64,
+    invariant filled: stack.inner.len == slot
+  ) {
+    let initial = SlotValue::Num(n: 1.0_f64);
+    place_back(window: &stack.inner, value: initial);
+  }
+  nilfill_checked(stack: &stack, b: b, fixed: fixed, maxstack: maxstack);
+  let code = checksum(stack: &stack);
+  return exit_status(code: code);
+}
