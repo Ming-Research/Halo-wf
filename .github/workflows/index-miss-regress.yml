@@ -1,0 +1,255 @@
+# Temporary, on this branch only: removed before the branch is ready.
+# Board item halo-index-miss. Attribute the fib and Queens regressions with
+# callgrind instruction, cache and branch counts, never native timings.
+name: index-miss-regress
+
+on:
+  push:
+    branches: [claude/halo-index-miss]
+    paths:
+      - .github/workflows/index-miss-regress.yml
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  BASE: 8ee6634
+  FIB_N: 36
+  QUEENS_INNER: 160
+
+jobs:
+  profile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Install the host toolchain and valgrind
+        run: |
+          set -euo pipefail
+          make toolchain
+          sudo apt-get update -q
+          sudo apt-get install -y -q valgrind binutils
+
+      - name: Build Halo's bench host from the base and from the head
+        run: |
+          set -euo pipefail
+          out="$PWD/build/index-miss-regress"
+          rm -rf "$out"
+          mkdir -p "$out/callgrind"
+          release=$(sed -n 's/^release = //p' whitefoot.pin)
+          make compiler
+          make toolchain-check
+          wfc="$PWD/build/whitefoot/$release/whitefootc"
+          # Same pinned head compiler and full LTO on both sides; only the
+          # Halo source changes. No experiment pin or submodule is moved.
+          git worktree add --detach "$PWD/build/base-src" "$BASE"
+          (cd build/base-src && "$wfc" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-base")
+          "$wfc" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-head"
+          {
+            echo "base $(git rev-parse "$BASE"), head $(git rev-parse HEAD), compiler $release"
+            echo "FIB_N $FIB_N, QUEENS_INNER $QUEENS_INNER; host stdin, default large budget; full LTO"
+            sha256sum "$wfc" "$out/halo-base" "$out/halo-head" whitefoot.pin
+            git submodule status
+            file "$out/halo-base" "$out/halo-head"
+            /usr/bin/clang --version
+            uname -a
+            valgrind --version
+            echo "cache/branch simulation: Valgrind defaults for this hosted CPU; cache model recorded in each callgrind file and verbose Valgrind log"
+          } | tee "$out/manifest.txt"
+
+      - name: Generate the fib source and the reduced Queens bundle
+        run: |
+          set -euo pipefail
+          out="$PWD/build/index-miss-regress"
+          # run.py reads the kernel as bytes and replaces its anchored first
+          # local N. N=36 is estimated at about 1.56 s on the 14900K from the
+          # recorded N=30 Halo sample (0.087 s), within the requested 1-3 s.
+          # Both binaries receive these exact bytes on stdin, with no args;
+          # PUC's run.py path instead uses -e and its loadstring/io.read wrapper.
+          python3 - "$out" <<'PY'
+          import os
+          import re
+          import sys
+          from pathlib import Path
+
+          out = Path(sys.argv[1])
+          n = int(os.environ['FIB_N'])
+          if n != 36:
+              raise SystemExit('update the independent fib checksum before changing FIB_N')
+          source = Path('research/experiments/halo-bench/kernels/fib.lua').read_bytes()
+          source, replacements = re.subn(rb'\Alocal N = [0-9]+', f'local N = {n}'.encode(), source)
+          if replacements != 1:
+              raise SystemExit('fib kernel must have exactly one anchored local N')
+          (out / 'fib.lua').write_bytes(source)
+          (out / 'fib.expected').write_bytes(b'14930352\n')
+          (out / 'Queens.expected').write_bytes(b'1\n')
+          PY
+          # awfy.py preserves upstream module bytes and their verification;
+          # replace only the generated driver's 800 inner-iteration argument.
+          python3 -B research/experiments/halo-bench/awfy.py --checkout build/awfy-src --out build/awfy-bundles
+          python3 - "$out" <<'PY'
+          import os
+          import sys
+          from pathlib import Path
+
+          out = Path(sys.argv[1])
+          source = Path('build/awfy-bundles/Queens.lua').read_bytes()
+          old = b'assert(require("queens"):inner_benchmark_loop(800),\n'
+          new = f'assert(require("queens"):inner_benchmark_loop({int(os.environ["QUEENS_INNER"])}),\n'.encode()
+          if source.count(old) != 1 or old == new:
+              raise SystemExit('Queens driver must have exactly one iteration argument to reduce')
+          (out / 'Queens.lua').write_bytes(source.replace(old, new, 1))
+          # The original manifest describes unmodified generated bundles;
+          # manifest.txt separately records the adjusted source and its hash.
+          for source_name, artifact_name in (('manifest.json', 'awfy-manifest.json'), ('LICENSE.md', 'LICENSE.md')):
+              (out / artifact_name).write_bytes((Path('build/awfy-bundles') / source_name).read_bytes())
+          PY
+          {
+            echo "Queens: only generated driver inner_benchmark_loop argument changed from 800 to $QUEENS_INNER"
+            sha256sum "$out/fib.lua" "$out/Queens.lua" "$out/awfy-manifest.json" "$out/LICENSE.md"
+            sha256sum research/experiments/halo-bench/run.py research/experiments/halo-bench/awfy.py
+          } | tee -a "$out/manifest.txt"
+
+      - name: Check both sides verify each program before profiling
+        run: |
+          set -euo pipefail
+          out="$PWD/build/index-miss-regress"
+          for prog in fib Queens; do
+            for side in base head; do
+              run="$side-$prog"
+              "$out/halo-$side" < "$out/$prog.lua" > "$out/check-$run.stdout" 2> "$out/check-$run.stderr"
+              cmp "$out/$prog.expected" "$out/check-$run.stdout"
+              echo "$prog $side: exact expected stdout verified"
+            done
+          done
+          python3 - "$out" <<'PY'
+          import re
+          import sys
+          from pathlib import Path
+
+          out = Path(sys.argv[1])
+          for prog in ('fib', 'Queens'):
+              for side in ('base', 'head'):
+                  path = out / f'check-{side}-{prog}.stderr'
+                  stats = path.read_bytes()
+                  if re.fullmatch(rb'[0-9]+\n[0-9]+\n', stats) is None:
+                      raise SystemExit(f'{path}: malformed large-budget host stats: {stats!r}')
+                  suspends, collections = map(int, stats.splitlines())
+                  if suspends:
+                      raise SystemExit(f'{path}: large budget suspended {suspends} times')
+                  print(f'{prog} {side}: suspends {suspends}, collections {collections} (counts may differ)')
+          PY
+
+      - name: Profile with callgrind cache and branch simulation
+        run: |
+          set -euo pipefail
+          out="$PWD/build/index-miss-regress"
+          cg="$out/callgrind"
+          for prog in fib Queens; do
+            for side in base head; do
+              run="$side-$prog"
+              # Keep Valgrind diagnostics separate from the host's two stats
+              # lines, and preserve failures instead of printing a success.
+              valgrind --tool=callgrind --cache-sim=yes --branch-sim=yes --verbose \
+                --dump-instr=yes --collect-jumps=no --compress-strings=no --compress-pos=no \
+                --log-file="$cg/$run.valgrind.log" --callgrind-out-file="$cg/$run.out" \
+                "$out/halo-$side" < "$out/$prog.lua" > "$cg/$run.stdout" 2> "$cg/$run.stderr"
+              cmp "$out/$prog.expected" "$cg/$run.stdout"
+              echo "callgrind $run: exact expected stdout verified"
+              callgrind_annotate --inclusive=no --show=Ir --sort=Ir --threshold=100 --auto=no \
+                "$cg/$run.out" > "$cg/$run-exclusive.txt" 2> "$cg/$run-annotate.stderr"
+            done
+          done
+          python3 - "$cg" <<'PY'
+          import re
+          import sys
+          from pathlib import Path
+
+          cg = Path(sys.argv[1])
+          for prog in ('fib', 'Queens'):
+              for side in ('base', 'head'):
+                  path = cg / f'{side}-{prog}.stderr'
+                  stats = path.read_bytes()
+                  if re.fullmatch(rb'[0-9]+\n[0-9]+\n', stats) is None:
+                      raise SystemExit(f'{path}: malformed profiled host stats: {stats!r}')
+                  suspends, collections = map(int, stats.splitlines())
+                  if suspends:
+                      raise SystemExit(f'{path}: large budget suspended {suspends} times')
+                  print(f'{prog} {side} profiled: suspends {suspends}, collections {collections}')
+          PY
+
+      - name: Summary
+        run: |
+          set -euo pipefail
+          cg="$PWD/build/index-miss-regress/callgrind"
+          python3 - "$cg" <<'PY' | tee "$cg/summary.txt"
+          import os
+          import re
+          import sys
+          from pathlib import Path
+
+          cg = Path(sys.argv[1])
+          metrics = ('Ir', 'D1mr', 'D1mw', 'D1 total', 'ILmr', 'DLmr', 'DLmw', 'LL total', 'Bcm', 'Bim')
+          required = ('Ir', 'D1mr', 'D1mw', 'ILmr', 'DLmr', 'DLmw', 'Bcm', 'Bim')
+
+          def counts(run):
+              lines = (cg / f'{run}.out').read_text().splitlines()
+              events = [line.split()[1:] for line in lines if line.startswith('events:')]
+              summaries = [line.split()[1:] for line in lines if line.startswith('summary:')]
+              if len(events) != 1 or len(summaries) != 1 or len(events[0]) != len(summaries[0]):
+                  raise SystemExit(f'{run}: missing or ambiguous Callgrind events/summary')
+              if len(set(events[0])) != len(events[0]):
+                  raise SystemExit(f'{run}: duplicate Callgrind event names')
+              values = dict(zip(events[0], map(int, summaries[0])))
+              if any(name not in values or values[name] < 0 for name in required) or values['Ir'] == 0:
+                  raise SystemExit(f'{run}: missing, negative or empty simulation counters')
+              values['D1 total'] = values['D1mr'] + values['D1mw']
+              values['LL total'] = values['ILmr'] + values['DLmr'] + values['DLmw']
+              return values
+
+          print(f"Callgrind whole-program counts; FIB_N {os.environ['FIB_N']}, QUEENS_INNER {os.environ['QUEENS_INNER']}")
+          print('LL total = ILmr + DLmr + DLmw; D1 total = D1mr + D1mw')
+          print('if head/base Ir rises at least 1.5% on a program, hypothesis A; if Ir changes under 0.5% while D1 misses or mispredicts rise at least 10%, hypothesis B; otherwise inconclusive')
+          for prog in ('fib', 'Queens'):
+              base, head = counts(f'base-{prog}'), counts(f'head-{prog}')
+              print(f'\n{prog}: metric | base | head | head/base (change)')
+              for name in metrics:
+                  b, h = base[name], head[name]
+                  ratio = f'{h/b:.6f} ({(h/b-1)*100:+.2f}%)' if b else 'n/a (base zero)'
+                  print(f'{name}: {b:,} | {h:,} | {ratio}')
+
+          # --auto=no prevents source annotations. Parse only numeric cost
+          # rows, tolerate the optional percentage column, exclude totals,
+          # and sort ourselves rather than depending on a header's position.
+          row = re.compile(r'^\s*([0-9][0-9,]*)\s+(?:\(\s*[0-9]+(?:\.[0-9]+)?%\)\s+)?(.+?)\s*$')
+          for prog in ('fib', 'Queens'):
+              for side in ('base', 'head'):
+                  run = f'{side}-{prog}'
+                  functions = []
+                  for line in (cg / f'{run}-exclusive.txt').read_text().splitlines():
+                      match = row.fullmatch(line)
+                      if match and 'PROGRAM TOTALS' not in match[2]:
+                          functions.append((int(match[1].replace(',', '')), match[2]))
+                  if not functions:
+                      raise SystemExit(f'{run}: annotation contained no exclusive Ir function rows')
+                  functions.sort(key=lambda value: (-value[0], value[1]))
+                  print(f'\n== {run}: top 15 functions by exclusive Ir')
+                  for cost, name in functions[:15]:
+                      print(f'{cost:>16,}  {name}')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: index-miss-regress
+          path: |
+            build/index-miss-regress/
+            !build/index-miss-regress/halo-base
+            !build/index-miss-regress/halo-head
+          if-no-files-found: ignore
+          retention-days: 30
