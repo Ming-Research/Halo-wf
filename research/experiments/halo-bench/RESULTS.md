@@ -6419,3 +6419,93 @@ establish the required saving on the 14900K under this workload and setup.
 The earlier callgrind whole-program count fell from 884.6 to 846.6
 instructions per Lua call; that count reduction did not translate into
 the required time saving on this machine.
+
+## Jump instructions continue the dispatch loop directly
+
+Status: recorded before the change was built or measured. The question, the
+prediction, the comparison and the keep rule below were written first; the
+code change follows them and no measurement exists yet.
+
+### Question
+
+Do List and Towers run faster when the jump-family arms of `run` (the
+dispatch loop) continue the loop directly, instead of ending through the
+shared `Step` exit?
+
+### What changes
+
+Four arms, `TestJmp`, `Jmp`, `TestSetJmp` and `LoadBool`, move to the
+direct-continue form that `Move` and `ForLoop` already use. Each arm's helper
+returns `Result<u64, Step>` instead of `Step`, with
+`ensures when Ok(value: next): next < code^.inner.len` and the stack-length
+postcondition `base + 256_u64 <= stack^.inner.len` that the `Move` and
+`ForLoop` helpers carry. The arm matches `Ok` to `set pc = next; continue;`
+and `Err` to `set step = failure;`, so every failure still reaches the shared
+exit.
+
+What stays: every runtime check and every behaviour. The suspension test, the
+out-of-range error with its text and the `Err` results of the budget stop and
+of the stopped host are unchanged. The backward `Jmp` keeps its budget charge
+and its collection-due test and collection exactly where they are, as
+`ForLoop`'s helper does. The one test of the shared exit that remains is the
+next-pc-in-range check, now the helper's contract. The exit's tests of the
+base and constant windows are dropped for these arms because they never
+change `base` or `kbase`, so the loop's header invariants still hold, and
+`collect_if_due` guarantees the stack length is unchanged. No other arm
+changes; `Call`, `TailCall` and `Return` keep `Step` because they change
+`base` and `kbase`. The compare-jump arms that already have a fast variant
+are untouched, and the full compare-jump helpers, which can call back into
+Lua through `slow`, keep `Step`.
+
+### Reading that motivates it
+
+The hosted-runner callgrind counts of main at 1f90750 plus the profiling
+workflow ([run 38367862157](https://github.com/Ming-Research/Halo-wf/actions/runs/38367862157);
+full LTO, `wf-d837678c6905`) give, per execution, `TestJmp` 57 instructions
+over 8.49M executions in List, `Jmp` 76 over 3.61M (all backward) and
+`LoadBool` 58 over 562K, against 23 for `Move`, which continues directly.
+The gap is the shared exit's re-test of the base and constant windows, which
+these arms never change, and the `Step` value returned through memory.
+
+### Prediction
+
+Inferred from those counts, not measured: List falls by about 10% of its
+instructions (`TestJmp` 57 to about 30, `Jmp` 76 to about 45 with its budget
+charge and collection test kept, `LoadBool` 58 to about 28; about 358M of
+3,308M). Towers falls by about 1% (about 30M of 3,583M). Moving other arms to
+the direct-continue form gave the numeric loop kernel 54% before; whether
+instruction savings in these arms turn into time is the open question the
+timing answers (the lua-entry change saved instructions and little time).
+
+### Comparison
+
+First, before any timing: a callgrind instruction count of List and Towers on
+the hosted runner, base and after built from the same source apart from this
+change, full LTO with the pinned compiler. Falsifier of the attribution: if
+List's instruction count falls by less than 5%, the attribution was wrong and
+timing is not run.
+
+If the count passes, on the 14900K pinned to CPU 2, with the base (main
+1f90750) and the after (this branch's head) built from the same source, both
+with full LTO and the pinned compiler:
+
+- the seven halo-bench kernels through `run.py --before-binary`, binary-trees
+  at depth 14, six interleaved pairs with a twin of the base as the noise
+  control;
+- the six are-we-fast-yet bundles through `fastest.py` with three `--engine`
+  entries (base, after, base twin), `--reference` the base, six interleaved
+  pairs.
+
+### Keep rule
+
+The change is kept only if all of these hold:
+
+1. List's median falls by at least 3% beyond both ranges (the base's and the
+   after's) and beyond the twin's difference from the base;
+2. no other kernel and no bundle is slower beyond its larger range plus the
+   twin's difference;
+3. `make check` passes on the measured revision.
+
+Otherwise the change is reverted, with its measurements kept in this
+section. Towers is reported but has no clause of its own, since its
+predicted gain is about 1%.
