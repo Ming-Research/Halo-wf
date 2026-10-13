@@ -6509,3 +6509,26 @@ The change is kept only if all of these hold:
 Otherwise the change is reverted, with its measurements kept in this
 section. Towers is reported but has no clause of its own, since its
 predicted gain is about 1%.
+
+### Result
+
+14900K run [38377991232](https://github.com/Ming-Research/Halo-wf/actions/runs/38377991232) at 965fc51, CPU 2, full LTO, six interleaved pairs (halo-bench kernels through `run.py`, binary-trees at depth 14) and six rounds (are-we-fast-yet bundles through `fastest.py`). Ratio is after over base; below 1 is faster. Tolerance is the larger of the two ranges plus the twin's difference from 1.
+
+| Program | After / base | Base range | After range | Twin / base | Tolerance | Verdict |
+|---|---:|---:|---:|---:|---:|---|
+| fib | 1.002 | 1.2% | 2.4% | 1.001 | 2.4% |  |
+| loop | 1.000 | 0.1% | 2.2% | 1.000 | 2.3% |  |
+| integer-table | 1.000 | 4.4% | 0.4% | 1.005 | 4.9% |  |
+| string-key | 0.977 | 6.0% | 5.0% | 1.040 | 10.0% |  |
+| concat | 1.000 | 1.7% | 2.0% | 0.993 | 2.7% |  |
+| sort | 0.990 | 1.3% | 1.2% | 0.996 | 1.7% |  |
+| binary-trees | 1.006 | 2.2% | 1.2% | 1.000 | 2.2% |  |
+| List | 0.985 | 1.5% | 0.1% | 1.000 | 1.5% | target missed |
+| NBody | 1.002 | 1.3% | 1.7% | 1.000 | 1.7% |  |
+| Permute | 1.007 | 0.5% | 0.4% | 1.003 | 0.8% |  |
+| Queens | 1.016 | 3.6% | 1.5% | 0.995 | 4.1% |  |
+| Sieve | 0.994 | 2.8% | 0.4% | 1.000 | 2.9% |  |
+| Towers | 0.977 | 1.8% | 1.6% | 0.995 | 2.3% |  |
+
+Outcome: rejected. List is only 1.5% faster than the base (threshold 3%, tolerance 1.5%), although the callgrind falsifier passed first ([run 38370247961](https://github.com/Ming-Research/Halo-wf/actions/runs/38370247961)): List's instructions fell 13.01% and Towers' 0.71%. The instructions the jump arms stopped executing (the shared exit's window re-checks) were cheap, well-predicted work, so a 13% instruction saving bought about a ninth of that in time on this machine. The source change is reverted; this record stays.
+

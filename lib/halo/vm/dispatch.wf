@@ -41,16 +41,7 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
         set step = instruction_load_kx::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, kv: kv^);
       }
       LoadBool(a: av, b: bv, skip: skipv) => {
-        let continuation = instruction_load_bool::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, skipv: skipv^);
-        match continuation {
-          Ok(value: next) => {
-            set pc = next;
-            continue;
-          }
-          Err(error: failure) => {
-            set step = failure;
-          }
-        }
+        set step = instruction_load_bool::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, skipv: skipv^);
       }
       LoadNil(a: av, b: bv) => {
         set step = instruction_load_nil::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^);
@@ -324,16 +315,7 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
         set step = instruction_concat::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
       }
       Jmp(target: targetv) => {
-        let continuation = instruction_jmp::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, targetv: targetv^);
-        match continuation {
-          Ok(value: next) => {
-            set pc = next;
-            continue;
-          }
-          Err(error: failure) => {
-            set step = failure;
-          }
-        }
+        set step = instruction_jmp::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, targetv: targetv^);
       }
       EqJmpRR(a: av, b: bv, c: cv, target: targetv) => {
         set step = instruction_eq_jmp_rr::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^, targetv: targetv^);
@@ -424,28 +406,10 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
         set step = instruction_le_jmp_kk::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^, targetv: targetv^);
       }
       TestJmp(a: av, c: cv, target: targetv) => {
-        let continuation = instruction_test_jmp::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, cv: cv^, targetv: targetv^);
-        match continuation {
-          Ok(value: next) => {
-            set pc = next;
-            continue;
-          }
-          Err(error: failure) => {
-            set step = failure;
-          }
-        }
+        set step = instruction_test_jmp::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, cv: cv^, targetv: targetv^);
       }
       TestSetJmp(a: av, b: bv, c: cv, target: targetv) => {
-        let continuation = instruction_test_set_jmp::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^, targetv: targetv^);
-        match continuation {
-          Ok(value: next) => {
-            set pc = next;
-            continue;
-          }
-          Err(error: failure) => {
-            set step = failure;
-          }
-        }
+        set step = instruction_test_set_jmp::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^, targetv: targetv^);
       }
       Call(a: av, b: bv, c: cv) => {
         set step = instruction_call::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
