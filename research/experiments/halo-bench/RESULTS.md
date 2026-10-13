@@ -6618,3 +6618,105 @@ PUC case-body blocks matched by exact count. Inferred: PUC per-opcode costs
 for unmatched blocks, PUC's cost per miss (~85), every target cost and so
 every saving above, all code-generation explanations, and whether instruction
 savings become time.
+
+
+## Metamethod names interned once and the known raw miss passed to the slow path
+
+Status: implemented, unmeasured. The question, prediction, comparison,
+falsifier and keep rule below were recorded before measurement. No CI,
+callgrind or timing result is claimed for this revision.
+
+### Question
+
+Does List run faster when Halo interns its metamethod names once and carries
+an already-known raw table miss from `GetTableK` into the shared slow path,
+instead of interning the name and repeating that raw read on every miss?
+
+### What changes
+
+The VM interns all 17 names used by `metamethod` at creation and retains
+those keys as collector roots through the existing root-tracing mechanism.
+`metamethod` reads the cached key. A `GetTableK` raw miss passes through its
+full handler to the shared slow executor, so neither the full handler nor
+the first iteration of the `__index` loop repeats that table's raw read.
+Later tables in the chain still receive their normal raw lookup.
+
+The chain remains in the shared slow executor. Function-valued `__index`,
+errors and error locations, the 100-hop limit, budget charging and collection
+safepoints retain their required behaviour. Accounting rules are unchanged:
+the cached names count as ordinary live strings, with no special-case
+exclusion, as PUC Lua's fixed metamethod names created by `luaT_init` count in
+`totalbytes`.
+
+The 17 names contain 104 payload bytes. Each string has a 24-byte logical
+cell charge, so the cache contributes `104 + 17 * 24 = 512` logical bytes to
+a bare VM. Relative to an initialized standard engine, the net increase is
+481 logical bytes: its string metatable already roots `__index`, whose
+7-byte payload and 24-byte cell charge total 31 bytes. Additional live bytes
+can change when collection becomes due or a memory limit is reached; actual
+collection timing and limit boundaries are therefore not claimed identical.
+
+### Reading that motivates it
+
+[Where List and Towers spend their instructions](#where-list-and-towers-spend-their-instructions)
+records callgrind counts from main 1f90750 plus the profiling workflow
+([run 38367862157](https://github.com/Ming-Research/Halo-wf/actions/runs/38367862157);
+full LTO, `wf-d837678c6905`). List executes 670,400 reads that miss and
+follow an `__index` table. A miss costs Halo about 838 instructions against
+about 85 in PUC Lua 5.1.5. Halo repeats the first table's raw lookup in its
+full `GetTableK` handler (about 65M instructions) and in the first slow-loop
+iteration (about 62M), and hashes and interns the metamethod name on each
+lookup (about 135M). Those three costs motivate this smaller change; the
+fast path does not acquire its own metamethod-chain executor.
+
+### Prediction
+
+Inferred from those counts, not measured: List saves about 262M of its
+3,308M instructions, about 8%. Towers saves approximately zero; its hot reads
+do not have List's repeated raw misses through `__index`. Whether List's
+instruction saving turns into time is the question the timing comparison
+answers.
+
+### Comparison
+
+First, before any timing, compare callgrind instruction counts of List and
+Towers on a GitHub-hosted runner. Build the base and after from the same
+source apart from this change, with full LTO and the pinned compiler
+`wf-d837678c6905`, and run identical Lua bundles at the attribution's reduced
+iterations (List 200, Towers 60). The base is main
+`8ee6634fa608ddb13aa8272b51c0a2a696fa22e3`; the after is this change's
+revision, to be recorded with the results.
+
+Falsifier, recorded before measuring: List's callgrind instruction count must
+fall by at least 5% against that base. If it falls by less than 5%, no timing
+is run.
+
+If the count passes, compare the same base and after on the 14900K, pinned to
+CPU 2, both built with full LTO and the same pinned compiler:
+
+- the seven halo-bench kernels through
+  `run.py --before-binary --collections-may-change`, binary-trees at depth 14,
+  six interleaved pairs with a byte-copy twin of the base as the noise
+  control. The existing option records both collection counts because the
+  ordinary cached live strings can legitimately change those counts;
+- the six are-we-fast-yet bundles through `fastest.py` with three `--engine`
+  entries (base, after, byte-copy base twin), `--reference` the base, six
+  interleaved pairs.
+
+Record the exact revisions, binaries, compiler and settings with the
+comparison so the counts and timings identify the same source change.
+
+### Keep rule
+
+The change is kept only if all of these hold:
+
+1. List's median time falls by at least 3% against the base, beyond both
+   ranges (the base's and the after's) and beyond the twin's difference from
+   the base;
+2. no other kernel and no are-we-fast-yet bundle is slower beyond its larger
+   range plus the twin's difference;
+3. `make check` passes on the measured revision.
+
+Otherwise the change is reverted, with any measurements retained in this
+section. Towers is reported but has no gain requirement, since its predicted
+saving is approximately zero.
