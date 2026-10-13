@@ -191,6 +191,8 @@ public fn set_thread_slot(heap: &Heap, owner: u32, slot: u64, v: Value) -> r: un
 
 public fn refresh_thread_storage(heap: &Heap, h: u32) -> r: Bool writes(heap) doc "Reconciles a live thread's cached charge after owned execution storage changes, before a safepoint. Charges growth or uncharges shrink; invalid handles or accounting exhaustion return False without changing the cached charge.";
 
+public fn reconcile_thread_storage(heap: &Heap, h: u32) -> r: Bool writes(heap) doc "Reconciles existing storage across the live-accounting boundary when main is saved or installed. Changes only logical live bytes, never allocation since collection; this operation records no new allocation. Invalid handles or accounting exhaustion return False without changing the cached charge.";
+
 public fn new_closure(heap: &Heap, proto: u32, upvals: &[u32]) -> r: Value reads(upvals), writes(heap) doc "Copies the captured handles into a new Lua closure of prototype proto; Nil denotes representational exhaustion.";
 
 public fn new_native_closure(heap: &Heap, id: u32, upvals: &[u32]) -> r: Value reads(upvals), writes(heap) doc "Copies the captured handles into a new closure that calls the builtin id with them; Nil denotes representational exhaustion.";

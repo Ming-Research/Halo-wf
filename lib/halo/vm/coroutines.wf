@@ -119,7 +119,12 @@ fn coroutine_exchange(vm: &Vm, stack: &Box<Slots<Value>>, target: u32) -> r: Boo
   }
   coroutine_save_scalars(vm: vm, h: current);
   coroutine_swap_boxes(vm: vm, stack: stack, h: current);
-  let charged = pkg::heap::refresh_thread_storage(heap: &vm^.heap, h: current);
+  let charged = False();
+  if current == vm^.main_thread {
+    set charged = pkg::heap::reconcile_thread_storage(heap: &vm^.heap, h: current);
+  } else {
+    set charged = pkg::heap::refresh_thread_storage(heap: &vm^.heap, h: current);
+  }
   coroutine_swap_boxes(vm: vm, stack: stack, h: target);
   coroutine_load_scalars(vm: vm, h: target);
   if target_index < vm^.heap.threads.inner.len {
@@ -128,7 +133,7 @@ fn coroutine_exchange(vm: &Vm, stack: &Box<Slots<Value>>, target: u32) -> r: Boo
   }
   set vm^.current_thread = target;
   if target == vm^.main_thread {
-    let main_charged = pkg::heap::refresh_thread_storage(heap: &vm^.heap, h: target);
+    let main_charged = pkg::heap::reconcile_thread_storage(heap: &vm^.heap, h: target);
     return band(charged, main_charged);
   }
   return charged;
