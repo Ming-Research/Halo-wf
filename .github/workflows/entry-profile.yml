@@ -1,8 +1,9 @@
 # Temporary, on this branch only: removed before the branch is ready. Board
 # item halo-beat-puc-work. How many executed instructions per Lua call of fib
-# plain, checker-proved stack arithmetic in the Lua callee entry removes
-# against the saturating arithmetic it replaces (RESULTS.md, "Plain
-# arithmetic at the Lua function entry"): Halo's bench host at BASE (main)
+# the Lua callee entry saves with plain, checker-proved stack arithmetic in
+# place of saturating arithmetic and with checker-proved slot bounds in place
+# of per-slot length tests (RESULTS.md, "Plain arithmetic and proven slot
+# bounds at the Lua function entry"): Halo's bench host at BASE (main)
 # and at this branch's head, both built by the pinned compiler with full LTO,
 # on a hosted x86-64 runner. It counts instructions and reads code, never
 # times: callgrind of fib(32) per side joined with objdump of the hot

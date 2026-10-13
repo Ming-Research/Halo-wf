@@ -5540,14 +5540,28 @@ four at 0.226 s). No conclusion above rests on a cell whose ratio
 sits within its range of the threshold it is compared with, except List in
 stage 2, which is set aside as stated.
 
-## Plain arithmetic at the Lua function entry
+## Plain arithmetic and proven slot bounds at the Lua function entry
 
-### Criterion, recorded before the change
+The change has two parts, both in `enter_lua` (the Lua callee entry, which
+sets up the callee's frame), and is timed as one change:
 
-Question: does fib get faster when the Lua callee entry (`enter_lua`, which
-sets up the callee's frame) computes stack positions with plain additions
-that the Whitefoot checker proves cannot overflow, instead of saturating
-ones (`+sat`, which clamp at the largest u64)?
+1. plain arithmetic: stack positions are computed with plain additions that
+   the Whitefoot checker proves cannot overflow, instead of saturating ones
+   (`+sat`, which clamp at the largest u64);
+2. proven slot bounds: the stores that fill the callee's registers with nil
+   and move a vararg prototype's parameters carry no per-slot test of the
+   index against the stack's length, because the checker proves every index
+   in range.
+
+The criterion below was first written for part one alone, before part one
+was made. It was revised after part one's instruction count and before any
+timing, to add part two; [the revision](#criterion-revised-after-part-ones-count)
+says why. The keep rule is unchanged.
+
+### Part one: plain arithmetic, recorded before the change
+
+Question: does fib get faster when `enter_lua` computes stack positions with
+plain additions instead of saturating ones?
 
 Reading. Callgrind of main at `f45edc6` (the base side of the temporary
 `direct-profile` workflow on branch `claude/halo-beat-puc-fib`, [run 38317854899](https://github.com/Ming-Research/Halo-wf/actions/runs/38317854899); hosted
@@ -5567,14 +5581,13 @@ fib) counts 882.5 executed instructions per Lua call, 187 of them in
   (`args + numparams`) and on the vararg count (`actual - numparams`)
   (4 instructions).
 
-Change, in `enter_lua` only. One comparison replaces the saturated room
-test: a destination at or above 2^64 - 258 raises stack overflow before
-`args` is formed. A vararg prototype's base keeps its saturating sum, checked
-against 2^64 - 257. The error set is identical to the old one: the old code
-raised stack overflow exactly when `dest + 1 + (vararg extra) + 256` reached
-2^64 - 1, and the two new comparisons are that condition split at the point
-each sum is formed. Every later position then cannot saturate, and the
-checker can see why:
+Change. One comparison replaces the saturated room test: a destination at
+or above 2^64 - 258 raises stack overflow before `args` is formed. A vararg
+prototype's base keeps its saturating sum, checked against 2^64 - 257. The
+error set is identical to the old one: the old code raised stack overflow
+exactly when `dest + 1 + (vararg extra) + 256` reached 2^64 - 1, and the two
+new comparisons are that condition split at the point each sum is formed.
+Every later position then cannot saturate, and the checker can see why:
 
 - `args = dest + 1`: `dest <= 2^64 - 259` after the comparison.
 - `room = base + 256`, `top = base + maxstack`, `base + i` in the nil fill:
@@ -5593,35 +5606,113 @@ Left saturating, none on fib's path: the tail-call counter (`tailcalls + 1`,
 a `u32` read from the replaced frame with no bound), and the tail call's
 argument copy (`argc + 1`, `func + i`, `dest + i`), where nothing bounds
 `argc` against the stack; the vararg base itself (`args + actual`), for the
-same reason. The bounds checks before each stack store stay; after this
-change `room` is exactly `base + 256` and `ensure_stack` guarantees the
-stack is at least that long, so the checker could prove those stores in
-bounds as `instruction_load_nil` already does, but that is a separate
-change.
+same reason.
 
-Comparison: this branch's base `56878ac` against the branch with the change,
+Expected: callgrind counts 15 to 25 fewer executed instructions per Lua call
+of fib, all in `enter_lua`, which is 1.7% to 2.8% of 882.5. If callgrind
+counts fewer than 10 instructions saved per Lua call, or still shows a
+conditional move after the nil fill's index addition, this reading was
+wrong and is corrected before any timing is interpreted. If the checker
+refuses one of the plain operations, the refusal is reported as a missing
+proof or a Whitefoot gap, and the operation is not put back to `+sat` to
+make the build pass.
+
+### Part one's instruction count
+
+The checker accepted every plain operation, and `make check` passed on part
+one ([run 38326979691](https://github.com/Ming-Research/Halo-wf/actions/runs/38326979691)).
+Callgrind of fib(32) by the temporary workflow `entry-profile.yml`
+([run 38326979883](https://github.com/Ming-Research/Halo-wf/actions/runs/38326979883);
+hosted x86-64 runner, `wf-d837678c6905`, full LTO) counts 859.5 executed
+instructions per Lua call with part one against 884.5 at the base `56878ac`:
+25 fewer, all of them in `enter_lua` (189 to 164 per call), 2.8% of the
+base's count. The saving sits at the top of the expected 15 to 25 and clears
+the falsifier's floor of 10, so the reading stands on the count. A time
+saving in proportion to it would be about 2.8%, below the 3% the keep rule
+asks.
+
+### Part two: proven slot bounds
+
+After part one, three loops in `enter_lua` still test each slot index
+against the stack's length before storing:
+
+- the fill of missing arguments, `args + i` for `i` from `argc` to
+  `numparams`;
+- a vararg prototype's move of its parameters from `args + i` to
+  `base + i`, `i` below `numparams`, which leaves nil behind;
+- the nil fill of the registers above the parameters, `base + i` for `i`
+  from `numparams` to `maxstack`.
+
+Each test can never fail. Part one made `room` exactly `base + 256`, and
+`ensure_stack`, which `enter_lua` calls with `room` before these loops,
+already promises in its contract that the stack's length is at least the
+size it is given (its body proves this, through `resize_stack`'s promise
+that the length equals the size). The checker proves each index below the
+stack's length from facts it already tracks:
+
+- `args <= base`: on the fixed-arity path `base` is `args`; on the vararg
+  path `base` is `args +sat actual`, which is at least `args` for unsigned
+  operands; the join keeps the weaker of the two bounds, `args <= base`.
+- `i <= 254`: `i` is below `numparams` or `maxstack`, each a widened `u8`.
+- `base + 256 <= stack length`, from `ensure_stack`'s contract with
+  `room = base + 256`. Storing one element of the stack does not change its
+  length, so the fact holds through every iteration, as
+  `instruction_load_nil` (the `LOADNIL` handler) already relies on.
+
+So every index is at most `base + 254`, below the stack's length. Part two
+removes the three tests and adds no run-time check and no contract: the
+proof uses only `ensure_stack`'s existing guarantee.
+
+Reading. For fib (`numparams` 1, `maxstack` 4, called with one argument) the
+fill of missing arguments runs no iteration, the vararg move does not run,
+and the upper nil fill stores three slots. Each slot loses a compare with the
+stack's length and a conditional branch, and possibly a reload of the length
+if LLVM does not keep it in a register across the stores: 2 to 3 instructions
+per slot, 6 to 9 per Lua call of fib, 0.7% to 1.0% of the base's 884.5.
+
+Expected: callgrind counts 6 to 9 fewer executed instructions per Lua call
+than part one's 859.5, all in `enter_lua`, so 850.5 to 853.5 for both parts,
+31 to 34 fewer than the base's 884.5 (3.5% to 3.8%). If part two saves fewer
+than 4 per call, if the nil fill still compares an index with the stack's
+length, or if LLVM has turned the fill into a call to `memset` (its loop
+idiom pass can do this once the store loop has no branch, and a library call
+for three slots costs more than it saves), this reading was wrong and is
+corrected before any timing is interpreted. If the checker refuses an index,
+the refusal is reported as a missing proof or a Whitefoot gap, and the test
+is not put back to make the build pass.
+
+### Criterion revised after part one's count
+
+The first criterion covered part one alone and said its 3% threshold was
+unlikely to be met. Part one's count confirmed that: 25 instructions saved
+are 2.8% of the base's count, and the saved compares and conditional moves
+sit off the loads' critical path, so its time saving is expected below 2.8%.
+Timing it alone would most likely only show it below the threshold.
+The first criterion left the per-slot tests in place as a separate change.
+They are the remaining instructions on fib's path through the entry that
+exist only because a bound was tested at run time rather than proved, and
+part one's exact `room = base + 256` is what makes them provable (a
+saturated `room` only bounds the base from above), so the two parts are one
+change: replacing run-time guards at the entry with checker proofs. The criterion was therefore revised to time both parts
+together. It was revised after part one's instruction count and before any
+timing of either part; the keep rule, the comparison and the threshold are
+the ones written before part one.
+
+Comparison: this branch's base `56878ac` against the branch with both parts,
 both built by `wf-d837678c6905`, with a twin of the base, every timed
 process on CPU 2, six interleaved pairs over the seven kernels as `run.py`
 runs them (binary-trees at depth 14, fib at N = 30); and callgrind of
-fib(32) on a hosted runner, before and after, by the temporary workflow
-`entry-profile.yml`.
+fib(32) on a hosted runner, before and after, by `entry-profile.yml`.
 
-Expected: callgrind counts 15 to 25 fewer executed instructions per Lua call
-of fib, all in `enter_lua`, which is 1.7% to 2.8% of 882.5. On branch
-`claude/halo-beat-puc-fib`, removing 9.5% of fib's instructions (the direct
-Lua-callee entry) made fib 9.8% faster on the 14900K (run 38311147418), but
-the instructions removed here are conditional moves and compares off the
-loads' critical path, and a time saving in proportion to the count would
-be about 2 to 3%. **The 3% criterion below is therefore unlikely to be met
-by this change alone.**
+On branch `claude/halo-beat-puc-fib`, removing 9.5% of fib's instructions
+(the direct Lua-callee entry) made fib 9.8% faster on the 14900K (run
+38311147418). The 3.5% to 3.8% expected here are again compares, branches
+and conditional moves off the loads' critical path, so a time saving in
+proportion to the count is an upper estimate. **Both parts together may
+still fall short of the 3% threshold.**
 
 Kept only if: fib's median falls at least 3%, by more than both ranges and
 the twin's difference on the 14900K; no other kernel is slower beyond its
 larger range and the twin's difference; and `make check` passes on the
 measured revision. Otherwise the change is reverted with its measurements
-kept. If callgrind counts fewer than 10 instructions saved per Lua call, or
-still shows a conditional move after the nil fill's index addition, the
-reading above was wrong and is corrected before any timing is interpreted.
-If the checker refuses one of the plain operations, the refusal is reported
-as a missing proof or a Whitefoot gap, and the operation is not put back to
-`+sat` to make the build pass.
+kept.

@@ -181,7 +181,7 @@ fn unwind(vm: &Vm, stack: &Box<Slots<Value>>) -> r: Step writes(vm), writes(stac
 }
 
 fn enter_lua(vm: &Vm, stack: &Box<Slots<Value>>, h: u32, func: u64, argc: u64, wanted: i64, return_pc: u64, tail: Bool) -> r: Step writes(vm), writes(stack) {
-  doc "Pushes a Lua frame. A tail call replaces the calling frame and keeps its destination, result count and return point, and the new frame counts the calls it replaced as OP_TAILCALL increments ci->tailcalls: the replaced frame's count plus one. A frame whose base plus 256 register slots would reach the largest u64 position raises stack overflow; the destination and a vararg prototype's moved base are checked against that limit, so every position computed after them is a plain sum.";
+  doc "Pushes a Lua frame. A tail call replaces the calling frame and keeps its destination, result count and return point, and the new frame counts the calls it replaced as OP_TAILCALL increments ci->tailcalls: the replaced frame's count plus one. A frame whose base plus 256 register slots would reach the largest u64 position raises stack overflow; the destination and a vararg prototype's moved base are checked against that limit, so every position computed after them is a plain sum. The register slots the entry writes need no per-slot test: the arguments start at or below the base, every slot written lies below the base plus 255, and ensure_stack leaves at least base plus 256 slots.";
   let hi = cvt::<u32, u64>(h);
   if hi < vm^.heap.closures.inner.len {
     if vm^.heap.closures.inner[hi].live {
@@ -247,29 +247,21 @@ fn enter_lua(vm: &Vm, stack: &Box<Slots<Value>>, h: u32, func: u64, argc: u64, w
         }
         for (i in argc..fixed) {
           let j = args + i;
-          if j < stack^.inner.len {
-            set stack^.inner[j] = Value::Nil();
-          }
+          set stack^.inner[j] = Value::Nil();
         }
         if p.is_vararg {
           for (i in 0_u64..fixed) {
             let s = args + i;
             let d = b + i;
-            if s < stack^.inner.len {
-              if d < stack^.inner.len {
-                let v = stack^.inner[s];
-                set stack^.inner[d] = v;
-                set stack^.inner[s] = Value::Nil();
-              }
-            }
+            let v = stack^.inner[s];
+            set stack^.inner[d] = v;
+            set stack^.inner[s] = Value::Nil();
           }
         }
         let maxstack = cvt::<u8, u64>(p.maxstack);
         for (i in fixed..maxstack) {
           let j = b + i;
-          if j < stack^.inner.len {
-            set stack^.inner[j] = Value::Nil();
-          }
+          set stack^.inner[j] = Value::Nil();
         }
         let top = b + maxstack;
         let vb = args + fixed;
