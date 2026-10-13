@@ -5646,3 +5646,9 @@ commands, a checksum mismatch) is investigated before any timing is read.
 
 Expected: the switch, with B5 inside the ranges on the array-heavy
 programs and nothing else moving.
+
+The hosted sample ([run 38325955988](https://github.com/Ming-Research/Halo-wf/actions/runs/38325955988),
+ubuntu-24.04, no timing evidence) built both Luas with identical build
+commands, printed the recorded checksum of every program on all three
+engines, and refused a doctored fib checksum (`--expect`) and an engine
+printing an extra line (`--strict`), each with its intended message.
