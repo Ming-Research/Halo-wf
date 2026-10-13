@@ -54,6 +54,14 @@ jobs:
           (cd build/base-src && "$wfc" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-base")
           cp "$out/halo-base" "$out/halo-base-twin"
           "$wfc" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-after"
+          # Split variant: the head with the known-miss flag turned off, so it
+          # keeps only the interned-name cache. It tells which half of the
+          # change moves fib and Queens.
+          rm -rf "$PWD/build/names-src"; git worktree prune
+          git worktree add --detach "$PWD/build/names-src" HEAD
+          sed -i '423s/let raw_miss = True();/let raw_miss = False();/' build/names-src/lib/halo/vm/handlers.wf
+          grep -n 'let raw_miss = False();' build/names-src/lib/halo/vm/handlers.wf | grep -q '^423:'
+          (cd build/names-src && "$wfc" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-names")
           {
             echo "base $(git rev-parse "$BASE"), experiment $(git rev-parse HEAD), compiler $release"
             sha256sum "$wfc" "$out"/halo-*
@@ -61,6 +69,7 @@ jobs:
           } | tee "$out/manifest.txt"
           cmp "$out/halo-base" "$out/halo-base-twin"
           ! cmp -s "$out/halo-base" "$out/halo-after"
+          ! cmp -s "$out/halo-after" "$out/halo-names"
 
       - name: Time the seven kernels on CPU 2
         run: |
@@ -92,6 +101,7 @@ jobs:
           compare twin "$out/halo-base" "$out/halo-base-twin"
           # The cached names add about 500 live bytes, so collection counts may differ.
           compare after "$out/halo-base" "$out/halo-after" --collections-may-change
+          compare names "$out/halo-base" "$out/halo-names" --collections-may-change
 
       - name: Time the six are-we-fast-yet bundles on CPU 2
         run: |
@@ -113,7 +123,7 @@ jobs:
           exec "$1" < "$2"
           WRAP
           chmod +x "$out/halo-stdin.sh"
-          for side in base after base-twin; do
+          for side in base after names base-twin; do
             "$out/halo-stdin.sh" "$out/halo-$side" "$out/awfy/List.lua" | tee "$out/awfy-check-$side.out"
             test "$(cat "$out/awfy-check-$side.out")" = 1
           done
@@ -124,12 +134,13 @@ jobs:
           $pin python3 -B research/experiments/halo-bench/fastest.py \
             --engine "base=$out/halo-stdin.sh $out/halo-base" \
             --engine "after=$out/halo-stdin.sh $out/halo-after" \
+            --engine "names=$out/halo-stdin.sh $out/halo-names" \
             --engine "base-twin=$out/halo-stdin.sh $out/halo-base-twin" \
             --reference base --kernels '' --awfy "$out/awfy" --strict \
             --manifest "$out/manifest.txt" --compiler "$wfc" \
             --rounds "$ROUNDS" --out "$out/awfy-times.json" > "$out/awfy-times.log" 2>&1 \
             || { cat "$out/awfy-times.log"; exit 1; }
-          echo "== are-we-fast-yet, 3 engines, $ROUNDS rounds, took ${SECONDS}s"
+          echo "== are-we-fast-yet, 4 engines, $ROUNDS rounds, took ${SECONDS}s"
           cat "$out/awfy-times.md"
 
       - name: Summary of ratios
@@ -145,7 +156,7 @@ jobs:
           print('are-we-fast-yet: median over the base (below 1 is faster), [relative range]')
           for name, record in data['workloads'].items():
               cells = []
-              for engine in ('after', 'base-twin'):
+              for engine in ('after', 'names', 'base-twin'):
                   r = record['engines'][engine]
                   cells.append(f'{engine} {r["over_reference"]:.3f} [{100 * r["relative_range"]:.1f}%]')
               base = record['engines']['base']
@@ -153,7 +164,7 @@ jobs:
           for engine, item in data['geomean_over_reference'].items():
               print(f'  geometric mean {engine}: {item["value"]:.3f} over {item["workloads"]}')
           PY
-          for label in twin after; do
+          for label in twin after names; do
             echo "== kernels, $label, 6 pairs"
             grep 'ratio=' "$out/$label-6.log" | sed 's/ before=.*//'
           done | tee -a "$out/summary.txt"
@@ -167,5 +178,6 @@ jobs:
             !build/bench-out/halo-base
             !build/bench-out/halo-base-twin
             !build/bench-out/halo-after
+            !build/bench-out/halo-names
           retention-days: 30
 # Timed on the 14900K in the slot of 2026-10-13.

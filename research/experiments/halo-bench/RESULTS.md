@@ -6720,3 +6720,43 @@ The change is kept only if all of these hold:
 Otherwise the change is reverted, with any measurements retained in this
 section. Towers is reported but has no gain requirement, since its predicted
 saving is approximately zero.
+
+### Result
+
+14900K run [38378472981](https://github.com/Ming-Research/Halo-wf/actions/runs/38378472981) at 4b456fa, CPU 2, full LTO, six interleaved pairs (halo-bench kernels through `run.py`, binary-trees at depth 14) and six rounds (are-we-fast-yet bundles through `fastest.py`). Ratio is after over base; below 1 is faster. Tolerance is the larger of the two ranges plus the twin's difference from 1.
+
+| Program | After / base | Base range | After range | Twin / base | Tolerance | Verdict |
+|---|---:|---:|---:|---:|---:|---|
+| fib | 1.022 | 1.5% | 1.4% | 0.999 | 1.5% | slower beyond tolerance |
+| loop | 1.001 | 0.1% | 2.2% | 1.000 | 2.2% |  |
+| integer-table | 0.985 | 4.5% | 4.2% | 0.972 | 7.3% |  |
+| string-key | 0.978 | 6.1% | 5.7% | 0.956 | 10.5% |  |
+| concat | 1.017 | 2.0% | 1.7% | 1.001 | 2.1% |  |
+| sort | 0.998 | 1.9% | 2.2% | 0.997 | 2.5% |  |
+| binary-trees | 1.000 | 0.5% | 0.5% | 0.998 | 0.7% |  |
+| List | 0.946 | 0.4% | 3.7% | 0.999 | 3.8% | target met |
+| NBody | 1.002 | 1.4% | 0.2% | 1.000 | 1.4% |  |
+| Permute | 1.027 | 0.4% | 4.7% | 1.001 | 4.8% |  |
+| Queens | 1.038 | 0.5% | 1.0% | 1.001 | 1.1% | slower beyond tolerance |
+| Sieve | 1.001 | 0.4% | 1.3% | 1.001 | 1.4% |  |
+| Towers | 0.997 | 2.7% | 1.1% | 0.988 | 4.0% |  |
+
+Outcome: not kept in this revision. List is 5.4% faster (tolerance 3.8%), meeting the target, but fib is 2.2% slower (tolerance 1.5%) and Queens 3.8% slower (tolerance 1.1%), and neither program reaches a metamethod.
+
+### Why fib and Queens slowed
+
+Hosted callgrind with cache and branch simulation ([run 38382468410](https://github.com/Ming-Research/Halo-wf/actions/runs/38382468410)), fib at N=30 and Queens at 40 inner iterations, base 8ee6634 against this branch. The reading recorded in the workflow before it ran: if head/base Ir rises at least 1.5%, executed work grew (A); if Ir changes under 0.5% while D1 misses or mispredicts rise at least 10%, placement or prediction (B); otherwise inconclusive.
+
+| Program | Ir | D1 misses | Conditional mispredicts (Bcm) | Reading |
+|---|---:|---:|---:|---|
+| fib | +0.36% | +1.65% (76 more) | +1.74% (190 more) | inconclusive |
+| Queens | +0.29% | +2.31% | +21.99% (292,633 more) | B |
+
+So the change does not add work on either program. Queens' slowdown matches more mispredicted conditional branches in unchanged code, a placement effect of the new build. fib's is not explained by any simulated count. Callgrind's branch predictor is a simple model, not the 14900K's, so B is a lead, not a measured cause.
+
+### Split run, recorded before it runs
+
+The next 14900K run adds a third build, `names`: this head with the known-miss flag turned off (`let raw_miss = False();` in `instruction_get_table_k_miss`), so it keeps only the interned-name cache and the larger VM record. Same tolerance rule as above.
+- If `names` is slower than the base beyond tolerance on fib or Queens, the name cache (and the VM record it enlarges) causes the slowdown. Then try placing the names outside the VM's hot record.
+- If `names` is not, and `after` still is, the known-miss path causes it.
+- If neither `after` nor `names` is slower beyond tolerance this time, the first run's fib and Queens results were not reproducible. Then the full change is judged by the keep rule on this run.
