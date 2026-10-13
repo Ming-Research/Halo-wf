@@ -436,15 +436,15 @@ fn up_probe_access(mode: u8) -> r: u8 pure {
   }
   if mode == 0_u8 {
     let saved_after = halo::heap::thread_slot(heap: &vm.heap, owner: owner, slot: 1_u64);
-    let unchanged = up_probe_number(value: saved_after, expected: 37.0_f64);
-    if bnot(unchanged) {
+    let kept = up_probe_number(value: saved_after, expected: 37.0_f64);
+    if bnot(kept) {
       return 246_u8;
     }
   }
   if mode == 3_u8 {
     let replacement_after = halo::heap::thread_slot(heap: &vm.heap, owner: owner, slot: 1_u64);
-    let unchanged = up_probe_number(value: replacement_after, expected: 11.0_f64);
-    if bnot(unchanged) {
+    let kept = up_probe_number(value: replacement_after, expected: 11.0_f64);
+    if bnot(kept) {
       return 249_u8;
     }
   }
