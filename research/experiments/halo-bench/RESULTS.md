@@ -6799,3 +6799,89 @@ predicted gain is about 1%.
 
 Outcome: rejected. List is only 1.5% faster than the base (threshold 3%, tolerance 1.5%), although the callgrind falsifier passed first ([run 38370247961](https://github.com/Ming-Research/Halo-wf/actions/runs/38370247961)): List's instructions fell 13.01% and Towers' 0.71%. A 13% instruction saving bought about a ninth of that in time on this machine. The likely reason, inferred and not measured, is that the instructions the jump arms stopped executing (the shared exit's window re-checks) are cheap, well-predicted work; no cache or branch counts were taken to confirm it. The source change is reverted; this record stays.
 
+## Coroutine switches are not counted as allocation
+
+Status: prediction and falsifier recorded before measuring; validation and
+timing are pending. The heap-accounting decision on this branch is proposed.
+
+Question: does counting a move of main's existing execution buffers as new
+allocation explain the producer-consumer program's excessive collections and
+switch cost?
+
+The [earlier coroutine comparison](../../investigations/halo/COROUTINES.md#comparison-3)
+records Halo at 0.0296 s against PUC Lua 5.1.5 at 0.0082 s, or 3.59 times
+PUC's time, on the 14900K. Its
+[six-launch record](coroutines-2026-10-12/producer-consumer.json) reports
+10,000 collections on every Halo launch. These are historical observations,
+not a measurement of this branch. The default
+[producer-consumer program](kernels/producer-consumer.lua) has 100,000 yields
+and 100,001 resumes, including the final termination check; its independent
+checksum is 5,000,050,000.
+
+Code reading of the base confirms the repeated charge specifically for main,
+rather than for every outgoing coroutine. `coroutine_exchange` in
+`lib/halo/vm/coroutines.wf` saves and swaps the outgoing buffers, then calls
+`refresh_thread_storage`. `refresh_thread_bytes` in
+`lib/halo/heap/threads.wf` charges positive capacity differences through
+`charge` in `lib/halo/heap/slabs.wf`, which adds to both `bytes` and
+`bytes_since_gc`. When main is installed again, its empty cell is reconciled
+through `uncharge`, which subtracts only from `bytes`. Its next suspension
+therefore counts the same buffers as allocation again. An installed child
+keeps its cached charge, so moving its buffers back to its cell does not
+itself charge them again. `gc_due` compares allocation since the last
+collection with the threshold, whose floor is 64 KiB.
+
+Change: reconcile main's transitions using only the logical-live counter,
+with the same storage estimate and overflow rejection. Keep a child's
+installed storage charged and keep counting its real capacity growth as
+allocation. Byte-limit checks, collection safepoint sites, root marking,
+stress collection and the 64 KiB floor stay unchanged.
+
+Prediction: on the default producer-consumer program, collections fall from
+10,000 to fewer than 100, and elapsed time falls beyond the base twin's
+range. The remaining startup allocations and real buffer growth are still
+counted.
+
+Falsifier, recorded before measuring: first launch the changed bench host on
+the hosted runner without a timer, with the default program and no positional
+arguments (unlimited budget, ordinary collection):
+
+```sh
+research/experiments/halo-bench/target/halo < research/experiments/halo-bench/kernels/producer-consumer.lua
+```
+
+Require exit zero and stdout `5000050000`. The host prints two numeric lines
+on stderr: suspension count, then completed-collection count. Require zero
+suspensions and fewer than 100 collections. At 100 collections or more the
+cause is wrong and no timing is run. A failed launch or malformed statistics
+does not pass the falsifier. `run.py` validates these two stderr lines but
+also times every launch, so use the direct host launch for this first check.
+
+Keep rule, recorded before measuring: only after the collection-count
+falsifier passes, compare base and change built with the same pinned compiler
+and full LTO on the 14900K through CI, pinned to CPU 2. Use six interleaved
+pairs and a byte-copy twin of the base. Producer-consumer must be at least
+3% faster than base, beyond both relative min-max ranges and the twin's
+difference from base. No other halo-bench kernel or are-we-fast-yet bundle
+may be slower than base beyond its larger range plus the twin's difference.
+Use `run.py --before-binary --collections-may-change` for the kernels and
+`fastest.py` for the bundles; record both collection counts rather than
+requiring them to match. Keep the existing workload scales, including
+binary-trees at depth 14.
+
+The gate must be green on the measured revision, including ordinary and
+stress oracle comparisons and the positive coroutine collector probes.
+Also rerun the coroutine missing-edge controls (the source copies that
+delete one mark or close), and require their detected count not to fall
+against the base. The
+[latest control record](../../investigations/halo/COROUTINES.md#results)
+detects 22 of 25 omissions: 19 changed replies and three setup fail-stops;
+the three owner-accepted probe-only edges and all 26 isolated observations
+must retain their expected results. These controls force collection stress, so
+fewer allocation-triggered collections must not reduce their coverage.
+The ordinary gate does not select the full coroutine omission batch:
+`THREAD_ROOT_MUTANTS=all` selects it through `controls.sh`. That batch's
+existing script exits nonzero for the three probe-only survivors, so assess
+its per-edge results and detection count with the recorded exceptions;
+neither a build failure nor a timeout counts as detection. Do not weaken
+the classifier or the recorded expectations to accept this change.
