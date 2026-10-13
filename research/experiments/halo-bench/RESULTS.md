@@ -5546,22 +5546,6 @@ four at 0.226 s). No conclusion above rests on a cell whose ratio
 sits within its range of the threshold it is compared with, except List in
 stage 2, which is set aside as stated.
 
-## Plain arithmetic and proven slot bounds at the Lua function entry
-
-Status: measured and rejected; the code change is reverted. Both runs are
-retained below; [the outcome](#lua-entry-outcome) records the decision.
-
-The change has two parts, both in `enter_lua` (the Lua callee entry, which
-sets up the callee's frame), and is timed as one change:
-
-1. plain arithmetic: stack positions are computed with plain additions that
-   the Whitefoot checker proves cannot overflow, instead of saturating ones
-   (`+sat`, which clamp at the largest u64);
-2. proven slot bounds: the stores that fill the callee's registers with nil
-   and move a vararg prototype's parameters carry no per-slot test of the
-   index against the stack's length, because the checker proves every index
-   in range.
-
 ## A cheaper Lua return
 
 The change has two parts, both on the Lua `RETURN` path, and is timed as one
@@ -5579,159 +5563,6 @@ The criterion below was first written for part one alone, before part one
 was made. It was revised after part one's instruction count and before any
 timing, to add part two; [the revision](#criterion-revised-after-part-ones-count)
 says why. The keep rule is unchanged.
-
-### Part one: plain arithmetic, recorded before the change
-
-Question: does fib get faster when `enter_lua` computes stack positions with
-plain additions instead of saturating ones?
-
-Reading. Callgrind of main at `f45edc6` (the base side of the temporary
-`direct-profile` workflow on branch `claude/halo-beat-puc-fib`, [run 38317854899](https://github.com/Ming-Research/Halo-wf/actions/runs/38317854899); hosted
-x86-64 runner, `wf-d837678c6905`, full LTO, fib(32), 7,049,155 Lua calls of
-fib) counts 882.5 executed instructions per Lua call, 187 of them in
-`enter_lua`. `enter_lua`'s arithmetic is the same at this branch's base
-`56878ac`. About 23 of the 187 exist only because the arithmetic saturates:
-
-- the clamp after `args = dest + 1`, the clamp on a vararg prototype's base,
-  and the clamp on `room = base + 256` followed by the `room == unlimited`
-  test that raises stack overflow (6 instructions);
-- the nil fill of the callee's registers above its parameters (`base + i`
-  for `i` from `numparams` to `maxstack`, three slots for fib), where LLVM
-  computes each clamped index with two thresholds of its own, a compare and
-  a conditional move per slot, and two extra induction variables (about 15);
-- the clamps on the frame's top (`base + maxstack`), on the vararg base
-  (`args + numparams`) and on the vararg count (`actual - numparams`)
-  (4 instructions).
-
-Change. One comparison replaces the saturated room test: a destination at
-or above 2^64 - 258 raises stack overflow before `args` is formed. A vararg
-prototype's base keeps its saturating sum, checked against 2^64 - 257. The
-error set is identical to the old one: the old code raised stack overflow
-exactly when `dest + 1 + (vararg extra) + 256` reached 2^64 - 1, and the two
-new comparisons are that condition split at the point each sum is formed.
-Every later position then cannot saturate, and the checker can see why:
-
-- `args = dest + 1`: `dest <= 2^64 - 259` after the comparison.
-- `room = base + 256`, `top = base + maxstack`, `base + i` in the nil fill:
-  `base <= 2^64 - 258` on both paths into the join (the plain `args`, or the
-  checked vararg base), and `maxstack` and `i < maxstack` are at most 255
-  because `maxstack` is a widened `u8`.
-- the fill of missing arguments `args + i`: its range becomes `argc` to
-  `numparams` instead of `argc` to `actual`. The two are the same range,
-  since `actual = max(argc, numparams)` and a range whose lower end is not
-  below its upper end is empty; the new upper end is a widened `u8`.
-- the vararg move `args + i`, `base + i`: `i < numparams <= 255`.
-- `varbase = args + numparams`: as above; `varcount = actual - numparams`:
-  `actual >= numparams` on both edges of the `if` that forms `actual`.
-
-Left saturating, none on fib's path: the tail-call counter (`tailcalls + 1`,
-a `u32` read from the replaced frame with no bound), and the tail call's
-argument copy (`argc + 1`, `func + i`, `dest + i`), where nothing bounds
-`argc` against the stack; the vararg base itself (`args + actual`), for the
-same reason.
-
-Expected: callgrind counts 15 to 25 fewer executed instructions per Lua call
-of fib, all in `enter_lua`, which is 1.7% to 2.8% of 882.5. If callgrind
-counts fewer than 10 instructions saved per Lua call, or still shows a
-conditional move after the nil fill's index addition, this reading was
-wrong and is corrected before any timing is interpreted. If the checker
-refuses one of the plain operations, the refusal is reported as a missing
-proof or a Whitefoot gap, and the operation is not put back to `+sat` to
-make the build pass.
-
-### Part one's instruction count
-
-The checker accepted every plain operation, and `make check` passed on part
-one ([run 38326979691](https://github.com/Ming-Research/Halo-wf/actions/runs/38326979691)).
-Callgrind of fib(32) by the temporary workflow `entry-profile.yml`
-([run 38326979883](https://github.com/Ming-Research/Halo-wf/actions/runs/38326979883);
-hosted x86-64 runner, `wf-d837678c6905`, full LTO) counts 859.5 executed
-instructions per Lua call with part one against 884.5 at the base `56878ac`:
-25 fewer, all of them in `enter_lua` (189 to 164 per call), 2.8% of the
-base's count. The saving sits at the top of the expected 15 to 25 and clears
-the falsifier's floor of 10, so the reading stands on the count. A time
-saving in proportion to it would be about 2.8%, below the 3% the keep rule
-asks.
-
-### Part two: proven slot bounds
-
-After part one, three loops in `enter_lua` still test each slot index
-against the stack's length before storing:
-
-- the fill of missing arguments, `args + i` for `i` from `argc` to
-  `numparams`;
-- a vararg prototype's move of its parameters from `args + i` to
-  `base + i`, `i` below `numparams`, which leaves nil behind;
-- the nil fill of the registers above the parameters, `base + i` for `i`
-  from `numparams` to `maxstack`.
-
-Each test can never fail. Part one made `room` exactly `base + 256`, and
-`ensure_stack`, which `enter_lua` calls with `room` before these loops,
-already promises in its contract that the stack's length is at least the
-size it is given (its body proves this, through `resize_stack`'s promise
-that the length equals the size). The checker proves each index below the
-stack's length from facts it already tracks:
-
-- `args <= base`: on the fixed-arity path `base` is `args`; on the vararg
-  path `base` is `args +sat actual`, which is at least `args` for unsigned
-  operands; the join keeps the weaker of the two bounds, `args <= base`.
-- `i <= 254`: `i` is below `numparams` or `maxstack`, each a widened `u8`.
-- `base + 256 <= stack length`, from `ensure_stack`'s contract with
-  `room = base + 256`. Storing one element of the stack does not change its
-  length, so the fact holds through every iteration, as
-  `instruction_load_nil` (the `LOADNIL` handler) already relies on.
-
-So every index is at most `base + 254`, below the stack's length. Part two
-removes the three tests and adds no run-time check and no contract: the
-proof uses only `ensure_stack`'s existing guarantee.
-
-Reading. For fib (`numparams` 1, `maxstack` 4, called with one argument) the
-fill of missing arguments runs no iteration, the vararg move does not run,
-and the upper nil fill stores three slots. Each slot loses a compare with the
-stack's length and a conditional branch, and possibly a reload of the length
-if LLVM does not keep it in a register across the stores: 2 to 3 instructions
-per slot, 6 to 9 per Lua call of fib, 0.7% to 1.0% of the base's 884.5.
-
-Expected: callgrind counts 6 to 9 fewer executed instructions per Lua call
-than part one's 859.5, all in `enter_lua`, so 850.5 to 853.5 for both parts,
-31 to 34 fewer than the base's 884.5 (3.5% to 3.8%). If part two saves fewer
-than 4 per call, if the nil fill still compares an index with the stack's
-length, or if LLVM has turned the fill into a call to `memset` (its loop
-idiom pass can do this once the store loop has no branch, and a library call
-for three slots costs more than it saves), this reading was wrong and is
-corrected before any timing is interpreted. If the checker refuses an index,
-the refusal is reported as a missing proof or a Whitefoot gap, and the test
-is not put back to make the build pass.
-
-### Criterion revised after part one's count
-
-The first criterion covered part one alone and said its 3% threshold was
-unlikely to be met. Part one's count confirmed that: 25 instructions saved
-are 2.8% of the base's count, and the saved compares and conditional moves
-sit off the loads' critical path, so its time saving is expected below 2.8%.
-Timing it alone would most likely only show it below the threshold.
-The first criterion left the per-slot tests in place as a separate change.
-They are the remaining instructions on fib's path through the entry that
-exist only because a bound was tested at run time rather than proved, and
-part one's exact `room = base + 256` is what makes them provable (a
-saturated `room` only bounds the base from above), so the two parts are one
-change: replacing run-time guards at the entry with checker proofs. The criterion was therefore revised to time both parts
-together. It was revised after part one's instruction count and before any
-timing of either part; the keep rule, the comparison and the threshold are
-the ones written before part one.
-
-Comparison: this branch's base `56878ac` against the branch with both parts,
-both built by `wf-d837678c6905`, with a twin of the base, every timed
-process on CPU 2, six interleaved pairs over the seven kernels as `run.py`
-runs them (binary-trees at depth 14, fib at N = 30); and callgrind of
-fib(32) on a hosted runner, before and after, by `entry-profile.yml`.
-
-On branch `claude/halo-beat-puc-fib`, removing 9.5% of fib's instructions
-(the direct Lua-callee entry) made fib 9.8% faster on the 14900K (run
-38311147418). The 3.5% to 3.8% expected here are again compares, branches
-and conditional moves off the loads' critical path, so a time saving in
-proportion to the count is an upper estimate. **Both parts together may
-still fall short of the 3% threshold.**
 
 ### Part one: no full-frame copy, recorded before the change
 
@@ -5928,203 +5759,6 @@ the twin's difference on the 14900K; no other kernel is slower beyond its
 larger range and the twin's difference; and `make check` passes on the
 measured revision. Otherwise the change is reverted with its measurements
 kept.
-
-### Part two's instruction count, recorded before timing
-
-Callgrind of fib(32) on the same hosted setup
-([run 38327829731](https://github.com/Ming-Research/Halo-wf/actions/runs/38327829731),
-gate [run 38327829671](https://github.com/Ming-Research/Halo-wf/actions/runs/38327829671)
-green on the same revision). The executable's own count is 834.5 per Lua
-call against the base's 884.5, but that count leaves out shared libraries:
-with the per-slot tests gone, LLVM turned the nil fills into calls to the C
-library's `memset`, two per Lua call of fib, whose instructions run in libc.
-The whole-program count is 846.6 per Lua call against the base's 884.6, 38
-fewer (4.3%); part one's whole-program count was 859.6, equal to its
-executable count, so part two saves 13, not 25. `enter_lua` itself goes
-from 164 to 139.
-
-Part two's reading was wrong on both of its own conditions: it predicted 6
-to 9 saved and named a `memset` call as a falsifier. The saving is larger
-than read, and the fill is now a library call, whose cost for three slots
-the instruction count does not show the way the time will. The correction
-is recorded here, before any timing; the keep rule above is unchanged, and
-the timing decides whether the change, `memset` included, is kept.
-
-The two new stack-overflow branches need a destination at or above
-2^64 - 258 slots, which no Lua program can reach, and no test reaches them;
-they are trusted on the equivalence argument in part one (the old saturated
-`room` test fired on exactly the same conditions, at the same point after
-the tail-call pop), which the completion review checked by reading.
-
-### Result, first run
-
-[Run 38360542545](https://github.com/Ming-Research/Halo-wf/actions/runs/38360542545)
-measured both parts at `fb05098` against base `56878ac`, on the 14900K,
-with `wf-d837678c6905` and full LTO on both sides. Every timed process was
-pinned to CPU 2; the artifact records performance governors. The base twin
-is a second copy of the same executable (its digest matches the base's).
-The seven kernels, fib at N = 30 and binary-trees at depth 14, are unchanged
-from the comparison above. The gate (`make check`) is green on the measured
-revision ([check run 38360542658](https://github.com/Ming-Research/Halo-wf/actions/runs/38360542658)).
-
-The tables are recomputed from the raw pairs in artifact `halo-bench-entry`:
-`entry-1.json`, `entry-3.json`, `entry-6.json` and the matching
-`twin-1.json`, `twin-3.json`, `twin-6.json`. Each pair count is a separate
-batch, not a prefix of the six-pair batch. Medians are seconds; ratio is
-Halo / base; each range is (maximum - minimum) / that side's median. The
-twin column gives twin / base and, in parentheses, its absolute difference
-from 1 as a percentage. Verdicts use unrounded values. For fib, the verdict
-checks the 3% fall, the fall against each range, and the fall against the
-twin's difference separately. For every other kernel it checks the
-no-regression clause. The green gate applies to all three batches.
-
-#### 1 pair (`entry-1.json`, `twin-1.json`)
-
-| Kernel | Base median (s) | Halo median (s) | Ratio | Base range | Halo range | Twin ratio (difference) | Verdict |
-|---|---:|---:|---:|---:|---:|---:|---|
-| fib | 0.090317 | 0.086021 | 0.952 | 0.00% | 0.00% | 0.994 (0.581%) | 3%: pass; base range: pass; Halo range: pass; twin: pass |
-| loop | 0.501299 | 0.502180 | 1.002 | 0.00% | 0.00% | 1.002 (0.224%) | No regression: pass |
-| integer-table | 0.338712 | 0.338059 | 0.998 | 0.00% | 0.00% | 1.005 (0.462%) | No regression: pass |
-| string-key | 0.023132 | 0.022977 | 0.993 | 0.00% | 0.00% | 0.990 (0.955%) | No regression: pass |
-| concat | 0.073372 | 0.072714 | 0.991 | 0.00% | 0.00% | 0.947 (5.308%) | No regression: pass |
-| sort | 0.182859 | 0.180047 | 0.985 | 0.00% | 0.00% | 0.994 (0.568%) | No regression: pass |
-| binary-trees | 1.228372 | 1.207825 | 0.983 | 0.00% | 0.00% | 0.998 (0.162%) | No regression: pass |
-
-#### 3 pairs (`entry-3.json`, `twin-3.json`)
-
-| Kernel | Base median (s) | Halo median (s) | Ratio | Base range | Halo range | Twin ratio (difference) | Verdict |
-|---|---:|---:|---:|---:|---:|---:|---|
-| fib | 0.088834 | 0.086142 | 0.970 | 1.25% | 0.43% | 1.011 (1.074%) | 3%: pass; base range: pass; Halo range: pass; twin: pass |
-| loop | 0.501686 | 0.501875 | 1.000 | 0.09% | 0.03% | 1.000 (0.002%) | No regression: pass |
-| integer-table | 0.339037 | 0.338218 | 0.998 | 4.83% | 0.92% | 0.979 (2.053%) | No regression: pass |
-| string-key | 0.022958 | 0.021954 | 0.956 | 4.63% | 4.51% | 1.001 (0.121%) | No regression: pass |
-| concat | 0.072992 | 0.072394 | 0.992 | 2.01% | 0.25% | 1.006 (0.568%) | No regression: pass |
-| sort | 0.180232 | 0.182313 | 1.012 | 2.65% | 1.52% | 0.995 (0.483%) | No regression: pass |
-| binary-trees | 1.214709 | 1.208756 | 0.995 | 4.49% | 0.21% | 1.000 (0.038%) | No regression: pass |
-
-#### 6 pairs (`entry-6.json`, `twin-6.json`)
-
-| Kernel | Base median (s) | Halo median (s) | Ratio | Base range | Halo range | Twin ratio (difference) | Verdict |
-|---|---:|---:|---:|---:|---:|---:|---|
-| fib | 0.089531 | 0.086245 | 0.963 | 40.82% | 1.33% | 1.003 (0.327%) | 3%: pass; base range: fail; Halo range: pass; twin: pass |
-| loop | 0.501871 | 0.501935 | 1.000 | 1.05% | 1.30% | 1.000 (0.004%) | No regression: pass |
-| integer-table | 0.339920 | 0.338150 | 0.995 | 4.55% | 2.37% | 1.012 (1.198%) | No regression: pass |
-| string-key | 0.022943 | 0.022438 | 0.978 | 6.43% | 5.61% | 1.001 (0.090%) | No regression: pass |
-| concat | 0.072826 | 0.072549 | 0.996 | 2.05% | 0.75% | 1.000 (0.027%) | No regression: pass |
-| sort | 0.182188 | 0.181522 | 0.996 | 2.13% | 1.73% | 0.999 (0.095%) | No regression: pass |
-| binary-trees | 1.216067 | 1.210048 | 0.995 | 0.66% | 0.91% | 0.998 (0.204%) | No regression: pass |
-
-At six pairs, fib's ratio is 0.963 (3.67% faster than the base), and Halo
-is faster in all six pairs. One base sample, in pair 2, is 0.125071 s;
-the other five are 0.0885-0.0902 s. The base range is therefore 40.8%,
-so the fall is not "by more than both ranges": that clause is not met.
-The 3% threshold, the Halo-range comparison (1.33%), the twin comparison
-(0.33%), every other kernel's no-regression clause, and the green gate all
-pass. These samples and comparisons come from `entry-6.json` and
-`twin-6.json`; the slow sample is retained in the calculation. At three
-pairs, the ratio rounds to 0.970 but the unrounded fall is 3.0301%, so that
-batch clears the 3% threshold (`entry-3.json`). The one-pair batch's zero
-ranges reflect one observation per side, not evidence of zero spread.
-
-The compiler's `--check-module pkg::vm` times in `check-times.txt` are
-3.297 and 3.325 s for the base, 3.308 and 3.282 s for the change. The ratio
-of their medians is 0.995; this compiler-time observation is not a clause
-of the keep rule.
-
-### Rerun, recorded before it runs
-
-This run is undecided by one base sample: fib's observed fall clears every
-other clause, but its base spread is too large to decide the range clause.
-The evidence standard allows a repeat where the spread is too large to
-decide. One rerun with the same workflow and the same rule above, unchanged,
-decides: the change is kept if it passes, or reverted with both runs'
-measurements kept if it fails. There will be no further rerun. The first
-run does not establish that the change is kept, and no sample is discarded.
-
-### Rerun result
-
-[Run 38365880677](https://github.com/Ming-Research/Halo-wf/actions/runs/38365880677)
-measured both parts at `9ac2a19` against the same base `56878ac`, on the
-14900K, with `wf-d837678c6905` and full LTO on both sides. The workflow and
-keep rule are unchanged. `manifest.txt` records CPU 2 pinning, performance
-governors and matching base and twin executable digests. The workload is
-the same seven kernels, fib at N = 30 and binary-trees at depth 14.
-
-The tables are recomputed from raw pairs in artifact `halo-bench-entry`:
-`entry-1.json`, `entry-3.json`, `entry-6.json` and the matching twin JSON
-files. They use the same definitions and unrounded verdict calculations
-as the first-run tables. Each pair count is a separate batch. The gate's
-result on this measured revision is not established by these artifacts;
-the timing clauses below suffice to reject the change regardless of that
-result.
-
-#### 1 pair (`entry-1.json`, `twin-1.json`)
-
-| Kernel | Base median (s) | Halo median (s) | Ratio | Base range | Halo range | Twin ratio (difference) | Verdict |
-|---|---:|---:|---:|---:|---:|---:|---|
-| fib | 0.088769 | 0.086165 | 0.971 | 0.00% | 0.00% | 0.995 (0.501%) | 3%: fail; base range: pass; Halo range: pass; twin: pass |
-| loop | 0.501675 | 0.501401 | 0.999 | 0.00% | 0.00% | 1.002 (0.229%) | No regression: pass |
-| integer-table | 0.355243 | 0.355480 | 1.001 | 0.00% | 0.00% | 1.002 (0.224%) | No regression: pass |
-| string-key | 0.023404 | 0.023002 | 0.983 | 0.00% | 0.00% | 0.991 (0.865%) | No regression: pass |
-| concat | 0.072678 | 0.072635 | 0.999 | 0.00% | 0.00% | 0.989 (1.076%) | No regression: pass |
-| sort | 0.184949 | 0.182796 | 0.988 | 0.00% | 0.00% | 0.998 (0.173%) | No regression: pass |
-| binary-trees | 1.214909 | 1.205751 | 0.992 | 0.00% | 0.00% | 1.088 (8.784%) | No regression: pass |
-
-#### 3 pairs (`entry-3.json`, `twin-3.json`)
-
-| Kernel | Base median (s) | Halo median (s) | Ratio | Base range | Halo range | Twin ratio (difference) | Verdict |
-|---|---:|---:|---:|---:|---:|---:|---|
-| fib | 0.091171 | 0.087230 | 0.957 | 3.25% | 1.15% | 0.999 (0.146%) | 3%: pass; base range: pass; Halo range: pass; twin: pass |
-| loop | 0.501873 | 0.501864 | 1.000 | 0.08% | 2.19% | 1.001 (0.059%) | No regression: pass |
-| integer-table | 0.342091 | 0.356381 | 1.042 | 4.62% | 4.81% | 1.001 (0.093%) | No regression: pass |
-| string-key | 0.022892 | 0.023050 | 1.007 | 5.65% | 5.14% | 1.047 (4.746%) | No regression: pass |
-| concat | 0.072711 | 0.072475 | 0.997 | 1.73% | 1.54% | 1.011 (1.096%) | No regression: pass |
-| sort | 0.184375 | 0.184096 | 0.998 | 0.77% | 0.26% | 0.998 (0.155%) | No regression: pass |
-| binary-trees | 1.215128 | 1.208087 | 0.994 | 0.14% | 0.24% | 1.007 (0.657%) | No regression: pass |
-
-#### 6 pairs (`entry-6.json`, `twin-6.json`)
-
-| Kernel | Base median (s) | Halo median (s) | Ratio | Base range | Halo range | Twin ratio (difference) | Verdict |
-|---|---:|---:|---:|---:|---:|---:|---|
-| fib | 0.088908 | 0.087095 | 0.980 | 2.14% | 1.54% | 1.015 (1.512%) | 3%: fail; base range: fail; Halo range: pass; twin: pass |
-| loop | 0.501712 | 0.501559 | 1.000 | 0.20% | 0.09% | 1.000 (0.011%) | No regression: pass |
-| integer-table | 0.355523 | 0.355875 | 1.001 | 4.77% | 3.04% | 1.003 (0.258%) | No regression: pass |
-| string-key | 0.022393 | 0.022451 | 1.003 | 6.37% | 4.97% | 1.002 (0.203%) | No regression: pass |
-| concat | 0.072521 | 0.072406 | 0.998 | 2.06% | 2.03% | 0.999 (0.094%) | No regression: pass |
-| sort | 0.183182 | 0.183170 | 1.000 | 0.63% | 1.08% | 0.994 (0.620%) | No regression: pass |
-| binary-trees | 1.215754 | 1.207361 | 0.993 | 0.93% | 0.15% | 0.999 (0.100%) | No regression: pass |
-
-At six pairs, fib's ratio is 0.980: its median is 2.04% faster than the
-base, rounded to 2.0%, short of the rule's 3% threshold. Halo is faster in
-all six pairs. The fall also does not exceed the base range (2.14%); it
-exceeds the Halo range (1.54%) and the twin's difference (1.51%). Every
-other kernel's no-regression clause passes. These comparisons come from
-`entry-6.json` and `twin-6.json`, retaining every sample. The three-pair
-batch clears fib's timing clauses, but the six-pair batch is the
-preregistered comparison that decides. As in the first run, the one-pair
-batch's zero ranges do not establish zero spread.
-
-The compiler's `--check-module pkg::vm` times in `check-times.txt` are
-3.327 and 3.360 s for the base, 3.334 and 3.371 s for the change. Their
-median ratio is 1.003; this compiler-time observation is not a clause of
-the keep rule.
-
-<a id="lua-entry-outcome"></a>
-
-### Outcome
-
-The rerun decides under the unchanged rule recorded before it ran. Fib's
-median falls by 2.0%, below the required 3%, and the base-range comparison
-also fails. The entry change is rejected and reverted, with both runs'
-measurements kept. There is no further rerun.
-
-The first six-pair run measured fib 3.7% faster than its base, with one
-outlier base sample and a base range too large to clear the rule. The
-rerun measured fib 2.0% faster than its base. Together these runs do not
-establish the required saving on the 14900K under this workload and setup.
-The earlier callgrind whole-program count fell from 884.6 to 846.6
-instructions per Lua call; that count reduction did not translate into
-the required time saving on this machine.
 
 ### Result
 
@@ -6408,3 +6042,380 @@ reports is Redis 7.2.16's build. A report on sort also lists 7.0.15's sort
 time from this comparison (0.2916 s, against 7.2.16's 0.2985 s) and this
 comparison's ratio r = 1.024 (7.2.16 / 7.0.15). Earlier measurements keep
 their recorded numbers and build identities.
+
+## Plain arithmetic and proven slot bounds at the Lua function entry
+
+Status: measured and rejected; the code change is reverted. Both runs are
+retained below; [the outcome](#lua-entry-outcome) records the decision.
+
+The change has two parts, both in `enter_lua` (the Lua callee entry, which
+sets up the callee's frame), and is timed as one change:
+
+1. plain arithmetic: stack positions are computed with plain additions that
+   the Whitefoot checker proves cannot overflow, instead of saturating ones
+   (`+sat`, which clamp at the largest u64);
+2. proven slot bounds: the stores that fill the callee's registers with nil
+   and move a vararg prototype's parameters carry no per-slot test of the
+   index against the stack's length, because the checker proves every index
+   in range.
+
+The criterion below was first written for part one alone, before part one
+was made. It was revised after part one's instruction count and before any
+timing, to add part two; [the revision](#criterion-revised-after-part-ones-count-1)
+says why. The keep rule is unchanged.
+
+### Part one: plain arithmetic, recorded before the change
+
+Question: does fib get faster when `enter_lua` computes stack positions with
+plain additions instead of saturating ones?
+
+Reading. Callgrind of main at `f45edc6` (the base side of the temporary
+`direct-profile` workflow on branch `claude/halo-beat-puc-fib`, [run 38317854899](https://github.com/Ming-Research/Halo-wf/actions/runs/38317854899); hosted
+x86-64 runner, `wf-d837678c6905`, full LTO, fib(32), 7,049,155 Lua calls of
+fib) counts 882.5 executed instructions per Lua call, 187 of them in
+`enter_lua`. `enter_lua`'s arithmetic is the same at this branch's base
+`56878ac`. About 23 of the 187 exist only because the arithmetic saturates:
+
+- the clamp after `args = dest + 1`, the clamp on a vararg prototype's base,
+  and the clamp on `room = base + 256` followed by the `room == unlimited`
+  test that raises stack overflow (6 instructions);
+- the nil fill of the callee's registers above its parameters (`base + i`
+  for `i` from `numparams` to `maxstack`, three slots for fib), where LLVM
+  computes each clamped index with two thresholds of its own, a compare and
+  a conditional move per slot, and two extra induction variables (about 15);
+- the clamps on the frame's top (`base + maxstack`), on the vararg base
+  (`args + numparams`) and on the vararg count (`actual - numparams`)
+  (4 instructions).
+
+Change. One comparison replaces the saturated room test: a destination at
+or above 2^64 - 258 raises stack overflow before `args` is formed. A vararg
+prototype's base keeps its saturating sum, checked against 2^64 - 257. The
+error set is identical to the old one: the old code raised stack overflow
+exactly when `dest + 1 + (vararg extra) + 256` reached 2^64 - 1, and the two
+new comparisons are that condition split at the point each sum is formed.
+Every later position then cannot saturate, and the checker can see why:
+
+- `args = dest + 1`: `dest <= 2^64 - 259` after the comparison.
+- `room = base + 256`, `top = base + maxstack`, `base + i` in the nil fill:
+  `base <= 2^64 - 258` on both paths into the join (the plain `args`, or the
+  checked vararg base), and `maxstack` and `i < maxstack` are at most 255
+  because `maxstack` is a widened `u8`.
+- the fill of missing arguments `args + i`: its range becomes `argc` to
+  `numparams` instead of `argc` to `actual`. The two are the same range,
+  since `actual = max(argc, numparams)` and a range whose lower end is not
+  below its upper end is empty; the new upper end is a widened `u8`.
+- the vararg move `args + i`, `base + i`: `i < numparams <= 255`.
+- `varbase = args + numparams`: as above; `varcount = actual - numparams`:
+  `actual >= numparams` on both edges of the `if` that forms `actual`.
+
+Left saturating, none on fib's path: the tail-call counter (`tailcalls + 1`,
+a `u32` read from the replaced frame with no bound), and the tail call's
+argument copy (`argc + 1`, `func + i`, `dest + i`), where nothing bounds
+`argc` against the stack; the vararg base itself (`args + actual`), for the
+same reason.
+
+Expected: callgrind counts 15 to 25 fewer executed instructions per Lua call
+of fib, all in `enter_lua`, which is 1.7% to 2.8% of 882.5. If callgrind
+counts fewer than 10 instructions saved per Lua call, or still shows a
+conditional move after the nil fill's index addition, this reading was
+wrong and is corrected before any timing is interpreted. If the checker
+refuses one of the plain operations, the refusal is reported as a missing
+proof or a Whitefoot gap, and the operation is not put back to `+sat` to
+make the build pass.
+
+### Part one's instruction count
+
+The checker accepted every plain operation, and `make check` passed on part
+one ([run 38326979691](https://github.com/Ming-Research/Halo-wf/actions/runs/38326979691)).
+Callgrind of fib(32) by the temporary workflow `entry-profile.yml`
+([run 38326979883](https://github.com/Ming-Research/Halo-wf/actions/runs/38326979883);
+hosted x86-64 runner, `wf-d837678c6905`, full LTO) counts 859.5 executed
+instructions per Lua call with part one against 884.5 at the base `56878ac`:
+25 fewer, all of them in `enter_lua` (189 to 164 per call), 2.8% of the
+base's count. The saving sits at the top of the expected 15 to 25 and clears
+the falsifier's floor of 10, so the reading stands on the count. A time
+saving in proportion to it would be about 2.8%, below the 3% the keep rule
+asks.
+
+### Part two: proven slot bounds
+
+After part one, three loops in `enter_lua` still test each slot index
+against the stack's length before storing:
+
+- the fill of missing arguments, `args + i` for `i` from `argc` to
+  `numparams`;
+- a vararg prototype's move of its parameters from `args + i` to
+  `base + i`, `i` below `numparams`, which leaves nil behind;
+- the nil fill of the registers above the parameters, `base + i` for `i`
+  from `numparams` to `maxstack`.
+
+Each test can never fail. Part one made `room` exactly `base + 256`, and
+`ensure_stack`, which `enter_lua` calls with `room` before these loops,
+already promises in its contract that the stack's length is at least the
+size it is given (its body proves this, through `resize_stack`'s promise
+that the length equals the size). The checker proves each index below the
+stack's length from facts it already tracks:
+
+- `args <= base`: on the fixed-arity path `base` is `args`; on the vararg
+  path `base` is `args +sat actual`, which is at least `args` for unsigned
+  operands; the join keeps the weaker of the two bounds, `args <= base`.
+- `i <= 254`: `i` is below `numparams` or `maxstack`, each a widened `u8`.
+- `base + 256 <= stack length`, from `ensure_stack`'s contract with
+  `room = base + 256`. Storing one element of the stack does not change its
+  length, so the fact holds through every iteration, as
+  `instruction_load_nil` (the `LOADNIL` handler) already relies on.
+
+So every index is at most `base + 254`, below the stack's length. Part two
+removes the three tests and adds no run-time check and no contract: the
+proof uses only `ensure_stack`'s existing guarantee.
+
+Reading. For fib (`numparams` 1, `maxstack` 4, called with one argument) the
+fill of missing arguments runs no iteration, the vararg move does not run,
+and the upper nil fill stores three slots. Each slot loses a compare with the
+stack's length and a conditional branch, and possibly a reload of the length
+if LLVM does not keep it in a register across the stores: 2 to 3 instructions
+per slot, 6 to 9 per Lua call of fib, 0.7% to 1.0% of the base's 884.5.
+
+Expected: callgrind counts 6 to 9 fewer executed instructions per Lua call
+than part one's 859.5, all in `enter_lua`, so 850.5 to 853.5 for both parts,
+31 to 34 fewer than the base's 884.5 (3.5% to 3.8%). If part two saves fewer
+than 4 per call, if the nil fill still compares an index with the stack's
+length, or if LLVM has turned the fill into a call to `memset` (its loop
+idiom pass can do this once the store loop has no branch, and a library call
+for three slots costs more than it saves), this reading was wrong and is
+corrected before any timing is interpreted. If the checker refuses an index,
+the refusal is reported as a missing proof or a Whitefoot gap, and the test
+is not put back to make the build pass.
+
+### Criterion revised after part one's count
+
+The first criterion covered part one alone and said its 3% threshold was
+unlikely to be met. Part one's count confirmed that: 25 instructions saved
+are 2.8% of the base's count, and the saved compares and conditional moves
+sit off the loads' critical path, so its time saving is expected below 2.8%.
+Timing it alone would most likely only show it below the threshold.
+The first criterion left the per-slot tests in place as a separate change.
+They are the remaining instructions on fib's path through the entry that
+exist only because a bound was tested at run time rather than proved, and
+part one's exact `room = base + 256` is what makes them provable (a
+saturated `room` only bounds the base from above), so the two parts are one
+change: replacing run-time guards at the entry with checker proofs. The criterion was therefore revised to time both parts
+together. It was revised after part one's instruction count and before any
+timing of either part; the keep rule, the comparison and the threshold are
+the ones written before part one.
+
+Comparison: this branch's base `56878ac` against the branch with both parts,
+both built by `wf-d837678c6905`, with a twin of the base, every timed
+process on CPU 2, six interleaved pairs over the seven kernels as `run.py`
+runs them (binary-trees at depth 14, fib at N = 30); and callgrind of
+fib(32) on a hosted runner, before and after, by `entry-profile.yml`.
+
+On branch `claude/halo-beat-puc-fib`, removing 9.5% of fib's instructions
+(the direct Lua-callee entry) made fib 9.8% faster on the 14900K (run
+38311147418). The 3.5% to 3.8% expected here are again compares, branches
+and conditional moves off the loads' critical path, so a time saving in
+proportion to the count is an upper estimate. **Both parts together may
+still fall short of the 3% threshold.**
+
+Kept only if: fib's median falls at least 3%, by more than both ranges and
+the twin's difference on the 14900K; no other kernel is slower beyond its
+larger range and the twin's difference; and `make check` passes on the
+measured revision. Otherwise the change is reverted with its measurements
+kept.
+
+### Part two's instruction count, recorded before timing
+
+Callgrind of fib(32) on the same hosted setup
+([run 38327829731](https://github.com/Ming-Research/Halo-wf/actions/runs/38327829731),
+gate [run 38327829671](https://github.com/Ming-Research/Halo-wf/actions/runs/38327829671)
+green on the same revision). The executable's own count is 834.5 per Lua
+call against the base's 884.5, but that count leaves out shared libraries:
+with the per-slot tests gone, LLVM turned the nil fills into calls to the C
+library's `memset`, two per Lua call of fib, whose instructions run in libc.
+The whole-program count is 846.6 per Lua call against the base's 884.6, 38
+fewer (4.3%); part one's whole-program count was 859.6, equal to its
+executable count, so part two saves 13, not 25. `enter_lua` itself goes
+from 164 to 139.
+
+Part two's reading was wrong on both of its own conditions: it predicted 6
+to 9 saved and named a `memset` call as a falsifier. The saving is larger
+than read, and the fill is now a library call, whose cost for three slots
+the instruction count does not show the way the time will. The correction
+is recorded here, before any timing; the keep rule above is unchanged, and
+the timing decides whether the change, `memset` included, is kept.
+
+The two new stack-overflow branches need a destination at or above
+2^64 - 258 slots, which no Lua program can reach, and no test reaches them;
+they are trusted on the equivalence argument in part one (the old saturated
+`room` test fired on exactly the same conditions, at the same point after
+the tail-call pop), which the completion review checked by reading.
+
+### Result, first run
+
+[Run 38360542545](https://github.com/Ming-Research/Halo-wf/actions/runs/38360542545)
+measured both parts at `fb05098` against base `56878ac`, on the 14900K,
+with `wf-d837678c6905` and full LTO on both sides. Every timed process was
+pinned to CPU 2; the artifact records performance governors. The base twin
+is a second copy of the same executable (its digest matches the base's).
+The seven kernels, fib at N = 30 and binary-trees at depth 14, are unchanged
+from the comparison above. The gate (`make check`) is green on the measured
+revision ([check run 38360542658](https://github.com/Ming-Research/Halo-wf/actions/runs/38360542658)).
+
+The tables are recomputed from the raw pairs in artifact `halo-bench-entry`:
+`entry-1.json`, `entry-3.json`, `entry-6.json` and the matching
+`twin-1.json`, `twin-3.json`, `twin-6.json`. Each pair count is a separate
+batch, not a prefix of the six-pair batch. Medians are seconds; ratio is
+Halo / base; each range is (maximum - minimum) / that side's median. The
+twin column gives twin / base and, in parentheses, its absolute difference
+from 1 as a percentage. Verdicts use unrounded values. For fib, the verdict
+checks the 3% fall, the fall against each range, and the fall against the
+twin's difference separately. For every other kernel it checks the
+no-regression clause. The green gate applies to all three batches.
+
+#### 1 pair (`entry-1.json`, `twin-1.json`)
+
+| Kernel | Base median (s) | Halo median (s) | Ratio | Base range | Halo range | Twin ratio (difference) | Verdict |
+|---|---:|---:|---:|---:|---:|---:|---|
+| fib | 0.090317 | 0.086021 | 0.952 | 0.00% | 0.00% | 0.994 (0.581%) | 3%: pass; base range: pass; Halo range: pass; twin: pass |
+| loop | 0.501299 | 0.502180 | 1.002 | 0.00% | 0.00% | 1.002 (0.224%) | No regression: pass |
+| integer-table | 0.338712 | 0.338059 | 0.998 | 0.00% | 0.00% | 1.005 (0.462%) | No regression: pass |
+| string-key | 0.023132 | 0.022977 | 0.993 | 0.00% | 0.00% | 0.990 (0.955%) | No regression: pass |
+| concat | 0.073372 | 0.072714 | 0.991 | 0.00% | 0.00% | 0.947 (5.308%) | No regression: pass |
+| sort | 0.182859 | 0.180047 | 0.985 | 0.00% | 0.00% | 0.994 (0.568%) | No regression: pass |
+| binary-trees | 1.228372 | 1.207825 | 0.983 | 0.00% | 0.00% | 0.998 (0.162%) | No regression: pass |
+
+#### 3 pairs (`entry-3.json`, `twin-3.json`)
+
+| Kernel | Base median (s) | Halo median (s) | Ratio | Base range | Halo range | Twin ratio (difference) | Verdict |
+|---|---:|---:|---:|---:|---:|---:|---|
+| fib | 0.088834 | 0.086142 | 0.970 | 1.25% | 0.43% | 1.011 (1.074%) | 3%: pass; base range: pass; Halo range: pass; twin: pass |
+| loop | 0.501686 | 0.501875 | 1.000 | 0.09% | 0.03% | 1.000 (0.002%) | No regression: pass |
+| integer-table | 0.339037 | 0.338218 | 0.998 | 4.83% | 0.92% | 0.979 (2.053%) | No regression: pass |
+| string-key | 0.022958 | 0.021954 | 0.956 | 4.63% | 4.51% | 1.001 (0.121%) | No regression: pass |
+| concat | 0.072992 | 0.072394 | 0.992 | 2.01% | 0.25% | 1.006 (0.568%) | No regression: pass |
+| sort | 0.180232 | 0.182313 | 1.012 | 2.65% | 1.52% | 0.995 (0.483%) | No regression: pass |
+| binary-trees | 1.214709 | 1.208756 | 0.995 | 4.49% | 0.21% | 1.000 (0.038%) | No regression: pass |
+
+#### 6 pairs (`entry-6.json`, `twin-6.json`)
+
+| Kernel | Base median (s) | Halo median (s) | Ratio | Base range | Halo range | Twin ratio (difference) | Verdict |
+|---|---:|---:|---:|---:|---:|---:|---|
+| fib | 0.089531 | 0.086245 | 0.963 | 40.82% | 1.33% | 1.003 (0.327%) | 3%: pass; base range: fail; Halo range: pass; twin: pass |
+| loop | 0.501871 | 0.501935 | 1.000 | 1.05% | 1.30% | 1.000 (0.004%) | No regression: pass |
+| integer-table | 0.339920 | 0.338150 | 0.995 | 4.55% | 2.37% | 1.012 (1.198%) | No regression: pass |
+| string-key | 0.022943 | 0.022438 | 0.978 | 6.43% | 5.61% | 1.001 (0.090%) | No regression: pass |
+| concat | 0.072826 | 0.072549 | 0.996 | 2.05% | 0.75% | 1.000 (0.027%) | No regression: pass |
+| sort | 0.182188 | 0.181522 | 0.996 | 2.13% | 1.73% | 0.999 (0.095%) | No regression: pass |
+| binary-trees | 1.216067 | 1.210048 | 0.995 | 0.66% | 0.91% | 0.998 (0.204%) | No regression: pass |
+
+At six pairs, fib's ratio is 0.963 (3.67% faster than the base), and Halo
+is faster in all six pairs. One base sample, in pair 2, is 0.125071 s;
+the other five are 0.0885-0.0902 s. The base range is therefore 40.8%,
+so the fall is not "by more than both ranges": that clause is not met.
+The 3% threshold, the Halo-range comparison (1.33%), the twin comparison
+(0.33%), every other kernel's no-regression clause, and the green gate all
+pass. These samples and comparisons come from `entry-6.json` and
+`twin-6.json`; the slow sample is retained in the calculation. At three
+pairs, the ratio rounds to 0.970 but the unrounded fall is 3.0301%, so that
+batch clears the 3% threshold (`entry-3.json`). The one-pair batch's zero
+ranges reflect one observation per side, not evidence of zero spread.
+
+The compiler's `--check-module pkg::vm` times in `check-times.txt` are
+3.297 and 3.325 s for the base, 3.308 and 3.282 s for the change. The ratio
+of their medians is 0.995; this compiler-time observation is not a clause
+of the keep rule.
+
+### Rerun, recorded before it runs
+
+This run is undecided by one base sample: fib's observed fall clears every
+other clause, but its base spread is too large to decide the range clause.
+The evidence standard allows a repeat where the spread is too large to
+decide. One rerun with the same workflow and the same rule above, unchanged,
+decides: the change is kept if it passes, or reverted with both runs'
+measurements kept if it fails. There will be no further rerun. The first
+run does not establish that the change is kept, and no sample is discarded.
+
+### Rerun result
+
+[Run 38365880677](https://github.com/Ming-Research/Halo-wf/actions/runs/38365880677)
+measured both parts at `9ac2a19` against the same base `56878ac`, on the
+14900K, with `wf-d837678c6905` and full LTO on both sides. The workflow and
+keep rule are unchanged. `manifest.txt` records CPU 2 pinning, performance
+governors and matching base and twin executable digests. The workload is
+the same seven kernels, fib at N = 30 and binary-trees at depth 14.
+
+The tables are recomputed from raw pairs in artifact `halo-bench-entry`:
+`entry-1.json`, `entry-3.json`, `entry-6.json` and the matching twin JSON
+files. They use the same definitions and unrounded verdict calculations
+as the first-run tables. Each pair count is a separate batch. The gate's
+result on this measured revision is not established by these artifacts;
+the timing clauses below suffice to reject the change regardless of that
+result.
+
+#### 1 pair (`entry-1.json`, `twin-1.json`)
+
+| Kernel | Base median (s) | Halo median (s) | Ratio | Base range | Halo range | Twin ratio (difference) | Verdict |
+|---|---:|---:|---:|---:|---:|---:|---|
+| fib | 0.088769 | 0.086165 | 0.971 | 0.00% | 0.00% | 0.995 (0.501%) | 3%: fail; base range: pass; Halo range: pass; twin: pass |
+| loop | 0.501675 | 0.501401 | 0.999 | 0.00% | 0.00% | 1.002 (0.229%) | No regression: pass |
+| integer-table | 0.355243 | 0.355480 | 1.001 | 0.00% | 0.00% | 1.002 (0.224%) | No regression: pass |
+| string-key | 0.023404 | 0.023002 | 0.983 | 0.00% | 0.00% | 0.991 (0.865%) | No regression: pass |
+| concat | 0.072678 | 0.072635 | 0.999 | 0.00% | 0.00% | 0.989 (1.076%) | No regression: pass |
+| sort | 0.184949 | 0.182796 | 0.988 | 0.00% | 0.00% | 0.998 (0.173%) | No regression: pass |
+| binary-trees | 1.214909 | 1.205751 | 0.992 | 0.00% | 0.00% | 1.088 (8.784%) | No regression: pass |
+
+#### 3 pairs (`entry-3.json`, `twin-3.json`)
+
+| Kernel | Base median (s) | Halo median (s) | Ratio | Base range | Halo range | Twin ratio (difference) | Verdict |
+|---|---:|---:|---:|---:|---:|---:|---|
+| fib | 0.091171 | 0.087230 | 0.957 | 3.25% | 1.15% | 0.999 (0.146%) | 3%: pass; base range: pass; Halo range: pass; twin: pass |
+| loop | 0.501873 | 0.501864 | 1.000 | 0.08% | 2.19% | 1.001 (0.059%) | No regression: pass |
+| integer-table | 0.342091 | 0.356381 | 1.042 | 4.62% | 4.81% | 1.001 (0.093%) | No regression: pass |
+| string-key | 0.022892 | 0.023050 | 1.007 | 5.65% | 5.14% | 1.047 (4.746%) | No regression: pass |
+| concat | 0.072711 | 0.072475 | 0.997 | 1.73% | 1.54% | 1.011 (1.096%) | No regression: pass |
+| sort | 0.184375 | 0.184096 | 0.998 | 0.77% | 0.26% | 0.998 (0.155%) | No regression: pass |
+| binary-trees | 1.215128 | 1.208087 | 0.994 | 0.14% | 0.24% | 1.007 (0.657%) | No regression: pass |
+
+#### 6 pairs (`entry-6.json`, `twin-6.json`)
+
+| Kernel | Base median (s) | Halo median (s) | Ratio | Base range | Halo range | Twin ratio (difference) | Verdict |
+|---|---:|---:|---:|---:|---:|---:|---|
+| fib | 0.088908 | 0.087095 | 0.980 | 2.14% | 1.54% | 1.015 (1.512%) | 3%: fail; base range: fail; Halo range: pass; twin: pass |
+| loop | 0.501712 | 0.501559 | 1.000 | 0.20% | 0.09% | 1.000 (0.011%) | No regression: pass |
+| integer-table | 0.355523 | 0.355875 | 1.001 | 4.77% | 3.04% | 1.003 (0.258%) | No regression: pass |
+| string-key | 0.022393 | 0.022451 | 1.003 | 6.37% | 4.97% | 1.002 (0.203%) | No regression: pass |
+| concat | 0.072521 | 0.072406 | 0.998 | 2.06% | 2.03% | 0.999 (0.094%) | No regression: pass |
+| sort | 0.183182 | 0.183170 | 1.000 | 0.63% | 1.08% | 0.994 (0.620%) | No regression: pass |
+| binary-trees | 1.215754 | 1.207361 | 0.993 | 0.93% | 0.15% | 0.999 (0.100%) | No regression: pass |
+
+At six pairs, fib's ratio is 0.980: its median is 2.04% faster than the
+base, rounded to 2.0%, short of the rule's 3% threshold. Halo is faster in
+all six pairs. The fall also does not exceed the base range (2.14%); it
+exceeds the Halo range (1.54%) and the twin's difference (1.51%). Every
+other kernel's no-regression clause passes. These comparisons come from
+`entry-6.json` and `twin-6.json`, retaining every sample. The three-pair
+batch clears fib's timing clauses, but the six-pair batch is the
+preregistered comparison that decides. As in the first run, the one-pair
+batch's zero ranges do not establish zero spread.
+
+The compiler's `--check-module pkg::vm` times in `check-times.txt` are
+3.327 and 3.360 s for the base, 3.334 and 3.371 s for the change. Their
+median ratio is 1.003; this compiler-time observation is not a clause of
+the keep rule.
+
+<a id="lua-entry-outcome"></a>
+
+### Outcome
+
+The rerun decides under the unchanged rule recorded before it ran. Fib's
+median falls by 2.0%, below the required 3%, and the base-range comparison
+also fails. The entry change is rejected and reverted, with both runs'
+measurements kept. There is no further rerun.
+
+The first six-pair run measured fib 3.7% faster than its base, with one
+outlier base sample and a base range too large to clear the rule. The
+rerun measured fib 2.0% faster than its base. Together these runs do not
+establish the required saving on the 14900K under this workload and setup.
+The earlier callgrind whole-program count fell from 884.6 to 846.6
+instructions per Lua call; that count reduction did not translate into
+the required time saving on this machine.
