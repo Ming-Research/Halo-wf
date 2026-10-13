@@ -5576,3 +5576,128 @@ attribution. The direction predicted from the callgrind count is that fib
 gets faster, since it executes 2.5% fewer instructions and 14 fewer stores per
 Lua call, and that the other kernels, whose Lua calls are rarer, change less;
 this is a prediction, and a difference from it is reported as measured.
+
+### Result
+
+[Run 38360550515](https://github.com/Ming-Research/Halo-wf/actions/runs/38360550515),
+artifact `halo-bench-93e97ef`: the same Halo source at `80f0ee4` built with
+full LTO by the old and new releases, on the 14900K, every timed process
+pinned to CPU 2, clang 22.1.8 and the performance governor. `manifest.txt`
+records the source, releases, compiler and binary hashes, and CPU affinity;
+`log.txt` records the build and launch commands. The old build and its twin
+are byte-identical. The JSON's `compiler_sha256` names the old compiler
+passed to `run.py`; the manifest and build commands identify both compilers.
+The gate is green on `80f0ee4` ([check run 38360550513](https://github.com/Ming-Research/Halo-wf/actions/runs/38360550513)); this benchmark run
+is separate from the gate.
+
+Kernel medians are wall seconds. Ratio is new / old; each relative range is
+(maximum − minimum) / median. Twin ratio is twin / old, and twin difference
+is the absolute distance of that ratio from 1. Fib runs at 30, as in
+`kernels/fib.lua`, whose source hash matches the JSON. Each pair count is a
+separate batch, not a prefix of the six-pair batch. A single pair has zero measured
+range, which does not establish zero noise. All timed launches exit 0 and
+match the independent PUC checksums (`upgrade-*.log` and `twin-*.log`).
+
+#### 1 pair
+
+Recomputed from `upgrade-1.json` and `twin-1.json`, using their
+individual `pairs` entries. Binary-trees is at depth 14.
+
+| Kernel | Old median s | New median s | New / old | Old range | New range | Twin ratio | Twin difference | Verdict |
+|---|---:|---:|---:|---:|---:|---:|---:|---|
+| fib | 0.088623 | 0.087381 | 0.9860 | 0.00% | 0.00% | 1.0122 | 1.22% | pass |
+| loop | 0.501542 | 0.481317 | 0.9597 | 0.00% | 0.00% | 1.0015 | 0.15% | pass |
+| integer-table | 0.355438 | 0.361894 | 1.0182 | 0.00% | 0.00% | 0.9738 | 2.62% | pass |
+| string-key | 0.023276 | 0.022133 | 0.9509 | 0.00% | 0.00% | 0.9456 | 5.44% | pass |
+| concat | 0.074001 | 0.071954 | 0.9723 | 0.00% | 0.00% | 0.9821 | 1.79% | pass |
+| sort | 0.185545 | 0.180978 | 0.9754 | 0.00% | 0.00% | 1.0035 | 0.35% | pass |
+| binary-trees | 1.216968 | 1.204129 | 0.9895 | 0.00% | 0.00% | 1.0010 | 0.10% | pass |
+
+#### 3 pairs
+
+Recomputed from `upgrade-3.json` and `twin-3.json`, using their
+individual `pairs` entries. Binary-trees is at depth 14.
+
+| Kernel | Old median s | New median s | New / old | Old range | New range | Twin ratio | Twin difference | Verdict |
+|---|---:|---:|---:|---:|---:|---:|---:|---|
+| fib | 0.088511 | 0.087693 | 0.9907 | 1.07% | 1.18% | 1.0024 | 0.24% | pass |
+| loop | 0.501577 | 0.481753 | 0.9605 | 0.04% | 0.17% | 0.9999 | 0.01% | pass |
+| integer-table | 0.355791 | 0.360917 | 1.0144 | 0.55% | 4.66% | 0.9995 | 0.05% | pass |
+| string-key | 0.022942 | 0.022114 | 0.9639 | 5.73% | 5.01% | 0.9995 | 0.05% | pass |
+| concat | 0.073098 | 0.071539 | 0.9787 | 1.18% | 0.32% | 0.9891 | 1.09% | pass |
+| sort | 0.183885 | 0.180558 | 0.9819 | 0.54% | 0.84% | 0.9989 | 0.11% | pass |
+| binary-trees | 1.214774 | 1.204432 | 0.9915 | 0.40% | 0.12% | 1.0043 | 0.43% | pass |
+
+#### 6 pairs
+
+Recomputed from `upgrade-6.json` and `twin-6.json`, using their
+individual `pairs` entries. Binary-trees is at depth 14.
+
+| Kernel | Old median s | New median s | New / old | Old range | New range | Twin ratio | Twin difference | Verdict |
+|---|---:|---:|---:|---:|---:|---:|---:|---|
+| fib | 0.088808 | 0.087489 | 0.9851 | 3.37% | 1.25% | 1.0017 | 0.17% | pass |
+| loop | 0.501560 | 0.481241 | 0.9595 | 0.24% | 0.06% | 0.9997 | 0.03% | pass |
+| integer-table | 0.355190 | 0.361692 | 1.0183 | 0.44% | 4.15% | 1.0008 | 0.08% | pass |
+| string-key | 0.021968 | 0.022095 | 1.0058 | 6.25% | 5.15% | 1.0005 | 0.05% | pass |
+| concat | 0.073205 | 0.071568 | 0.9776 | 1.57% | 0.61% | 1.0023 | 0.23% | pass |
+| sort | 0.184708 | 0.179898 | 0.9740 | 7.01% | 1.05% | 1.0018 | 0.18% | pass |
+| binary-trees | 1.216457 | 1.224526 | 1.0066 | 2.41% | 3.40% | 0.9997 | 0.03% | pass |
+
+#### Hardware counters
+
+Three `perf stat` launches per side of each kernel. Counts below are
+arithmetic means and min–max ranges of the raw counts, not rates; ratio is
+new mean / old mean. Each row comes from
+`perf-<kernel>-before-{1,2,3}.csv` and
+`perf-<kernel>-after-{1,2,3}.csv` in the artifact. All counters report 100%
+running time. These launches ran old-side then new-side batches, separately
+from the interleaved wall-time pairs; their ratios describe those measured
+launches. `ld_blocks_store_forward` is the recorded P-core event
+`LD_BLOCKS.STORE_FORWARD` (event 0x03, umask 0x82).
+
+| Kernel | Event | Old mean | Old min–max | New mean | New min–max | New / old |
+|---|---|---:|---|---:|---|---:|
+| fib | cycles | 442,380,985.0 | 441,764,593–443,562,055 | 433,902,928.0 | 433,525,378–434,328,774 | 0.9808 |
+| fib | instructions | 2,384,319,279.3 | 2,384,265,825–2,384,366,347 | 2,330,496,897.3 | 2,330,455,078–2,330,521,049 | 0.9774 |
+| fib | ld_blocks_store_forward | 10,791,172.0 | 10,788,459–10,795,043 | 10,785,165.7 | 10,783,744–10,786,780 | 0.9994 |
+| integer-table | cycles | 1,737,440,144.7 | 1,686,995,129–1,778,266,181 | 1,799,584,623.7 | 1,796,069,777–1,803,362,071 | 1.0358 |
+| integer-table | instructions | 7,474,205,308.0 | 7,470,053,835–7,481,386,683 | 7,372,689,223.7 | 7,370,152,153–7,375,310,751 | 0.9864 |
+| integer-table | ld_blocks_store_forward | 2,669,222.0 | 2,122,359–2,953,156 | 3,145,502.3 | 3,108,732–3,170,797 | 1.1784 |
+
+#### Module-check time
+
+`--check-module pkg::vm`, three interleaved timings per compiler from
+`check-times.txt`, also present in `log.txt`. All six checks accept the module
+(`check-before-{1,2,3}.log` and `check-after-{1,2,3}.log`):
+
+| Compiler | Samples s, in order | Mean s | Min–max s | Range s |
+|---|---|---:|---|---:|
+| Old | 3.314, 3.331, 3.341 | 3.328667 | 3.314–3.341 | 0.027 |
+| New | 4.185, 4.174, 4.204 | 4.187667 | 4.174–4.204 | 0.030 |
+
+New / old mean is 1.2581: the new compiler takes 25.8% longer than the old.
+The samples do not overlap; the fastest new sample exceeds the slowest old
+sample by 0.833 s, far beyond either side's sample range.
+
+### Outcome
+
+The kernel clause passes at every pair count. At one pair, integer-table's
+1.82% slowdown is within its twin's 2.62% difference; at three and six
+pairs its slowdowns are within the new build's ranges. At six pairs,
+string-key and binary-trees are also slower only within their ranges.
+These observations satisfy the recorded kernel clause on these workloads;
+they do not establish that every kernel gets faster.
+
+The module-check clause fails: the new mean is 25.8% slower than the old,
+beyond the sample spread, with no overlap. Per the rule recorded before
+the run, **the upgrade stops for an attribution**, requested from Whitefoot
+in status-board request `wf-req-halo-check-time`. A green gate does not
+remove this failed clause.
+
+The prediction was that fib gets faster. At six pairs its median is 1.5%
+lower than the old build's, within the base's 3.37% relative range, so the
+prediction is not confirmed at this size. In the separate three-run-per-side
+`perf stat` measurements, fib executes 2.3% fewer instructions and uses 1.9%
+fewer cycles than the old build. Those counter observations apply to these
+fib launches; they do not attribute the module-check slowdown or establish
+a timing gain beyond the measured noise.
