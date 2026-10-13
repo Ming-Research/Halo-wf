@@ -49,7 +49,7 @@ jobs:
           done
           wfc_before="$PWD/build/whitefoot/$BEFORE/whitefootc"
           wfc_after="$PWD/build/whitefoot/$AFTER/whitefootc"
-          sh research/experiments/halo-oracle/fetch-redis.sh "$PWD/build/redis"
+          sh research/experiments/halo-oracle/fetch-redis.sh "$PWD/build/redis" 7.0.15
           lua="$PWD/build/redis/redis-7.0.15/deps/lua/src/lua"
           # Same source on both sides; only the compiler differs.
           "$wfc_before" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-before"
