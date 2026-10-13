@@ -80,7 +80,7 @@ jobs:
               cat "$out/preflight/one.err" "$out/preflight/one.csv" 2>/dev/null | sed 's/^/        /'
             fi
           done | tee "$out/preflight/events.txt"
-          missing=$(grep '^MISSING' "$out/preflight/events.txt" | awk '{print $2}' | tr '\n' ' ')
+          missing=$( (grep '^MISSING' "$out/preflight/events.txt" || true) | awk '{print $2}' | tr '\n' ' ')
           for es in A B; do
             var="EVENTS_$es"
             taskset -c "$CPU" perf stat -x, -o "$out/preflight/set-$es.csv" -e "${!var}" -- true 2>&1 || true
