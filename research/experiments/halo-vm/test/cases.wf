@@ -37,6 +37,14 @@ const text_8: Array<u8, 4> = "loop";
 
 const string_table_key: Array<u8, 1> = "a";
 
+const store_newindex: Array<u8, 10> = "__newindex";
+
+const store_readonly_error: Array<u8, 50> = "user_script:37: Attempt to modify a readonly table";
+
+const store_nil_error: Array<u8, 34> = "user_script:37: table index is nil";
+
+const store_nan_error: Array<u8, 34> = "user_script:37: table index is NaN";
+
 struct Env {
   stopped: Bool;
   mode: u8;
@@ -509,6 +517,257 @@ fn fixture_tables(budget: u64) -> r: Bool pure {
       }
     }
   }
+}
+
+fn table_store_value_is(value: Value, absent: Bool, expected: f64) -> r: Bool pure {
+  match value {
+    Nil() => {
+      return absent;
+    }
+    Num(n: number) => {
+      if absent {
+        return False();
+      }
+      return feq(number, expected);
+    }
+    False() => {
+    }
+    True() => {
+    }
+    Str(..) => {
+    }
+    Tab(..) => {
+    }
+    Fun(..) => {
+    }
+    Builtin(..) => {
+    }
+    Thread(..) => {
+    }
+  }
+  return False();
+}
+
+fn fixture_table_store(variant: u64, scenario: u64) -> r: Bool pure {
+  doc "Each scenario runs an explicit SetTableRR, SetTableKR or SetTableKK. Redis 7.2.16's luaV_settable bypasses __newindex only for a non-nil old value; luaH_set retains nil-valued keys and resets flags on raw assignment. Scenarios: 0 present hash key with meta, 1 retained nil key without meta, 2 retained nil key with meta, 3 present array slot assigned nil with meta, 4 nil array slot with meta, 5 nil array slot without meta, 6 new hash key without meta, 7 read-only present key with meta, 8 nil key with meta, 9 NaN key with meta.";
+  let vm = halo::vm::vm_new(limit: 67108864_u64);
+  let stack = halo::vm::stack_new(size: 1024_u64);
+  let no = False();
+  let env = Env(stopped: no, mode: 0_u8, calls: 0_u64, last_func: 0_u64, last_len: 0_u64);
+  let code = box_slots_new::<Cell>(capacity: 8_u64);
+  let consts = box_slots_new::<Value>(capacity: 512_u64);
+  let protos = box_slots_new::<Proto>(capacity: 1_u64);
+  let lines = box_slots_new::<u32>(capacity: 8_u64);
+  let keep_key = halo::heap::intern(heap: &vm.heap, bytes: &text_1[0_u64..3_u64]);
+  let after_array_start = scenario >= 3_u64;
+  let before_array_end = scenario <= 5_u64;
+  let array_case = band(after_array_start, before_array_end);
+  let hash_present = scenario == 0_u64;
+  let hash_retained = scenario == 1_u64;
+  let hash_redirect = scenario == 2_u64;
+  let array_clear = scenario == 3_u64;
+  let array_redirect = scenario == 4_u64;
+  let array_retained = scenario == 5_u64;
+  let hash_new = scenario == 6_u64;
+  let array_size = 0_u32;
+  let setup_key = keep_key;
+  if array_case {
+    set array_size = 2_u32;
+    set setup_key = Value::Num(n: 1.0_f64);
+  }
+  let table = halo::heap::new_table(heap: &vm.heap, asize: array_size, hsize: 2_u32);
+  let sink = halo::heap::new_table(heap: &vm.heap, asize: 0_u32, hsize: 2_u32);
+  let meta = halo::heap::new_table(heap: &vm.heap, asize: 0_u32, hsize: 2_u32);
+  let name = halo::heap::intern(heap: &vm.heap, bytes: &store_newindex[0_u64..10_u64]);
+  raw(vm: &vm, t: meta, key: name, val: sink);
+  let has_meta = bor(hash_present, hash_redirect);
+  let array_meta = bor(array_clear, array_redirect);
+  if array_meta {
+    set has_meta = True();
+  }
+  if scenario >= 7_u64 {
+    set has_meta = True();
+  }
+  if has_meta {
+    attach(vm: &vm, t: table, mt: meta);
+  }
+  if bnot(hash_new) {
+    let old = Value::Num(n: 19.0_f64);
+    raw(vm: &vm, t: table, key: setup_key, val: old);
+    let retained_nil = bor(hash_retained, hash_redirect);
+    let array_nil = bor(array_redirect, array_retained);
+    if array_nil {
+      set retained_nil = True();
+    }
+    if retained_nil {
+      let nil = Value::Nil();
+      raw(vm: &vm, t: table, key: setup_key, val: nil);
+    }
+  }
+  let table_index = 0_u64;
+  match tab_of(v: table) {
+    Handle(h: handle) => {
+      set table_index = cvt::<u32, u64>(handle);
+    }
+    NoHandle() => {
+      return False();
+    }
+  }
+  if table_index >= vm.heap.tables.inner.len {
+    return False();
+  }
+  let initial_nodes = 1_u32;
+  let no_nodes = bor(array_case, hash_new);
+  if no_nodes {
+    set initial_nodes = 0_u32;
+  }
+  if vm.heap.tables.inner[table_index].payload.node_count != initial_nodes {
+    return False();
+  }
+  if array_case {
+    if vm.heap.tables.inner[table_index].payload.array.inner.len != 2_u64 {
+      return False();
+    }
+  }
+  set vm.heap.tables.inner[table_index].payload.flags = 255_u8;
+  if scenario == 7_u64 {
+    set vm.heap.tables.inner[table_index].payload.read_only = True();
+  }
+  let key = setup_key;
+  let expected_error = Value::Nil();
+  if scenario == 7_u64 {
+    set expected_error = halo::heap::intern(heap: &vm.heap, bytes: &store_readonly_error[0_u64..50_u64]);
+  }
+  if scenario == 8_u64 {
+    set key = Value::Nil();
+    set expected_error = halo::heap::intern(heap: &vm.heap, bytes: &store_nil_error[0_u64..34_u64]);
+  }
+  if scenario == 9_u64 {
+    let nan = fnan::<f64>();
+    set key = Value::Num(n: nan);
+    set expected_error = halo::heap::intern(heap: &vm.heap, bytes: &store_nan_error[0_u64..34_u64]);
+  }
+  let value = Value::Num(n: 73.0_f64);
+  if array_clear {
+    set value = Value::Nil();
+  }
+  put_const(consts: &consts, value: table);
+  put_const(consts: &consts, value: key);
+  put_const(consts: &consts, value: value);
+  put_const(consts: &consts, value: sink);
+  put_const(consts: &consts, value: expected_error);
+  pad(consts: &consts);
+  let load_table = Cell::LoadK(a: 4_u8, k: 0_u8);
+  let load_key = Cell::LoadK(a: 5_u8, k: 1_u8);
+  let load_value = Cell::LoadK(a: 6_u8, k: 2_u8);
+  let store = Cell::SetTableRR(t: 4_u8, key: 5_u8, val: 6_u8);
+  if variant == 1_u64 {
+    set store = Cell::SetTableKR(t: 4_u8, key: 1_u8, val: 6_u8);
+  }
+  if variant == 2_u64 {
+    set store = Cell::SetTableKK(t: 4_u8, key: 1_u8, val: 2_u8);
+  }
+  let finish = Cell::Return(a: 4_u8, b: 1_u8);
+  put_code(code: &code, cell: load_table);
+  put_code(code: &code, cell: load_key);
+  put_code(code: &code, cell: load_value);
+  put_code(code: &code, cell: store);
+  put_code(code: &code, cell: finish);
+  for (index in 0_u64..5_u64) {
+    let line = 11_u32;
+    if index == 3_u64 {
+      set line = 37_u32;
+    }
+    if index == 4_u64 {
+      set line = 53_u32;
+    }
+    if lines.inner.len < lines.inner.cap {
+      place_back(window: &lines.inner, value: line);
+    }
+  }
+  put_proto(protos: &protos, start: 0_u32, params: 0_u8, vararg: no, ups: 0_u8, maxstack: 7_u8);
+  let debug_names = box_slots_new::<u8>(capacity: 0_u64);
+  let local_variables = box_slots_new::<LocalVariable>(capacity: 0_u64);
+  let upvalue_names = box_slots_new::<DebugName>(capacity: 0_u64);
+  let source = chunk_source();
+  let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source, debug_names: move debug_names, local_variables: move local_variables, upvalue_names: move upvalue_names);
+  let out = halo::vm::start::<TestHost>(script: &script, stack: &stack, vm: &vm, env: &env, proto: 0_u32, argc: 0_u64, budget: unlimited);
+  let failed = False();
+  match out {
+    Done(count: count) => {
+      if count != 0_u64 {
+        return False();
+      }
+      if scenario >= 7_u64 {
+        return False();
+      }
+    }
+    Error() => {
+      set failed = True();
+      if scenario < 7_u64 {
+        return False();
+      }
+      match halo::value::str_of(v: expected_error) {
+        Handle(h: wanted) => {
+          match halo::value::str_of(v: vm.error) {
+            Handle(h: actual) => {
+              if actual != wanted {
+                return False();
+              }
+            }
+            NoHandle() => {
+              return False();
+            }
+          }
+        }
+        NoHandle() => {
+          return False();
+        }
+      }
+    }
+    Budget() => {
+      return False();
+    }
+    HostStopped() => {
+      return False();
+    }
+    HostCall() => {
+      return False();
+    }
+  }
+  if env.calls != 0_u64 {
+    return False();
+  }
+  if table_index >= vm.heap.tables.inner.len {
+    return False();
+  }
+  let final_nodes = 1_u32;
+  if array_case {
+    set final_nodes = 0_u32;
+  }
+  if vm.heap.tables.inner[table_index].payload.node_count != final_nodes {
+    return False();
+  }
+  let redirected = bor(hash_redirect, array_redirect);
+  let indirect = bor(failed, redirected);
+  if bnot(indirect) {
+    if vm.heap.tables.inner[table_index].payload.flags != 0_u8 {
+      return False();
+    }
+  }
+  let target_value = halo::heap::table_get(heap: &vm.heap, t: table, key: setup_key);
+  let target_absent = bor(redirected, array_clear);
+  let target_number = 73.0_f64;
+  if failed {
+    set target_number = 19.0_f64;
+  }
+  let target_matches = table_store_value_is(value: target_value, absent: target_absent, expected: target_number);
+  if bnot(target_matches) {
+    return False();
+  }
+  let sink_value = halo::heap::table_get(heap: &vm.heap, t: sink, key: setup_key);
+  let sink_absent = bnot(redirected);
+  return table_store_value_is(value: sink_value, absent: sink_absent, expected: 73.0_f64);
 }
 
 fn fixture_meta(budget: u64) -> r: Bool pure {
@@ -1185,6 +1444,19 @@ fn suite() -> r: ExitStatus pure {
   let string_table_failed = bnot(string_table_three_nodes);
   if string_table_failed {
     return exit_status(code: 23_u8);
+  }
+  for (variant in 0_u64..3_u64) {
+    for (scenario in 0_u64..10_u64) {
+      let store_matches = fixture_table_store(variant: variant, scenario: scenario);
+      if bnot(store_matches) {
+        let variant_code = cvt::<u64, u8>(variant);
+        let scenario_code = cvt::<u64, u8>(scenario);
+        let variant_offset = variant_code *sat 10_u8;
+        let first_failure = 24_u8 +sat variant_offset;
+        let failure = first_failure +sat scenario_code;
+        return exit_status(code: failure);
+      }
+    }
   }
   return exit_status(code: 0_u8);
 }

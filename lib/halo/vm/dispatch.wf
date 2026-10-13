@@ -141,7 +141,20 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
         }
       }
       SetTableKK(t: tv, key: keyv, val: valv) => {
-        set step = instruction_set_table_kk::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, tv: tv^, keyv: keyv^, valv: valv^);
+        let continuation = fast_instruction_set_table_kk(code: code, consts: consts, stack: stack, vm: vm, pc: pc, base: base, kbase: kbase, tv: tv^, keyv: keyv^, valv: valv^);
+        match continuation {
+          Ok(value: cursor) => {
+            if cursor.handled {
+              let next = cursor.pc;
+              set pc = next;
+              continue;
+            }
+            set step = instruction_set_table_kk::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, tv: tv^, keyv: keyv^, valv: valv^);
+          }
+          Err(error: failure) => {
+            set step = failure;
+          }
+        }
       }
       NewTable(a: av, asize: asizev, hsize: hsizev) => {
         set step = instruction_new_table::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, asizev: asizev^, hsizev: hsizev^);
