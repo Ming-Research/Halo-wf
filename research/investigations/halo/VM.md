@@ -438,9 +438,13 @@ record and the `Vm`; the `RETURN` arm and a Lua tail call's frame pop test it).
 The owner approved its direction on 2026-10-13 (the open-limit card, option
 A). The combined change passed its timing keep rule in
 [A cheaper Lua return](../../experiments/halo-bench/RESULTS.md#a-cheaper-lua-return).
-The proposed [return-upvalue decision](../../../design/halo/calls/return-upvalues.md)
-records the bound and its ownership; the separate design-tree approval
-card is still required.
+The [return-upvalue decision](../../../design/halo/calls/return-upvalues.md),
+which records the bound and its ownership, was approved by the owner on
+2026-10-13. The oracle case `coroutines/open-limit-per-execution` detects a
+bound shared across executions: a variant that kept one bound for every
+execution failed it at budgets 1, 7 and 1000, ordinarily and under collector
+stress ([check run 38330632954](https://github.com/Ming-Research/Halo-wf/actions/runs/38330632954),
+negative-control revision `918d8eb`).
 
 Problem. Callgrind of fib(32) at main `56878ac` (hosted x86-64, full LTO;
 [A cheaper Lua return](../../experiments/halo-bench/RESULTS.md#a-cheaper-lua-return))
@@ -530,7 +534,7 @@ unchanged:
   by capacity toward the logical bytes ...": unaffected by P3 (P2 would keep
   the rule but change the bytes charged).
 
-The proposed [return-upvalue decision](../../../design/halo/calls/return-upvalues.md)
+The [return-upvalue decision](../../../design/halo/calls/return-upvalues.md)
 belongs under calls because both main and coroutine returns use it: each
 execution keeps an upper bound on its open captures' slots so that a return
 tests one value, rather than storing slots in the list (P1, P2).

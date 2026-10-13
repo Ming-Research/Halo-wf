@@ -5815,10 +5815,9 @@ do not attribute the time saving between the two parts.
 Correctness clause: every launch in all six JSON files exits zero and its
 stdout equals its kernel's independent-reference stdout; each independent
 reference also exits zero. This covers 280 launches across the three
-comparison batches and their twins. The owner reports the check workflow
-passing on the measured revision; that CI status was not independently
-retrieved while writing this result. The measurement run is not substituted
-for the project gate.
+comparison batches and their twins. The gate passed on the measured
+revision `b564ac7` ([check run 38360546953](https://github.com/Ming-Research/Halo-wf/actions/runs/38360546953)). The measurement run is
+not substituted for the project gate.
 
 ### Outcome
 
@@ -5833,5 +5832,5 @@ the owner's reported passing gate on the measured revision:
 
 The combined change clears the fib and other-kernel clauses in the final
 batch. The temporary measurement workflows are removed; the linked runs
-and their artifacts preserve the evidence. The design-tree change still
-needs its separate owner approval.
+and their artifacts preserve the evidence. The owner approved the design-tree
+change on 2026-10-13.
