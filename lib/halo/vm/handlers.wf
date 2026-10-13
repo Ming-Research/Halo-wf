@@ -3453,8 +3453,12 @@ fn instruction_return<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   if vm^.frames.inner.len == 0_u64 {
     return Step::Done(count: count);
   }
-  let f = take_back(window: &vm^.frames.inner);
-  let step = finish(vm: vm, stack: stack, frame: f, src: ra, count: count);
+  let last = vm^.frames.inner.len - 1_u64;
+  let dest = vm^.frames.inner[last].func;
+  let wanted = vm^.frames.inner[last].nresults;
+  let return_pc = vm^.frames.inner[last].return_pc;
+  let discarded = take_back(window: &vm^.frames.inner);
+  let step = finish(vm: vm, stack: stack, dest: dest, wanted: wanted, return_pc: return_pc, src: ra, count: count);
   return step;
 }
 

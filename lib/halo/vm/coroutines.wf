@@ -1,6 +1,5 @@
 alias Value = pkg::value::Value;
 alias Cell = pkg::value::Cell;
-alias Frame = pkg::execution::Frame;
 alias CoroutineCall = pkg::execution::CoroutineCall;
 alias no_handle = pkg::heap::no_handle;
 
@@ -313,11 +312,10 @@ fn coroutine_finish_call(vm: &Vm, stack: &Box<Slots<Value>>, call: CoroutineCall
     if vm^.frames.inner.len > 0_u64 {
       let old = take_back(window: &vm^.frames.inner);
       close_upvalues(vm: vm, stack: stack, level: old.base);
-      return finish(vm: vm, stack: stack, frame: old, src: call.func, count: count);
+      return finish(vm: vm, stack: stack, dest: old.func, wanted: old.nresults, return_pc: old.return_pc, src: call.func, count: count);
     }
   }
-  let frame = Frame(func: call.func, base: call.base, return_pc: call.return_pc, kbase: call.kbase, closure: no_handle, tailcalls: 0_u32, nresults: call.wanted, activation: call.activation, flags: 0_u8, varbase: 0_u64, varcount: 0_u64, frame_top: call.top);
-  return finish(vm: vm, stack: stack, frame: frame, src: call.func, count: count);
+  return finish(vm: vm, stack: stack, dest: call.func, wanted: call.wanted, return_pc: call.return_pc, src: call.func, count: count);
 }
 
 fn coroutine_reject_resume(vm: &Vm, stack: &Box<Slots<Value>>, call: CoroutineCall, text: &[u8]) -> r: Step reads(text), writes(vm), writes(stack) {
