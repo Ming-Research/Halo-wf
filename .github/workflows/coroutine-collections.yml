@@ -1,0 +1,75 @@
+# Temporary, on this branch only: removed before the branch is ready. Board
+# item halo-coroutine-switch-accounting. Falsifier recorded in
+# research/experiments/halo-bench/RESULTS.md, "Coroutine switches are not
+# counted as allocation": the producer-consumer kernel's collection count on
+# Halo's bench host at BASE and at this branch's head, both built by the
+# pinned compiler with full LTO on a hosted runner. If the head's count is not
+# under 100, the cause was wrong and no timing is run. It reads counts, never times.
+name: coroutine-collections
+
+on:
+  push:
+    branches: [claude/halo-coroutine-accounting]
+    paths:
+      - .github/workflows/coroutine-collections.yml
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  BASE: 6f25608
+
+jobs:
+  profile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Install the host toolchain
+        run: |
+          set -uo pipefail
+          make toolchain
+          sudo apt-get update -q
+
+      - name: Build Halo's bench host from the base and from the head
+        run: |
+          set -euo pipefail
+          out="$PWD/build/coroutine-collections"
+          rm -rf "$out"; mkdir -p "$out/callgrind"
+          release=$(sed -n 's/^release = //p' whitefoot.pin)
+          make compiler
+          make toolchain-check
+          wfc="$PWD/build/whitefoot/$release/whitefootc"
+          # Same compiler on both sides; only the source differs.
+          git worktree add --detach "$PWD/build/base-src" "$BASE"
+          SECONDS=0
+          (cd build/base-src && "$wfc" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-base")
+          echo "base full-LTO build: ${SECONDS} s"
+          SECONDS=0
+          "$wfc" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o "$out/halo-head"
+          echo "head full-LTO build: ${SECONDS} s"
+          {
+            echo "base $(git rev-parse "$BASE"), head $(git rev-parse HEAD), compiler $release, producer-consumer kernel"
+            sha256sum "$wfc" "$out/halo-base" "$out/halo-head"
+            file "$out/halo-base" "$out/halo-head"
+            /usr/bin/clang --version | head -n 1
+            uname -a
+          } | tee "$out/manifest.txt"
+
+      - name: Count the producer-consumer kernel's collections
+        run: |
+          set -euo pipefail
+          out="$PWD/build/coroutine-collections"
+          k=research/experiments/halo-bench/kernels/producer-consumer.lua
+          for side in base head; do
+            "$out/halo-$side" < "$k" > "$out/$side.stdout" 2> "$out/$side.stderr"
+            test "$(cat "$out/$side.stdout")" = 5000050000
+            echo "$side: suspends $(sed -n 1p "$out/$side.stderr"), collections $(sed -n 2p "$out/$side.stderr")"
+          done
+          h=$(sed -n 2p "$out/head.stderr")
+          echo "falsifier: the head's collections must be under 100; head has $h"
