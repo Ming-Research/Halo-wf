@@ -5539,3 +5539,40 @@ Permute 16% and concat 15%, LuaJIT List 17.5% (two launches at 0.188 s,
 four at 0.226 s). No conclusion above rests on a cell whose ratio
 sits within its range of the threshold it is compared with, except List in
 stage 2, which is set aside as stated.
+
+## Whitefoot wf-93e97efdc27b upgrade
+
+### Question, recorded before it runs
+
+The pin moves from `wf-d837678c6905` (Whitefoot main `d837678c6`, v0.129) to
+`wf-93e97efdc27b` (main `93e97efdc`). Among the commits in between, three
+change code generation or the runtime Halo uses:
+[Whitefoot#405](https://github.com/Ming-Research/Whitefoot/pull/405), which
+gives each part of a split dispatch its own join slot; [Whitefoot#371](https://github.com/Ming-Research/Whitefoot/pull/371),
+cursor transport; and [Whitefoot#363](https://github.com/Ming-Research/Whitefoot/pull/363),
+growth of Paged's page 0. Callgrind of fib(32) on the direct-entry source
+showed #405 lowering the count from 800.6 to 780.6 instructions and by 14
+stores per Lua call
+([Halo-wf run 38336489775](https://github.com/Ming-Research/Halo-wf/actions/runs/38336489775)).
+The gate passes on the new release
+([check run 38337269910](https://github.com/Ming-Research/Halo-wf/actions/runs/38337269910));
+the only source change it needed renames two locals of the embedding probe,
+since the new release reserves `unchanged`, so the engine source the kernels
+run is the same under both releases.
+
+Comparison, on the 14900K with every timed process on CPU 2: one, three and
+six interleaved full-LTO pairs over the seven kernels (binary-trees at depth
+14), new release against `wf-d837678c6905` with a twin of the old build; three
+`perf stat` runs per side of fib and integer-table counting cycles,
+instructions and blocked store forwards (`LD_BLOCKS.STORE_FORWARD`, event
+0x03, umask 0x82, on the P-cores); and three timings per compiler of
+`--check-module pkg::vm`.
+
+Expected, as for the previous upgrade: no kernel slower than under
+`wf-d837678c6905` beyond its larger range and the twin's difference, and
+`--check-module pkg::vm` not slower than under `wf-d837678c6905` beyond the
+spread of its samples; the gate passes. A failure stops the upgrade for an
+attribution. The direction predicted from the callgrind count is that fib
+gets faster, since it executes 2.5% fewer instructions and 14 fewer stores per
+Lua call, and that the other kernels, whose Lua calls are rarer, change less;
+this is a prediction, and a difference from it is reported as measured.
