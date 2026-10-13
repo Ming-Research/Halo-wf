@@ -40,6 +40,8 @@ const builtins_text_21: Array<u8, 11> = "__metatable";
 
 const builtins_text_22: Array<u8, 35> = "cannot change a protected metatable";
 
+const builtins_text_24: Array<u8, 11> = "__metatable";
+
 const builtin_expected_2_number: Array<u8, 6> = "number";
 
 const builtin_expected_1_number: Array<u8, 6> = "number";
@@ -454,7 +456,7 @@ fn builtin<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
     if argc < 2_u64 {
       return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 2_u64, text: &builtins_text_19[0_u64..21_u64]);
     }
-    let protected = metamethod(vm: vm, v: a, key: vm^.metamethod_names[metamethod_metatable]);
+    let protected = metamethod(vm: vm, v: a, name: &builtins_text_21[0_u64..11_u64]);
     let atom12 = is_nil(v: protected);
     if bnot(atom12) {
       let ignored = raise_text(vm: vm, text: &builtins_text_22[0_u64..35_u64]);
@@ -473,7 +475,7 @@ fn builtin<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
     if argc == 0_u64 {
       return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, text: &builtin_expected_1_value_expected[0_u64..14_u64]);
     }
-    set out = metamethod(vm: vm, v: a, key: vm^.metamethod_names[metamethod_metatable]);
+    set out = metamethod(vm: vm, v: a, name: &builtins_text_24[0_u64..11_u64]);
     if is_nil(v: out) {
       set out = metatable(vm: vm, v: a);
     }

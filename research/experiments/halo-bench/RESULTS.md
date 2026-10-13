@@ -6760,3 +6760,47 @@ The next 14900K run adds a third build, `names`: this head with the known-miss f
 - If `names` is slower than the base beyond tolerance on fib or Queens, the name cache (and the VM record it enlarges) causes the slowdown. Then try placing the names outside the VM's hot record.
 - If `names` is not, and `after` still is, the known-miss path causes it.
 - If neither `after` nor `names` is slower beyond tolerance this time, the first run's fib and Queens results were not reproducible. Then the full change is judged by the keep rule on this run.
+
+### Split run result
+
+14900K [run 38389545724](https://github.com/Ming-Research/Halo-wf/actions/runs/38389545724) at cadebdf. Same tolerance rule as above.
+
+Full change (`after`):
+
+| Program | After / base | Base range | After range | Twin / base | Tolerance | Verdict |
+|---|---:|---:|---:|---:|---:|---|
+| fib | 1.014 | 2.4% | 1.2% | 1.009 | 3.4% |  |
+| loop | 1.002 | 0.1% | 0.2% | 1.000 | 0.2% |  |
+| integer-table | 0.998 | 4.0% | 3.6% | 0.984 | 5.7% |  |
+| string-key | 0.980 | 5.8% | 5.0% | 0.978 | 8.0% |  |
+| concat | 1.020 | 2.1% | 1.7% | 0.999 | 2.2% |  |
+| sort | 1.000 | 0.9% | 0.9% | 1.013 | 2.1% |  |
+| binary-trees | 1.005 | 2.7% | 2.6% | 1.006 | 3.3% |  |
+| List | 0.931 | 2.0% | 0.9% | 1.003 | 2.3% | target met |
+| NBody | 1.003 | 2.3% | 0.5% | 1.001 | 2.4% |  |
+| Permute | 1.025 | 0.5% | 0.8% | 0.999 | 0.9% | slower beyond tolerance |
+| Queens | 1.038 | 1.1% | 0.9% | 1.000 | 1.2% | slower beyond tolerance |
+| Sieve | 0.994 | 1.5% | 1.2% | 1.003 | 1.8% |  |
+| Towers | 1.004 | 0.3% | 2.0% | 1.012 | 3.2% |  |
+
+Names only (`names`, the known-miss flag off):
+
+| Program | After / base | Base range | After range | Twin / base | Tolerance | Verdict |
+|---|---:|---:|---:|---:|---:|---|
+| fib | 1.024 | 1.5% | 1.4% | 1.009 | 2.4% |  |
+| loop | 1.002 | 0.2% | 0.1% | 1.000 | 0.2% |  |
+| integer-table | 0.992 | 4.3% | 3.7% | 0.984 | 6.0% |  |
+| string-key | 1.005 | 6.8% | 5.1% | 0.978 | 9.0% |  |
+| concat | 1.026 | 3.2% | 2.2% | 0.999 | 3.2% |  |
+| sort | 0.996 | 3.4% | 0.6% | 1.013 | 4.6% |  |
+| binary-trees | 1.010 | 2.7% | 2.4% | 1.006 | 3.3% |  |
+| List | 0.960 | 2.0% | 0.1% | 1.003 | 2.3% | target met |
+| NBody | 1.003 | 2.3% | 1.4% | 1.001 | 2.4% |  |
+| Permute | 1.037 | 0.5% | 4.9% | 0.999 | 5.0% |  |
+| Queens | 1.037 | 1.1% | 1.4% | 1.000 | 1.4% | slower beyond tolerance |
+| Sieve | 1.002 | 1.5% | 4.8% | 1.003 | 5.1% |  |
+| Towers | 1.011 | 0.3% | 2.3% | 1.012 | 3.4% |  |
+
+Reading, by the rule recorded before the run: `names` is slower than the base beyond tolerance on Queens (+3.7%, tolerance 1.4%), so the interned-name cache, and the larger VM record it adds, causes the Queens slowdown. The full change repeats it (Queens +3.8%, tolerance 1.2%) and this time also slows Permute (+2.5%, tolerance 0.9%); fib is within tolerance in both. List gains 6.9% with the full change and 4.0% with names alone.
+
+Outcome: rejected. The full change fails the keep rule on Queens and Permute. The source change is reverted and these measurements stay. A later attempt would keep the names outside the VM's frequently used record (the next step this record named); the owner has since moved Halo's beat-PUC goal to Halo's candidate list, so that attempt is not scheduled.

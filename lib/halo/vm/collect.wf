@@ -3,7 +3,7 @@ alias Heap = pkg::heap::Heap;
 alias no_handle = pkg::heap::no_handle;
 
 fn mark_roots(vm: &Vm, consts: &Box<Slots<Value>>) -> r: unit reads(consts), writes(vm) {
-  doc "Marks main and current identities, globals, type metatables, cached metamethod names and constants. Every execution, the installed one included, is traced through its thread cell by the heap's one execution marker, so the installed record has no marking of its own.";
+  doc "Marks main and current identities, globals, type metatables and constants. Every execution, the installed one included, is traced through its thread cell by the heap's one execution marker, so the installed record has no marking of its own.";
   let main = Value::Thread(h: vm^.main_thread);
   pkg::heap::gc_mark(heap: &vm^.heap, v: main);
   if vm^.current_thread != vm^.main_thread {
@@ -20,16 +20,6 @@ fn mark_roots(vm: &Vm, consts: &Box<Slots<Value>>) -> r: unit reads(consts), wri
         let mv = Value::Tab(h: m);
         pkg::heap::gc_mark(heap: &vm^.heap, v: mv);
       }
-      set i = i +wrap 1_u64;
-    } else {
-      break;
-    }
-  }
-  set i = 0_u64;
-  loop {
-    if i < 17_u64 {
-      let name = vm^.metamethod_names[i];
-      pkg::heap::gc_mark(heap: &vm^.heap, v: name);
       set i = i +wrap 1_u64;
     } else {
       break;

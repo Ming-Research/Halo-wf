@@ -32,6 +32,8 @@ const library_lib_text_11: Array<u8, 2> = "pi";
 
 const library_lib_text_12: Array<u8, 4> = "huge";
 
+const library_lib_text_13: Array<u8, 7> = "__index";
+
 const library_version_key: Array<u8, 8> = "_VERSION";
 
 const library_version_value: Array<u8, 7> = "Lua 5.1";
@@ -1191,7 +1193,7 @@ fn install_libraries(vm: &Vm) -> r: unit writes(vm) {
   let local_huge_value_168 = Value::Num(n: local_huge_number_167);
   let local_ignored_huge_169 = table_set(heap: &vm^.heap, t: local_math_149, key: local_huge_key_166, val: local_huge_value_168);
   let local_meta_170 = new_table(heap: &vm^.heap, asize: 0_u32, hsize: 1_u32);
-  let local_key_171 = vm^.metamethod_names[metamethod_index];
+  let local_key_171 = intern(heap: &vm^.heap, bytes: &library_lib_text_13[0_u64..7_u64]);
   let local_ignored_172 = table_set(heap: &vm^.heap, t: local_meta_170, key: local_key_171, val: local_string_147);
   match tab_of(v: local_meta_170) {
     Handle(h: bound_h_3) => {

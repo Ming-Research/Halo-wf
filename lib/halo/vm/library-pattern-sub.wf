@@ -283,8 +283,7 @@ fn pattern_gsub_run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slo
           if k == 4_u8 {
             match pattern_capture(vm: vm, state: state, source: source, start: start, end: state.finish, index: 0_u64) {
               Some(value: key) => {
-                let raw_miss = False();
-                let op = SlowOp::Get(raw_miss: raw_miss);
+                let op = SlowOp::Get();
                 let nil = Value::Nil();
                 if func < stack^.inner.len {
                   set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: op, dest: func, b: replacement, c: key, v: nil, breg: unlimited, creg: unlimited);

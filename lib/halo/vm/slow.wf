@@ -42,30 +42,54 @@ const slow_text_14: Array<u8, 16> = "loop in settable";
 
 const slow_text_15: Array<u8, 5> = "__add";
 
+const slow_text_16: Array<u8, 5> = "__add";
+
 const slow_text_17: Array<u8, 5> = "__sub";
+
+const slow_text_18: Array<u8, 5> = "__sub";
 
 const slow_text_19: Array<u8, 5> = "__mul";
 
+const slow_text_20: Array<u8, 5> = "__mul";
+
 const slow_text_21: Array<u8, 5> = "__div";
+
+const slow_text_22: Array<u8, 5> = "__div";
 
 const slow_text_23: Array<u8, 5> = "__mod";
 
+const slow_text_24: Array<u8, 5> = "__mod";
+
 const slow_text_25: Array<u8, 5> = "__pow";
+
+const slow_text_26: Array<u8, 5> = "__pow";
 
 const slow_text_27: Array<u8, 5> = "__unm";
 
 const slow_text_28: Array<u8, 8> = "__concat";
 
+const slow_text_29: Array<u8, 8> = "__concat";
+
 const slow_text_30: Array<u8, 5> = "__len";
 
 const slow_text_31: Array<u8, 4> = "__eq";
 
+const slow_text_32: Array<u8, 4> = "__eq";
+
 const slow_text_33: Array<u8, 4> = "__lt";
+
+const slow_text_34: Array<u8, 4> = "__lt";
 
 const slow_text_35: Array<u8, 4> = "__le";
 
+const slow_text_36: Array<u8, 4> = "__le";
+
+const slow_text_37: Array<u8, 4> = "__lt";
+
+const slow_text_38: Array<u8, 4> = "__lt";
+
 enum SlowOp {
-  Get(raw_miss: Bool);
+  Get();
   Set();
   Add();
   Sub();
@@ -108,11 +132,12 @@ fn metatable(vm: &Vm, v: Value) -> r: Value reads(vm) {
   return Value::Nil();
 }
 
-fn metamethod(vm: &Vm, v: Value, key: Value) -> r: Value reads(vm) {
+fn metamethod(vm: &Vm, v: Value, name: &[u8]) -> r: Value reads(name), writes(vm) {
   let mt = metatable(vm: vm, v: v);
   if is_nil(v: mt) {
     return Value::Nil();
   }
+  let key = intern(heap: &vm^.heap, bytes: name);
   return table_get(heap: &vm^.heap, t: mt, key: key);
 }
 
@@ -361,22 +386,17 @@ fn slow<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, 
   requires dest < stack^.inner.len;
   ensures stack^.inner.len == entry(stack)^.inner.len;
 } {
-  doc "Ports luaV_gettable/luaV_settable: Get's known raw miss skips only the first lookup, before any callback or safepoint; each tag-method hop looks up its new table normally. A non-function tag-method hop clears the operand location (unlimited) because the value is outside the stack. luaG_aritherror chooses the bad operand by numeric conversion, not its original tag.";
+  doc "Ports luaV_gettable/luaV_settable: a non-function tag-method hop clears the operand location (unlimited) because the value is outside the stack. luaG_aritherror chooses the bad operand by numeric conversion, not its original tag.";
   let length = stack^.inner.len;
   let nil = Value::Nil();
   let name = 0_u8;
   match op {
-    Get(raw_miss: known_miss) => {
+    Get() => {
       let t = b;
       let location = breg;
-      let raw_miss = known_miss;
       for (i in 0_u64..100_u64) {
-        let result = Value::Nil();
-        if bnot(raw_miss) {
-          set result = table_get(heap: &vm^.heap, t: t, key: c);
-        }
-        set raw_miss = False();
-        let tm = metamethod(vm: vm, v: t, key: vm^.metamethod_names[metamethod_index]);
+        let result = table_get(heap: &vm^.heap, t: t, key: c);
+        let tm = metamethod(vm: vm, v: t, name: &slow_text_8[0_u64..7_u64]);
         match tab_of(v: t) {
           Handle(..) => {
             let atom5 = is_nil(v: result);
@@ -422,7 +442,7 @@ fn slow<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, 
           return refused;
         }
         let old = table_get(heap: &vm^.heap, t: t, key: c);
-        let tm = metamethod(vm: vm, v: t, key: vm^.metamethod_names[metamethod_newindex]);
+        let tm = metamethod(vm: vm, v: t, name: &slow_text_11[0_u64..10_u64]);
         match tab_of(v: t) {
           Handle(..) => {
             let nil_key = is_nil(v: c);
@@ -607,52 +627,52 @@ fn slow<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, 
   }
   let tm = Value::Nil();
   if name == 0_u8 {
-    set tm = metamethod(vm: vm, v: b, key: vm^.metamethod_names[metamethod_add]);
+    set tm = metamethod(vm: vm, v: b, name: &slow_text_15[0_u64..5_u64]);
     if is_nil(v: tm) {
-      set tm = metamethod(vm: vm, v: c, key: vm^.metamethod_names[metamethod_add]);
+      set tm = metamethod(vm: vm, v: c, name: &slow_text_16[0_u64..5_u64]);
     }
   }
   if name == 1_u8 {
-    set tm = metamethod(vm: vm, v: b, key: vm^.metamethod_names[metamethod_sub]);
+    set tm = metamethod(vm: vm, v: b, name: &slow_text_17[0_u64..5_u64]);
     if is_nil(v: tm) {
-      set tm = metamethod(vm: vm, v: c, key: vm^.metamethod_names[metamethod_sub]);
+      set tm = metamethod(vm: vm, v: c, name: &slow_text_18[0_u64..5_u64]);
     }
   }
   if name == 2_u8 {
-    set tm = metamethod(vm: vm, v: b, key: vm^.metamethod_names[metamethod_mul]);
+    set tm = metamethod(vm: vm, v: b, name: &slow_text_19[0_u64..5_u64]);
     if is_nil(v: tm) {
-      set tm = metamethod(vm: vm, v: c, key: vm^.metamethod_names[metamethod_mul]);
+      set tm = metamethod(vm: vm, v: c, name: &slow_text_20[0_u64..5_u64]);
     }
   }
   if name == 3_u8 {
-    set tm = metamethod(vm: vm, v: b, key: vm^.metamethod_names[metamethod_div]);
+    set tm = metamethod(vm: vm, v: b, name: &slow_text_21[0_u64..5_u64]);
     if is_nil(v: tm) {
-      set tm = metamethod(vm: vm, v: c, key: vm^.metamethod_names[metamethod_div]);
+      set tm = metamethod(vm: vm, v: c, name: &slow_text_22[0_u64..5_u64]);
     }
   }
   if name == 4_u8 {
-    set tm = metamethod(vm: vm, v: b, key: vm^.metamethod_names[metamethod_mod]);
+    set tm = metamethod(vm: vm, v: b, name: &slow_text_23[0_u64..5_u64]);
     if is_nil(v: tm) {
-      set tm = metamethod(vm: vm, v: c, key: vm^.metamethod_names[metamethod_mod]);
+      set tm = metamethod(vm: vm, v: c, name: &slow_text_24[0_u64..5_u64]);
     }
   }
   if name == 5_u8 {
-    set tm = metamethod(vm: vm, v: b, key: vm^.metamethod_names[metamethod_pow]);
+    set tm = metamethod(vm: vm, v: b, name: &slow_text_25[0_u64..5_u64]);
     if is_nil(v: tm) {
-      set tm = metamethod(vm: vm, v: c, key: vm^.metamethod_names[metamethod_pow]);
+      set tm = metamethod(vm: vm, v: c, name: &slow_text_26[0_u64..5_u64]);
     }
   }
   if name == 6_u8 {
-    set tm = metamethod(vm: vm, v: b, key: vm^.metamethod_names[metamethod_unm]);
+    set tm = metamethod(vm: vm, v: b, name: &slow_text_27[0_u64..5_u64]);
   }
   if name == 7_u8 {
-    set tm = metamethod(vm: vm, v: b, key: vm^.metamethod_names[metamethod_concat]);
+    set tm = metamethod(vm: vm, v: b, name: &slow_text_28[0_u64..8_u64]);
     if is_nil(v: tm) {
-      set tm = metamethod(vm: vm, v: c, key: vm^.metamethod_names[metamethod_concat]);
+      set tm = metamethod(vm: vm, v: c, name: &slow_text_29[0_u64..8_u64]);
     }
   }
   if name == 8_u8 {
-    set tm = metamethod(vm: vm, v: b, key: vm^.metamethod_names[metamethod_len]);
+    set tm = metamethod(vm: vm, v: b, name: &slow_text_30[0_u64..5_u64]);
   }
   if name >= 9_u8 {
     let kb = kind(v: b);
@@ -683,16 +703,16 @@ fn slow<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, 
     }
     let other = Value::Nil();
     if name == 9_u8 {
-      set tm = metamethod(vm: vm, v: b, key: vm^.metamethod_names[metamethod_eq]);
-      set other = metamethod(vm: vm, v: c, key: vm^.metamethod_names[metamethod_eq]);
+      set tm = metamethod(vm: vm, v: b, name: &slow_text_31[0_u64..4_u64]);
+      set other = metamethod(vm: vm, v: c, name: &slow_text_32[0_u64..4_u64]);
     }
     if name == 10_u8 {
-      set tm = metamethod(vm: vm, v: b, key: vm^.metamethod_names[metamethod_lt]);
-      set other = metamethod(vm: vm, v: c, key: vm^.metamethod_names[metamethod_lt]);
+      set tm = metamethod(vm: vm, v: b, name: &slow_text_33[0_u64..4_u64]);
+      set other = metamethod(vm: vm, v: c, name: &slow_text_34[0_u64..4_u64]);
     }
     if name == 11_u8 {
-      set tm = metamethod(vm: vm, v: b, key: vm^.metamethod_names[metamethod_le]);
-      set other = metamethod(vm: vm, v: c, key: vm^.metamethod_names[metamethod_le]);
+      set tm = metamethod(vm: vm, v: b, name: &slow_text_35[0_u64..4_u64]);
+      set other = metamethod(vm: vm, v: c, name: &slow_text_36[0_u64..4_u64]);
     }
     let same = raw_equal(a: tm, b: other);
     if kb != kc {
@@ -718,8 +738,8 @@ fn slow<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, 
       return True();
     }
     if name == 11_u8 {
-      set tm = metamethod(vm: vm, v: c, key: vm^.metamethod_names[metamethod_lt]);
-      set other = metamethod(vm: vm, v: b, key: vm^.metamethod_names[metamethod_lt]);
+      set tm = metamethod(vm: vm, v: c, name: &slow_text_37[0_u64..4_u64]);
+      set other = metamethod(vm: vm, v: b, name: &slow_text_38[0_u64..4_u64]);
       let same_lt = raw_equal(a: tm, b: other);
       if kb == kc {
         if same_lt {

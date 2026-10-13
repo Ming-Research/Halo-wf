@@ -45,7 +45,6 @@ public struct Vm {
   public activation: u32;
   public globals: u32;
   public type_metatables: Array<u32, 8>;
-  public metamethod_names: Array<Value, 17>;
   public host_stopped: Bool;
   public stopped_stack: Box<Slots<Value>>;
   public callback_plan: CallbackPlan;
@@ -105,7 +104,7 @@ public const builtin_getmetatable: u32 = 7_u32;
 
 public const unlimited: u64 = 18446744073709551615_u64;
 
-public fn vm_new(limit: u64) -> r: Vm pure doc "A VM with an ordinary globals table, the 17 metamethod lookup names interned as collector roots for its lifetime, and a real main-thread cell whose identity survives reset and start. Installed execution buffers remain in the VM and embedding stack; the cell holds empty counterpart owners. start installs script metadata.";
+public fn vm_new(limit: u64) -> r: Vm pure doc "A VM with an ordinary globals table and a real main-thread cell whose identity survives reset and start. Installed execution buffers remain in the VM and embedding stack; the cell holds empty counterpart owners. start installs script metadata.";
 
 public fn stack_new(size: u64) -> r: Box<Slots<Value>> pure contract {
   ensures r.inner.len == size;

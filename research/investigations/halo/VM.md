@@ -149,15 +149,13 @@ object kind is a `Box<Slots<Cell>>` with a free list; a cell is
 Collector: stop-the-world mark and sweep with an explicit gray stack and
 epoch marks (E1). Roots: the stack below the current frame's
 `base + maxstack`, frame records, open upvalues, globals, the registry,
-the 17 metamethod lookup names interned when the VM is created,
 every script's constant pool, and values the host pins. Collection happens at the budget's own safepoints, a loop back-edge or a
 call, where every live value is in a stack slot or another root (revised
 during implementation from "only inside allocation", which would have made
 every allocating helper keep its live values as arguments): a due
 collection marks the stack below the highest frame top or dynamic argument/result
 top, frame closures,
-open upvalues, globals, per-type metatables, the cached metamethod names,
-the script's constants, the
+open upvalues, globals, per-type metatables, the script's constants, the
 error value and a host-stopped stack, clears the stack above as Lua 5.1's
 `traversestack` does, and sweeps. The byte limit applies to logical live
 heap bytes after a safepoint collection; it does not bound temporary

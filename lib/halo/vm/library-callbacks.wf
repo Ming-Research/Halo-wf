@@ -83,8 +83,7 @@ fn pcall_lookup_start<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
     }
     library_plan(vm: vm, index: index);
     let key = pcall_field_key(vm: vm);
-    let raw_miss = False();
-    let op = SlowOp::Get(raw_miss: raw_miss);
+    let op = SlowOp::Get();
     let nil = Value::Nil();
     if dest < stack^.inner.len {
       let ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: op, dest: dest, b: context.saved_error, c: key, v: nil, breg: unlimited, creg: unlimited);
