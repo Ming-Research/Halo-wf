@@ -17,22 +17,24 @@ jobs:
       - name: Compiler
         run: |
           lscpu | grep 'Model name'
-          echo "release = wf-af7665be672d" > whitefoot.pin
-          make toolchain >/dev/null
-          make compiler
-      - name: Check pkg::test with check-work recording
+          for rel in wf-d837678c6905 wf-af7665be672d; do
+            echo "release = $rel" > whitefoot.pin
+            make toolchain >/dev/null
+            make compiler
+          done
+      - name: Check pkg::test with check-work recording, old then new
         run: |
           mkdir -p "$RUNNER_TEMP/out"
-          export WHITEFOOT_CHECK_WORK="$RUNNER_TEMP/out/work-pkg-test.tsv"
-          s=$(date +%s.%N)
           set +e
-          build/whitefoot/wf-af7665be672d/whitefootc --graph tests/halo-vm/modules.wfg --check-module pkg::test --report > "$RUNNER_TEMP/out/report.txt" 2> "$RUNNER_TEMP/out/stderr.txt"
-          echo "exit $? seconds $(echo "$(date +%s.%N) - $s" | bc)"
+          for rel in wf-d837678c6905 wf-af7665be672d; do
+            export WHITEFOOT_CHECK_WORK="$RUNNER_TEMP/out/work-pkg-test-$rel.tsv"
+            s=$(date +%s.%N)
+            build/whitefoot/$rel/whitefootc --graph tests/halo-vm/modules.wfg --check-module pkg::test --report > "$RUNNER_TEMP/out/report-$rel.txt" 2> "$RUNNER_TEMP/out/stderr-$rel.txt"
+            echo "$rel exit $? seconds $(echo "$(date +%s.%N) - $s" | bc)"
+            wc -l "$WHITEFOOT_CHECK_WORK" || true
+            tail -3 "$RUNNER_TEMP/out/stderr-$rel.txt"
+          done
           ls -la "$RUNNER_TEMP/out"
-          wc -l "$WHITEFOOT_CHECK_WORK" || true
-          head -3 "$WHITEFOOT_CHECK_WORK" || true
-          tail -5 "$RUNNER_TEMP/out/stderr.txt"
-          sort -t$'\t' -k2 -rn "$WHITEFOOT_CHECK_WORK" 2>/dev/null | head -15 || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
