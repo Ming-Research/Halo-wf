@@ -1,5 +1,9 @@
 # Halo P1 performance baseline
 
+The shared benchmark host and graph live in
+[tests/halo-bench](../../../tests/halo-bench/). Measurement scripts, kernels
+and results stay here.
+
 Question: does the current Halo match dispatch meet the P1 median thresholds
 in [VM.md sections 4, 5, 10 and 11](../../investigations/halo/VM.md)?
 Current criterion, using the baseline the owner chose on 2026-10-13
@@ -40,7 +44,7 @@ performance threshold is applied to producer-consumer.
 These files and the host serve P1 and the coroutine comparisons; remove them
 when those experiments are superseded without needing reproduction.
 
-The native `host/` installs only numeric `print`, uses `pkg::embed` with a
+The native `tests/halo-bench/host/` installs only numeric `print`, uses `pkg::embed` with a
 2 GiB logical live-heap limit, normal GC, and budget 2^64−1 (the VM’s unlimited sentinel, which skips decrements).
 The budget-1000 comparison includes counter updates and embedding resume work;
 it does not isolate decrement cost. Its stderr is
@@ -57,7 +61,7 @@ the PUC reference under `build/redis`:
 ```sh
 make compiler reference-lua
 wfc=build/whitefoot/$(sed -n 's/^release = //p' whitefoot.pin)/whitefootc
-"$wfc" --graph research/experiments/halo-bench/modules.wfg --entry bench --full-lto -o research/experiments/halo-bench/target/halo
+"$wfc" --graph tests/halo-bench/modules.wfg --entry bench --full-lto -o research/experiments/halo-bench/target/halo
 ```
 
 Use `target/` for regenerable logs and profiler reports. Run the smallest

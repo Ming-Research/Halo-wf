@@ -1,16 +1,20 @@
 # MessagePack comparison
 
+The runner, graph, adapter and C reference live in
+[tests/msgpack](../../../tests/msgpack/); this directory retains the guide,
+API description and dated results.
+
 The runner builds the standalone MessagePack adapter and a local Redis cmsgpack
 reference, then checks independently expected wire bytes and decoded values.
 This invocation guide serves the explicit codec experiment; remove it with the
 runner when maintained library tests replace the experiment.
 
 ```sh
-perl .github/run-check.pl msgpack python3 -B research/experiments/msgpack/run.py \
+perl .github/run-check.pl msgpack python3 -B tests/msgpack/run.py \
   --compiler "$WHITEFOOTC" --redis-src "$REDIS_SOURCE/deps/lua/src" \
   --lua-lib "$REDIS_SOURCE/deps/lua/src/liblua.a" --scratch "$SCRATCH" \
   --incremental --generated 0
-perl .github/run-check.pl msgpack python3 -B research/experiments/msgpack/run.py \
+perl .github/run-check.pl msgpack python3 -B tests/msgpack/run.py \
   --compiler "$WHITEFOOTC" --redis-src "$REDIS_SOURCE/deps/lua/src" \
   --lua-lib "$REDIS_SOURCE/deps/lua/src/liblua.a" --scratch "$SCRATCH" \
   --full-lto --generated 3000

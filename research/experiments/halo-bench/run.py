@@ -12,6 +12,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
+HOST = ROOT/'tests/halo-bench'
 NAMES = ('fib', 'loop', 'integer-table', 'string-key', 'concat', 'sort', 'binary-trees',
          'captured-assignment', 'producer-consumer')
 WRAPPER = 'local f=assert(loadstring(io.read("*a"), "@user_script")); f()'
@@ -111,8 +112,8 @@ def main():
                 host=platform.platform(), started_utc=time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
                 binary_sha256=digest(binary), lua_sha256=digest(lua),
                 compiler_sha256=digest(args.compiler.resolve()) if args.compiler else None,
-                host_sources_sha256={str(path.relative_to(HERE)): digest(path) for path in
-                                     (HERE/'modules.wfg', HERE/'host/module.wfm', HERE/'host/driver.wf')},
+                host_sources_sha256={str(path.relative_to(HOST)): digest(path) for path in
+                                     (HOST/'modules.wfg', HOST/'host/module.wfm', HOST/'host/driver.wf')},
                 budget=args.budget, profile=args.profile, reference_only=args.reference_only, scales=scales, kernels={}, launches=[])
     if before:
         data.update(before_binary_sha256=digest(before), before_budget=args.before_budget)

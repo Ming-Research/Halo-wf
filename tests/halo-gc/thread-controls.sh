@@ -104,7 +104,7 @@ if ! classifier_self_test; then
   echo "coroutine oracle classifier self-test failed" >&2
   exit 1
 fi
-root=$(CDPATH= cd -- "$(dirname -- "$0")/../../.." && pwd -P)
+root=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd -P)
 wfc=${WHITEFOOTC:?set WHITEFOOTC to the pinned compiler}
 out=${1:?usage: thread-controls.sh <scratch directory>}
 selection=${THREAD_ROOT_MUTANTS:?select stack first, then named edges or all}
@@ -112,11 +112,11 @@ mkdir -p "$out"
 out=$(CDPATH= cd -- "$out" && pwd -P)
 tree=$out/tree
 rm -rf "$tree"
-mkdir -p "$tree/research/experiments"
+mkdir -p "$tree/tests"
 cp -R "$root/lib" "$tree/lib" || exit 1
-cp -R "$root/research/experiments/halo-e2e" "$tree/research/experiments/halo-e2e" || exit 1
-cp -R "$root/research/experiments/halo-oracle" "$tree/research/experiments/halo-oracle" || exit 1
-cp "$root/research/experiments/compiler_cache.py" "$tree/research/experiments/compiler_cache.py" || exit 1
+cp -R "$root/tests/halo-e2e" "$tree/tests/halo-e2e" || exit 1
+cp -R "$root/tests/halo-oracle" "$tree/tests/halo-oracle" || exit 1
+cp "$root/tests/compiler_cache.py" "$tree/tests/compiler_cache.py" || exit 1
 # The copied runner hashes the mutated source and recorded cases. It only
 # reads the original git metadata to label the parent revision.
 source_git=$(git -C "$root" rev-parse --absolute-git-dir) || exit 1
@@ -127,7 +127,7 @@ build() {
   build_entry=$2
   build_binary=$3
   build_started=$(date +%s)
-  (cd "$tree/research/experiments/halo-e2e" && "$wfc" --graph modules.wfg --entry "$build_entry" \
+  (cd "$tree/tests/halo-e2e" && "$wfc" --graph modules.wfg --entry "$build_entry" \
     --cache "$out/cache" --fragments function -o "$build_binary") > "$out/build-$build_label.log" 2>&1
   build_code=$?
   build_ended=$(date +%s)
@@ -145,7 +145,7 @@ compare() {
   compare_flags=$2
   compare_started=$(date +%s)
   # shellcheck disable=SC2086
-  GIT_DIR="$source_git" python3 -B "$tree/research/experiments/halo-e2e/run.py" \
+  GIT_DIR="$source_git" python3 -B "$tree/tests/halo-e2e/run.py" \
     --compiler "$wfc" --binary "$out/oracle-test" --scratch-root "$out" \
     --filter coroutines/ --budgets 1,7,1000 --gc-stress --case-timeout 60 $compare_flags \
     --actual "$out/actual-$compare_label" --report "$out/oracle-$compare_label.md" \

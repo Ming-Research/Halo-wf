@@ -1,5 +1,5 @@
-package halo = "../../../lib/halo";
-package fpconv = "../../../lib/fpconv";
+package halo = "../../lib/halo";
+package fpconv = "../../lib/fpconv";
 
 pkg::test: [halo::execution, halo::embed, halo::value, halo::heap, halo::vm, halo::number, halo::compile, fpconv::dtoa, std::io, std::process, std::fs, std::time, std::text];
 

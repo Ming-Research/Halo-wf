@@ -6,8 +6,8 @@ writing). There is no Halo or Lua dependency. These modules separate the wire
 reader and writer so consumers can select either independently; the common
 representation records decoded meaning and retains the original tag.
 
-Import the graph as a named package, for example
-`package msgpack = "../../../lib/msgpack";`, then list the chosen modules as
+Import the graph as a named package, for example from `tests/msgpack/modules.wfg`
+`package msgpack = "../../lib/msgpack";`, then list the chosen modules as
 dependencies. This document and experiment remain while this package is
 maintained here; move them with its tests when it becomes a separate project.
 The library files serve general binary serialization and move with the package.

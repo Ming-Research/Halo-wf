@@ -37,7 +37,7 @@ a host binds it by path:
 
 Halo's behavior is judged against Redis 7.2.16 and its bundled Lua 5.1 (PUC
 Lua 5.1.5 with Redis's patches) on x86-64 Linux with glibc. The oracle corpus
-in [research/experiments/halo-oracle](research/experiments/halo-oracle/)
+in [tests/halo-oracle](tests/halo-oracle/)
 records that reference's exact replies to scripts covering Lua 5.1's core
 semantics, the scripting API, the codec libraries and application scripts.
 
@@ -70,6 +70,7 @@ LLVM major the pinned release names (`make toolchain` installs it).
 
 ## Where to read
 
+- [tests](tests/): the gate's runners, hosts and oracle fixtures.
 - [research/investigations/halo](research/investigations/halo/): what the
   engine needs from the language ([DESIGN.md](research/investigations/halo/DESIGN.md))
   and the engine's design, work order and falsifiers

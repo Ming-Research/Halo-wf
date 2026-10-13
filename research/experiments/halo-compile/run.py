@@ -8,7 +8,7 @@ from pathlib import Path
 import argparse, difflib, hashlib, json, re, shutil, subprocess, tempfile, time
 
 import sys
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'tests'))
 from compiler_cache import add_arguments as cache_arguments, flags as cache_flags
 
 HERE = Path(__file__).resolve().parent
@@ -244,7 +244,7 @@ def main():
     a=ap.parse_args()
     if a.luac is None and a.lua_source is None:ap.error("--lua-source is required unless --luac is supplied")
     if a.sample is not None and a.sample <= 0:ap.error('--sample must be positive')
-    cases=[(str(p.relative_to(ROOT)),p.read_bytes(),False) for p in sorted((HERE.parent/'halo-oracle/scripts').rglob('*.lua'))]
+    cases=[(str(p.relative_to(ROOT)),p.read_bytes(),False) for p in sorted((ROOT/'tests/halo-oracle/scripts').rglob('*.lua'))]
     if not cases:raise RuntimeError('oracle corpus missing')
     cases += [(k,v,False) for k,v in programs().items()]
     cases += [(k,v,True) for k,v in malformed().items()]

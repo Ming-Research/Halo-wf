@@ -13,7 +13,7 @@ import tempfile
 import time
 
 import sys
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'tests'))
 from compiler_cache import add_arguments as cache_arguments, flags as cache_flags
 
 HERE = Path(__file__).resolve().parent
@@ -131,7 +131,7 @@ with tempfile.TemporaryDirectory(prefix='halo-lex-', dir='/private/tmp') as tmp:
         start = time.monotonic()
         run(['perl', ROOT / '.github/run-check.pl', 'halo-lex-build', a.compiler, '--graph', HERE / 'modules.wfg', '--entry', 'dump', '-o', halo] + cache_flags(a), cwd=ROOT)
         print(f'Whitefoot native build: {time.monotonic() - start:.3f}s', flush=True)
-    cases = [(str(f.relative_to(ROOT)), f.read_bytes()) for f in corpus_paths(ROOT / 'research/experiments/halo-oracle/scripts')]
+    cases = [(str(f.relative_to(ROOT)), f.read_bytes()) for f in corpus_paths(ROOT / 'tests/halo-oracle/scripts')]
     cases += tricky()
     cases = [(name, data, b'=fixture', 1) for name, data in cases]
     for i, chunk in enumerate([b'=literal', b'=' + b'x' * 79, b'=' + b'x' * 80, b'@' + b'p' * 72, b'@' + b'p' * 73, b'@' + b'path/' * 30, b'', b'one line', b'first\nsecond', b'first\rsecond', b'x' * 63, b'x' * 64, b'x' * 100]):
@@ -166,7 +166,7 @@ with tempfile.TemporaryDirectory(prefix='halo-lex-', dir='/private/tmp') as tmp:
         durations.append(time.monotonic() - start)
         tokens += sum(line.startswith(b'T\t') for line in expected.splitlines())
         errors += sum(line.startswith(b'E\t') for line in expected.splitlines())
-        corpus_files += name.startswith('research/')
+        corpus_files += name.startswith('tests/')
         diff = compare_dumps(expected, actual)
         if diff is not None:
             mismatches.append({'file': name, 'diff': diff})

@@ -10,7 +10,7 @@
 #                   (g++ -O2 -DNDEBUG -fno-math-errno), the CLI without
 #                   --codegen, so its interpreter runs every function
 # PUC Lua 5.1.5 comes from Redis 7.2.16 through the default version of
-# research/experiments/halo-oracle/fetch-redis.sh <dir>. <directory>/manifest.txt
+# tests/halo-oracle/fetch-redis.sh <dir>. <directory>/manifest.txt
 # records versions, digests, compilers and one compile line of each build.
 # Linux only (nproc, sha256sum); CI runs it.
 set -eu

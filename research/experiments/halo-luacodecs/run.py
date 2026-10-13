@@ -12,12 +12,12 @@ from collections import Counter
 from pathlib import Path
 
 import sys
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'tests'))
 from compiler_cache import add_arguments as cache_arguments, flags as cache_flags
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
-spec = importlib.util.spec_from_file_location('e2e', HERE.parent / 'halo-e2e/run.py')
+spec = importlib.util.spec_from_file_location('e2e', ROOT / 'tests/halo-e2e/run.py')
 e2e = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(e2e)
 
@@ -115,7 +115,7 @@ def corpus():
     for n in (4000,4001):
         add('cmsgpack',f'local t={{}}; for i=1,{n} do t[i]=1 end return #cmsgpack.pack(unpack(t))')
     for case in ('cmsgpack-binary','struct-integers','struct-strings-floats'):
-        source=(HERE.parent/'halo-oracle/scripts/libs'/(case+'.lua')).read_text()
+        source=(ROOT/'tests/halo-oracle/scripts/libs'/(case+'.lua')).read_text()
         lines=[]
         replaced=False
         for line in source.splitlines():
@@ -227,7 +227,7 @@ def main():
         binary=args.binary.resolve() if args.binary else scratch/'halo'
         build_seconds=0
         if not args.binary:
-            start=time.monotonic();build=subprocess.run([args.compiler,'--graph',str(HERE.parent/'halo-e2e/modules.wfg'),'--entry','test','-o',str(binary)]+cache_flags(args),cwd=ROOT,capture_output=True);build_seconds=time.monotonic()-start
+            start=time.monotonic();build=subprocess.run([args.compiler,'--graph',str(ROOT/'tests/halo-e2e/modules.wfg'),'--entry','test','-o',str(binary)]+cache_flags(args),cwd=ROOT,capture_output=True);build_seconds=time.monotonic()-start
             print(f'Halo build exit {build.returncode}, {build_seconds:.3f}s',flush=True)
             if build.returncode: print((build.stdout+build.stderr).decode());return 2
         wrapper=scratch/'reference.lua';wrapper.write_text(REFERENCE);chunk=scratch/'chunk.lua'

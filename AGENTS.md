@@ -28,7 +28,7 @@ When priorities conflict:
 ## Reference
 
 - The reference is Redis 7.2.16 with its bundled Lua 5.1 (PUC Lua 5.1.5 with
-  Redis's patches) on x86-64 Linux with glibc. `research/experiments/halo-oracle`
+  Redis's patches) on x86-64 Linux with glibc. `tests/halo-oracle`
   holds its recorded replies, which `.github/workflows/oracle-reference.yml`
   records on that platform; PUC's sources and Lua 5.1's test suite are
   further oracles, as is a format's specification for the JSON and
@@ -54,6 +54,8 @@ The upgrade's benchmark is
   Halo-wf areas (`halo-compat`, `halo-perf`, `halo-tools`); code and
   documents name an item by its key.
 - Halo's performance comparisons build both sides with full LTO.
+- Gate runners, hosts and oracle fixtures live in `tests/`; `research/`
+  holds experiments, measurements and records.
 - `make check`, the gate, is three groups (Makefile): core (the embedding
   probe, every oracle script at budgets 1, 7 and 1000, ordinary and under
   collector stress, the test host's double text against the table recorded on

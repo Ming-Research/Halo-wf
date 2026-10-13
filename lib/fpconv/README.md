@@ -31,7 +31,7 @@ Halo's `format_number` does.
 
 The caller applies its own rules around the conversion, and Halo's test host
 applies Redis's in
-[host.wf](../../research/experiments/halo-e2e/test/host.wf). For a double
+[host.wf](../../tests/halo-e2e/test/host.wf). For a double
 reply, Redis's `d2string` writes every NaN as `nan` whatever its sign, and
 the infinities and the zeros, itself; it writes an integral value no larger
 in magnitude than 2^62 as an integer (`double2ll`), and only then calls
@@ -41,7 +41,7 @@ stays `-nan` and -0 becomes `0`.
 
 ## Oracle table
 
-[redis-7.2.16.tsv](../../research/experiments/redis-double-text/redis-7.2.16.tsv)
+[redis-7.2.16.tsv](../../tests/redis-double-text/redis-7.2.16.tsv)
 holds one row per double, by its bit pattern, with what redis-server 7.2.16
 wrote for it:
 
@@ -73,7 +73,7 @@ ones) have other digits than the exact shortest.
 ## Check
 
 `make double-text`, part of the gate's core group, runs
-[check.py](../../research/experiments/redis-double-text/check.py). It first
+[check.py](../../tests/redis-double-text/check.py). It first
 requires the table's row count and SHA-256 digest to equal the ones it pins,
 so a table recorded again enters the gate only with both updated. Halo's
 end-to-end test program, run with `--double-text`, writes both texts of every
