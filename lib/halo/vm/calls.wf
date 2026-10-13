@@ -515,7 +515,7 @@ fn prepare_inner<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<
         }
       }
       Other() => {
-        let tm = metamethod(vm: vm, v: v, name: &calls_text_4[0_u64..6_u64]);
+        let tm = metamethod(vm: vm, v: v, key: vm^.metamethod_names[metamethod_call]);
         match func_of(v: tm) {
           Other() => {
             let ignored = call_type_error(code: code, consts: consts, vm: vm, v: v, func: fslot, return_pc: return_pc);

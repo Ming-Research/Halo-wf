@@ -98,7 +98,7 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
               set pc = next;
               continue;
             }
-            set step = instruction_get_table_k::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, tv: tv^, kv: kv^);
+            set step = instruction_get_table_k_miss::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, tv: tv^, kv: kv^);
           }
           Err(error: failure) => {
             set step = failure;

@@ -296,7 +296,8 @@ fn instruction_get_global<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &B
   let ra = register_slot(stack: stack, base: base, operand: av);
   let t = Value::Tab(h: vm^.globals);
   let key = constant_value(consts: consts, kbase: kbase, operand: kv);
-  let operation = SlowOp::Get();
+  let raw_miss = False();
+  let operation = SlowOp::Get(raw_miss: raw_miss);
   let nil = Value::Nil();
   let expect = False();
   set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
@@ -377,7 +378,8 @@ fn instruction_get_table_r<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &
   if bnot(atom31) {
     set stack^.inner[ra] = value;
   } else {
-    let operation = SlowOp::Get();
+    let raw_miss = False();
+    let operation = SlowOp::Get(raw_miss: raw_miss);
     let nil = Value::Nil();
     let expect = False();
     set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
@@ -404,11 +406,12 @@ fn instruction_get_table_r<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &
   return Step::Error();
 }
 
-fn instruction_get_table_k<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8, tv: u8, kv: u8) -> r: Step reads(code), reads(consts), writes(stack), writes(vm), writes(env) contract {
+fn instruction_get_table_k_miss<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8, tv: u8, kv: u8) -> r: Step reads(code), reads(consts), writes(stack), writes(vm), writes(env) contract {
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
+  doc "Called only after fast_instruction_get_table_k reports a raw miss for these operands; no heap mutation, callback or safepoint intervenes, so the shared slow executor starts from that known miss.";
   let n = code^.inner.len;
   let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
@@ -417,20 +420,15 @@ fn instruction_get_table_k<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &
   let rt = register_slot(stack: stack, base: base, operand: tv);
   let t = stack^.inner[rt];
   let key = constant_value(consts: consts, kbase: kbase, operand: kv);
-  let value = table_get(heap: &vm^.heap, t: t, key: key);
-  let atom34 = is_nil(v: value);
-  if bnot(atom34) {
-    set stack^.inner[ra] = value;
-  } else {
-    let operation = SlowOp::Get();
-    let nil = Value::Nil();
-    let expect = False();
-    set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
-    let operand_b = cvt::<u8, u64>(tv);
-    set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: t, c: key, v: nil, breg: operand_b, creg: unlimited);
-    if frame_limit > stack^.inner.len {
-      return Step::Error();
-    }
+  let raw_miss = True();
+  let operation = SlowOp::Get(raw_miss: raw_miss);
+  let nil = Value::Nil();
+  let expect = False();
+  set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
+  let operand_b = cvt::<u8, u64>(tv);
+  set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: t, c: key, v: nil, breg: operand_b, creg: unlimited);
+  if frame_limit > stack^.inner.len {
+    return Step::Error();
   }
   if vm^.suspended {
     return Step::Budget();
@@ -726,7 +724,8 @@ fn instruction_self_r<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   if bnot(atom51) {
     set stack^.inner[ra] = value;
   } else {
-    let operation = SlowOp::Get();
+    let raw_miss = False();
+    let operation = SlowOp::Get(raw_miss: raw_miss);
     let nil = Value::Nil();
     let expect = False();
     set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
@@ -786,7 +785,8 @@ fn instruction_self_k<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   if bnot(atom54) {
     set stack^.inner[ra] = value;
   } else {
-    let operation = SlowOp::Get();
+    let raw_miss = False();
+    let operation = SlowOp::Get(raw_miss: raw_miss);
     let nil = Value::Nil();
     let expect = False();
     set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
@@ -3856,7 +3856,8 @@ fn instruction_get_global_wide<interface Host<E>>(code: &Box<Slots<Cell>>, const
   }
   let kindex = kbase + k64;
   let key = consts^.inner[kindex];
-  let operation = SlowOp::Get();
+  let raw_miss = False();
+  let operation = SlowOp::Get(raw_miss: raw_miss);
   let nil = Value::Nil();
   let expect = False();
   set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
@@ -3982,7 +3983,7 @@ fn fast_instruction_get_table_k(code: &Box<Slots<Cell>>, consts: &Box<Slots<Valu
   ensures when Ok(value: cursor): cursor.pc < code^.inner.len;
   ensures when Ok(value: cursor): base + 256_u64 <= stack^.inner.len;
 } {
-  doc "Reads a present constant key through string-specialized or generic lookup; misses retain the slow instruction path.";
+  doc "Reads a present constant key through string-specialized or generic lookup; handled False guarantees a raw miss with stack and VM unchanged, for instruction_get_table_k_miss.";
   let n = code^.inner.len;
   let next = pc + 1_u64;
   let ra = register_slot(stack: stack, base: base, operand: av);
