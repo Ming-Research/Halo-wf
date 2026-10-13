@@ -4020,6 +4020,154 @@ fn fast_instruction_get_table_k(code: &Box<Slots<Cell>>, consts: &Box<Slots<Valu
   return Err<FastCursor, Step>(error: failure);
 }
 
+fn fast_instruction_self_k(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, pc: u64, base: u64, kbase: u64, av: u8, bv: u8, kv: u8) -> r: Result<FastCursor, Step> reads(code), reads(consts), writes(stack), writes(vm) contract {
+  requires pc < code^.inner.len;
+  requires base + 256_u64 <= stack^.inner.len;
+  requires kbase + 256_u64 <= consts^.inner.len;
+  ensures when Ok(value: cursor): cursor.pc < code^.inner.len;
+  ensures when Ok(value: cursor): base + 256_u64 <= stack^.inner.len;
+} {
+  doc "Copies the receiver before writing the method on a raw hit; misses and an invalid receiver destination retain the slow instruction path.";
+  let n = code^.inner.len;
+  let next = pc + 1_u64;
+  let a = cvt::<u8, u64>(av);
+  if a >= 255_u64 {
+    let handled = False();
+    let cursor = FastCursor(pc: pc, handled: handled);
+    return Ok<FastCursor, Step>(value: cursor);
+  }
+  let ra = base + a;
+  let t = register_value(stack: stack, base: base, operand: bv);
+  let key = constant_value(consts: consts, kbase: kbase, operand: kv);
+  let value = Value::Nil();
+  match str_of(v: key) {
+    Handle(h: handle) => {
+      set value = table_get_str(heap: &vm^.heap, t: t, h: handle);
+    }
+    NoHandle() => {
+      set value = table_get(heap: &vm^.heap, t: t, key: key);
+    }
+  }
+  let absent = is_nil(v: value);
+  if bnot(absent) {
+    let j = ra + 1_u64;
+    set stack^.inner[j] = t;
+    set stack^.inner[ra] = value;
+  } else {
+    let handled = False();
+    let cursor = FastCursor(pc: pc, handled: handled);
+    return Ok<FastCursor, Step>(value: cursor);
+  }
+  if vm^.suspended {
+    let failure = Step::Budget();
+    return Err<FastCursor, Step>(error: failure);
+  }
+  if next < n {
+    let handled = True();
+    let cursor = FastCursor(pc: next, handled: handled);
+    return Ok<FastCursor, Step>(value: cursor);
+  }
+  let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+  let failure = Step::Error();
+  return Err<FastCursor, Step>(error: failure);
+}
+
+fn fast_instruction_get_global(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, pc: u64, base: u64, kbase: u64, av: u8, kv: u8) -> r: Result<FastCursor, Step> reads(code), reads(consts), writes(stack), writes(vm) contract {
+  requires pc < code^.inner.len;
+  requires base + 256_u64 <= stack^.inner.len;
+  requires kbase + 256_u64 <= consts^.inner.len;
+  ensures when Ok(value: cursor): cursor.pc < code^.inner.len;
+  ensures when Ok(value: cursor): base + 256_u64 <= stack^.inner.len;
+} {
+  doc "Reads a present global through string-specialized or generic lookup; misses retain the slow instruction path.";
+  let n = code^.inner.len;
+  let next = pc + 1_u64;
+  let ra = register_slot(stack: stack, base: base, operand: av);
+  let t = Value::Tab(h: vm^.globals);
+  let key = constant_value(consts: consts, kbase: kbase, operand: kv);
+  let value = Value::Nil();
+  match str_of(v: key) {
+    Handle(h: handle) => {
+      set value = table_get_str(heap: &vm^.heap, t: t, h: handle);
+    }
+    NoHandle() => {
+      set value = table_get(heap: &vm^.heap, t: t, key: key);
+    }
+  }
+  let absent = is_nil(v: value);
+  if bnot(absent) {
+    set stack^.inner[ra] = value;
+  } else {
+    let handled = False();
+    let cursor = FastCursor(pc: pc, handled: handled);
+    return Ok<FastCursor, Step>(value: cursor);
+  }
+  if vm^.suspended {
+    let failure = Step::Budget();
+    return Err<FastCursor, Step>(error: failure);
+  }
+  if next < n {
+    let handled = True();
+    let cursor = FastCursor(pc: next, handled: handled);
+    return Ok<FastCursor, Step>(value: cursor);
+  }
+  let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+  let failure = Step::Error();
+  return Err<FastCursor, Step>(error: failure);
+}
+
+fn fast_instruction_get_global_wide(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, pc: u64, base: u64, kbase: u64, av: u8, kv: u32) -> r: Result<FastCursor, Step> reads(code), reads(consts), writes(stack), writes(vm) contract {
+  requires pc < code^.inner.len;
+  requires base + 256_u64 <= stack^.inner.len;
+  requires kbase + 256_u64 <= consts^.inner.len;
+  ensures when Ok(value: cursor): cursor.pc < code^.inner.len;
+  ensures when Ok(value: cursor): base + 256_u64 <= stack^.inner.len;
+} {
+  doc "Reads a present wide-key global; misses and an out-of-range constant retain the slow instruction path.";
+  let n = code^.inner.len;
+  let next = pc + 1_u64;
+  let ra = register_slot(stack: stack, base: base, operand: av);
+  let t = Value::Tab(h: vm^.globals);
+  let k64 = cvt::<u32, u64>(kv);
+  let room = consts^.inner.len - kbase;
+  if k64 >= room {
+    let handled = False();
+    let cursor = FastCursor(pc: pc, handled: handled);
+    return Ok<FastCursor, Step>(value: cursor);
+  }
+  let kindex = kbase + k64;
+  let key = consts^.inner[kindex];
+  let value = Value::Nil();
+  match str_of(v: key) {
+    Handle(h: handle) => {
+      set value = table_get_str(heap: &vm^.heap, t: t, h: handle);
+    }
+    NoHandle() => {
+      set value = table_get(heap: &vm^.heap, t: t, key: key);
+    }
+  }
+  let absent = is_nil(v: value);
+  if bnot(absent) {
+    set stack^.inner[ra] = value;
+  } else {
+    let handled = False();
+    let cursor = FastCursor(pc: pc, handled: handled);
+    return Ok<FastCursor, Step>(value: cursor);
+  }
+  if vm^.suspended {
+    let failure = Step::Budget();
+    return Err<FastCursor, Step>(error: failure);
+  }
+  if next < n {
+    let handled = True();
+    let cursor = FastCursor(pc: next, handled: handled);
+    return Ok<FastCursor, Step>(value: cursor);
+  }
+  let ignored = raise_text(vm: vm, text: &dispatch_text_0[0_u64..16_u64]);
+  let failure = Step::Error();
+  return Err<FastCursor, Step>(error: failure);
+}
+
 fn fast_table_can_insert(vm: &Vm, t: Value, key: Value) -> r: Bool reads(vm) {
   doc "Allows a valid missing-key raw store only into a live writable table without a metatable; invalid keys need the full handler's fault location.";
   let nil_key = is_nil(v: key);

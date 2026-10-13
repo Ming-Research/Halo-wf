@@ -62,13 +62,39 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
         set step = instruction_set_upval::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, uv: uv^);
       }
       GetGlobal(a: av, k: kv) => {
-        set step = instruction_get_global::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, kv: kv^);
+        let continuation = fast_instruction_get_global(code: code, consts: consts, stack: stack, vm: vm, pc: pc, base: base, kbase: kbase, av: av^, kv: kv^);
+        match continuation {
+          Ok(value: cursor) => {
+            if cursor.handled {
+              let next = cursor.pc;
+              set pc = next;
+              continue;
+            }
+            set step = instruction_get_global::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, kv: kv^);
+          }
+          Err(error: failure) => {
+            set step = failure;
+          }
+        }
       }
       SetGlobal(a: av, k: kv) => {
         set step = instruction_set_global::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, kv: kv^);
       }
       GetGlobalX(a: av, k: kv) => {
-        set step = instruction_get_global_wide::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, kv: kv^);
+        let continuation = fast_instruction_get_global_wide(code: code, consts: consts, stack: stack, vm: vm, pc: pc, base: base, kbase: kbase, av: av^, kv: kv^);
+        match continuation {
+          Ok(value: cursor) => {
+            if cursor.handled {
+              let next = cursor.pc;
+              set pc = next;
+              continue;
+            }
+            set step = instruction_get_global_wide::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, kv: kv^);
+          }
+          Err(error: failure) => {
+            set step = failure;
+          }
+        }
       }
       SetGlobalX(a: av, k: kv) => {
         set step = instruction_set_global_wide::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, kv: kv^);
@@ -150,7 +176,20 @@ fn run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, s
         set step = instruction_self_r::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
       }
       SelfK(a: av, b: bv, k: kv) => {
-        set step = instruction_self_k::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, kv: kv^);
+        let continuation = fast_instruction_self_k(code: code, consts: consts, stack: stack, vm: vm, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, kv: kv^);
+        match continuation {
+          Ok(value: cursor) => {
+            if cursor.handled {
+              let next = cursor.pc;
+              set pc = next;
+              continue;
+            }
+            set step = instruction_self_k::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, kv: kv^);
+          }
+          Err(error: failure) => {
+            set step = failure;
+          }
+        }
       }
       AddRR(a: av, b: bv, c: cv) => {
         let continuation = fast_instruction_add_rr(code: code, consts: consts, stack: stack, vm: vm, pc: pc, base: base, kbase: kbase, av: av^, bv: bv^, cv: cv^);
