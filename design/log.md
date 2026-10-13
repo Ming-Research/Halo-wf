@@ -4,6 +4,14 @@ Newest first. One entry per approved change of the tree: a dated title,
 `Nodes:` naming every node changed, `Owner-approved:` and `Summary:`; the
 owner-wide instructions' *Log format* owns the form.
 
+## 2026-10-13 Moving existing execution buffers on a coroutine switch is not new allocation
+
+Nodes: halo/heap
+
+Owner-approved: 2026-10-13 on the WF status board. Under item "Switching coroutines is no longer counted as new allocation; the producer-consumer program no longer collects about every 10 switches": card "Approve the change to the heap accounting decision in the design tree: moving existing execution buffers on a coroutine switch is no longer counted as new allocation?", option A, "approve the change: moving existing buffers on a switch is not new allocation, and the refused approach goes into the instead-of part; merge after the 14900K timing and the full collector controls both pass; if either fails, revert and keep the measurements in the record".
+
+Summary: Main's execution buffers, parked in its thread cell while a coroutine runs, count toward the logical bytes and the byte limit but are moved in and out without touching the allocation-since-collection counter; new coroutine storage and real capacity growth still count toward the trigger. Counting each move as new allocation made a producer-consumer program that allocates nothing in Lua collect 10,000 times in 100,000 switches; with moves uncounted it collects 0 times on the same host build ([result](../research/experiments/halo-bench/RESULTS.md#coroutine-switches-are-not-counted-as-allocation)).
+
 ## 2026-10-13 A Lua return with no open upvalue to close costs one comparison
 
 Nodes: halo/calls/return-upvalues
