@@ -5339,6 +5339,12 @@ The pin moves to `wf-d837678c6905`; status-board item halo-pin-357.
 
 ## Fastest-interpreter baseline
 
+The PUC numbers below were measured on Redis 7.0.15's build; the baseline
+now uses Redis 7.2.16's. Across the 13 programs, 7.2.16 was 0.2% slower
+by geometric mean and sort was 2.4% slower than 7.0.15
+([comparison](#puc-515-from-redis-7015-against-redis-7216s)). The recorded
+numbers below are unchanged.
+
 ### Question, recorded before it runs
 
 The owner's performance goal is for Halo to be the fastest Lua interpreter,
@@ -5729,3 +5735,15 @@ integer-key table lookup (`luaH_getnum`, B5), which sort exercises; the
 fastest-interpreter baseline and every earlier record keep their 7.0.15
 numbers. This is one machine, one build with gcc 15.2.0 at `-O2`, and 21
 rounds.
+
+### Owner decision
+
+On 2026-10-13, the owner chose option A on status-board card
+`halo-card-baseline-sort`: "switch to 7.2.16, so the performance baseline
+and the compatibility reference use one Lua; keep 7.0.15's sort number in
+the performance record and report sort against both, so 7.2.16's 2.4%
+slower sort is not hidden." From now on, the PUC column in new performance
+reports is Redis 7.2.16's build. A report on sort also lists 7.0.15's sort
+time from this comparison (0.2916 s, against 7.2.16's 0.2985 s) and this
+comparison's ratio r = 1.024 (7.2.16 / 7.0.15). Earlier measurements keep
+their recorded numbers and build identities.
