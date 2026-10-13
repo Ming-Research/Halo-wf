@@ -181,7 +181,7 @@ fn unwind(vm: &Vm, stack: &Box<Slots<Value>>) -> r: Step writes(vm), writes(stac
 }
 
 fn enter_lua(vm: &Vm, stack: &Box<Slots<Value>>, h: u32, func: u64, argc: u64, wanted: i64, return_pc: u64, tail: Bool) -> r: Step writes(vm), writes(stack) {
-  doc "Pushes a Lua frame. A tail call replaces the calling frame and keeps its destination, result count and return point, and the new frame counts the calls it replaced as OP_TAILCALL increments ci->tailcalls: the replaced frame's count plus one.";
+  doc "Pushes a Lua frame. A tail call replaces the calling frame and keeps its destination, result count and return point, and the new frame counts the calls it replaced as OP_TAILCALL increments ci->tailcalls: the replaced frame's count plus one. A frame whose base plus 256 register slots would reach the largest u64 position raises stack overflow; the destination and a vararg prototype's moved base are checked against that limit, so every position computed after them is a plain sum.";
   let hi = cvt::<u32, u64>(h);
   if hi < vm^.heap.closures.inner.len {
     if vm^.heap.closures.inner[hi].live {
@@ -212,20 +212,25 @@ fn enter_lua(vm: &Vm, stack: &Box<Slots<Value>>, h: u32, func: u64, argc: u64, w
             set tailcalls = old.tailcalls +sat 1_u32;
           }
         }
-        let args = dest +sat 1_u64;
+        if dest >= 18446744073709551358_u64 {
+          let ignored = raise_text(vm: vm, text: &calls_text_0[0_u64..14_u64]);
+          return Step::Error();
+        }
+        let args = dest + 1_u64;
         let actual = argc;
         if actual < fixed {
           set actual = fixed;
         }
         let b = args;
         if p.is_vararg {
-          set b = args +sat actual;
+          let moved = args +sat actual;
+          if moved >= 18446744073709551359_u64 {
+            let ignored = raise_text(vm: vm, text: &calls_text_0[0_u64..14_u64]);
+            return Step::Error();
+          }
+          set b = moved;
         }
-        let room = b +sat 256_u64;
-        if room == unlimited {
-          let ignored = raise_text(vm: vm, text: &calls_text_0[0_u64..14_u64]);
-          return Step::Error();
-        }
+        let room = b + 256_u64;
         ensure_stack(stack: stack, size: room);
         if tail {
           let total = argc +sat 1_u64;
@@ -240,16 +245,16 @@ fn enter_lua(vm: &Vm, stack: &Box<Slots<Value>>, h: u32, func: u64, argc: u64, w
             }
           }
         }
-        for (i in argc..actual) {
-          let j = args +sat i;
+        for (i in argc..fixed) {
+          let j = args + i;
           if j < stack^.inner.len {
             set stack^.inner[j] = Value::Nil();
           }
         }
         if p.is_vararg {
           for (i in 0_u64..fixed) {
-            let s = args +sat i;
-            let d = b +sat i;
+            let s = args + i;
+            let d = b + i;
             if s < stack^.inner.len {
               if d < stack^.inner.len {
                 let v = stack^.inner[s];
@@ -261,16 +266,16 @@ fn enter_lua(vm: &Vm, stack: &Box<Slots<Value>>, h: u32, func: u64, argc: u64, w
         }
         let maxstack = cvt::<u8, u64>(p.maxstack);
         for (i in fixed..maxstack) {
-          let j = b +sat i;
+          let j = b + i;
           if j < stack^.inner.len {
             set stack^.inner[j] = Value::Nil();
           }
         }
-        let top = b +sat maxstack;
-        let vb = args +sat fixed;
+        let top = b + maxstack;
+        let vb = args + fixed;
         let vc = 0_u64;
         if p.is_vararg {
-          set vc = actual -sat fixed;
+          set vc = actual - fixed;
         }
         let kb = cvt::<u32, u64>(p.kbase);
         let start = cvt::<u32, u64>(p.start);
