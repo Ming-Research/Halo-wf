@@ -4,6 +4,14 @@ Newest first. One entry per approved change of the tree: a dated title,
 `Nodes:` naming every node changed, `Owner-approved:` and `Summary:`; the
 owner-wide instructions' *Log format* owns the form.
 
+## 2026-10-13 A Lua return with no open upvalue to close costs one comparison
+
+Nodes: halo/calls/return-upvalues
+
+Owner-approved: 2026-10-13 on the WF status board. Under item "Every slow spot in Halo's own source is made faster until each program beats PUC Lua 5.1.5": card "Approve that each execution state records an upper bound of open-upvalue positions, so a function return with nothing to close compares once?", option A, "agree that each execution state records an upper bound of open-upvalue stack positions and a return with nothing to close compares once; add the corresponding design decision, and after implementing and measuring, put up a separate card approving the design-tree change; measure it together with not copying the whole frame, kept by the fib at least 3% faster rule"; and card "Approve the design-tree change of the return change that decides by an upper bound whether any upvalue needs closing?", option A, "approve: the node becomes an approved decision, the approval record is written and the pull request merges once its gate is green".
+
+Summary: A Lua return or a tail call that replaces its frame used to inspect the open-upvalue list, through checked cell loads, even when nothing needed closing. Each execution state, the main one and every coroutine, now keeps an exclusive upper bound on its open-upvalue stack positions, saved and restored on a switch; a frame whose base is at or above it skips closing after one comparison. The bound may be too high, costing a scan, but never too low. Measured together with the return reading only the fields it needs instead of copying the whole frame, fib ran 6.34% faster on the 14900K and no other kernel slowed beyond its noise (`research/experiments/halo-bench/RESULTS.md`, "A cheaper Lua return"). A scan of the list on every return, a parallel buffer of positions and position-and-handle entries are recorded as rejected.
+
 ## 2026-10-12 Halo's reference moves to Redis 7.2.16, with its double texts, error levels and table protection
 
 Nodes: halo, halo/calls, halo/double-text, halo/embedding/table-protection, halo/heap/collector-validation, halo/operand-names
