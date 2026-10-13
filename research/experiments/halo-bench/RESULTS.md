@@ -6801,9 +6801,9 @@ Outcome: rejected. List is only 1.5% faster than the base (threshold 3%, toleran
 
 ## Metamethod names interned once and the known raw miss passed to the slow path
 
-Status: implemented, unmeasured. The question, prediction, comparison,
-falsifier and keep rule below were recorded before measurement. No CI,
-callgrind or timing result is claimed for this revision.
+Status: measured and rejected (see the split run result); the source change
+is reverted. The question, prediction, comparison, falsifier and keep rule
+below were recorded before measurement.
 
 ### Question
 
