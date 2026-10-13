@@ -435,8 +435,10 @@ H3 is a Whitefoot checker gap kept in Whitefoot's `docs/todo.md`.
 
 Status: P3 below is implemented on that branch (`open_limit` in the execution
 record and the `Vm`; the `RETURN` arm and a Lua tail call's frame pop test it).
-It is not measured and not in the design tree; the owner's card and the
-measurement decide whether it stays.
+The owner approved its direction on the board (the open-limit card, option
+A); its instruction count is recorded in RESULTS.md ("A cheaper Lua
+return"), it is not yet timed, and its design-tree node waits for the
+timing and a second card.
 
 Problem. Callgrind of fib(32) at main `56878ac` (hosted x86-64, full LTO;
 [A cheaper Lua return](../../experiments/halo-bench/RESULTS.md#a-cheaper-lua-return))
@@ -549,8 +551,7 @@ reads a closure over its own local (fails if the limit is not exchanged
 per execution). Comparison: base against branch with a twin of the base,
 built by the same Whitefoot release, every timed process on CPU 2 of the
 14900K, six interleaved pairs over the seven kernels as `run.py` runs them.
-Kept only if: fib's median falls at least 2%, by more than both ranges and
-the twin's difference; no other kernel is slower beyond its larger range and
-the twin's difference; and `make check` passes. The 2% bar is below the 3%
-used for the frame change because the expected count saving is 2.6% to 2.9%;
-a smaller fall is reverted with its measurements kept.
+It is timed together with the frame change as one change, under the
+criterion that RESULTS.md's "A cheaper Lua return" states (fib at least 3%
+faster); this proposal's earlier 2% bar is withdrawn, since a smaller change
+is no reason for a lower threshold.
