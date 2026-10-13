@@ -6419,3 +6419,202 @@ establish the required saving on the 14900K under this workload and setup.
 The earlier callgrind whole-program count fell from 884.6 to 846.6
 instructions per Lua call; that count reduction did not translate into
 the required time saving on this machine.
+
+## Where List and Towers spend their instructions
+
+Status: attribution only; no code changed. Savings below are estimates, not
+measurements.
+
+### Question
+
+In [the fastest-interpreter baseline](#fastest-interpreter-baseline) on the
+14900K, Halo takes 1.70 times PUC Lua 5.1.5's time on List and 1.61 times on
+Towers. Where do Halo's extra instructions go, and which changes would remove
+the largest shares? A finding that Halo's instruction count per opcode were
+already at PUC's would reject the instruction-count reading of the gap.
+
+### Method
+
+Callgrind instruction counts (`Ir` only) on a GitHub-hosted x86-64 runner,
+both engines built with full LTO, the pinned compiler wf-d837678c6905, valgrind
+3.22.0, at head d3746c1 (main 1f90750 plus the temporary workflow
+`.github/workflows/awfy-profile.yml`). Both engines ran identical Lua bundles
+at reduced iterations: List 200, Towers 60. The run is
+https://github.com/Ming-Research/Halo-wf/actions/runs/38367862157; its
+`awfy-profile` artifact holds the callgrind outputs, the bundles and the
+checksums. The workflow is removed from the branch; the run and artifact keep
+the evidence. Neither binary has debug info, and the artifact holds no
+binary, so no machine code was inspected.
+
+Whole-program counts:
+
+| Program | Halo | PUC 5.1.5 | Halo / PUC |
+|---|---:|---:|---:|
+| List | 3,308,470,900 | 1,828,195,347 | 1.81 |
+| Towers | 3,583,098,494 | 1,976,179,980 | 1.81 |
+
+The instruction ratio (1.81) is higher than the time ratios (1.70, 1.61), so
+instruction counts overstate the gap; see the timing caveat.
+
+Halo's call counts per `arm.N` function are exact opcode counts, because
+callgrind treats the tail jumps between dispatch arms as calls. Arm N is the
+N-th arm of the match in `lib/halo/vm/dispatch.wf`, counted from 0 (for
+example 3 LoadBool, 12 GetTableK, 19 SelfK, 48 Jmp, 61 TestJmp, 63 Call,
+65 Return). The mapping is checked two ways: the arm counts sum to PUC's
+dispatch count (26,754,091 against 26,760,290 for List; 21,362,011 against
+21,362,010 for Towers), and the arm-to-arm call edges match the loops'
+bytecode.
+
+PUC's `luaV_execute` was split in two ways. Measured: its 18-instruction
+block that runs once per instruction (the dispatch), and every helper
+function (`luaV_gettable`, `luaH_get`, `luaD_precall`, ...). Inferred: case
+bodies, matched to opcodes where a block's execution count equals Halo's
+opcode count; 47M (List) and 22M (Towers) instructions stay unassigned.
+
+### Result: instructions by category
+
+List: gap 1,480M instructions.
+
+| Category | Halo (M) | PUC counterpart (M) | Difference (M) |
+|---|---:|---:|---:|
+| Table reads, `GetTableK` and `SelfK` (8.78M reads) | 1,659 | 1,050 | +609 |
+| ... of which misses through `__index` (670,400) | 562 (838 each) | ~57 (~85 each, inferred) | +505 |
+| `TestJmp` (8.49M) | 484 (57 each) | 259 (~30.5 each) | +224 |
+| `Jmp` (3.61M, all backward) | 274 (76 each) | 76 (21 each) | +199 |
+| Lua calls and returns (1.14M) | 760 (~665 each) | 273 (~240 each) | +488 |
+| `Move` (3.10M) | 71 (23 each) | 84 (27 each) | -12 |
+| `LoadBool` (562K) | 33 | 18 | +15 |
+| Allocation, collection, other | ~27 | ~71 incl. unassigned | ~-43 |
+
+Towers: gap 1,607M instructions.
+
+| Category | Halo (M) | PUC counterpart (M) | Difference (M) |
+|---|---:|---:|---:|
+| Calls: 1.97M Lua, 0.49M native `assert` | 1,534 (Lua ~647 each, `assert` ~530 each) | 575 | +959 |
+| Table stores (2.46M) | 726 (307, 252, 357 for `SetTableKR`, `RR`, `KK`) | 346 (~140 each) | +380 |
+| Table reads (7.35M) | 1,040 | 782 | +257 |
+| ... `GetGlobal` of `assert` (491K) | 146 (297 each) | ~46 | +100 |
+| ... `SelfK` (1.97M) | 323 (164 each) | ~207 | +116 |
+| Arithmetic, compares, tests, jumps | 189 | 134 | +55 |
+| `Move`, unassigned, other | ~81 | ~126 | -45 |
+
+Upvalues, allocation and collection are under 0.5% of either engine's count in
+both programs. Dispatch is not the problem: `Move` costs Halo 23 instructions
+including its dispatch, against 27 for PUC (18 of them dispatch). Reads that
+find their key cost about the same: a `GetTableK` hit is about 118 in Halo
+(68 in the arm plus about 50 in `table_get_str`) against 107 to 113 in PUC.
+
+### What the hot loops do
+
+List: `is_shorter_than` loops `while y_tail do ... x_tail = x_tail.next;
+y_tail = y_tail.next end`, each pass 2 `TestJmp`, 2 `GetTableK "next"` and one
+backward `Jmp`. `Element.new` builds `{val = v, next = nil}`, so `next` is never
+stored; reading `.next` on the last element misses, follows the metatable's
+`__index` (the `Element` table) and misses again. That happens 670,400 times,
+8.8% of reads (PUC's `luaT_gettm` count, 679,500, agrees).
+
+Towers: about 2M method calls (`move_disks`, `move_top_disk`, `push_disk`,
+`pop_disk_from`) with field stores (`disk.next = top`, `self.piles[pile] =
+disk`, `self.moves_done = ... + 1`). Every pop calls `assert(top, ...)`, a
+global read plus a native call. About half of the `disk.next = top` stores hit
+a key left behind with a nil value.
+
+### Causes at main 1f90750
+
+1. **A raw miss with an `__index` table costs about 838 instructions in Halo,
+   about 85 in PUC.** Measured parts: the fast `GetTableK` reports the miss as
+   not handled (`lib/halo/vm/handlers.wf:4005`; the miss blocks cost 108 more
+   than the hit path, 72M in all); the full `instruction_get_table_k` looks the
+   key up again (`handlers.wf:420`, 97 per miss, 65M); `slow` looks it up a
+   third time (`lib/halo/vm/slow.wf:398`, about 92 per miss, 62M); `metamethod`
+   hashes and interns `"__index"` on every miss (`slow.wf:140`; 678,917 calls
+   to `intern` at 199 each, 135M; PUC interns its metamethod names once at
+   start-up); and `slow` itself costs 157 per call, part of it building
+   `CallbackPlan`, 109M.
+2. **Arms that end through `Step` pay about 30 more instructions than arms that
+   continue the loop directly.** `TestJmp` (`vm/dispatch.wf:408`) and `Jmp`
+   (`dispatch.wf:317`) return `Step::Jump(pc, base, kbase)`, and the shared exit
+   `checked_step` (`dispatch.wf:454`, `vm/calls.wf:979`) re-tests five
+   conditions on the stack and constant windows that these arms never changed.
+   Measured: `Move` (continues directly) 23, `TestJmp` 57, `LoadBool` 58,
+   `SelfK` 122, against a `GetTableK` hit at 68. Every backward `Jmp` also runs
+   the budget charge and the collection-due test (`handlers.wf:2429-2440`),
+   all of its 76 instructions on every execution.
+3. **Stores look the key up two or three times.**
+   `fast_instruction_set_table_kr` (`handlers.wf:4134`) calls `table_get`, then
+   `writable_assign`, which reaches `table_set` and its `node_find`
+   (`lib/halo/heap/tables.wf:878`); a key retained with a nil value also runs
+   `fast_table_can_insert` first. `SetTableKK` has no fast variant and ends
+   through `Step` (357 per store). PUC's `luaV_settable` does one `luaH_set`.
+4. **`GetGlobal` always goes through `slow`** (`handlers.wf:303`), which builds
+   `CallbackPlan`: 297 per read, against about 100 in PUC.
+5. **The Lua call path is about 686 instructions per call in List against about
+   240 in PUC.** Halo: `Call` arm 113, `prepare` 83, `native_binding` 25,
+   `enter_lua` 239, `push_frame` 40, `ensure_stack` 11, `Return` arm 88,
+   `finish` 87. PUC: `luaD_precall` 98, `luaD_poscall` 41, `luaF_close` 17,
+   about 85 in `luaV_execute`. Inside `enter_lua`, the nil-fill loop
+   (`calls.wf:295-300`, `for (i in fixed..maxstack)` with a `+sat` index and a
+   length test) runs at 23 instructions per slot, 65M in List and 90M in
+   Towers; three straight blocks of 38, 43 and 46 instructions copy the
+   prototype and build the 12-field, 88-byte `Frame` (`calls.wf:228`, `:309`).
+
+### Candidate changes
+
+Savings are measured counts multiplied by an inferred target cost for the new
+path; every figure is an estimate to be confirmed by a callgrind count of the
+change before any timing. R2 would use the direct-continue form that `Move` and
+`ForLoop` already use (helper returns `Result<u64, Step>` with `next < code
+length` proven); `ForLoop` (`dispatch.wf:423-434`, helper `handlers.wf:3467`)
+is the template for the backward `Jmp`, including the budget charge and
+`collect_if_due`.
+
+| Id | Change | Estimated saving | Risk and notes |
+|---|---|---|---|
+| R2 | `TestJmp`, `Jmp`, `LoadBool` (and `TestSetJmp`) to the direct-continue form | List ~358M (10.8%): 27 x 8.49M, 31 x 3.61M, 17M. Towers ~30M | Low. Only `np < code length` of `checked_step`'s tests must be kept; `collect_if_due` already ensures the stack length is unchanged. Compare-jumps without a fast variant (`EqJmpRR`, `LtJmpRR`, ...) are under 0.1% here and optional. |
+| R1 | Follow an `__index` table chain in the fast path with names interned once; non-table `__index`, function `__index` and too many hops go to `slow` | List ~488M (14.7%; 33% of the gap): (838 - ~110) x 670,400. Towers ~2M | Medium; needs a design-tree change and an owner card. Must match `luaV_gettable`; interned names must be collector roots. Smaller form without a design change (intern once, pass "raw miss known"): ~262M. |
+| R5 | Fast `SelfK` that continues directly | ~50 per op: List 57M, Towers 98M | Low. |
+| R4 | Fast `GetGlobal` via `table_get_str` on the globals table; miss stays in `slow` | Towers ~112M: (297 - ~70) x 491K | Low. |
+| R3 | One lookup per store, plus a fast `SetTableKK` | Towers ~357M (10%): 307/252/357 to ~150. List ~4M | Medium. Nil-valued key under `__newindex`, read-only refusal and its error location, NaN and nil keys, and the `flags` reset must stay as today. |
+| R6 | Direct Lua-callee entry (pending on `claude/halo-beat-puc-fib`, not on main) | List ~100M, Towers ~173M (88 per call) | Same item as the pending direct call, not new. |
+| R7 | Cheaper native call for `assert` (~530 against ~170-220) | Towers ~100-130M | `library_base` not read; inferred. |
+| R8 | Remaining call costs: nil fill (23 per slot), double `Frame` copy, budget test on `Call` (~20), `finish` tests (~50) | Nil fill: List ~54M, Towers ~75M | Overlaps the rejected entry change below. |
+
+R1 to R6 act on different paths, so they add: List would fall by about 1,010M
+to 2,300M (1.26 times PUC's count), Towers by about 770M to 2,810M (1.42
+times). The rest of the gap is the per-call path (R7, R8).
+
+### Whitefoot-side observations (inferred)
+
+No disassembly was available, so these are suspicions to confirm before
+filing.
+
+- **W1.** Facts proven before an arm cannot cross the `Step` enum: an arm
+  returning `Step::Jump(pc: next, base: base, kbase: kbase)` with `base` and
+  `kbase` unchanged cannot carry "base + 256 <= stack length" through it, so
+  `checked_step` re-tests five comparisons on every exit. This is the gap
+  under R2; R2 itself uses the form the design tree already approves.
+- **W2.** The nil-fill loop costs 23 instructions per slot where its source
+  needs about 5; the suspected cause is the saturating index and a per-pass
+  reload of the stack header.
+- **W3.** Already known: `Step` returned through memory (Whitefoot#408), and
+  `Frame` stored field by field then copied wide
+  (lm-bl-frame-store-forward).
+
+### Timing caveat
+
+Instruction savings on the call path have turned into little time: the
+rejected entry change ([outcome](#lua-entry-outcome)) removed 38 instructions
+per Lua call (884.6 to 846.6) and gave fib 2.0% in time. Moving arms to the
+direct-continue form did turn into time (the first such move gave the loop
+kernel 54%). R2, R4, R5, R1 and R3 remove a shared exit, calls and dependent
+lookups rather than cheap compares, so I expect them to convert better than R8;
+that is a judgment, not a measurement.
+
+### Measured or inferred
+
+Measured: every Halo function's own and inclusive count, call count and
+per-block count; opcode counts; all PUC helper counts and PUC's dispatch;
+PUC case-body blocks matched by exact count. Inferred: PUC per-opcode costs
+for unmatched blocks, PUC's cost per miss (~85), every target cost and so
+every saving above, all code-generation explanations, and whether instruction
+savings become time.
