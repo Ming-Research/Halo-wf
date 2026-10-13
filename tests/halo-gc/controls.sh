@@ -1,5 +1,5 @@
 #!/bin/sh
-# The collector's removed-root controls ("Local root witnesses" in README.md):
+# The collector's removed-root controls ("Local root witnesses" in ../../research/experiments/halo-gc/README.md):
 # the local root cases pass with every root, and each fails once its sole
 # root is hidden from the collector or one marking call is removed: a root of
 # mark_roots (lib/halo/vm/collect.wf) or an execution field of
@@ -167,7 +167,7 @@ if runs base; then
   echo "roots self-tests: classifier and selection passed"
 fi
 
-root=$(CDPATH= cd -- "$(dirname -- "$0")/../../.." && pwd -P)
+root=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd -P)
 wfc=${WHITEFOOTC:?set WHITEFOOTC to the Whitefoot compiler}
 if runs base; then
   binary=$1; out=$2
@@ -175,13 +175,13 @@ else
   out=$1
 fi
 mkdir -p "$out"
-cases=$root/research/experiments/halo-gc/cases
+cases=$root/tests/halo-gc/cases
 status=0
 ran=0
 ran_labels=
 
 compare() {
-  python3 -B "$root/research/experiments/halo-e2e/run.py" --compiler "$wfc" --scratch-root "$out" "$@"
+  python3 -B "$root/tests/halo-e2e/run.py" --compiler "$wfc" --scratch-root "$out" "$@"
 }
 
 # A control expected to fail must fail by a reply comparison, not a crash.
@@ -203,15 +203,15 @@ mutant() {
   label=$1; file=$2; line=$3
   tree=$out/tree-$label
   rm -rf "$tree"
-  mkdir -p "$tree/research/experiments"
+  mkdir -p "$tree/tests"
   cp -R "$root/lib" "$tree/lib"
-  cp -R "$root/research/experiments/halo-e2e" "$tree/research/experiments/halo-e2e"
+  cp -R "$root/tests/halo-e2e" "$tree/tests/halo-e2e"
   grep -vF "$line" "$root/$file" > "$tree/$file"
   removed=$(( $(wc -l < "$root/$file") - $(wc -l < "$tree/$file") ))
   if [ "$removed" != 1 ]; then
     echo "roots mutant $label: removed $removed lines, want 1"; status=1; return
   fi
-  if ! (cd "$tree/research/experiments/halo-e2e" && "$wfc" --graph modules.wfg --entry test -o "$out/mutant-$label") > "$out/build-$label.log" 2>&1; then
+  if ! (cd "$tree/tests/halo-e2e" && "$wfc" --graph modules.wfg --entry test -o "$out/mutant-$label") > "$out/build-$label.log" 2>&1; then
     echo "roots mutant $label: build failed"; status=1; cat "$out/build-$label.log"
   fi
 }
@@ -260,6 +260,6 @@ fi
 # the ordinary embedding gate, independently of this selection. They run with
 # the base part and are not counted among its controls.
 if runs base && [ -n "${THREAD_ROOT_MUTANTS:-}" ]; then
-  if ! sh "$root/research/experiments/halo-gc/thread-controls.sh" "$out/thread-controls"; then status=1; fi
+  if ! sh "$root/tests/halo-gc/thread-controls.sh" "$out/thread-controls"; then status=1; fi
 fi
 exit $status

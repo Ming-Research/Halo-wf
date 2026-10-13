@@ -33,7 +33,7 @@ def flags(args, *, check=False):
     if args.no_cache:
         return []
     cache = args.cache.expanduser().resolve()
-    root = Path(__file__).resolve().parents[2]
+    root = Path(__file__).resolve().parents[1]
     if cache.is_relative_to(root):
         raise ValueError('compiler cache must be outside the repository')
     if args.runtime_timings and not check:

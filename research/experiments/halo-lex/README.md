@@ -33,7 +33,7 @@ four-byte big-endian chunk-name length, the chunk-name bytes, a four-byte
 big-endian source length, and the source bytes. Each independent source ends
 with an EOF token or an error record.
 
-The corpus is every `*.lua` under `../halo-oracle/scripts`. Tricky inputs are
+The corpus is every `*.lua` under `../../../tests/halo-oracle/scripts`. Tricky inputs are
 constructed in scratch by `run.py`: all keywords and symbols, numeral
 boundaries and malformed numerals, every short-string escape including
 unknown escapes and decimal boundaries, long delimiters and comments,

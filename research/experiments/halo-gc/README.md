@@ -1,5 +1,10 @@
 # Halo collector check
 
+The gate's controls, local root cases and memory witnesses live in
+[tests/halo-gc](../../../tests/halo-gc/); the standalone heap experiment and
+its graph, guide and results remain here. The embedding runner is
+[tests/halo-e2e/run.py](../../../tests/halo-e2e/run.py).
+
 Checks the mark-and-sweep collector of `lib/halo/heap` (`gc.wf`; design in
 [VM.md section 2](../../investigations/halo/VM.md#2-heap)) on a graph whose
 every reference kind leads to one object only through it: A's array part
@@ -60,16 +65,16 @@ bytes under a 67,108,864-byte limit. This is the negative control for the
 missing memory-limit enforcement; it does not run an unbounded allocator
 against the defective engine.
 
-`memory-limit.lua` is the unbounded F4 witness; `memory-recovery.lua` runs
+`tests/halo-gc/memory-limit.lua` is the unbounded F4 witness; `tests/halo-gc/memory-recovery.lua` runs
 next on the same engine/store and independently expects bulk `alive` from
-the key written before exhaustion. `run.py --verify-memory` owns their
-execution. These local cases live here for F4 and are removed when a
+the key written before exhaustion. `tests/halo-e2e/run.py --verify-memory` owns their
+execution. These local cases live in `tests/halo-gc/` for F4 and are removed when a
 maintained embedding test takes over their observations or Halo is retired.
 `--cases PATH` selects a local root with `scripts/GROUP/*.lua` and paired
 canonical `expected/GROUP/*.txt` files through the unchanged comparison.
 
-Local root witnesses in `cases/` are consumed by `run.py --cases
-research/experiments/halo-gc/cases`. Their expected replies follow directly
+Local root witnesses in `tests/halo-gc/cases/` are consumed by `tests/halo-e2e/run.py --cases
+tests/halo-gc/cases`. Their expected replies follow directly
 from their Lua source: `kept`, `zzz`, and `qqq`. The open-upvalue case leaves an abandoned
 open cell ahead of a retained middle local, then captures a lower local;
 recycling the abandoned cell can corrupt the sorted open list and prevent
@@ -124,7 +129,7 @@ cached loop return one. Setup failures have separate observation codes:
 Observations 218–220 retain their storage-growth, limit, error, collection,
 live-charge and recovery checks.
 
-`thread-controls.sh`, called by `controls.sh` when `THREAD_ROOT_MUTANTS` is
+`tests/halo-gc/thread-controls.sh`, called by `tests/halo-gc/controls.sh` when `THREAD_ROOT_MUTANTS` is
 set, omits one marking or closing operation in a copied tree. It builds the
 ordinary `test` entry and runs the unchanged e2e runner with `--filter
 coroutines/ --budgets 1,7,1000 --gc-stress --case-timeout 60`; the runner's

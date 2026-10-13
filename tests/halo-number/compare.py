@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from compiler_cache import add_arguments as cache_arguments, flags as cache_flags
 
 HERE = Path(__file__).resolve().parent
-ROOT = HERE.parents[2]
+ROOT = HERE.parents[1]
 MASK = (1 << 64) - 1
 SIGN = 1 << 63
 INF = 0x7ff0000000000000

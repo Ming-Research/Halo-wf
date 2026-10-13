@@ -32,6 +32,7 @@ import run
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
+HOST = ROOT/'tests/halo-bench'
 NUMBER = re.compile(rb'-?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?\n')
 HALO = 'halo'
 
@@ -224,7 +225,7 @@ def markdown(data, engines):
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--halo', type=Path,
-                        help='the bench host built from host/ (reads the script on stdin); without it, only the '
+                        help='the bench host built from tests/halo-bench/host/ (reads the script on stdin); without it, only the '
                              '--engine interpreters run and each is reported over --reference')
     parser.add_argument('--engine', action='append', default=[], metavar='ID=COMMAND',
                         help='an interpreter; the workload file path is appended to COMMAND')
@@ -283,8 +284,8 @@ def main():
                 cpu_before=cpu_state(cpus) if cpus and len(cpus) <= 4 else None,
                 engines={e: dict(command=c, sha256=digest(c[0])) for e, c in commands.items()},
                 compiler_sha256=digest(args.compiler) if args.compiler else None,
-                host_sources_sha256={str(p.relative_to(HERE)): digest(p) for p in
-                                     (HERE/'modules.wfg', HERE/'host/module.wfm', HERE/'host/driver.wf')}
+                host_sources_sha256={str(p.relative_to(HOST)): digest(p) for p in
+                                     (HOST/'modules.wfg', HOST/'host/module.wfm', HOST/'host/driver.wf')}
                 if args.halo else None,
                 expect=dict(path=str(args.expect), sha256=digest(args.expect)) if args.expect else None,
                 scales=args.scales, manifests={str(p): p.read_text() for p in args.manifest},

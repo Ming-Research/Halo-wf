@@ -1,7 +1,8 @@
 # Experiments
 
-Each experiment keeps its sources, its commands and a RESULTS.md (the
-oracle, a README) with measured numbers and their caveats. Binaries,
+Each experiment keeps its research sources, commands and records with measured
+numbers and their caveats. The gate's runners, shared hosts and oracle fixtures
+live in [tests/](../../tests/); research runners use them by path. Binaries,
 corpora downloaded for a run and scratch output are regenerated, not kept.
 Experiments recorded while Halo lived in the Whitefoot repository name its
 tooling and paths of that time; their results stand, and their commands are
@@ -35,8 +36,8 @@ history, not current instructions ([AGENTS.md](../../AGENTS.md#design-tree-and-r
 
 ## End to end
 
-- [halo-oracle/](halo-oracle/README.md) — the reference's exact replies to
-  its scripts, recorded from Redis 7.2.16 on x86-64 Linux.
+- [halo-oracle/](halo-oracle/README.md) — the reference recorder and guide;
+  [scripts and exact replies](../../tests/halo-oracle/) live with the gate.
 - [halo-e2e/](halo-e2e/RESULTS.md) — those scripts run through `pkg::embed`
   and an in-memory host; `make check` runs this comparison.
 - [redis-double-text/](../../lib/fpconv/README.md#oracle-table) — 18,235
@@ -53,9 +54,9 @@ history, not current instructions ([AGENTS.md](../../AGENTS.md#design-tree-and-r
 
 ## Shared runner helper
 
-The Python runners share [compiler_cache.py](compiler_cache.py) for
+The Python runners share [compiler_cache.py](../../tests/compiler_cache.py) for
 persistent cache paths and cache/full-LTO mode flags; the gate's runner,
-`halo-e2e/run.py`, imports it too. The helper is removed when its last
+`tests/halo-e2e/run.py`, imports it too. The helper is removed when its last
 runner no longer needs it. The [VM](halo-vm/README.md),
 [pattern](halo-patterns/README.md) and [MessagePack](msgpack/README.md)
 guides document their build and sample commands.

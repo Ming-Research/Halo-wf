@@ -11,11 +11,12 @@ import tempfile
 import time
 
 import sys
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'tests'))
 from compiler_cache import add_arguments as cache_arguments, flags as cache_flags
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
+HOST = ROOT / 'tests/halo-lib'
 CORPUS = ('numeric', 'base', 'strings', 'tables', 'math', 'random', 'errors', 'boundaries')
 
 
@@ -70,6 +71,7 @@ def main():
     revision = run(['git', 'rev-parse', 'HEAD'], cwd=ROOT, capture_output=True).stdout.decode().strip()
     sources = {str(path.relative_to(ROOT)): digest(path) for path in sorted((ROOT / 'lib/halo/vm').glob('*')) if path.is_file()}
     sources.update({str(path.relative_to(ROOT)): digest(path) for path in sorted(HERE.rglob('*')) if path.suffix in ('.lua', '.c', '.py', '.wf', '.wfm', '.wfg')})
+    sources.update({str(path.relative_to(ROOT)): digest(path) for path in sorted(HOST.rglob('*')) if path.suffix in ('.wf', '.wfm', '.wfg')})
     sources['Reference lua.o'] = digest(a.lua.parent / 'lua.o')
     sources['Reference liblua.a'] = digest(a.lua.parent / 'liblua.a')
     sources['Redis deps/lua/src/linit.c'] = digest(a.redis_source / 'deps/lua/src/linit.c')
@@ -84,7 +86,7 @@ def main():
         print(f'Reference bootstrap build: {time.monotonic() - started:.3f}s', flush=True)
         adapter = a.adapter or Path(scratch) / 'run'
         if not a.adapter:
-            command = [a.compiler, '--graph', HERE / 'modules.wfg', '--entry', 'run', '-o', adapter]
+            command = [a.compiler, '--graph', HOST / 'modules.wfg', '--entry', 'run', '-o', adapter]
             command += cache_flags(a)
             started = time.monotonic()
             run(command, cwd=ROOT)

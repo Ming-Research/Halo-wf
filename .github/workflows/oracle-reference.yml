@@ -2,7 +2,7 @@
 # from source with its bundled Lua, on x86-64 Linux with glibc (AGENTS.md,
 # "The reference"). It compares the stored replies with that server, then
 # records every reply again, and the table of double texts
-# (research/experiments/redis-double-text), and keeps the results and their
+# (tests/redis-double-text), and keeps the results and their
 # differences from the committed files as an artifact; a person reviews the
 # differences and commits the replies and the table.
 #
@@ -14,6 +14,8 @@ name: oracle-reference
 on:
   push:
     paths:
+      - tests/halo-oracle/**
+      - tests/redis-double-text/**
       - research/experiments/halo-oracle/**
       - research/experiments/redis-double-text/**
       - .github/workflows/oracle-reference.yml
@@ -66,7 +68,7 @@ jobs:
         run: |
           research/experiments/halo-oracle/run.sh --generate \
             --server "$PWD/build/redis/redis-7.2.16/src/redis-server" --output "$PWD/build/oracle/expected"
-          diff -r research/experiments/halo-oracle/expected build/oracle/expected > build/oracle/expected.diff || true
+          diff -r tests/halo-oracle/expected build/oracle/expected > build/oracle/expected.diff || true
           echo "files that differ: $(grep -c '^diff -r' build/oracle/expected.diff || true)"
           cat build/oracle/expected.diff
 
@@ -75,7 +77,7 @@ jobs:
           python3 -B research/experiments/redis-double-text/record.py \
             --server "$PWD/build/redis/redis-7.2.16/src/redis-server" \
             --output "$PWD/build/oracle/redis-double-text/redis-7.2.16.tsv"
-          diff research/experiments/redis-double-text/redis-7.2.16.tsv \
+          diff tests/redis-double-text/redis-7.2.16.tsv \
             build/oracle/redis-double-text/redis-7.2.16.tsv > build/oracle/redis-double-text/table.diff || true
           echo "table lines that differ: $(grep -c '^[<>]' build/oracle/redis-double-text/table.diff || true)"
           head -200 build/oracle/redis-double-text/table.diff

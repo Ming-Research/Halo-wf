@@ -1,7 +1,7 @@
 #!/bin/sh
 # One harness: Python's standard library handles binary RESP2 and fixture metadata.
 set -eu
-ORACLE_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+ORACLE_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../../../tests/halo-oracle" && pwd)
 exec python3 - "$ORACLE_DIR" "$@" <<'PY'
 import argparse
 import json

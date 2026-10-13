@@ -9,7 +9,8 @@ recording reference replies remains the job of
 
 There are 166 scripts: 71 `lua-core`, 39 `redis-api`, 6 `apps`, 13 `libs`,
 and 37 `coroutines`.
-The scripts, replies and runner belong here until the oracle is replaced or
+The [scripts and replies](../../../tests/halo-oracle/) belong with the gate;
+the reference recorder and guide remain here until the oracle is replaced or
 Halo/firn scripting is retired. Each case is consumed by `run.sh`; the table
 below is the index of the observations it protects.
 
@@ -18,8 +19,8 @@ The `coroutines` group is comparison 1 of the
 
 ## Layout and invocation
 
-- `scripts/<group>/<name>.lua`: one observation or small related set per file.
-- `expected/<group>/<name>.txt`: the typed reply produced by Redis 7.2.16.
+- `tests/halo-oracle/scripts/<group>/<name>.lua`: one observation or small related set per file.
+- `tests/halo-oracle/expected/<group>/<name>.txt`: the typed reply produced by Redis 7.2.16.
 - `run.sh`: POSIX shell entry point with an embedded Python 3 standard-library
   RESP2 client. Python handles binary replies independently of Whitefoot;
   there is no redis-cli display-mode or locale ambiguity.
@@ -77,7 +78,7 @@ second generation stays in scratch storage:
 research/experiments/halo-oracle/run.sh --check --filter apps/rate-limiter
 second=$(mktemp -d /private/tmp/halo-oracle-repeat.XXXXXX)
 research/experiments/halo-oracle/run.sh --generate --output "$second"
-diff -r research/experiments/halo-oracle/expected "$second"
+diff -r tests/halo-oracle/expected "$second"
 rm -r "$second"
 ```
 
@@ -203,169 +204,169 @@ report rather than being counted as detected by a probe alone.
 
 | Group | Script | Purpose |
 | --- | --- | --- |
-| apps | [hash-cas](scripts/apps/hash-cas.lua) | Hash compare-and-set leaves mismatches untouched and reports a match. |
-| apps | [lock-extend](scripts/apps/lock-extend.lua) | PEXPIRE extends a lock only for its current owner. |
-| apps | [queue-move](scripts/apps/queue-move.lua) | LPOP/RPUSH moves jobs in order and stops on an empty source. |
-| apps | [rate-limiter](scripts/apps/rate-limiter.lua) | INCR and first-hit PEXPIRE enforce a limit without clock-valued output. |
-| apps | [redlock-release](scripts/apps/redlock-release.lua) | Lock release deletes only a matching owner and handles a missing lock. |
-| apps | [sliding-window](scripts/apps/sliding-window.lua) | Sorted-set limiter removes old scores and counts a fixed-time window. |
-| coroutines | [argument-errors](scripts/coroutines/argument-errors.lua) | create with a non-function and resume with a non-coroutine raise errors caught by pcall. |
-| coroutines | [budget-long-generator](scripts/coroutines/budget-long-generator.lua) | A loop inside a coroutine and thousands of yields exercise budget suspension and resumption. |
-| coroutines | [direct-wrap-errors](scripts/coroutines/direct-wrap-errors.lua) | Direct Lua wrapper calls add caller locations to string and numeric errors, preserve table errors and locate dead-wrapper refusal. |
-| coroutines | [errors-in-coroutine](scripts/coroutines/errors-in-coroutine.lua) | resume and inner pcall catch located strings, level-zero errors, identity-preserving tables and Redis command errors; redis.pcall returns replies. |
-| coroutines | [gc-callback-roots](scripts/coroutines/gc-callback-roots.lua) | Nested resumes park foreach, sort, gsub and xpcall while children allocate; dynamic keys, tables, strings, callbacks and errors survive. |
-| coroutines | [gc-error-over-limit](scripts/coroutines/gc-error-over-limit.lua) | A coroutine's arithmetic error survives the collection the host's 64 MiB heap limit forces while the dying coroutine is still installed; targets the error omission. |
-| coroutines | [gc-escaped-owner](scripts/coroutines/gc-escaped-owner.lua) | Escaped reads and writes survive an unreachable suspended owner and later thread-slot reuse; targets captured-value and owner-close omissions. |
-| coroutines | [gc-library-contexts](scripts/coroutines/gc-library-contexts.lua) | Parked foreach, sort and pcall keep a tail-left comparator, an evicted foreach key and a replaced pcall error table while children allocate; targets library-comparator, library-key and library-error omissions. |
-| coroutines | [gc-library-table-sole](scripts/coroutines/gc-library-table-sole.lua) | foreach called as an __index function keeps walking a table whose only holder is its saved record while a child allocates; targets the library-table omission. |
-| coroutines | [gc-metamethod-wrappers](scripts/coroutines/gc-metamethod-wrappers.lua) | Coroutines entered through self-clearing __index wrappers stay distinct from a coroutine they create; targets current-thread and resumer omissions. |
-| coroutines | [gc-open-list-reuse](scripts/coroutines/gc-open-list-reuse.lua) | A parked owner's dead-closure capture stays listed, so a later capture and a block exit still close a block local's capture; targets the open-list omission. |
-| coroutines | [gc-open-recapture](scripts/coroutines/gc-open-recapture.lua) | A discarded closure leaves an open capture that a suspended owner later recaptures and writes; targets the open-list omission. |
-| coroutines | [gc-pattern-coercion](scripts/coroutines/gc-pattern-coercion.lua) | gsub keeps strings converted from a numeric source and pattern while its replacement resumes an allocating child; targets pattern-source and pattern-pattern omissions. |
-| coroutines | [gc-sort-frames](scripts/coroutines/gc-sort-frames.lua) | sort keeps a compared pair and its pivot that a comparator removed from the table; targets sort-a, sort-b and sort-pivot omissions. |
-| coroutines | [gc-stopped-high-register](scripts/coroutines/gc-stopped-high-register.lua) | A table held only in a high register of a foreach callback inside a coroutine survives the collection the host's 64 MiB heap limit forces at the callback's first budget stop, while only the parked stack copy holds it; targets the stopped omission. |
-| coroutines | [gc-stopped-over-limit](scripts/coroutines/gc-stopped-over-limit.lua) | A table held only in a deep register of a foreach callback inside a coroutine survives a budget stop taken over the host's 64 MiB heap limit after the callback has continued from its saved record; exercises the over-limit collection with the whole stack installed. |
-| coroutines | [gc-thread-roots](scripts/coroutines/gc-thread-roots.lua) | An unstarted thread retains a private entry capture, and normal parents retain private locals during nested child allocation. |
-| coroutines | [gc-transfer-values](scripts/coroutines/gc-transfer-values.lua) | Tail resume and yield carry 20 fresh table values and a trailing nil beyond the caller's fixed registers. |
-| coroutines | [generator-values](scripts/coroutines/generator-values.lua) | create, resume and yield exchange multiple values in both directions, counting nil holes. |
-| coroutines | [main-open-capture](scripts/coroutines/main-open-capture.lua) | Children write a main-chunk local through the same open capture while main is their normal resumer. |
-| coroutines | [mixed-resume-depth](scripts/coroutines/mixed-resume-depth.lua) | pcall, sort, gsub and protected callback combinations inserted at resume depths 190 and 197 expose their contribution to the C-depth limit. |
-| coroutines | [nested-resume-depth](scripts/coroutines/nested-resume-depth.lua) | Nested resumes reach the reference's own limit and report the reached depth and caught error text. |
-| coroutines | [open-limit-per-execution](scripts/coroutines/open-limit-per-execution.lua) | A returning function's open capture is still closed when a yielded coroutine holds a higher open capture and a finished one closed its own, so the returned closure survives the caller's overwrite of the frame; guards the open limit being kept per execution. |
-| coroutines | [redis-call-in-coroutine](scripts/coroutines/redis-call-in-coroutine.lua) | Redis reads and writes inside a coroutine survive yields and target declared keys. |
-| coroutines | [redis-resumer-callbacks](scripts/coroutines/redis-resumer-callbacks.lua) | Children resumed by sort and gsub callbacks perform Redis success, caught and uncaught command failure, redis.pcall and yield/return. |
-| coroutines | [refused-resume-state](scripts/coroutines/refused-resume-state.lua) | A resume refused at the nested-resume limit leaves a never-started coroutine dead and a yielded one suspended; later resumes see each state. |
-| coroutines | [results-as-eval-reply](scripts/coroutines/results-as-eval-reply.lua) | A coroutine's returned values become the script's direct EVAL reply. |
-| coroutines | [resume-state-errors](scripts/coroutines/resume-state-errors.lua) | Resuming dead, running and normal coroutines records failure results and exact messages. |
-| coroutines | [shared-upvalues-across](scripts/coroutines/shared-upvalues-across.lua) | Main and another coroutine read and write a shared closure's upvalue while its creator is suspended and after it dies. |
-| coroutines | [status-all](scripts/coroutines/status-all.lua) | suspended, running, normal and dead statuses accompany running's main-thread nil and coroutine identity. |
-| coroutines | [tail-transfers](scripts/coroutines/tail-transfers.lua) | Tail yield and tail resume preserve success flags, counted nil holes and trailing nils on suspension and completion. |
-| coroutines | [top-level-error](scripts/coroutines/top-level-error.lua) | An error returned by resume is rethrown as an intentional top-level EVAL error. |
-| coroutines | [wrap-errors](scripts/coroutines/wrap-errors.lua) | wrap exchanges values and propagates coroutine errors to the caller's pcall. |
-| coroutines | [wrap-own-status](scripts/coroutines/wrap-own-status.lua) | A wrapper sees itself running, its child sees it normal, and its caller sees its identity suspended then dead. |
-| coroutines | [yield-across-resumer-callbacks](scripts/coroutines/yield-across-resumer-callbacks.lua) | Yields across resume called from a resumer's pcall, sort comparator, __index and gsub callback record continuation results. |
-| coroutines | [yield-boundaries](scripts/coroutines/yield-boundaries.lua) | Yield attempts inside five metamethods, a __call handler, pcall, xpcall, sort, gsub, foreach and a generic-for iterator record resume results. |
-| coroutines | [yield-outside](scripts/coroutines/yield-outside.lua) | Yield outside a coroutine raises an error caught by pcall. |
-| libs | [bit-logical](scripts/libs/bit-logical.lua) | bit.band, bor and bxor use signed 32-bit results. |
-| libs | [bit-shifts-hex](scripts/libs/bit-shifts-hex.lua) | Shifts mask counts and tohex formats signed values as hex. |
-| libs | [bit-tohex-extrema](scripts/libs/bit-tohex-extrema.lua) | bit.tohex with digit counts at the signed 32-bit extremes; 7.0.15 overflows, 7.2.16 does not. |
-| libs | [cjson-arrays-nested](scripts/libs/cjson-arrays-nested.lua) | JSON arrays encode and nested object values decode without relying on object order. |
-| libs | [cjson-instance-methods](scripts/libs/cjson-instance-methods.lua) | Methods of a cjson.new() instance, called through the table and after extraction, beside a string.gmatch iterator. |
-| libs | [cjson-invalid](scripts/libs/cjson-invalid.lua) | Malformed JSON raises an error caught by pcall. |
-| libs | [cjson-numbers](scripts/libs/cjson-numbers.lua) | cjson number formatting is independent of RESP integer conversion. |
-| libs | [cjson-objects](scripts/libs/cjson-objects.lua) | JSON objects, empty table encoding and decoded null/boolean values. |
-| libs | [cmsgpack-binary](scripts/libs/cmsgpack-binary.lua) | MessagePack exact scalar bytes and binary strings survive packing. |
-| libs | [cmsgpack-roundtrip](scripts/libs/cmsgpack-roundtrip.lua) | MessagePack round-trips maps, arrays, booleans, integers and strings. |
-| libs | [gsub-null-replacement](scripts/libs/gsub-null-replacement.lua) | string.gsub refuses cjson.null, a userdata, as its replacement. |
-| libs | [struct-integers](scripts/libs/struct-integers.lua) | struct packs explicit-endian signed and unsigned integer widths. |
-| libs | [struct-strings-floats](scripts/libs/struct-strings-floats.lua) | struct packs fixed strings and doubles with explicit endian and offsets. |
-| lua-core | [argument-error-names](scripts/lua-core/argument-error-names.lua) | Argument errors name the called function from the call site: aliases, fields, methods and bad self, upvalues, tail calls, generic-for iterators, metamethods, and '?' for calls from native code. |
-| lua-core | [array-holes](scripts/lua-core/array-holes.lua) | Lua 5.1 length selects a boundary for arrays with holes. |
-| lua-core | [assert](scripts/lua-core/assert.lua) | assert returns all successful arguments and raises a chosen message. |
-| lua-core | [call-kinds](scripts/lua-core/call-kinds.lua) | Ordinary calls reach native functions, native iterators and vararg Lua functions; number and nil callees raise errors checked apart from the variable description. |
-| lua-core | [callback-error-levels](scripts/lua-core/callback-error-levels.lua) | error levels count each native function (pcall, sort, gsub) between Lua frames as a level without a location; metamethods (__index, __add) add no level; a level past the top adds no location. |
-| lua-core | [concat-numbers](scripts/lua-core/concat-numbers.lua) | Concatenation coerces numbers with Lua number formatting. |
-| lua-core | [counter-closure](scripts/lua-core/counter-closure.lua) | Separate counter closures retain independent upvalue state. |
-| lua-core | [embedded-zero](scripts/lua-core/embedded-zero.lua) | Embedded NUL survives length, slicing, byte lookup and RESP bulk. |
-| lua-core | [error-after-callback-line](scripts/lua-core/error-after-callback-line.lua) | A gsub error after its replacement returns, including after budget suspension, is located at the gsub call. |
-| lua-core | [error-in-comparator-line](scripts/lua-core/error-in-comparator-line.lua) | An error inside a sort comparator is located at the comparator's line. |
-| lua-core | [error-levels](scripts/lua-core/error-levels.lua) | error levels select caller locations; level zero has no location. |
-| lua-core | [error-names-control](scripts/lua-core/error-names-control.lua) | Symbolic walks cross forward tests and jumps and skip closure capture cells. |
-| lua-core | [error-names-field](scripts/lua-core/error-names-field.lua) | String constant fields retain their names; numeric and register keys use question mark. |
-| lua-core | [error-names-global](scripts/lua-core/error-names-global.lua) | Existing globals supply global names without the nonexistent-global interception. |
-| lua-core | [error-names-local](scripts/lua-core/error-names-local.lua) | Active local names, MOVE recursion, operand selection, and local scope boundaries. |
-| lua-core | [error-names-method](scripts/lua-core/error-names-method.lua) | SELF names a missing or non-callable method; an invalid receiver is still an index operand. |
-| lua-core | [error-names-unnamed](scripts/lua-core/error-names-unnamed.lua) | Call results, constructors, constants, tag-method chains and native calls have no operand name. |
-| lua-core | [error-names-upvalue](scripts/lua-core/error-names-upvalue.lua) | Upvalue names and ordering survive two closure levels and every operand error family. |
-| lua-core | [error-names-userdata](scripts/lua-core/error-names-userdata.lua) | cjson.null uses the same operand descriptions with userdata as its Lua type. |
-| lua-core | [error-rethrow-local](scripts/lua-core/error-rethrow-local.lua) | An error caught by pcall and raised through a local error alias is located at the rethrow. |
-| lua-core | [error-table-index](scripts/lua-core/error-table-index.lua) | Nil and NaN store keys carry Lua instruction locations; rawset keeps bare errors. |
-| lua-core | [error-values](scripts/lua-core/error-values.lua) | pcall preserves string and table error objects without stringifying tables. |
-| lua-core | [float-print](scripts/lua-core/float-print.lua) | tostring uses Lua number formatting and exponent notation. |
-| lua-core | [format-14g](scripts/lua-core/format-14g.lua) | Explicit %.14g rounding at fourteen significant digits. |
-| lua-core | [integer-doubles](scripts/lua-core/integer-doubles.lua) | Integer-valued doubles, precision boundary and number type. |
-| lua-core | [ipairs](scripts/lua-core/ipairs.lua) | ipairs stops at the first nil even when later array entries exist. |
-| lua-core | [loop-closures](scripts/lua-core/loop-closures.lua) | Numeric and generic loops create captured iteration locals. |
-| lua-core | [math-mod](scripts/lua-core/math-mod.lua) | math.mod is math.fmod: the same function value and results, as Redis's Lua defines LUA_COMPAT_MOD. |
-| lua-core | [math-powers](scripts/lua-core/math-powers.lua) | sqrt, math.pow, exponentiation and math.huge. |
-| lua-core | [math-random](scripts/lua-core/math-random.lua) | Redis deterministic default seed and explicit reseeding. |
-| lua-core | [math-round-extrema](scripts/lua-core/math-round-extrema.lua) | floor, ceil, abs, max, min and fmod for signed numbers. |
-| lua-core | [meta-call](scripts/lua-core/meta-call.lua) | __call receives the table as its first argument and can return many values. |
-| lua-core | [meta-comparisons](scripts/lua-core/meta-comparisons.lua) | Shared __eq, __lt and __le control table comparisons. |
-| lua-core | [meta-concat-tostring](scripts/lua-core/meta-concat-tostring.lua) | __concat handles table operands; tostring honors __tostring. |
-| lua-core | [meta-index](scripts/lua-core/meta-index.lua) | __index supports both table delegation and a function fallback. |
-| lua-core | [meta-le-fallback](scripts/lua-core/meta-le-fallback.lua) | Without __le, less-or-equal falls back to reversed __lt. |
-| lua-core | [meta-newindex](scripts/lua-core/meta-newindex.lua) | __newindex intercepts absent entries while existing ones write directly. |
-| lua-core | [meta-protection-raw](scripts/lua-core/meta-protection-raw.lua) | Metatable protection and raw operations bypass ordinary metamethods. |
-| lua-core | [meta-table-length](scripts/lua-core/meta-table-length.lua) | Lua 5.1 ignores __len on tables. |
-| lua-core | [metamethod-error](scripts/lua-core/metamethod-error.lua) | Errors raised inside a metamethod propagate through pcall. |
-| lua-core | [multiple-returns](scripts/lua-core/multiple-returns.lua) | Assignment and table constructor expand only final multiple returns. |
-| lua-core | [negative-division](scripts/lua-core/negative-division.lua) | Lua 5.1 division is floating; modulo follows floor division. |
-| lua-core | [next-pairs](scripts/lua-core/next-pairs.lua) | next and pairs visit hash entries; output is sorted to avoid hash order. |
-| lua-core | [nil-returns](scripts/lua-core/nil-returns.lua) | select observes nil return slots that RESP arrays would truncate. |
-| lua-core | [nonfinite](scripts/lua-core/nonfinite.lua) | Infinity and NaN arithmetic, comparisons and string conversion. |
-| lua-core | [numeric-coercion](scripts/lua-core/numeric-coercion.lua) | Arithmetic coerces numeric strings; tonumber handles bases and failures. |
-| lua-core | [pcall-error-field-index](scripts/lua-core/pcall-error-field-index.lua) | Post-catch err lookup preserves result types and counts, honors __index chains and functions through nested protected and sort callbacks and host calls, propagates lookup errors, and leaves xpcall unchanged. |
-| lua-core | [pcall-xpcall](scripts/lua-core/pcall-xpcall.lua) | Protected calls preserve success returns and handler-transformed errors. |
-| lua-core | [shared-upvalues](scripts/lua-core/shared-upvalues.lua) | Sibling closures share the same mutable captured local. |
-| lua-core | [string-byte-char](scripts/lua-core/string-byte-char.lua) | byte ranges and char preserve boundary bytes including NUL. |
-| lua-core | [string-escapes](scripts/lua-core/string-escapes.lua) | Quoted escapes, decimal byte escapes and long bracket strings. |
-| lua-core | [string-find](scripts/lua-core/string-find.lua) | find plain mode, pattern captures, start offsets and no match. |
-| lua-core | [string-format](scripts/lua-core/string-format.lua) | format exercises %d %s %q %x %g and width/precision. |
-| lua-core | [string-gmatch](scripts/lua-core/string-gmatch.lua) | gmatch iterates captured words and digits. |
-| lua-core | [string-gsub-dynamic](scripts/lua-core/string-gsub-dynamic.lua) | gsub table and function replacements preserve false or nil matches. |
-| lua-core | [string-gsub-string](scripts/lua-core/string-gsub-string.lua) | gsub supports capture substitutions, whole match, percent and limits. |
-| lua-core | [string-length-order](scripts/lua-core/string-length-order.lua) | String byte length and lexicographic comparisons. |
-| lua-core | [string-match](scripts/lua-core/string-match.lua) | Patterns support captures, balanced matching and frontier boundaries. |
-| lua-core | [string-transforms](scripts/lua-core/string-transforms.lua) | sub negative indices, upper/lower, rep and reverse. |
-| lua-core | [table-concat](scripts/lua-core/table-concat.lua) | table.concat uses separators, slice bounds and numeric elements. |
-| lua-core | [table-foreach](scripts/lua-core/table-foreach.lua) | table.foreach visits pairs in next order, returns the first non-nil result, allows field assignment and Redis calls in its function, checks its arguments, passes callback errors on unchanged, and runs under pcall and inside sort and gsub callbacks. |
-| lua-core | [table-growth-order](scripts/lua-core/table-growth-order.lua) | pairs order and # after growth, key migration between hash and array, holes, regrowth and shrinking, unsorted. |
-| lua-core | [table-insert-remove](scripts/lua-core/table-insert-remove.lua) | Array insertion shifts entries; removal returns and shifts values. |
-| lua-core | [table-parts](scripts/lua-core/table-parts.lua) | Array and hash entries coexist; hash entries do not add array length. |
-| lua-core | [table-sort](scripts/lua-core/table-sort.lua) | Default and custom comparator sort numbers into opposite orders. |
-| lua-core | [table-sort-order](scripts/lua-core/table-sort-order.lua) | Default auxsort permutation for duplicate numbers, signed zeros, strings with NUL, NaN, hash-backed indices and short arrays. |
-| lua-core | [tail-call-error-levels](scripts/lua-core/tail-call-error-levels.lua) | error levels count each call a Lua-to-Lua tail call replaced as a level without a location, one to three per frame and around sort comparators and pcall; a tail call into error or pcall keeps the calling frame. |
-| lua-core | [tail-recursion](scripts/lua-core/tail-recursion.lua) | Proper tail calls allow deep recursion without growing call stack. |
-| lua-core | [unpack-overflow-range](scripts/lua-core/unpack-overflow-range.lua) | unpack refuses ranges too long for an int with the too-many-results error; 7.0.15 overflows for three of four ranges. |
-| lua-core | [unpack-select-varargs](scripts/lua-core/unpack-select-varargs.lua) | unpack ranges and select preserve vararg count including nil. |
-| lua-core | [version-global](scripts/lua-core/version-global.lua) | The base library exposes _VERSION as the string Lua 5.1. |
-| redis-api | [call-error](scripts/redis-api/call-error.lua) | redis.call raises command errors to the EVAL reply. |
-| redis-api | [call-error-in-callback](scripts/redis-api/call-error-in-callback.lua) | A redis.call error inside a sort comparator ends the script with an error reply. |
-| redis-api | [call-in-callback](scripts/redis-api/call-in-callback.lua) | redis.call and redis.pcall return to sort, gsub and __tostring callbacks; pcall inside a comparator catches a redis.call error. |
-| redis-api | [call-success](scripts/redis-api/call-success.lua) | redis.call returns successful write and read replies. |
-| redis-api | [double-reply-table](scripts/redis-api/double-reply-table.lua) | Returned {double=x} tables become bulk strings with the host's double text; 7.2.16 writes fpconv's Grisu2 digits, which read back exactly but are not always the shortest, where 7.0.15 printed %.17g. |
-| redis-api | [double-score-reply](scripts/redis-api/double-score-reply.lua) | ZADD with a number score, then ZSCORE and WITHSCORES, reply with the host's double text (0.1 versus 0.10000000000000001). |
-| redis-api | [error-after-call-in-callback-line](scripts/redis-api/error-after-call-in-callback-line.lua) | A gsub error after a replacement that called redis.call returns is located at the gsub call. |
-| redis-api | [error-message-crlf](scripts/redis-api/error-message-crlf.lua) | A top-level runtime error whose message holds CR LF; 7.0.15 breaks the RESP framing, 7.2.16 replaces them with spaces. |
-| redis-api | [error-message-newline](scripts/redis-api/error-message-newline.lua) | A top-level runtime error whose message holds LF; 7.0.15 breaks the RESP framing, 7.2.16 replaces it with a space. |
-| redis-api | [error-reply](scripts/redis-api/error-reply.lua) | redis.error_reply constructs a RESP error reply. |
-| redis-api | [error-reply-newline](scripts/redis-api/error-reply-newline.lua) | redis.error_reply with a newline: 7.2.16 sends the one line "ERR a b" (the line break becomes a space and the text gains an ERR code); 7.0.15 is read from the source as "a b" without the code, unverified. |
-| redis-api | [error-rethrow-line](scripts/redis-api/error-rethrow-line.lua) | A redis.call error caught by xpcall and raised with error(e,0) is located at the rethrow. |
-| redis-api | [foreach-invalid-key](scripts/redis-api/foreach-invalid-key.lua) | table.foreach resuming after its function removed the visited key and grew the table past a rehash raises "invalid key to 'next'" without a script location, as next does with the same key. |
-| redis-api | [global-read](scripts/redis-api/global-read.lua) | Redis refuses access to an undeclared global. |
-| redis-api | [global-write](scripts/redis-api/global-write.lua) | Redis refuses assignment to an undeclared global. |
-| redis-api | [keys-argv-writable](scripts/redis-api/keys-argv-writable.lua) | KEYS and ARGV stay writable under the read-only globals: element assignment and table.insert append to both. |
-| redis-api | [library-error-location](scripts/redis-api/library-error-location.lua) | A library's own error after a callback keeps its script location although the callback caught a rawset refusal (sort, gsub, __tostring, each with a control); next's invalid key error carries none. |
-| redis-api | [log-keys-argv](scripts/redis-api/log-keys-argv.lua) | redis.log is allowed; KEYS and ARGV remain ordered strings. |
-| redis-api | [lua-arrays](scripts/redis-api/lua-arrays.lua) | Nested array conversion stops at first nil and ignores hash entries. |
-| redis-api | [lua-nil](scripts/redis-api/lua-nil.lua) | A top-level Lua nil becomes a RESP nil bulk. |
-| redis-api | [lua-scalars](scripts/redis-api/lua-scalars.lua) | Lua numbers truncate toward zero; true is one and false is nil. |
-| redis-api | [number-argument-effects](scripts/redis-api/number-argument-effects.lua) | A number argument stored by SET is read back by INCR, and INCRBYFLOAT reads a fractional one; 7.0.15 and 7.2.16 format the argument differently. |
-| redis-api | [number-argument-format](scripts/redis-api/number-argument-format.lua) | ECHO returns number arguments as the host formats them: %.17g in 7.0.15, integers and fpconv's Grisu2 digits in 7.2.16. |
-| redis-api | [pcall-keeps-other-errors](scripts/redis-api/pcall-keeps-other-errors.lua) | pcall preserves error tables whose err field is neither string nor number, and nil and false errors. |
-| redis-api | [pcall-outside-comparator](scripts/redis-api/pcall-outside-comparator.lua) | A redis.call error from a sort comparator caught by pcall around sort is the err string. |
-| redis-api | [pcall-success-error](scripts/redis-api/pcall-success-error.lua) | redis.pcall returns successes and error tables without raising. |
-| redis-api | [pcall-unwraps-err](scripts/redis-api/pcall-unwraps-err.lua) | pcall unwraps string and numeric err fields; xpcall's handler still sees the table. |
-| redis-api | [readonly-library-tables](scripts/redis-api/readonly-library-tables.lua) | Writes to the library tables reachable from the globals and to an existing key of the string metatable, with each refusal's location. |
-| redis-api | [readonly-rawset-error](scripts/redis-api/readonly-rawset-error.lua) | An uncaught rawset refusal on a library table, raised inside the library function, reaches the EVAL error reply without a script location. |
-| redis-api | [redis-version](scripts/redis-api/redis-version.lua) | redis.REDIS_VERSION and redis.REDIS_VERSION_NUM, which name the reference release. |
-| redis-api | [removed-globals](scripts/redis-api/removed-globals.lua) | getfenv, setfenv and newproxy are readable in 7.0.15 and absent from the 7.2.16 sandbox. |
-| redis-api | [resp-error-raised](scripts/redis-api/resp-error-raised.lua) | A Redis error caught by Lua pcall is a string rather than a reply table. |
-| redis-api | [resp-values](scripts/redis-api/resp-values.lua) | Integer, bulk, missing bulk, array and status replies become Lua values. |
-| redis-api | [return-error-table](scripts/redis-api/return-error-table.lua) | A returned err field becomes a RESP error. |
-| redis-api | [return-status-table](scripts/redis-api/return-status-table.lua) | A returned ok field becomes a RESP status. |
-| redis-api | [set-repl-no-argument](scripts/redis-api/set-repl-no-argument.lua) | redis.set_repl with no arguments raises an error whose text changed between releases. |
-| redis-api | [sha1hex](scripts/redis-api/sha1hex.lua) | redis.sha1hex hashes empty, ASCII and embedded NUL byte strings. |
-| redis-api | [status-reply](scripts/redis-api/status-reply.lua) | redis.status_reply constructs a RESP status reply. |
-| redis-api | [string-metatable-readonly](scripts/redis-api/string-metatable-readonly.lua) | Writes to the string metatable (assignment, rawset, setmetatable) succeed in 7.0.15 and are refused as a readonly table in 7.2.16. |
+| apps | [hash-cas](../../../tests/halo-oracle/scripts/apps/hash-cas.lua) | Hash compare-and-set leaves mismatches untouched and reports a match. |
+| apps | [lock-extend](../../../tests/halo-oracle/scripts/apps/lock-extend.lua) | PEXPIRE extends a lock only for its current owner. |
+| apps | [queue-move](../../../tests/halo-oracle/scripts/apps/queue-move.lua) | LPOP/RPUSH moves jobs in order and stops on an empty source. |
+| apps | [rate-limiter](../../../tests/halo-oracle/scripts/apps/rate-limiter.lua) | INCR and first-hit PEXPIRE enforce a limit without clock-valued output. |
+| apps | [redlock-release](../../../tests/halo-oracle/scripts/apps/redlock-release.lua) | Lock release deletes only a matching owner and handles a missing lock. |
+| apps | [sliding-window](../../../tests/halo-oracle/scripts/apps/sliding-window.lua) | Sorted-set limiter removes old scores and counts a fixed-time window. |
+| coroutines | [argument-errors](../../../tests/halo-oracle/scripts/coroutines/argument-errors.lua) | create with a non-function and resume with a non-coroutine raise errors caught by pcall. |
+| coroutines | [budget-long-generator](../../../tests/halo-oracle/scripts/coroutines/budget-long-generator.lua) | A loop inside a coroutine and thousands of yields exercise budget suspension and resumption. |
+| coroutines | [direct-wrap-errors](../../../tests/halo-oracle/scripts/coroutines/direct-wrap-errors.lua) | Direct Lua wrapper calls add caller locations to string and numeric errors, preserve table errors and locate dead-wrapper refusal. |
+| coroutines | [errors-in-coroutine](../../../tests/halo-oracle/scripts/coroutines/errors-in-coroutine.lua) | resume and inner pcall catch located strings, level-zero errors, identity-preserving tables and Redis command errors; redis.pcall returns replies. |
+| coroutines | [gc-callback-roots](../../../tests/halo-oracle/scripts/coroutines/gc-callback-roots.lua) | Nested resumes park foreach, sort, gsub and xpcall while children allocate; dynamic keys, tables, strings, callbacks and errors survive. |
+| coroutines | [gc-error-over-limit](../../../tests/halo-oracle/scripts/coroutines/gc-error-over-limit.lua) | A coroutine's arithmetic error survives the collection the host's 64 MiB heap limit forces while the dying coroutine is still installed; targets the error omission. |
+| coroutines | [gc-escaped-owner](../../../tests/halo-oracle/scripts/coroutines/gc-escaped-owner.lua) | Escaped reads and writes survive an unreachable suspended owner and later thread-slot reuse; targets captured-value and owner-close omissions. |
+| coroutines | [gc-library-contexts](../../../tests/halo-oracle/scripts/coroutines/gc-library-contexts.lua) | Parked foreach, sort and pcall keep a tail-left comparator, an evicted foreach key and a replaced pcall error table while children allocate; targets library-comparator, library-key and library-error omissions. |
+| coroutines | [gc-library-table-sole](../../../tests/halo-oracle/scripts/coroutines/gc-library-table-sole.lua) | foreach called as an __index function keeps walking a table whose only holder is its saved record while a child allocates; targets the library-table omission. |
+| coroutines | [gc-metamethod-wrappers](../../../tests/halo-oracle/scripts/coroutines/gc-metamethod-wrappers.lua) | Coroutines entered through self-clearing __index wrappers stay distinct from a coroutine they create; targets current-thread and resumer omissions. |
+| coroutines | [gc-open-list-reuse](../../../tests/halo-oracle/scripts/coroutines/gc-open-list-reuse.lua) | A parked owner's dead-closure capture stays listed, so a later capture and a block exit still close a block local's capture; targets the open-list omission. |
+| coroutines | [gc-open-recapture](../../../tests/halo-oracle/scripts/coroutines/gc-open-recapture.lua) | A discarded closure leaves an open capture that a suspended owner later recaptures and writes; targets the open-list omission. |
+| coroutines | [gc-pattern-coercion](../../../tests/halo-oracle/scripts/coroutines/gc-pattern-coercion.lua) | gsub keeps strings converted from a numeric source and pattern while its replacement resumes an allocating child; targets pattern-source and pattern-pattern omissions. |
+| coroutines | [gc-sort-frames](../../../tests/halo-oracle/scripts/coroutines/gc-sort-frames.lua) | sort keeps a compared pair and its pivot that a comparator removed from the table; targets sort-a, sort-b and sort-pivot omissions. |
+| coroutines | [gc-stopped-high-register](../../../tests/halo-oracle/scripts/coroutines/gc-stopped-high-register.lua) | A table held only in a high register of a foreach callback inside a coroutine survives the collection the host's 64 MiB heap limit forces at the callback's first budget stop, while only the parked stack copy holds it; targets the stopped omission. |
+| coroutines | [gc-stopped-over-limit](../../../tests/halo-oracle/scripts/coroutines/gc-stopped-over-limit.lua) | A table held only in a deep register of a foreach callback inside a coroutine survives a budget stop taken over the host's 64 MiB heap limit after the callback has continued from its saved record; exercises the over-limit collection with the whole stack installed. |
+| coroutines | [gc-thread-roots](../../../tests/halo-oracle/scripts/coroutines/gc-thread-roots.lua) | An unstarted thread retains a private entry capture, and normal parents retain private locals during nested child allocation. |
+| coroutines | [gc-transfer-values](../../../tests/halo-oracle/scripts/coroutines/gc-transfer-values.lua) | Tail resume and yield carry 20 fresh table values and a trailing nil beyond the caller's fixed registers. |
+| coroutines | [generator-values](../../../tests/halo-oracle/scripts/coroutines/generator-values.lua) | create, resume and yield exchange multiple values in both directions, counting nil holes. |
+| coroutines | [main-open-capture](../../../tests/halo-oracle/scripts/coroutines/main-open-capture.lua) | Children write a main-chunk local through the same open capture while main is their normal resumer. |
+| coroutines | [mixed-resume-depth](../../../tests/halo-oracle/scripts/coroutines/mixed-resume-depth.lua) | pcall, sort, gsub and protected callback combinations inserted at resume depths 190 and 197 expose their contribution to the C-depth limit. |
+| coroutines | [nested-resume-depth](../../../tests/halo-oracle/scripts/coroutines/nested-resume-depth.lua) | Nested resumes reach the reference's own limit and report the reached depth and caught error text. |
+| coroutines | [open-limit-per-execution](../../../tests/halo-oracle/scripts/coroutines/open-limit-per-execution.lua) | A returning function's open capture is still closed when a yielded coroutine holds a higher open capture and a finished one closed its own, so the returned closure survives the caller's overwrite of the frame; guards the open limit being kept per execution. |
+| coroutines | [redis-call-in-coroutine](../../../tests/halo-oracle/scripts/coroutines/redis-call-in-coroutine.lua) | Redis reads and writes inside a coroutine survive yields and target declared keys. |
+| coroutines | [redis-resumer-callbacks](../../../tests/halo-oracle/scripts/coroutines/redis-resumer-callbacks.lua) | Children resumed by sort and gsub callbacks perform Redis success, caught and uncaught command failure, redis.pcall and yield/return. |
+| coroutines | [refused-resume-state](../../../tests/halo-oracle/scripts/coroutines/refused-resume-state.lua) | A resume refused at the nested-resume limit leaves a never-started coroutine dead and a yielded one suspended; later resumes see each state. |
+| coroutines | [results-as-eval-reply](../../../tests/halo-oracle/scripts/coroutines/results-as-eval-reply.lua) | A coroutine's returned values become the script's direct EVAL reply. |
+| coroutines | [resume-state-errors](../../../tests/halo-oracle/scripts/coroutines/resume-state-errors.lua) | Resuming dead, running and normal coroutines records failure results and exact messages. |
+| coroutines | [shared-upvalues-across](../../../tests/halo-oracle/scripts/coroutines/shared-upvalues-across.lua) | Main and another coroutine read and write a shared closure's upvalue while its creator is suspended and after it dies. |
+| coroutines | [status-all](../../../tests/halo-oracle/scripts/coroutines/status-all.lua) | suspended, running, normal and dead statuses accompany running's main-thread nil and coroutine identity. |
+| coroutines | [tail-transfers](../../../tests/halo-oracle/scripts/coroutines/tail-transfers.lua) | Tail yield and tail resume preserve success flags, counted nil holes and trailing nils on suspension and completion. |
+| coroutines | [top-level-error](../../../tests/halo-oracle/scripts/coroutines/top-level-error.lua) | An error returned by resume is rethrown as an intentional top-level EVAL error. |
+| coroutines | [wrap-errors](../../../tests/halo-oracle/scripts/coroutines/wrap-errors.lua) | wrap exchanges values and propagates coroutine errors to the caller's pcall. |
+| coroutines | [wrap-own-status](../../../tests/halo-oracle/scripts/coroutines/wrap-own-status.lua) | A wrapper sees itself running, its child sees it normal, and its caller sees its identity suspended then dead. |
+| coroutines | [yield-across-resumer-callbacks](../../../tests/halo-oracle/scripts/coroutines/yield-across-resumer-callbacks.lua) | Yields across resume called from a resumer's pcall, sort comparator, __index and gsub callback record continuation results. |
+| coroutines | [yield-boundaries](../../../tests/halo-oracle/scripts/coroutines/yield-boundaries.lua) | Yield attempts inside five metamethods, a __call handler, pcall, xpcall, sort, gsub, foreach and a generic-for iterator record resume results. |
+| coroutines | [yield-outside](../../../tests/halo-oracle/scripts/coroutines/yield-outside.lua) | Yield outside a coroutine raises an error caught by pcall. |
+| libs | [bit-logical](../../../tests/halo-oracle/scripts/libs/bit-logical.lua) | bit.band, bor and bxor use signed 32-bit results. |
+| libs | [bit-shifts-hex](../../../tests/halo-oracle/scripts/libs/bit-shifts-hex.lua) | Shifts mask counts and tohex formats signed values as hex. |
+| libs | [bit-tohex-extrema](../../../tests/halo-oracle/scripts/libs/bit-tohex-extrema.lua) | bit.tohex with digit counts at the signed 32-bit extremes; 7.0.15 overflows, 7.2.16 does not. |
+| libs | [cjson-arrays-nested](../../../tests/halo-oracle/scripts/libs/cjson-arrays-nested.lua) | JSON arrays encode and nested object values decode without relying on object order. |
+| libs | [cjson-instance-methods](../../../tests/halo-oracle/scripts/libs/cjson-instance-methods.lua) | Methods of a cjson.new() instance, called through the table and after extraction, beside a string.gmatch iterator. |
+| libs | [cjson-invalid](../../../tests/halo-oracle/scripts/libs/cjson-invalid.lua) | Malformed JSON raises an error caught by pcall. |
+| libs | [cjson-numbers](../../../tests/halo-oracle/scripts/libs/cjson-numbers.lua) | cjson number formatting is independent of RESP integer conversion. |
+| libs | [cjson-objects](../../../tests/halo-oracle/scripts/libs/cjson-objects.lua) | JSON objects, empty table encoding and decoded null/boolean values. |
+| libs | [cmsgpack-binary](../../../tests/halo-oracle/scripts/libs/cmsgpack-binary.lua) | MessagePack exact scalar bytes and binary strings survive packing. |
+| libs | [cmsgpack-roundtrip](../../../tests/halo-oracle/scripts/libs/cmsgpack-roundtrip.lua) | MessagePack round-trips maps, arrays, booleans, integers and strings. |
+| libs | [gsub-null-replacement](../../../tests/halo-oracle/scripts/libs/gsub-null-replacement.lua) | string.gsub refuses cjson.null, a userdata, as its replacement. |
+| libs | [struct-integers](../../../tests/halo-oracle/scripts/libs/struct-integers.lua) | struct packs explicit-endian signed and unsigned integer widths. |
+| libs | [struct-strings-floats](../../../tests/halo-oracle/scripts/libs/struct-strings-floats.lua) | struct packs fixed strings and doubles with explicit endian and offsets. |
+| lua-core | [argument-error-names](../../../tests/halo-oracle/scripts/lua-core/argument-error-names.lua) | Argument errors name the called function from the call site: aliases, fields, methods and bad self, upvalues, tail calls, generic-for iterators, metamethods, and '?' for calls from native code. |
+| lua-core | [array-holes](../../../tests/halo-oracle/scripts/lua-core/array-holes.lua) | Lua 5.1 length selects a boundary for arrays with holes. |
+| lua-core | [assert](../../../tests/halo-oracle/scripts/lua-core/assert.lua) | assert returns all successful arguments and raises a chosen message. |
+| lua-core | [call-kinds](../../../tests/halo-oracle/scripts/lua-core/call-kinds.lua) | Ordinary calls reach native functions, native iterators and vararg Lua functions; number and nil callees raise errors checked apart from the variable description. |
+| lua-core | [callback-error-levels](../../../tests/halo-oracle/scripts/lua-core/callback-error-levels.lua) | error levels count each native function (pcall, sort, gsub) between Lua frames as a level without a location; metamethods (__index, __add) add no level; a level past the top adds no location. |
+| lua-core | [concat-numbers](../../../tests/halo-oracle/scripts/lua-core/concat-numbers.lua) | Concatenation coerces numbers with Lua number formatting. |
+| lua-core | [counter-closure](../../../tests/halo-oracle/scripts/lua-core/counter-closure.lua) | Separate counter closures retain independent upvalue state. |
+| lua-core | [embedded-zero](../../../tests/halo-oracle/scripts/lua-core/embedded-zero.lua) | Embedded NUL survives length, slicing, byte lookup and RESP bulk. |
+| lua-core | [error-after-callback-line](../../../tests/halo-oracle/scripts/lua-core/error-after-callback-line.lua) | A gsub error after its replacement returns, including after budget suspension, is located at the gsub call. |
+| lua-core | [error-in-comparator-line](../../../tests/halo-oracle/scripts/lua-core/error-in-comparator-line.lua) | An error inside a sort comparator is located at the comparator's line. |
+| lua-core | [error-levels](../../../tests/halo-oracle/scripts/lua-core/error-levels.lua) | error levels select caller locations; level zero has no location. |
+| lua-core | [error-names-control](../../../tests/halo-oracle/scripts/lua-core/error-names-control.lua) | Symbolic walks cross forward tests and jumps and skip closure capture cells. |
+| lua-core | [error-names-field](../../../tests/halo-oracle/scripts/lua-core/error-names-field.lua) | String constant fields retain their names; numeric and register keys use question mark. |
+| lua-core | [error-names-global](../../../tests/halo-oracle/scripts/lua-core/error-names-global.lua) | Existing globals supply global names without the nonexistent-global interception. |
+| lua-core | [error-names-local](../../../tests/halo-oracle/scripts/lua-core/error-names-local.lua) | Active local names, MOVE recursion, operand selection, and local scope boundaries. |
+| lua-core | [error-names-method](../../../tests/halo-oracle/scripts/lua-core/error-names-method.lua) | SELF names a missing or non-callable method; an invalid receiver is still an index operand. |
+| lua-core | [error-names-unnamed](../../../tests/halo-oracle/scripts/lua-core/error-names-unnamed.lua) | Call results, constructors, constants, tag-method chains and native calls have no operand name. |
+| lua-core | [error-names-upvalue](../../../tests/halo-oracle/scripts/lua-core/error-names-upvalue.lua) | Upvalue names and ordering survive two closure levels and every operand error family. |
+| lua-core | [error-names-userdata](../../../tests/halo-oracle/scripts/lua-core/error-names-userdata.lua) | cjson.null uses the same operand descriptions with userdata as its Lua type. |
+| lua-core | [error-rethrow-local](../../../tests/halo-oracle/scripts/lua-core/error-rethrow-local.lua) | An error caught by pcall and raised through a local error alias is located at the rethrow. |
+| lua-core | [error-table-index](../../../tests/halo-oracle/scripts/lua-core/error-table-index.lua) | Nil and NaN store keys carry Lua instruction locations; rawset keeps bare errors. |
+| lua-core | [error-values](../../../tests/halo-oracle/scripts/lua-core/error-values.lua) | pcall preserves string and table error objects without stringifying tables. |
+| lua-core | [float-print](../../../tests/halo-oracle/scripts/lua-core/float-print.lua) | tostring uses Lua number formatting and exponent notation. |
+| lua-core | [format-14g](../../../tests/halo-oracle/scripts/lua-core/format-14g.lua) | Explicit %.14g rounding at fourteen significant digits. |
+| lua-core | [integer-doubles](../../../tests/halo-oracle/scripts/lua-core/integer-doubles.lua) | Integer-valued doubles, precision boundary and number type. |
+| lua-core | [ipairs](../../../tests/halo-oracle/scripts/lua-core/ipairs.lua) | ipairs stops at the first nil even when later array entries exist. |
+| lua-core | [loop-closures](../../../tests/halo-oracle/scripts/lua-core/loop-closures.lua) | Numeric and generic loops create captured iteration locals. |
+| lua-core | [math-mod](../../../tests/halo-oracle/scripts/lua-core/math-mod.lua) | math.mod is math.fmod: the same function value and results, as Redis's Lua defines LUA_COMPAT_MOD. |
+| lua-core | [math-powers](../../../tests/halo-oracle/scripts/lua-core/math-powers.lua) | sqrt, math.pow, exponentiation and math.huge. |
+| lua-core | [math-random](../../../tests/halo-oracle/scripts/lua-core/math-random.lua) | Redis deterministic default seed and explicit reseeding. |
+| lua-core | [math-round-extrema](../../../tests/halo-oracle/scripts/lua-core/math-round-extrema.lua) | floor, ceil, abs, max, min and fmod for signed numbers. |
+| lua-core | [meta-call](../../../tests/halo-oracle/scripts/lua-core/meta-call.lua) | __call receives the table as its first argument and can return many values. |
+| lua-core | [meta-comparisons](../../../tests/halo-oracle/scripts/lua-core/meta-comparisons.lua) | Shared __eq, __lt and __le control table comparisons. |
+| lua-core | [meta-concat-tostring](../../../tests/halo-oracle/scripts/lua-core/meta-concat-tostring.lua) | __concat handles table operands; tostring honors __tostring. |
+| lua-core | [meta-index](../../../tests/halo-oracle/scripts/lua-core/meta-index.lua) | __index supports both table delegation and a function fallback. |
+| lua-core | [meta-le-fallback](../../../tests/halo-oracle/scripts/lua-core/meta-le-fallback.lua) | Without __le, less-or-equal falls back to reversed __lt. |
+| lua-core | [meta-newindex](../../../tests/halo-oracle/scripts/lua-core/meta-newindex.lua) | __newindex intercepts absent entries while existing ones write directly. |
+| lua-core | [meta-protection-raw](../../../tests/halo-oracle/scripts/lua-core/meta-protection-raw.lua) | Metatable protection and raw operations bypass ordinary metamethods. |
+| lua-core | [meta-table-length](../../../tests/halo-oracle/scripts/lua-core/meta-table-length.lua) | Lua 5.1 ignores __len on tables. |
+| lua-core | [metamethod-error](../../../tests/halo-oracle/scripts/lua-core/metamethod-error.lua) | Errors raised inside a metamethod propagate through pcall. |
+| lua-core | [multiple-returns](../../../tests/halo-oracle/scripts/lua-core/multiple-returns.lua) | Assignment and table constructor expand only final multiple returns. |
+| lua-core | [negative-division](../../../tests/halo-oracle/scripts/lua-core/negative-division.lua) | Lua 5.1 division is floating; modulo follows floor division. |
+| lua-core | [next-pairs](../../../tests/halo-oracle/scripts/lua-core/next-pairs.lua) | next and pairs visit hash entries; output is sorted to avoid hash order. |
+| lua-core | [nil-returns](../../../tests/halo-oracle/scripts/lua-core/nil-returns.lua) | select observes nil return slots that RESP arrays would truncate. |
+| lua-core | [nonfinite](../../../tests/halo-oracle/scripts/lua-core/nonfinite.lua) | Infinity and NaN arithmetic, comparisons and string conversion. |
+| lua-core | [numeric-coercion](../../../tests/halo-oracle/scripts/lua-core/numeric-coercion.lua) | Arithmetic coerces numeric strings; tonumber handles bases and failures. |
+| lua-core | [pcall-error-field-index](../../../tests/halo-oracle/scripts/lua-core/pcall-error-field-index.lua) | Post-catch err lookup preserves result types and counts, honors __index chains and functions through nested protected and sort callbacks and host calls, propagates lookup errors, and leaves xpcall unchanged. |
+| lua-core | [pcall-xpcall](../../../tests/halo-oracle/scripts/lua-core/pcall-xpcall.lua) | Protected calls preserve success returns and handler-transformed errors. |
+| lua-core | [shared-upvalues](../../../tests/halo-oracle/scripts/lua-core/shared-upvalues.lua) | Sibling closures share the same mutable captured local. |
+| lua-core | [string-byte-char](../../../tests/halo-oracle/scripts/lua-core/string-byte-char.lua) | byte ranges and char preserve boundary bytes including NUL. |
+| lua-core | [string-escapes](../../../tests/halo-oracle/scripts/lua-core/string-escapes.lua) | Quoted escapes, decimal byte escapes and long bracket strings. |
+| lua-core | [string-find](../../../tests/halo-oracle/scripts/lua-core/string-find.lua) | find plain mode, pattern captures, start offsets and no match. |
+| lua-core | [string-format](../../../tests/halo-oracle/scripts/lua-core/string-format.lua) | format exercises %d %s %q %x %g and width/precision. |
+| lua-core | [string-gmatch](../../../tests/halo-oracle/scripts/lua-core/string-gmatch.lua) | gmatch iterates captured words and digits. |
+| lua-core | [string-gsub-dynamic](../../../tests/halo-oracle/scripts/lua-core/string-gsub-dynamic.lua) | gsub table and function replacements preserve false or nil matches. |
+| lua-core | [string-gsub-string](../../../tests/halo-oracle/scripts/lua-core/string-gsub-string.lua) | gsub supports capture substitutions, whole match, percent and limits. |
+| lua-core | [string-length-order](../../../tests/halo-oracle/scripts/lua-core/string-length-order.lua) | String byte length and lexicographic comparisons. |
+| lua-core | [string-match](../../../tests/halo-oracle/scripts/lua-core/string-match.lua) | Patterns support captures, balanced matching and frontier boundaries. |
+| lua-core | [string-transforms](../../../tests/halo-oracle/scripts/lua-core/string-transforms.lua) | sub negative indices, upper/lower, rep and reverse. |
+| lua-core | [table-concat](../../../tests/halo-oracle/scripts/lua-core/table-concat.lua) | table.concat uses separators, slice bounds and numeric elements. |
+| lua-core | [table-foreach](../../../tests/halo-oracle/scripts/lua-core/table-foreach.lua) | table.foreach visits pairs in next order, returns the first non-nil result, allows field assignment and Redis calls in its function, checks its arguments, passes callback errors on unchanged, and runs under pcall and inside sort and gsub callbacks. |
+| lua-core | [table-growth-order](../../../tests/halo-oracle/scripts/lua-core/table-growth-order.lua) | pairs order and # after growth, key migration between hash and array, holes, regrowth and shrinking, unsorted. |
+| lua-core | [table-insert-remove](../../../tests/halo-oracle/scripts/lua-core/table-insert-remove.lua) | Array insertion shifts entries; removal returns and shifts values. |
+| lua-core | [table-parts](../../../tests/halo-oracle/scripts/lua-core/table-parts.lua) | Array and hash entries coexist; hash entries do not add array length. |
+| lua-core | [table-sort](../../../tests/halo-oracle/scripts/lua-core/table-sort.lua) | Default and custom comparator sort numbers into opposite orders. |
+| lua-core | [table-sort-order](../../../tests/halo-oracle/scripts/lua-core/table-sort-order.lua) | Default auxsort permutation for duplicate numbers, signed zeros, strings with NUL, NaN, hash-backed indices and short arrays. |
+| lua-core | [tail-call-error-levels](../../../tests/halo-oracle/scripts/lua-core/tail-call-error-levels.lua) | error levels count each call a Lua-to-Lua tail call replaced as a level without a location, one to three per frame and around sort comparators and pcall; a tail call into error or pcall keeps the calling frame. |
+| lua-core | [tail-recursion](../../../tests/halo-oracle/scripts/lua-core/tail-recursion.lua) | Proper tail calls allow deep recursion without growing call stack. |
+| lua-core | [unpack-overflow-range](../../../tests/halo-oracle/scripts/lua-core/unpack-overflow-range.lua) | unpack refuses ranges too long for an int with the too-many-results error; 7.0.15 overflows for three of four ranges. |
+| lua-core | [unpack-select-varargs](../../../tests/halo-oracle/scripts/lua-core/unpack-select-varargs.lua) | unpack ranges and select preserve vararg count including nil. |
+| lua-core | [version-global](../../../tests/halo-oracle/scripts/lua-core/version-global.lua) | The base library exposes _VERSION as the string Lua 5.1. |
+| redis-api | [call-error](../../../tests/halo-oracle/scripts/redis-api/call-error.lua) | redis.call raises command errors to the EVAL reply. |
+| redis-api | [call-error-in-callback](../../../tests/halo-oracle/scripts/redis-api/call-error-in-callback.lua) | A redis.call error inside a sort comparator ends the script with an error reply. |
+| redis-api | [call-in-callback](../../../tests/halo-oracle/scripts/redis-api/call-in-callback.lua) | redis.call and redis.pcall return to sort, gsub and __tostring callbacks; pcall inside a comparator catches a redis.call error. |
+| redis-api | [call-success](../../../tests/halo-oracle/scripts/redis-api/call-success.lua) | redis.call returns successful write and read replies. |
+| redis-api | [double-reply-table](../../../tests/halo-oracle/scripts/redis-api/double-reply-table.lua) | Returned {double=x} tables become bulk strings with the host's double text; 7.2.16 writes fpconv's Grisu2 digits, which read back exactly but are not always the shortest, where 7.0.15 printed %.17g. |
+| redis-api | [double-score-reply](../../../tests/halo-oracle/scripts/redis-api/double-score-reply.lua) | ZADD with a number score, then ZSCORE and WITHSCORES, reply with the host's double text (0.1 versus 0.10000000000000001). |
+| redis-api | [error-after-call-in-callback-line](../../../tests/halo-oracle/scripts/redis-api/error-after-call-in-callback-line.lua) | A gsub error after a replacement that called redis.call returns is located at the gsub call. |
+| redis-api | [error-message-crlf](../../../tests/halo-oracle/scripts/redis-api/error-message-crlf.lua) | A top-level runtime error whose message holds CR LF; 7.0.15 breaks the RESP framing, 7.2.16 replaces them with spaces. |
+| redis-api | [error-message-newline](../../../tests/halo-oracle/scripts/redis-api/error-message-newline.lua) | A top-level runtime error whose message holds LF; 7.0.15 breaks the RESP framing, 7.2.16 replaces it with a space. |
+| redis-api | [error-reply](../../../tests/halo-oracle/scripts/redis-api/error-reply.lua) | redis.error_reply constructs a RESP error reply. |
+| redis-api | [error-reply-newline](../../../tests/halo-oracle/scripts/redis-api/error-reply-newline.lua) | redis.error_reply with a newline: 7.2.16 sends the one line "ERR a b" (the line break becomes a space and the text gains an ERR code); 7.0.15 is read from the source as "a b" without the code, unverified. |
+| redis-api | [error-rethrow-line](../../../tests/halo-oracle/scripts/redis-api/error-rethrow-line.lua) | A redis.call error caught by xpcall and raised with error(e,0) is located at the rethrow. |
+| redis-api | [foreach-invalid-key](../../../tests/halo-oracle/scripts/redis-api/foreach-invalid-key.lua) | table.foreach resuming after its function removed the visited key and grew the table past a rehash raises "invalid key to 'next'" without a script location, as next does with the same key. |
+| redis-api | [global-read](../../../tests/halo-oracle/scripts/redis-api/global-read.lua) | Redis refuses access to an undeclared global. |
+| redis-api | [global-write](../../../tests/halo-oracle/scripts/redis-api/global-write.lua) | Redis refuses assignment to an undeclared global. |
+| redis-api | [keys-argv-writable](../../../tests/halo-oracle/scripts/redis-api/keys-argv-writable.lua) | KEYS and ARGV stay writable under the read-only globals: element assignment and table.insert append to both. |
+| redis-api | [library-error-location](../../../tests/halo-oracle/scripts/redis-api/library-error-location.lua) | A library's own error after a callback keeps its script location although the callback caught a rawset refusal (sort, gsub, __tostring, each with a control); next's invalid key error carries none. |
+| redis-api | [log-keys-argv](../../../tests/halo-oracle/scripts/redis-api/log-keys-argv.lua) | redis.log is allowed; KEYS and ARGV remain ordered strings. |
+| redis-api | [lua-arrays](../../../tests/halo-oracle/scripts/redis-api/lua-arrays.lua) | Nested array conversion stops at first nil and ignores hash entries. |
+| redis-api | [lua-nil](../../../tests/halo-oracle/scripts/redis-api/lua-nil.lua) | A top-level Lua nil becomes a RESP nil bulk. |
+| redis-api | [lua-scalars](../../../tests/halo-oracle/scripts/redis-api/lua-scalars.lua) | Lua numbers truncate toward zero; true is one and false is nil. |
+| redis-api | [number-argument-effects](../../../tests/halo-oracle/scripts/redis-api/number-argument-effects.lua) | A number argument stored by SET is read back by INCR, and INCRBYFLOAT reads a fractional one; 7.0.15 and 7.2.16 format the argument differently. |
+| redis-api | [number-argument-format](../../../tests/halo-oracle/scripts/redis-api/number-argument-format.lua) | ECHO returns number arguments as the host formats them: %.17g in 7.0.15, integers and fpconv's Grisu2 digits in 7.2.16. |
+| redis-api | [pcall-keeps-other-errors](../../../tests/halo-oracle/scripts/redis-api/pcall-keeps-other-errors.lua) | pcall preserves error tables whose err field is neither string nor number, and nil and false errors. |
+| redis-api | [pcall-outside-comparator](../../../tests/halo-oracle/scripts/redis-api/pcall-outside-comparator.lua) | A redis.call error from a sort comparator caught by pcall around sort is the err string. |
+| redis-api | [pcall-success-error](../../../tests/halo-oracle/scripts/redis-api/pcall-success-error.lua) | redis.pcall returns successes and error tables without raising. |
+| redis-api | [pcall-unwraps-err](../../../tests/halo-oracle/scripts/redis-api/pcall-unwraps-err.lua) | pcall unwraps string and numeric err fields; xpcall's handler still sees the table. |
+| redis-api | [readonly-library-tables](../../../tests/halo-oracle/scripts/redis-api/readonly-library-tables.lua) | Writes to the library tables reachable from the globals and to an existing key of the string metatable, with each refusal's location. |
+| redis-api | [readonly-rawset-error](../../../tests/halo-oracle/scripts/redis-api/readonly-rawset-error.lua) | An uncaught rawset refusal on a library table, raised inside the library function, reaches the EVAL error reply without a script location. |
+| redis-api | [redis-version](../../../tests/halo-oracle/scripts/redis-api/redis-version.lua) | redis.REDIS_VERSION and redis.REDIS_VERSION_NUM, which name the reference release. |
+| redis-api | [removed-globals](../../../tests/halo-oracle/scripts/redis-api/removed-globals.lua) | getfenv, setfenv and newproxy are readable in 7.0.15 and absent from the 7.2.16 sandbox. |
+| redis-api | [resp-error-raised](../../../tests/halo-oracle/scripts/redis-api/resp-error-raised.lua) | A Redis error caught by Lua pcall is a string rather than a reply table. |
+| redis-api | [resp-values](../../../tests/halo-oracle/scripts/redis-api/resp-values.lua) | Integer, bulk, missing bulk, array and status replies become Lua values. |
+| redis-api | [return-error-table](../../../tests/halo-oracle/scripts/redis-api/return-error-table.lua) | A returned err field becomes a RESP error. |
+| redis-api | [return-status-table](../../../tests/halo-oracle/scripts/redis-api/return-status-table.lua) | A returned ok field becomes a RESP status. |
+| redis-api | [set-repl-no-argument](../../../tests/halo-oracle/scripts/redis-api/set-repl-no-argument.lua) | redis.set_repl with no arguments raises an error whose text changed between releases. |
+| redis-api | [sha1hex](../../../tests/halo-oracle/scripts/redis-api/sha1hex.lua) | redis.sha1hex hashes empty, ASCII and embedded NUL byte strings. |
+| redis-api | [status-reply](../../../tests/halo-oracle/scripts/redis-api/status-reply.lua) | redis.status_reply constructs a RESP status reply. |
+| redis-api | [string-metatable-readonly](../../../tests/halo-oracle/scripts/redis-api/string-metatable-readonly.lua) | Writes to the string metatable (assignment, rawset, setmetatable) succeed in 7.0.15 and are refused as a readonly table in 7.2.16. |

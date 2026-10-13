@@ -14,8 +14,9 @@ Reused binaries must have been built with the corresponding mode.
 This experiment compiles Lua source with `pkg::compile`, runs it with
 `pkg::vm::start`, and compares printed text with Redis's bundled Lua 5.1.5.
 It serves the slice 1 library and number wiring described in
-`research/investigations/halo/VM.md`, sections 3 and 8. The adapter, corpus,
-and comparison runner live here. Halo's `make check-extended` includes the
+`research/investigations/halo/VM.md`, sections 3 and 8. The adapter and graph
+live in [tests/halo-lib](../../../tests/halo-lib/); the corpus and comparison
+runner remain here. Halo's `make check-extended` includes the
 `hosts-lib` target, which builds this experiment's `run` entry without
 running it; the gate does not run this library comparison. Remove the
 adapter and runner when an embedding-level oracle replaces this experiment.

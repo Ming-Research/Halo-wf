@@ -15,8 +15,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from compiler_cache import add_arguments as cache_arguments, flags as cache_flags
 
 HERE = Path(__file__).resolve().parent
-ROOT = HERE.parents[2]
-ORACLE = ROOT / 'research/experiments/halo-oracle'
+ROOT = HERE.parents[1]
+ORACLE = ROOT / 'tests/halo-oracle'
 
 
 def metadata(source):

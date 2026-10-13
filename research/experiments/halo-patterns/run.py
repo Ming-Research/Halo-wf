@@ -9,7 +9,7 @@ import time
 import tempfile
 
 import sys
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'tests'))
 from compiler_cache import add_arguments as cache_arguments, flags as cache_flags
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -43,7 +43,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix='halo-patterns-') as temporary:
         if args.binary is None:
             args.binary = Path(temporary)/'test'
-            build, seconds = run([args.compiler, '--graph', str(HERE.parent/'halo-e2e/modules.wfg'),
+            build, seconds = run([args.compiler, '--graph', str(ROOT/'tests/halo-e2e/modules.wfg'),
                                   '--entry', 'test', '-o', str(args.binary)] + cache_flags(args))
             print(f'Native build exit {build.returncode}, {seconds:.3f}s', flush=True)
             if build.returncode:

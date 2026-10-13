@@ -1,5 +1,8 @@
 # Halo VM comparison
 
+The graph and smoke/suite hosts live in [tests/halo-vm](../../../tests/halo-vm/).
+The research comparison runner, corpus and results remain here.
+
 The explicitly invoked runner checks all Halo modules, builds the smoke and
 suite entries, and compares local Lua output with the stored oracle. Keep this
 guide with the runner; retire both when maintained VM tests replace them.

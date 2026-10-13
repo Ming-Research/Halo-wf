@@ -18,7 +18,7 @@ from compiler_cache import add_arguments as cache_arguments, flags as cache_flag
 
 MASK = (1 << 64) - 1
 HERE = Path(__file__).resolve().parent
-ROOT = HERE.parents[2]
+ROOT = HERE.parents[1]
 
 
 def require(condition, message):

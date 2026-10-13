@@ -12,18 +12,20 @@ Use the default or explicit `--full-lto` for runtime performance measurements.
 Reused binaries must have been built with the corresponding mode.
 
 The package graph is [lib/json/modules.wfg](../../../lib/json/modules.wfg).
-Its four modules depend only on each other. The native adapter in `check/`
+Its four modules depend only on each other. The native adapter in `tests/json/check/`
 imports the package plus standard process/IO modules; the Python runner is an
 independent oracle. Halo's `make check-extended` runs this comparison through
 the `json` target, with `JSON_SAMPLES=20` by default.
-These fixtures stay here while the package API is experimental; promote useful
+The runner, graph and `check/` adapter live in [tests/json](../../../tests/json/).
+The guide and dated results remain here. These fixtures stay with the gate while
+the package API is experimental; promote useful
 cases into maintained library tests when the package acquires that test owner.
 
 ```sh
-python3 -B research/experiments/json/run.py \
+python3 -B tests/json/run.py \
   --compiler /path/to/whitefootc --full-lto --binary /tmp/json-check \
   --build --samples 20
-python3 -B research/experiments/json/run.py \
+python3 -B tests/json/run.py \
   --compiler /path/to/whitefootc --full-lto --binary /tmp/json-check \
   --samples 4000 --report /tmp/json-results.json
 ```

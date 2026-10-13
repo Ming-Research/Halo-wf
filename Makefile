@@ -21,7 +21,7 @@ DESIGN_REVIEW_BASE ?= origin/main
 # projects written in Whitefoot (whitefoot-kit/downstream.md).
 include $(ROOT)/whitefoot-kit/whitefoot.mk
 
-# The collector's mutant controls (research/experiments/halo-gc/controls.sh),
+# The collector's mutant controls (tests/halo-gc/controls.sh),
 # one part each; gate-parts checks that controls.sh lists the same labels.
 ROOTS_MUTANTS := open-upvalues frame-closure constants
 ROOTS_MUTANT_TARGETS := $(ROOTS_MUTANTS:%=roots-mutant-%)
@@ -68,7 +68,7 @@ check-hosts-lib-json: compiler hosts-lib json
 # has a CI job; and controls.sh's parts (ROOTS_PART=list) are exactly base and
 # one mutant-<label> per ROOTS_MUTANTS label, so every roots part has a target.
 GATE_WORKFLOW := $(ROOT)/.github/workflows/check.yml
-ROOTS_SCRIPT := $(ROOT)/research/experiments/halo-gc/controls.sh
+ROOTS_SCRIPT := $(ROOT)/tests/halo-gc/controls.sh
 gate-parts:
 	@ci=$$(sed -n 's/^[ -]*part: *//p' $(GATE_WORKFLOW) | sort | tr '\n' ' '); \
 	gate=$$(printf '%s\n' $(GATE_PARTS) | sort | tr '\n' ' '); \
@@ -81,9 +81,9 @@ gate-parts:
 		echo "gate parts: controls.sh lists [ $$roots], the Makefile has targets for [ $$want]"; exit 1; fi; \
 	echo "gate parts: check.yml's $(words $(GATE_PARTS)) jobs match make check's parts; controls.sh's parts match roots-base and the $(words $(ROOTS_MUTANTS)) mutant targets"
 
-# The end-to-end comparison: research/experiments/halo-e2e builds a test
+# The end-to-end comparison: tests/halo-e2e builds a test
 # program that runs scripts through pkg::embed and an in-memory host, and its
-# runner compares every script of research/experiments/halo-oracle at
+# runner compares every script of tests/halo-oracle at
 # budgets 1, 7 and 1000, in ordinary and collector-stress modes, byte for
 # byte with Redis 7.2.16's recorded replies. The same program's embedding
 # probe, run with three arguments, checks the engine lifecycle, budget
@@ -99,13 +99,13 @@ gate-parts:
 # path so that the compiler's cache key stays stable.
 E2E := $(BUILD)/halo-e2e
 E2E_TEST := $(E2E)/test
-E2E_RUN = cd $(ROOT) && $(PY) -B research/experiments/halo-e2e/run.py \
+E2E_RUN = cd $(ROOT) && $(PY) -B tests/halo-e2e/run.py \
 	--compiler $(WHITEFOOTC) --binary $(E2E_TEST) --budgets 1,7,1000 --scratch-root $(E2E) \
 	--verify-errors --verify-sha1 --verify-memory
 
 $(E2E_TEST): $(PIN) $(WHITEFOOTC) FORCE
 	@mkdir -p $(E2E)
-	@cd $(ROOT)/research/experiments/halo-e2e && $(WHITEFOOTC) --graph modules.wfg --entry test -o $@
+	@cd $(ROOT)/tests/halo-e2e && $(WHITEFOOTC) --graph modules.wfg --entry test -o $@
 
 oracle: $(E2E_TEST)
 	@rm -rf $(E2E)/ordinary $(E2E)/stress
@@ -116,16 +116,16 @@ oracle: $(E2E_TEST)
 	$(E2E_RUN) --gc-stress --report $(E2E)/stress.md --actual $(E2E)/stress || status=1; \
 	exit $$status
 
-# The double texts (research/experiments/redis-double-text): the same test
+# The double texts (tests/redis-double-text): the same test
 # program writes each of the 18,235 doubles that redis-server 7.2.16 wrote in a
 # measured table, as a double reply and as a redis.call argument, with the test
 # host's rules and the fpconv package (lib/fpconv), and the runner requires
 # every text byte for byte. It first requires the table's pinned row count and
 # digest, and shows that the table rejects an exact-shortest formatter.
 double-text: $(E2E_TEST)
-	@cd $(ROOT) && $(PY) -B research/experiments/redis-double-text/check.py --binary $(E2E_TEST)
+	@cd $(ROOT) && $(PY) -B tests/redis-double-text/check.py --binary $(E2E_TEST)
 
-# The collector's removed-root controls (research/experiments/halo-gc): the
+# The collector's removed-root controls (tests/halo-gc): the
 # local root cases pass with the oracle's test program, and fail once a sole
 # root is hidden or one marking call is removed and rebuilt in a copy. The
 # same script runs the test host's protection controls: the global-write,
@@ -137,7 +137,7 @@ double-text: $(E2E_TEST)
 # and `roots-mutant-<label>` builds one mutant in a copy and checks that its
 # control fails by a detected result. Each check is in exactly one of
 # `roots-base` and the mutant targets.
-ROOTS_CONTROLS = WHITEFOOTC=$(WHITEFOOTC) sh $(ROOT)/research/experiments/halo-gc/controls.sh
+ROOTS_CONTROLS = WHITEFOOTC=$(WHITEFOOTC) sh $(ROOT)/tests/halo-gc/controls.sh
 roots: $(E2E_TEST)
 	@ROOTS_PART=all $(ROOTS_CONTROLS) $(E2E_TEST) $(BUILD)/halo-roots
 
@@ -157,45 +157,45 @@ hosts: hosts-vm hosts-lib
 
 hosts-vm: $(PIN) $(WHITEFOOTC) FORCE
 	@mkdir -p $(HOSTS)
-	@cd $(ROOT)/research/experiments/halo-vm && $(WHITEFOOTC) --graph modules.wfg --entry smoke -o $(HOSTS)/vm-smoke
-	@cd $(ROOT)/research/experiments/halo-vm && $(WHITEFOOTC) --graph modules.wfg --entry suite -o $(HOSTS)/vm-suite
+	@cd $(ROOT)/tests/halo-vm && $(WHITEFOOTC) --graph modules.wfg --entry smoke -o $(HOSTS)/vm-smoke
+	@cd $(ROOT)/tests/halo-vm && $(WHITEFOOTC) --graph modules.wfg --entry suite -o $(HOSTS)/vm-suite
 	@$(HOSTS)/vm-smoke && echo "halo-vm smoke: passed"
 	@$(HOSTS)/vm-suite && echo "halo-vm suite: passed"
 
 hosts-lib: $(PIN) $(WHITEFOOTC) FORCE
 	@mkdir -p $(HOSTS)
-	@cd $(ROOT)/research/experiments/halo-lib && $(WHITEFOOTC) --graph modules.wfg --entry run -o $(HOSTS)/lib-run
-	@cd $(ROOT)/research/experiments/halo-bench && $(WHITEFOOTC) --graph modules.wfg --entry bench -o $(HOSTS)/bench
+	@cd $(ROOT)/tests/halo-lib && $(WHITEFOOTC) --graph modules.wfg --entry run -o $(HOSTS)/lib-run
+	@cd $(ROOT)/tests/halo-bench && $(WHITEFOOTC) --graph modules.wfg --entry bench -o $(HOSTS)/bench
 
 # The JSON package against the runner's independent Python oracle
-# (research/experiments/json), on generated documents and number texts.
+# (tests/json), on generated documents and number texts.
 JSON_SAMPLES ?= 20
 json: $(PIN) $(WHITEFOOTC) FORCE
 	@mkdir -p $(BUILD)/json
-	@cd $(ROOT) && $(PY) -B research/experiments/json/run.py --compiler $(WHITEFOOTC) --incremental \
+	@cd $(ROOT) && $(PY) -B tests/json/run.py --compiler $(WHITEFOOTC) --incremental \
 		--binary $(BUILD)/json/check --build --samples $(JSON_SAMPLES)
 
 # Redis 7.2.16's bundled Lua, built from its verified source with Redis's own
 # deps Makefile, is the reference of the number and MessagePack comparisons.
 REFERENCE_LUA := $(BUILD)/redis/redis-7.2.16/deps/lua/src
 reference-lua:
-	@sh $(ROOT)/research/experiments/halo-oracle/fetch-redis.sh $(BUILD)/redis
+	@sh $(ROOT)/tests/halo-oracle/fetch-redis.sh $(BUILD)/redis
 
 # The number library (lib/halo/number) against the reference Lua's tostring,
-# tonumber, ^, math.fmod, floor and ceil (research/experiments/halo-number).
+# tonumber, ^, math.fmod, floor and ceil (tests/halo-number).
 NUMBER_SAMPLES ?= 100
 NUMBER_EXAMPLES ?= 8
 number: $(PIN) $(WHITEFOOTC) reference-lua FORCE
-	@cd $(ROOT) && $(PY) -B research/experiments/halo-number/compare.py --compiler $(WHITEFOOTC) \
+	@cd $(ROOT) && $(PY) -B tests/halo-number/compare.py --compiler $(WHITEFOOTC) \
 		--incremental --lua $(REFERENCE_LUA)/lua --samples $(NUMBER_SAMPLES) --examples $(NUMBER_EXAMPLES)
 
 # The MessagePack package against Redis's cmsgpack built with the reference
-# Lua (research/experiments/msgpack); its scratch must be outside the
+# Lua (tests/msgpack); its scratch must be outside the
 # repository.
 MSGPACK_GENERATED ?= 0
 MSGPACK_SCRATCH ?= $(or $(TMPDIR),/tmp)/halo-msgpack-check
 msgpack: $(PIN) $(WHITEFOOTC) reference-lua FORCE
-	@cd $(ROOT) && $(PY) -B research/experiments/msgpack/run.py --compiler $(WHITEFOOTC) --incremental \
+	@cd $(ROOT) && $(PY) -B tests/msgpack/run.py --compiler $(WHITEFOOTC) --incremental \
 		--redis-src $(REFERENCE_LUA) --lua-lib $(REFERENCE_LUA)/liblua.a \
 		--scratch $(MSGPACK_SCRATCH) --generated $(MSGPACK_GENERATED)
 

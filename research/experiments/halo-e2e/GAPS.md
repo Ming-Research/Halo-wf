@@ -49,7 +49,7 @@ chunk name the script was compiled under and preserves a location already
 present in a string error. `error_value` keeps the original object. The caller
 supplies a known source line; zero means unknown. The test host's Redis
 formatter `format_redis_error(engine, source, line)` in
-`test/redis-error.wf` composes the Redis 7 EVAL table/string distinction and
+`tests/halo-e2e/test/redis-error.wf` composes the Redis 7 EVAL table/string distinction and
 script-body SHA-1 suffix. It
 uses an explicit caller-supplied line rather than treating a budget checkpoint
 as a failure location, and writes the VM's message as raised, located or not.

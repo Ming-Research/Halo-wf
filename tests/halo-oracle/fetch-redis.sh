@@ -6,7 +6,7 @@
 # Makefile: <directory>/redis-<version>/deps/lua/src holds lua, liblua.a and
 # the headers. `make reference-lua` runs it for the reference and the
 # performance baseline, both using Redis 7.2.16's PUC Lua 5.1.5
-# (halo-bench/README.md).
+# (research/experiments/halo-bench/README.md).
 # It does nothing when that Lua exists.
 set -eu
 dir=${1:?usage: fetch-redis.sh <directory> [version]}

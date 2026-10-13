@@ -4,6 +4,14 @@ Newest first. One entry per approved change of the tree: a dated title,
 `Nodes:` naming every node changed, `Owner-approved:` and `Summary:`; the
 owner-wide instructions' *Log format* owns the form.
 
+## 2026-10-13 Oracle evidence links follow the gate's move into tests/
+
+Nodes: halo/calls, halo/heap/closures
+
+Owner-approved: 2026-10-13 on the WF status board. Under item "The gate's test programs move into a dedicated test directory, separate from research programs": card "Move the gate's test programs into the tests directory now, in a separate pull request, rather than waiting for the next gate change?", option A, "open a separate pull request now that changes only paths; merge under the existing authorization once the gate is green and the case count is unchanged".
+
+Summary: The gate's oracle scripts moved from research/experiments/halo-oracle to tests/halo-oracle, so the evidence links in two nodes now point at the new location; no decision changed.
+
 ## 2026-10-13 A Lua return with no open upvalue to close costs one comparison
 
 Nodes: halo/calls/return-upvalues

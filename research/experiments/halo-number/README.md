@@ -1,5 +1,9 @@
 # Halo number comparison with PUC Lua
 
+The runner and C/Lua oracle sources live in
+[tests/halo-number](../../../tests/halo-number/); this directory retains the
+guide and dated results.
+
 Compiler builds and checks have a persistent cache at
 `${WHITEFOOT_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/whitefoot}/halo-number`.
 `--cache DIR` overrides it; `--no-cache` disables caching. Cache paths must be
@@ -30,7 +34,7 @@ make number
 `make toolchain` obtains the pinned Whitefoot compiler and installs its LLVM
 toolchain. `make number` uses that compiler with `--incremental` and runs
 `make reference-lua`, whose
-[fetch-redis.sh](../halo-oracle/fetch-redis.sh) verifies the Redis source
+[fetch-redis.sh](../../../tests/halo-oracle/fetch-redis.sh) verifies the Redis source
 archive and builds Lua with Redis's dependency Makefile. The executable,
 headers and `liblua.a` are under `build/redis/redis-7.2.16/deps/lua/src`.
 The default `NUMBER_SAMPLES=100` and `NUMBER_EXAMPLES=8` control random
@@ -42,14 +46,14 @@ the other parts (`.github/workflows/check.yml`).
 For a direct invocation with an existing compiler and reference build:
 
 ```sh
-python3 research/experiments/halo-number/compare.py \
+python3 tests/halo-number/compare.py \
   --compiler /path/to/whitefootc --incremental \
   --lua build/redis/redis-7.2.16/deps/lua/src/lua --samples 100
 ```
 
 The runner itself requires Python 3 and a C11 compiler and rebuilds neither
 Whitefoot nor Lua. Its adapter, C oracle host and temporary files stay
-beneath this experiment directory and are deleted after each run; the
+beneath `tests/halo-number/` and are deleted after each run; the
 Makefile's reference build remains under `build/`. The source/test digest
 in a generated report covers every number `.wf` and
 `.wfm` file and the standalone test graph; executable and archive digests
@@ -63,7 +67,7 @@ not qualification against Halo's reference.
 
 ## Oracle construction
 
-[oracle.lua](oracle.lua) performs `tostring`, `tonumber`, `x ^ y`, `math.fmod`,
+[oracle.lua](../../../tests/halo-number/oracle.lua) performs `tostring`, `tonumber`, `x ^ y`, `math.fmod`,
 `math.floor` and `math.ceil` directly. Every input double starts as sixteen
 hexadecimal IEEE 754 bits; string inputs are hexadecimal bytes, including
 embedded NULs and non-ASCII bytes. No expected result comes from Halo's code.
@@ -74,7 +78,7 @@ finite inputs exactly and `math.frexp` to extract their bits. This transport
 preserves finite values, signed zeros and infinities, and supplies NaNs of the
 requested sign; it cannot preserve or inspect NaN payloads or signalling bits.
 
-For those bits, [bits.c](bits.c) is linked against the unchanged, adjacent
+For those bits, [bits.c](../../../tests/halo-number/bits.c) is linked against the unchanged, adjacent
 reference `liblua.a`. It creates a Lua state, installs two C helpers that only
 copy doubles to/from `uint64_t` using `memcpy`, and runs the same script. All
 number operations still execute inside the reference Lua library. The script

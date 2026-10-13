@@ -349,7 +349,7 @@ coding agent.
 - F1: the Lua 5.1 test files `constructs calls closure nextvar vararg
   strings math sort errors`, with I/O, coroutine, load and pattern sections
   removed by a recorded script, pass completely.
-- F2: the [oracle corpus](../../experiments/halo-oracle/) replies equal
+- F2: the [oracle corpus](../../../tests/halo-oracle/) replies equal
   Redis 7.2.16's, error texts included, except outputs depending on `pairs`
   order over non-sequence keys, which the harness sorts.
 - F3: every corpus script under budgets 1, 7 and 1000 gives the unbudgeted

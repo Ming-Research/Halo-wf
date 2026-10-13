@@ -1,5 +1,8 @@
 # Halo embedding comparison
 
+The runner, graph and test host live in [tests/halo-e2e](../../../tests/halo-e2e/).
+This directory retains the guide, gaps and dated research results.
+
 Compiler builds and checks have a persistent cache at
 `${WHITEFOOT_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/whitefoot}/halo-e2e`.
 `--cache DIR` overrides it; `--no-cache` disables caching. Cache paths must be
@@ -19,7 +22,7 @@ execution. The Whitefoot host owns commands and both reply conversions.
 
 The embedding module, test program, runner and result record serve VM.md section
 6 and its first end-to-end comparison. They live in the existing Halo library
-and experiment homes, and are removed or superseded when the production firn
+and test/research homes, and are removed or superseded when the production firn
 binding replaces this test host or Halo is retired.
 
 The runner never changes compiler, VM, heap or oracle files. Unsupported
@@ -29,8 +32,8 @@ removed from the corpus. See RESULTS.md for the measured coverage and gaps.
 Run from the repository root, using an existing compiler (no Cargo):
 
 ```sh
-python3 -B research/experiments/halo-e2e/run.py --compiler /path/to/whitefootc --incremental --filter lua-core/assert --budgets 1,7,1000 --report /private/tmp/halo-e2e-sample.md
-python3 -B research/experiments/halo-e2e/run.py --compiler /path/to/whitefootc --full-lto --budgets 1,7,1000 --report /private/tmp/halo-e2e-results.md --actual /private/tmp/halo-e2e-replies
+python3 -B tests/halo-e2e/run.py --compiler /path/to/whitefootc --incremental --filter lua-core/assert --budgets 1,7,1000 --report /private/tmp/halo-e2e-sample.md
+python3 -B tests/halo-e2e/run.py --compiler /path/to/whitefootc --full-lto --budgets 1,7,1000 --report /private/tmp/halo-e2e-results.md --actual /private/tmp/halo-e2e-replies
 ```
 
 On 2026-10-05, macOS 26.6.2 arm64, the supplied gate compiler (SHA-256
@@ -165,7 +168,7 @@ inputs against `hashlib` before the selected corpus. Add `--verify-errors`
 to check command/global error locations, SHA-1 arity errors and protected
 error values against Redis-source-grounded expectations. It exercises the same
 Whitefoot `redis.sha1hex` used by scripts. `lib/halo/embed/sha1.wf` serves
-digest generation and the test host's `test/redis-error.wf` the EVAL reply
+digest generation and the test host's `tests/halo-e2e/test/redis-error.wf` the EVAL reply
 formatter; they are superseded with the embedding if Halo is retired or its
 production binding replaces these responsibilities.
 

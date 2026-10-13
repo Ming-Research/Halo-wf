@@ -19,7 +19,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from compiler_cache import add_arguments as cache_arguments, flags as cache_flags
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[2]
 NUMBER = re.compile(rb'-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?')
 MESSAGES = {
     1: 'expected value', 2: 'expected object key', 3: 'expected colon',
@@ -412,7 +412,7 @@ def main():
     build_seconds=None
     if args.build:
         start=time.monotonic()
-        subprocess.run([str(args.compiler),'--graph',str(ROOT/'research/experiments/json/modules.wfg'),
+        subprocess.run([str(args.compiler),'--graph',str(ROOT/'tests/json/modules.wfg'),
                         '--entry','check','-o',str(args.binary)]+cache_flags(args),cwd=ROOT,check=True)
         build_seconds=time.monotonic()-start
     cases=fixtures(args.samples,args.seed)
