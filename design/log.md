@@ -1,8 +1,9 @@
 # Design tree change log
 
-Newest first. One entry per approved change of the tree: a dated title,
-`Nodes:` naming every node changed, `Owner-approved:` and `Summary:`; the
-owner-wide instructions' *Log format* owns the form.
+Newest first. One entry per change of the tree: a dated title, `Nodes:`
+naming every node changed and `Summary:`; the owner-wide instructions' *Log
+format* owns the form. Older entries also carry an `Owner-approved:` line, a
+field since retired.
 
 ## 2026-10-13 Oracle evidence links follow the gate's move into tests/
 

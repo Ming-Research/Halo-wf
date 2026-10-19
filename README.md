@@ -78,7 +78,7 @@ LLVM major the pinned release names (`make toolchain` installs it).
 - [research/experiments](research/experiments/): measured results, each with
   its sources, commands and caveats.
 - `design/`: the decisions Halo is built on, with their reasons and refused
-  alternatives, and their approval log.
+  alternatives, and their change log.
 - [AGENTS.md](AGENTS.md): the rules agents follow in this repository.
 
 ## License
