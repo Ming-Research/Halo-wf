@@ -41,8 +41,7 @@ When priorities conflict:
 Halo builds with the compiler release `whitefoot.pin` names, through the
 `whitefoot-kit` submodule, whose [downstream.md](whitefoot-kit/downstream.md)
 holds the pin, reading the language at the pinned commit, trying an unmerged
-Whitefoot change and upgrading Whitefoot. A Whitefoot gap goes to the
-Whitefoot session that owns it, as an item in its area of the status board.
+Whitefoot change and upgrading Whitefoot.
 The upgrade's benchmark is
 `research/experiments/halo-bench` (`run.py --before-binary`).
 
@@ -50,9 +49,7 @@ The upgrade's benchmark is
 
 - Research record: `research/investigations/` and `research/experiments/`;
   `research/investigations/halo/` holds the engine's design (`DESIGN.md`,
-  `VM.md`), work order and falsifiers. Maintained TODO: the status board's
-  Halo-wf areas (`halo-compat`, `halo-perf`, `halo-tools`); code and
-  documents name an item by its key.
+  `VM.md`), work order and falsifiers.
 - Halo's performance comparisons build both sides with full LTO.
 - Gate runners, hosts and oracle fixtures live in `tests/`; `research/`
   holds experiments, measurements and records.
