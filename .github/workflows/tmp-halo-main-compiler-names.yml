@@ -1,0 +1,60 @@
+# Temporary (halo-main-compiler-names): checks every module graph of the
+# repository with the newest Whitefoot main release, which contains the
+# prelude `clear` of Whitefoot#486. The pin in the repository is not moved:
+# the workspace's whitefoot.pin is rewritten for this run only.
+name: tmp-halo-main-compiler-names
+
+on:
+  push:
+
+concurrency:
+  group: tmp-halo-main-compiler-names-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MAIN_RELEASE: wf-63b7cbb03820
+
+jobs:
+  modules:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Download the main release's compiler
+        run: |
+          echo "release = $MAIN_RELEASE" > whitefoot.pin
+          make toolchain
+          cat build/whitefoot/$MAIN_RELEASE/whitefoot-release.json
+
+      # `--check-modules` stops at a graph's first refused module, so each
+      # own module of every graph is also checked alone, to list every refusal
+      # of one run.
+      - name: Check every module of every graph
+        run: |
+          wfc="$PWD/build/whitefoot/$MAIN_RELEASE/whitefootc"
+          failed=0
+          for graph in $(git ls-files '*.wfg'); do
+            case "$graph" in design/*|whitefoot-kit/*) continue;; esac
+            dir=$(dirname "$graph")
+            echo "::group::$graph --check-modules"
+            if (cd "$dir" && "$wfc" --graph modules.wfg --check-modules); then
+              echo "PASS $graph (graph)"
+            else
+              echo "FAIL $graph (graph)"; failed=1
+            fi
+            echo "::endgroup::"
+            for module in $(sed -n -E 's/^pkg::([a-z0-9_]+):.*/\1/p' "$graph"); do
+              echo "::group::$graph pkg::$module"
+              if (cd "$dir" && "$wfc" --graph modules.wfg --check-module "pkg::$module"); then
+                echo "PASS $graph pkg::$module"
+              else
+                echo "FAIL $graph pkg::$module"; failed=1
+              fi
+              echo "::endgroup::"
+            done
+          done
+          echo "---- failures"
+          exit $failed
