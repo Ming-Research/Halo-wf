@@ -341,7 +341,6 @@ fn main_position(heap: &Heap, key: Value, n: u64) -> r: u64 reads(heap.strings) 
     }
   }
   return hash % modulus;
-  return 0_u64;
 }
 
 fn node_find(heap: &Heap, nodes: &Box<Slots<Node>>, key: Value) -> r: Option<u64> reads(heap.strings), reads(nodes) {
@@ -569,47 +568,39 @@ fn insert_nodes(heap: &Heap, nodes: &Box<Slots<Node>>, lastfree: &u64, node_coun
       if free > 4294967295_u64 {
         return False();
       }
-      if free < nodes^.inner.len {
-        let other = main_position(heap: heap, key: nodes^.inner[mp].key, n: nodes^.inner.len);
-        if other != mp {
-          loop @previous {
-            if other < nodes^.inner.len {
-              let next = cvt::<u32, u64>(nodes^.inner[other].next);
-              if next == mp {
-                break @previous;
-              }
-              set other = next;
-            } else {
-              return False();
-            }
-          }
+      let other = main_position(heap: heap, key: nodes^.inner[mp].key, n: nodes^.inner.len);
+      if other != mp {
+        loop @previous {
           if other < nodes^.inner.len {
-            let link = cvt::<u64, u32>(free);
-            set nodes^.inner[other].next = link;
-            let displaced = nodes^.inner[mp];
-            set nodes^.inner[free] = displaced;
-            set nodes^.inner[mp].next = no_handle;
-            let nil = Value::Nil();
-            set nodes^.inner[mp].val = nil;
+            let next = cvt::<u32, u64>(nodes^.inner[other].next);
+            if next == mp {
+              break @previous;
+            }
+            set other = next;
+          } else {
+            return False();
           }
-        } else {
-          set nodes^.inner[free].next = nodes^.inner[mp].next;
-          let link = cvt::<u64, u32>(free);
-          set nodes^.inner[mp].next = link;
-          set mp = free;
         }
+        let link = cvt::<u64, u32>(free);
+        set nodes^.inner[other].next = link;
+        let displaced = nodes^.inner[mp];
+        set nodes^.inner[free] = displaced;
+        set nodes^.inner[mp].next = no_handle;
+        let nil = Value::Nil();
+        set nodes^.inner[mp].val = nil;
       } else {
-        return False();
+        set nodes^.inner[free].next = nodes^.inner[mp].next;
+        let link = cvt::<u64, u32>(free);
+        set nodes^.inner[mp].next = link;
+        set mp = free;
       }
     }
-    if mp < nodes^.inner.len {
-      set nodes^.inner[mp].key = key;
-      set nodes^.inner[mp].val = val;
-      if fresh {
-        set node_count^ = node_count^ +sat 1_u32;
-      }
-      return True();
+    set nodes^.inner[mp].key = key;
+    set nodes^.inner[mp].val = val;
+    if fresh {
+      set node_count^ = node_count^ +sat 1_u32;
     }
+    return True();
   }
   return False();
 }
@@ -656,11 +647,9 @@ fn rehash(heap: &Heap, ti: u64, extra: Value) -> r: Bool writes(heap) {
       }
       let live = 0_u64;
       for (i in lower..limit) {
-        if i < heap^.tables.inner[ti].payload.array.inner.len {
-          if is_nil(v: heap^.tables.inner[ti].payload.array.inner[i]) {
-          } else {
-            set live = live +sat 1_u64;
-          }
+        if is_nil(v: heap^.tables.inner[ti].payload.array.inner[i]) {
+        } else {
+          set live = live +sat 1_u64;
         }
       }
       set nums[bin] = nums[bin] +sat live;
@@ -674,11 +663,9 @@ fn rehash(heap: &Heap, ti: u64, extra: Value) -> r: Bool writes(heap) {
       }
     }
     for (i in lower..array_length) {
-      if i < heap^.tables.inner[ti].payload.array.inner.len {
-        if is_nil(v: heap^.tables.inner[ti].payload.array.inner[i]) {
-        } else {
-          set total = total +sat 1_u64;
-        }
+      if is_nil(v: heap^.tables.inner[ti].payload.array.inner[i]) {
+      } else {
+        set total = total +sat 1_u64;
       }
     }
     for (i in 0_u64..heap^.tables.inner[ti].payload.nodes.inner.len) {
@@ -787,9 +774,7 @@ fn rehash(heap: &Heap, ti: u64, extra: Value) -> r: Bool writes(heap) {
       let array = box_slots_new::<Value>(capacity: size);
       for (i in 0_u64..size) {
         let val = Value::Nil();
-        if i < heap^.tables.inner[ti].payload.array.inner.len {
-          set val = heap^.tables.inner[ti].payload.array.inner[i];
-        }
+        set val = heap^.tables.inner[ti].payload.array.inner[i];
         if array.inner.len < array.inner.cap {
           place_back(window: &array.inner, value: val);
         }
@@ -833,13 +818,11 @@ fn rehash(heap: &Heap, ti: u64, extra: Value) -> r: Bool writes(heap) {
         let delta = old - fresh;
         uncharge(heap: heap, amount: delta);
       }
-      if ti < heap^.tables.inner.len {
-        set heap^.tables.inner[ti].payload.array = move array;
-        set heap^.tables.inner[ti].payload.nodes = move nodes;
-        set heap^.tables.inner[ti].payload.node_count = node_count;
-        set heap^.tables.inner[ti].payload.lastfree = lastfree;
-        return True();
-      }
+      set heap^.tables.inner[ti].payload.array = move array;
+      set heap^.tables.inner[ti].payload.nodes = move nodes;
+      set heap^.tables.inner[ti].payload.node_count = node_count;
+      set heap^.tables.inner[ti].payload.lastfree = lastfree;
+      return True();
     }
   }
   return False();
@@ -920,26 +903,24 @@ fn table_border(heap: &Heap, t: Value) -> r: u64 reads(heap) {
         let i = 0_u64;
         if j > 0_u64 {
           let last = j - 1_u64;
-          if last < heap^.tables.inner[ti].payload.array.inner.len {
-            if is_nil(v: heap^.tables.inner[ti].payload.array.inner[last]) {
-              loop @array_border {
-                if i > j {
-                  return i;
-                }
-                let distance = j - i;
-                if distance <= 1_u64 {
-                  return i;
-                }
-                let sum = i +sat j;
-                let m = sum / 2_u64;
-                let f = cvt.nearest::<u64, f64>(m);
-                let probe = Value::Num(n: f);
-                let val = table_get(heap: heap, t: t, key: probe);
-                if is_nil(v: val) {
-                  set j = m;
-                } else {
-                  set i = m;
-                }
+          if is_nil(v: heap^.tables.inner[ti].payload.array.inner[last]) {
+            loop @array_border {
+              if i > j {
+                return i;
+              }
+              let distance = j - i;
+              if distance <= 1_u64 {
+                return i;
+              }
+              let sum = i +sat j;
+              let m = sum / 2_u64;
+              let f = cvt.nearest::<u64, f64>(m);
+              let probe = Value::Num(n: f);
+              let val = table_get(heap: heap, t: t, key: probe);
+              if is_nil(v: val) {
+                set j = m;
+              } else {
+                set i = m;
               }
             }
           }

@@ -11,24 +11,6 @@ fn thread_storage_probe() -> r: u8 pure {
   if empty_bytes != 512_u64 {
     return 201_u8;
   }
-  if execution.frames.inner.cap != 0_u64 {
-    return 201_u8;
-  }
-  if execution.open_upvalues.inner.cap != 0_u64 {
-    return 201_u8;
-  }
-  if execution.callbacks.inner.cap != 0_u64 {
-    return 201_u8;
-  }
-  if execution.library_contexts.inner.cap != 0_u64 {
-    return 201_u8;
-  }
-  if execution.sort_frames.inner.cap != 0_u64 {
-    return 201_u8;
-  }
-  if execution.pattern_subs.inner.cap != 0_u64 {
-    return 201_u8;
-  }
   grow(cell: &execution.stack, capacity: 2_u64);
   grow(cell: &execution.stopped_stack, capacity: 3_u64);
   grow(cell: &execution.frames, capacity: 4_u64);
@@ -45,11 +27,7 @@ fn thread_storage_probe() -> r: u8 pure {
   let nil = Value::Nil();
   let no = False();
   let pattern = PatternSubFrame(context: 0_u64, source: nil, pattern: nil, replacement: nil, output: move output, start: 0_u64, end: 0_u64, count: 0_u64, maximum: 0_i64, anchor: no, phase: 0_u8);
-  if execution.pattern_subs.inner.len < execution.pattern_subs.inner.cap {
-    place_back(window: &execution.pattern_subs.inner, value: move pattern);
-  } else {
-    return 202_u8;
-  }
+  place_back(window: &execution.pattern_subs.inner, value: move pattern);
   let output_bytes = halo::execution::storage_bytes(execution: &execution);
   if output_bytes != 4542_u64 {
     return 202_u8;
@@ -257,11 +235,7 @@ fn thread_heap_gc_probe() -> r: u8 pure {
   }
   let payload = halo::execution::empty();
   grow(cell: &payload.stack, capacity: 1_u64);
-  if payload.stack.inner.len < payload.stack.inner.cap {
-    place_back(window: &payload.stack.inner, value: value);
-  } else {
-    return 209_u8;
-  }
+  place_back(window: &payload.stack.inner, value: value);
   set payload.top = 1_u64;
   let h = match halo::heap::alloc_thread(heap: &heap, payload: move payload) {
     None() => {
@@ -357,9 +331,6 @@ fn thread_heap_gc_probe() -> r: u8 pure {
       return 211_u8;
     }
     if heap.threads.inner[index].payload.stack.inner.cap != 0_u64 {
-      return 211_u8;
-    }
-    if heap.threads.inner[index].payload.stack.inner.len != 0_u64 {
       return 211_u8;
     }
   } else {

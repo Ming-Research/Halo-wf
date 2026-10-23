@@ -112,10 +112,8 @@ fn alloc_thread(heap: &Heap, payload: Execution) -> r: Option<u32> writes(heap) 
       }
       grow(cell: &heap^.threads, capacity: capacity);
     }
-    if heap^.threads.inner.len < heap^.threads.inner.cap {
-      place_back(window: &heap^.threads.inner, value: move cell);
-      return Some<u32>(value: hnew);
-    }
+    place_back(window: &heap^.threads.inner, value: move cell);
+    return Some<u32>(value: hnew);
   }
   uncharge(heap: heap, amount: amount);
   return None<u32>();
@@ -190,10 +188,8 @@ fn refresh_thread_bytes(heap: &Heap, h: u32, amount: u64) -> r: Bool writes(heap
         let shrink = previous - amount;
         uncharge(heap: heap, amount: shrink);
       }
-      if i < heap^.threads.inner.len {
-        set heap^.threads.inner[i].accounted_bytes = amount;
-        return True();
-      }
+      set heap^.threads.inner[i].accounted_bytes = amount;
+      return True();
     }
   }
   return False();

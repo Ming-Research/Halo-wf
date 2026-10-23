@@ -18,7 +18,7 @@ import sys
 from pathlib import Path
 
 HEAD = re.compile(
-    r"^(?:[\w:]+: rejected: )?(\S+\.wf):(\d+):(\d+): error\[(OP-5|FN-1)\]: (?:RedundantCondition|UnreachableStatement)$"
+    r"^(?:[\w:]+: rejected: )?(\S+\.wf):(\d+):(\d+): error\[(OP-5|FN-1|EFF-2)\]: (?:RedundantCondition|UnreachableStatement|EffectMismatch)$"
 )
 
 
@@ -38,6 +38,14 @@ def sites(output):
         facts = next((l.strip() for l in lines[n + 1 : n + 8] if l.startswith("  facts:")), "")
         if m.group(4) == "FN-1":
             decided = "unreachable"
+        if m.group(4) == "EFF-2":
+            rows = {}
+            for l in lines[n + 1 : n + 10]:
+                for key in ("expected_row", "found_row"):
+                    if l.startswith(f"  {key}: "):
+                        rows[key] = l[len(f"  {key}: "):]
+            decided = ("row", rows.get("found_row"), rows.get("expected_row"))
+            facts = ""
         found.append((m.group(1), int(m.group(2)), int(m.group(3)), decided, facts))
     return found
 
@@ -204,6 +212,20 @@ def delete_statement(text, line, col):
     return text[:begin] + text[end:], old, ""
 
 
+def replace_row(text, line, col, found, expected):
+    """Declare the effect row the compiler asks for, where the signature wrote the found one."""
+    if not found or not expected:
+        return None
+    starts = [0]
+    for n, c in enumerate(text):
+        if c == "\n":
+            starts.append(n + 1)
+    begin = starts[line - 1] + col - 1
+    if not text.startswith(found, begin):
+        return None
+    return text[:begin] + expected + text[begin + len(found):], found, expected
+
+
 def main():
     rounds, wfc, graph_dir, mode = int(sys.argv[1]), sys.argv[2], Path(sys.argv[3]), sys.argv[4]
     modules = sys.argv[5:]
@@ -242,6 +264,8 @@ def main():
                 text = path.read_text()
                 if decided == "unreachable":
                     done = delete_statement(text, line, col)
+                elif isinstance(decided, tuple):
+                    done = replace_row(text, line, col, decided[1], decided[2])
                 else:
                     done = None if decided is None else repair(text, line, col, decided)
                 where = f"{path.relative_to(Path.cwd())}:{line}:{col}"
