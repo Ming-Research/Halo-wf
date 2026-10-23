@@ -2,6 +2,11 @@
 # repository with the newest Whitefoot main release, which contains the
 # prelude `clear` of Whitefoot#486. The pin in the repository is not moved:
 # the workspace's whitefoot.pin is rewritten for this run only.
+#
+# `check` is the acceptance check on the tree as pushed. `discover` and
+# `discover-vm` find every OP-5 site by repairing a disposable workspace round
+# by round (.github/tmp-op5-discover.py) and keep the repairs as a patch for
+# review; they are removed once the sites are in the repository.
 name: tmp-halo-main-compiler-names
 
 on:
@@ -15,9 +20,31 @@ env:
   MAIN_RELEASE: wf-63b7cbb03820
 
 jobs:
-  modules:
+  check:
+    name: check ${{ matrix.graph }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 60
+    continue-on-error: ${{ startsWith(matrix.graph, 'research/') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        graph:
+          - lib/fpconv
+          - lib/halo
+          - lib/halo/number/tests
+          - lib/json
+          - lib/msgpack
+          - tests/halo-bench
+          - tests/halo-e2e
+          - tests/halo-lib
+          - tests/halo-vm
+          - tests/json
+          - tests/msgpack
+          - research/experiments/halo-compile
+          - research/experiments/halo-coroutines/witnesses
+          - research/experiments/halo-gc
+          - research/experiments/halo-heap-core
+          - research/experiments/halo-lex
     steps:
       - uses: actions/checkout@v4
         with:
@@ -30,31 +57,97 @@ jobs:
           cat build/whitefoot/$MAIN_RELEASE/whitefoot-release.json
 
       # `--check-modules` stops at a graph's first refused module, so each
-      # own module of every graph is also checked alone, to list every refusal
-      # of one run.
-      - name: Check every module of every graph
+      # own module is also checked alone, to list every refusal of one run.
+      - name: Check the graph
         run: |
           wfc="$PWD/build/whitefoot/$MAIN_RELEASE/whitefootc"
+          graph=${{ matrix.graph }}
           failed=0
-          for graph in $(git ls-files '*.wfg'); do
-            case "$graph" in design/*|whitefoot-kit/*) continue;; esac
-            dir=$(dirname "$graph")
-            echo "::group::$graph --check-modules"
-            if (cd "$dir" && "$wfc" --graph modules.wfg --check-modules); then
-              echo "PASS $graph (graph)"
+          echo "::group::$graph --check-modules"
+          if (cd "$graph" && "$wfc" --graph modules.wfg --check-modules); then
+            echo "PASS $graph (graph)"
+          else
+            echo "FAIL $graph (graph)"; failed=1
+          fi
+          echo "::endgroup::"
+          for module in $(sed -n -E 's/^pkg::([a-z0-9_]+):.*/\1/p' "$graph/modules.wfg"); do
+            echo "::group::$graph pkg::$module"
+            if (cd "$graph" && "$wfc" --graph modules.wfg --check-module "pkg::$module"); then
+              echo "PASS $graph pkg::$module"
             else
-              echo "FAIL $graph (graph)"; failed=1
+              echo "FAIL $graph pkg::$module"; failed=1
             fi
             echo "::endgroup::"
-            for module in $(sed -n -E 's/^pkg::([a-z0-9_]+):.*/\1/p' "$graph"); do
-              echo "::group::$graph pkg::$module"
-              if (cd "$dir" && "$wfc" --graph modules.wfg --check-module "pkg::$module"); then
-                echo "PASS $graph pkg::$module"
-              else
-                echo "FAIL $graph pkg::$module"; failed=1
-              fi
-              echo "::endgroup::"
-            done
           done
-          echo "---- failures"
           exit $failed
+
+  discover:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Download the main release's compiler
+        run: |
+          echo "release = $MAIN_RELEASE" > whitefoot.pin
+          make toolchain
+
+      - name: Repair every OP-5 site in the workspace
+        run: |
+          wfc="$PWD/build/whitefoot/$MAIN_RELEASE/whitefootc"
+          tool=.github/tmp-op5-discover.py
+          python3 -B $tool 40 "$wfc" lib/fpconv modules
+          python3 -B $tool 60 "$wfc" lib/halo modules
+          python3 -B $tool 40 "$wfc" tests/halo-bench module host
+          python3 -B $tool 40 "$wfc" tests/halo-e2e module test
+          python3 -B $tool 40 "$wfc" tests/halo-lib module runner
+          python3 -B $tool 40 "$wfc" tests/json module check
+          python3 -B $tool 40 "$wfc" tests/msgpack module check
+          git diff -- . ':!whitefoot.pin' > build/op5.patch
+          git diff --stat -- . ':!whitefoot.pin'
+
+      - name: Check the repaired workspace's graphs
+        run: |
+          wfc="$PWD/build/whitefoot/$MAIN_RELEASE/whitefootc"
+          for graph in lib/fpconv lib/halo lib/halo/number/tests lib/json lib/msgpack tests/halo-bench tests/halo-e2e tests/halo-lib tests/json tests/msgpack; do
+            if (cd "$graph" && "$wfc" --graph modules.wfg --check-modules > "$RUNNER_TEMP/graph.log" 2>&1); then
+              echo "PASS $graph"
+            else
+              echo "FAIL $graph"; head -c 3000 "$RUNNER_TEMP/graph.log"
+            fi
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: op5-patch
+          path: build/op5.patch
+          retention-days: 7
+
+  discover-vm:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Download the main release's compiler
+        run: |
+          echo "release = $MAIN_RELEASE" > whitefoot.pin
+          make toolchain
+
+      # One check of this module takes about twelve minutes.
+      - name: Repair every OP-5 site of the vm test module
+        run: |
+          wfc="$PWD/build/whitefoot/$MAIN_RELEASE/whitefootc"
+          python3 -B .github/tmp-op5-discover.py 4 "$wfc" tests/halo-vm module test
+          git diff -- . ':!whitefoot.pin' > build/op5-vm.patch
+          git diff --stat -- . ':!whitefoot.pin'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: op5-vm-patch
+          path: build/op5-vm.patch
+          retention-days: 7
