@@ -320,16 +320,14 @@ fn cj_token(vm: &Vm, source: &[u8], scan: &CjsonScanner, invalid: Bool) -> r: Cj
       if end_v64 <= start_v53 {
         break;
       }
-      if start_v53 <= end_v64 {
-        if end_v64 <= source^.len {
-          match pkg::number::str2number(bytes: &source^[start_v53..end_v64]) {
-            Some(value: n_v66) => {
-              set scan^.offset = end_v64;
-              let v_v67 = Value::Num(n: n_v66);
-              return CjsonToken(tag: 5_u8, value: v_v67, offset: start_v53, reason: 0_u8);
-            }
-            None() => {
-            }
+      if end_v64 <= source^.len {
+        match pkg::number::str2number(bytes: &source^[start_v53..end_v64]) {
+          Some(value: n_v66) => {
+            set scan^.offset = end_v64;
+            let v_v67 = Value::Num(n: n_v66);
+            return CjsonToken(tag: 5_u8, value: v_v67, offset: start_v53, reason: 0_u8);
+          }
+          None() => {
           }
         }
       }
@@ -761,9 +759,7 @@ fn cjson_decode(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, pc: u64, vm
           set key_v133 = Value::Num(n: x_v134);
         }
         let ignored_v135 = table_set(heap: &vm^.heap, t: frame_v132.table, key: key_v133, val: item_v116);
-        if last_v131 < frames_v112.inner.len {
-          set frames_v112.inner[last_v131].index = frame_v132.index +sat 1_u64;
-        }
+        set frames_v112.inner[last_v131].index = frame_v132.index +sat 1_u64;
       }
     }
   }

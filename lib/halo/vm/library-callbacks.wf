@@ -60,11 +60,9 @@ fn pcall_field_key(vm: &Vm) -> r: Value writes(vm) {
   let n = vm^.pcall_field.inner.len;
   let name = box_slots_new::<u8>(capacity: n);
   for (i in 0_u64..n) {
-    if i < vm^.pcall_field.inner.len {
-      if name.inner.len < name.inner.cap {
-        let byte = vm^.pcall_field.inner[i];
-        place_back(window: &name.inner, value: byte);
-      }
+    if name.inner.len < name.inner.cap {
+      let byte = vm^.pcall_field.inner[i];
+      place_back(window: &name.inner, value: byte);
     }
   }
   let count = name.inner.len;

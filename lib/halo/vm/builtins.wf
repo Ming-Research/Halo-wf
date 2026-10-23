@@ -240,11 +240,9 @@ fn error_location(vm: &Vm, pc: u64, level: u64, message: Value) -> r: Value writ
       let capacity = name_length +sat 13_u64;
       let bytes = box_slots_new::<u8>(capacity: capacity);
       for (i in 0_u64..name_length) {
-        if i < vm^.source.inner.len {
-          if bytes.inner.len < bytes.inner.cap {
-            let byte = vm^.source.inner[i];
-            place_back(window: &bytes.inner, value: byte);
-          }
+        if bytes.inner.len < bytes.inner.cap {
+          let byte = vm^.source.inner[i];
+          place_back(window: &bytes.inner, value: byte);
         }
       }
       if bytes.inner.len < bytes.inner.cap {

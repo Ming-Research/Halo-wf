@@ -285,10 +285,8 @@ fn resize_stack(stack: &Box<Slots<Value>>, size: u64) -> r: unit writes(stack) c
     if stack^.inner.len >= size {
       break;
     }
-    if stack^.inner.len < stack^.inner.cap {
-      let nil = Value::Nil();
-      place_back(window: &stack^.inner, value: nil);
-    }
+    let nil = Value::Nil();
+    place_back(window: &stack^.inner, value: nil);
   }
   loop (
     invariant lower: stack^.inner.len >= size
@@ -316,23 +314,21 @@ fn push_frame(vm: &Vm, frame: Frame) -> r: Bool writes(vm) {
   if n >= 20000_u64 {
     return raise_text(vm: vm, text: &calls_text_0[0_u64..14_u64]);
   }
-  if n < 18446744073709551615_u64 {
-    if n == vm^.frames.inner.cap {
-      let cap = n * 2_u64;
-      if cap < 32_u64 {
-        set cap = 32_u64;
-      }
-      if cap > 20000_u64 {
-        set cap = 20000_u64;
-      }
-      if cap >= vm^.frames.inner.cap {
-        grow(cell: &vm^.frames, capacity: cap);
-      }
+  if n == vm^.frames.inner.cap {
+    let cap = n * 2_u64;
+    if cap < 32_u64 {
+      set cap = 32_u64;
     }
-    if vm^.frames.inner.len < vm^.frames.inner.cap {
-      place_back(window: &vm^.frames.inner, value: frame);
-      return True();
+    if cap > 20000_u64 {
+      set cap = 20000_u64;
     }
+    if cap >= vm^.frames.inner.cap {
+      grow(cell: &vm^.frames, capacity: cap);
+    }
+  }
+  if vm^.frames.inner.len < vm^.frames.inner.cap {
+    place_back(window: &vm^.frames.inner, value: frame);
+    return True();
   }
   return False();
 }
@@ -610,26 +606,24 @@ fn write_upvalue(vm: &Vm, stack: &Box<Slots<Value>>, h: u32, v: Value) -> r: uni
 fn capture(vm: &Vm, slot: u64) -> r: Option<u32> writes(vm) {
   let at = vm^.open_upvalues.inner.len;
   for (i in 0_u64..vm^.open_upvalues.inner.len) {
-    if i < vm^.open_upvalues.inner.len {
-      let h = vm^.open_upvalues.inner[i];
-      let j = cvt::<u32, u64>(h);
-      if j < vm^.heap.upvalues.inner.len {
-        if vm^.heap.upvalues.inner[j].live {
-          match vm^.heap.upvalues.inner[j].payload {
-            Open(owner: capture_owner, slot: s) => {
-              if capture_owner^ == vm^.current_thread {
-                if s^ == slot {
-                  return Some<u32>(value: h);
-                }
-                if s^ < slot {
-                  if i < at {
-                    set at = i;
-                  }
+    let h = vm^.open_upvalues.inner[i];
+    let j = cvt::<u32, u64>(h);
+    if j < vm^.heap.upvalues.inner.len {
+      if vm^.heap.upvalues.inner[j].live {
+        match vm^.heap.upvalues.inner[j].payload {
+          Open(owner: capture_owner, slot: s) => {
+            if capture_owner^ == vm^.current_thread {
+              if s^ == slot {
+                return Some<u32>(value: h);
+              }
+              if s^ < slot {
+                if i < at {
+                  set at = i;
                 }
               }
             }
-            Closed(..) => {
-            }
+          }
+          Closed(..) => {
           }
         }
       }
@@ -648,14 +642,12 @@ fn capture(vm: &Vm, slot: u64) -> r: Option<u32> writes(vm) {
           grow(cell: &vm^.open_upvalues, capacity: cap);
         }
         if at <= vm^.open_upvalues.inner.len {
-          if vm^.open_upvalues.inner.len < vm^.open_upvalues.inner.cap {
-            insert_at(window: &vm^.open_upvalues.inner, index: at, value: h);
-            let above = slot +sat 1_u64;
-            if above > vm^.open_limit {
-              set vm^.open_limit = above;
-            }
-            return Some<u32>(value: h);
+          insert_at(window: &vm^.open_upvalues.inner, index: at, value: h);
+          let above = slot +sat 1_u64;
+          if above > vm^.open_limit {
+            set vm^.open_limit = above;
           }
+          return Some<u32>(value: h);
         }
       }
     }
@@ -694,9 +686,7 @@ fn close_upvalues(vm: &Vm, stack: &Box<Slots<Value>>, level: u64) -> r: unit rea
         }
       }
     }
-    if vm^.open_upvalues.inner.len > 0_u64 {
-      let removed = remove_at(window: &vm^.open_upvalues.inner, index: 0_u64);
-    }
+    let removed = remove_at(window: &vm^.open_upvalues.inner, index: 0_u64);
   }
   return unit;
 }
@@ -1333,13 +1323,11 @@ fn append_constant_name(consts: &Box<Slots<Value>>, vm: &Vm, proto: Proto, index
         if h < vm^.heap.strings.inner.len {
           let length = vm^.heap.strings.inner[h].payload.bytes.inner.len;
           for (i in 0_u64..length) {
-            if i < vm^.heap.strings.inner[h].payload.bytes.inner.len {
-              let byte = vm^.heap.strings.inner[h].payload.bytes.inner[i];
-              if byte == 0_u8 {
-                break;
-              }
-              bytes_push(bytes: bytes, byte: byte);
+            let byte = vm^.heap.strings.inner[h].payload.bytes.inner[i];
+            if byte == 0_u8 {
+              break;
             }
+            bytes_push(bytes: bytes, byte: byte);
           }
           return unit;
         }

@@ -86,9 +86,7 @@ fn pattern_class(c: u8, cl: u8) -> r: Bool pure {
     return cl == c;
   }
   if cl >= 97_u8 {
-    if cl <= 122_u8 {
-      return result;
-    }
+    return result;
   }
   return bnot(result);
 }

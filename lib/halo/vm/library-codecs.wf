@@ -487,9 +487,7 @@ fn codec_results(stack: &Box<Slots<Value>>, func: u64, values: &Box<Slots<Value>
   for (i_v76 in 0_u64..count_v74) {
     let at_v77 = func +sat i_v76;
     if at_v77 < stack^.inner.len {
-      if i_v76 < values^.inner.len {
-        set stack^.inner[at_v77] = values^.inner[i_v76];
-      }
+      set stack^.inner[at_v77] = values^.inner[i_v76];
     }
   }
   return HostOutcome::Returned(count: count_v74);

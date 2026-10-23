@@ -152,11 +152,9 @@ fn library_bit(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, pc: u64, vm:
       let low_v39 = iand(b_v6, 15_u32);
       let index_v40 = cvt::<u32, u64>(low_v39);
       if i_v38 < 8_u64 {
-        if index_v40 < 16_u64 {
-          set out_v37[i_v38] = bit_digits[index_v40];
-          if upper_v35 {
-            set out_v37[i_v38] = bit_upper[index_v40];
-          }
+        set out_v37[i_v38] = bit_digits[index_v40];
+        if upper_v35 {
+          set out_v37[i_v38] = bit_upper[index_v40];
         }
       }
       set b_v6 = ishr.wrap(b_v6, 4_u32);

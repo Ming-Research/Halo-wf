@@ -133,38 +133,34 @@ fn sort_array_table(vm: &Vm, table: Value, upper: i64) -> r: Option<u64> reads(v
         }
         let sort_kind = 0_u8;
         for (index in 0_u64..count) {
-          if index < vm^.heap.tables.inner[slot].payload.array.inner.len {
-            let item = vm^.heap.tables.inner[slot].payload.array.inner[index];
-            match num_of(v: item) {
-              Is(..) => {
-                if sort_kind == 2_u8 {
-                  return None<u64>();
-                }
-                set sort_kind = 1_u8;
+          let item = vm^.heap.tables.inner[slot].payload.array.inner[index];
+          match num_of(v: item) {
+            Is(..) => {
+              if sort_kind == 2_u8 {
+                return None<u64>();
               }
-              Not() => {
-                if sort_kind == 1_u8 {
-                  return None<u64>();
-                }
-                match str_of(v: item) {
-                  Handle(h: string_handle) => {
-                    let string_slot = cvt::<u32, u64>(string_handle);
-                    if string_slot >= vm^.heap.strings.inner.len {
-                      return None<u64>();
-                    }
-                    if bnot(vm^.heap.strings.inner[string_slot].live) {
-                      return None<u64>();
-                    }
-                    set sort_kind = 2_u8;
-                  }
-                  NoHandle() => {
+              set sort_kind = 1_u8;
+            }
+            Not() => {
+              if sort_kind == 1_u8 {
+                return None<u64>();
+              }
+              match str_of(v: item) {
+                Handle(h: string_handle) => {
+                  let string_slot = cvt::<u32, u64>(string_handle);
+                  if string_slot >= vm^.heap.strings.inner.len {
                     return None<u64>();
                   }
+                  if bnot(vm^.heap.strings.inner[string_slot].live) {
+                    return None<u64>();
+                  }
+                  set sort_kind = 2_u8;
+                }
+                NoHandle() => {
+                  return None<u64>();
                 }
               }
             }
-          } else {
-            return None<u64>();
           }
         }
         return Some<u64>(value: slot);
@@ -385,9 +381,7 @@ fn sort_run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value
     let local_gap_24 = local_u_23 -wrap local_l_22;
     if local_frame_16.phase == 0_u8 {
       if local_l_22 >= local_u_23 {
-        if vm^.sort_frames.inner.len > 0_u64 {
-          let local_discarded_25 = take_back(window: &vm^.sort_frames.inner);
-        }
+        let local_discarded_25 = take_back(window: &vm^.sort_frames.inner);
       } else {
         set local_frame_16.a = table_at(vm: vm, table: local_table_18, index: local_l_22);
         set local_frame_16.b = table_at(vm: vm, table: local_table_18, index: local_u_23);
@@ -449,9 +443,7 @@ fn sort_run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value
       sort_store(vm: vm, index: local_index_15, frame: local_frame_16);
     } else if local_frame_16.phase == 5_u8 {
       if local_gap_24 == 2_i64 {
-        if vm^.sort_frames.inner.len > 0_u64 {
-          let local_discarded_34 = take_back(window: &vm^.sort_frames.inner);
-        }
+        let local_discarded_34 = take_back(window: &vm^.sort_frames.inner);
       } else {
         set local_frame_16.pivot = table_at(vm: vm, table: local_table_18, index: local_frame_16.i);
         let local_previous_35 = local_u_23 -wrap 1_i64;

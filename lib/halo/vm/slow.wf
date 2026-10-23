@@ -326,17 +326,13 @@ fn string_order(vm: &Vm, b: u32, c: u32) -> r: i64 reads(vm) {
         if i >= cn {
           return 1_i64;
         }
-        if i < vm^.heap.strings.inner[bi].payload.bytes.inner.len {
-          if i < vm^.heap.strings.inner[ci].payload.bytes.inner.len {
-            let x = vm^.heap.strings.inner[bi].payload.bytes.inner[i];
-            let y = vm^.heap.strings.inner[ci].payload.bytes.inner[i];
-            if x < y {
-              return -1_i64;
-            }
-            if x > y {
-              return 1_i64;
-            }
-          }
+        let x = vm^.heap.strings.inner[bi].payload.bytes.inner[i];
+        let y = vm^.heap.strings.inner[ci].payload.bytes.inner[i];
+        if x < y {
+          return -1_i64;
+        }
+        if x > y {
+          return 1_i64;
         }
       }
       if bn < cn {
@@ -358,19 +354,15 @@ fn concat_strings(vm: &Vm, b: u32, c: u32) -> r: Value writes(vm) {
       if len < unlimited {
         let bytes = box_slots_new::<u8>(capacity: len);
         for (i in 0_u64..bn) {
-          if i < vm^.heap.strings.inner[bi].payload.bytes.inner.len {
-            if bytes.inner.len < bytes.inner.cap {
-              let v = vm^.heap.strings.inner[bi].payload.bytes.inner[i];
-              place_back(window: &bytes.inner, value: v);
-            }
+          if bytes.inner.len < bytes.inner.cap {
+            let v = vm^.heap.strings.inner[bi].payload.bytes.inner[i];
+            place_back(window: &bytes.inner, value: v);
           }
         }
         for (i in 0_u64..cn) {
-          if i < vm^.heap.strings.inner[ci].payload.bytes.inner.len {
-            if bytes.inner.len < bytes.inner.cap {
-              let v = vm^.heap.strings.inner[ci].payload.bytes.inner[i];
-              place_back(window: &bytes.inner, value: v);
-            }
+          if bytes.inner.len < bytes.inner.cap {
+            let v = vm^.heap.strings.inner[ci].payload.bytes.inner[i];
+            place_back(window: &bytes.inner, value: v);
           }
         }
         let n = bytes.inner.len;

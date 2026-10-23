@@ -54,11 +54,9 @@ fn concat_batch_copy(vm: &Vm, stack: &Box<Slots<Value>>, bytes: &Box<Slots<u8>>,
             if vm^.heap.strings.inner[si].live {
               let count = vm^.heap.strings.inner[si].payload.bytes.inner.len;
               for (offset in 0_u64..count) {
-                if offset < vm^.heap.strings.inner[si].payload.bytes.inner.len {
-                  if bytes^.inner.len < bytes^.inner.cap {
-                    let byte = vm^.heap.strings.inner[si].payload.bytes.inner[offset];
-                    place_back(window: &bytes^.inner, value: byte);
-                  }
+                if bytes^.inner.len < bytes^.inner.cap {
+                  let byte = vm^.heap.strings.inner[si].payload.bytes.inner[offset];
+                  place_back(window: &bytes^.inner, value: byte);
                 }
               }
             }

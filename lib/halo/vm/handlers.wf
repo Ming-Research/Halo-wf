@@ -3028,13 +3028,6 @@ fn instruction_test_set_jmp<interface Host<E>>(code: &Box<Slots<Cell>>, consts: 
   if vm^.suspended {
     return Step::Budget();
   }
-  if bnot(ok) {
-    if vm^.host_stopped {
-      restore_stopped_stack(vm: vm, stack: stack);
-      return Step::Stop();
-    }
-    return unwind(vm: vm, stack: stack);
-  }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
   }
@@ -3392,9 +3385,6 @@ fn instruction_tfor_loop<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
     let expect = False();
     set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 3_u8, dest: dest, first: s2, index: 0_u64, target: target, expected: expect);
     set ok = iterator_call::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, dest: dest, f: f, state: state, control: control, wanted: wanted);
-    if frame_limit > stack^.inner.len {
-      return Step::Error();
-    }
     if ok {
       let v = stack^.inner[dest];
       let atom158 = is_nil(v: v);
@@ -3483,7 +3473,7 @@ fn instruction_set_list<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box
   return Step::Error();
 }
 
-fn instruction_close<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8) -> r: Step reads(code), writes(stack), writes(vm) contract {
+fn instruction_close<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, pc: u64, base: u64, kbase: u64, av: u8) -> r: Step reads(code.inner.len), reads(stack), writes(vm) contract {
   requires pc < code^.inner.len;
   requires base + 256_u64 <= stack^.inner.len;
   requires kbase + 256_u64 <= consts^.inner.len;
@@ -3496,13 +3486,6 @@ fn instruction_close<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Sl
   close_upvalues(vm: vm, stack: stack, level: ra);
   if vm^.suspended {
     return Step::Budget();
-  }
-  if bnot(ok) {
-    if vm^.host_stopped {
-      restore_stopped_stack(vm: vm, stack: stack);
-      return Step::Stop();
-    }
-    return unwind(vm: vm, stack: stack);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -3592,9 +3575,6 @@ fn instruction_get_global_wide<interface Host<E>>(code: &Box<Slots<Cell>>, const
   let expect = False();
   set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
   set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: t, c: key, v: nil, breg: unlimited, creg: unlimited);
-  if frame_limit > stack^.inner.len {
-    return Step::Error();
-  }
   if vm^.suspended {
     return Step::Budget();
   }
@@ -3636,9 +3616,6 @@ fn instruction_set_global_wide<interface Host<E>>(code: &Box<Slots<Cell>>, const
   let expect = False();
   set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
   set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: t, c: key, v: value, breg: unlimited, creg: unlimited);
-  if frame_limit > stack^.inner.len {
-    return Step::Error();
-  }
   if vm^.suspended {
     return Step::Budget();
   }

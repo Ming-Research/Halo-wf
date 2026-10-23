@@ -413,14 +413,12 @@ fn base_number(bytes: &[u8], radix: u64) -> r: Option<f64> reads(bytes) {
     }
   }
   let local_negative_69 = False();
-  if local_i_67 < bytes^.len {
-    let local_byte_70 = bytes^[local_i_67];
-    if local_byte_70 == 45_u8 {
-      set local_negative_69 = True();
-      set local_i_67 = local_i_67 + 1_u64;
-    } else if local_byte_70 == 43_u8 {
-      set local_i_67 = local_i_67 + 1_u64;
-    }
+  let local_byte_70 = bytes^[local_i_67];
+  if local_byte_70 == 45_u8 {
+    set local_negative_69 = True();
+    set local_i_67 = local_i_67 + 1_u64;
+  } else if local_byte_70 == 43_u8 {
+    set local_i_67 = local_i_67 + 1_u64;
   }
   if radix == 16_u64 {
     let local_next_71 = local_i_67 +sat 1_u64;
@@ -470,12 +468,10 @@ fn base_number(bytes: &[u8], radix: u64) -> r: Option<f64> reads(bytes) {
     if local_digit_80 >= radix {
       break;
     }
-    if radix > 0_u64 {
-      let local_limit_86 = 18446744073709551615_u64 -wrap local_digit_80;
-      let local_room_87 = local_limit_86 / radix;
-      if local_value_76 > local_room_87 {
-        set local_overflow_77 = True();
-      }
+    let local_limit_86 = 18446744073709551615_u64 -wrap local_digit_80;
+    let local_room_87 = local_limit_86 / radix;
+    if local_value_76 > local_room_87 {
+      set local_overflow_77 = True();
     }
     let local_product_88 = local_value_76 *wrap radix;
     set local_value_76 = local_product_88 +wrap local_digit_80;
