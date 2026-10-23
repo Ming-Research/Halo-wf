@@ -67,8 +67,8 @@ fn push_digits(chars: &Chars, digits: &Chars, from: u64, to: u64) -> copied: uni
   for (index in from..to) {
     if index < digits^.length {
       if index < digits^.bytes.len {
-        let held = digits^.bytes[index];
-        push_byte(chars: chars, byte: held);
+        let held_value = digits^.bytes[index];
+        push_byte(chars: chars, byte: held_value);
       }
     }
   }

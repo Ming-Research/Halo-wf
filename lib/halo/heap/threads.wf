@@ -53,11 +53,11 @@ fn close_thread_upvalues(heap: &Heap, h: u32) -> r: unit writes(heap.upvalues), 
             match capture {
               Open(owner: capture_owner, slot: capture_slot) => {
                 if capture_owner == h {
-                  let held = thread_slot(heap: heap, owner: capture_owner, slot: capture_slot);
-                  set heap^.upvalues.inner[ui].payload = Upval::Closed(v: held);
+                  let held_value = thread_slot(heap: heap, owner: capture_owner, slot: capture_slot);
+                  set heap^.upvalues.inner[ui].payload = Upval::Closed(v: held_value);
                 }
               }
-              Closed(v: held) => {
+              Closed(v: held_value) => {
               }
             }
           }

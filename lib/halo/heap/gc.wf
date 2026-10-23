@@ -103,8 +103,8 @@ fn gc_mark_upvalue(heap: &Heap, h: u32) -> r: unit writes(heap) {
         set heap^.upvalues.inner[i].mark = epoch;
         let u = heap^.upvalues.inner[i].payload;
         match u {
-          Closed(v: held) => {
-            gc_mark(heap: heap, v: held);
+          Closed(v: held_value) => {
+            gc_mark(heap: heap, v: held_value);
           }
           Open(owner: capture_owner, slot: capture_slot) => {
             let captured = thread_slot(heap: heap, owner: capture_owner, slot: capture_slot);

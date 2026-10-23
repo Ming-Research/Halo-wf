@@ -252,14 +252,14 @@ fn gc_probe_slots_probe(engine: &Engine, env: &Probe, script: ScriptId, before: 
 }
 
 fn gc_probe_string_lifetime(engine: &Engine, env: &Probe, script: ScriptId, keep: Bool) -> r: u8 writes(engine), writes(env) {
-  doc "After the allocation-free sweeps, held interns the fresh 14-byte gc-live-string at 24 + 14 = 38 logical bytes and pins it through the public embedding API. The next forced cached idle collection retains exactly one additional string and 38 bytes with no string reclamation; unpin then lets the following collection free exactly that string and 38 bytes, returning live strings to the previous totals. Each idle start allocates one uncaptured 24-byte entry closure and frees the previous one; no other strings, tables or upvalues are allocated.";
+  doc "After the allocation-free sweeps, held_value interns the fresh 14-byte gc-live-string at 24 + 14 = 38 logical bytes and pins it through the public embedding API. The next forced cached idle collection retains exactly one additional string and 38 bytes with no string reclamation; unpin then lets the following collection free exactly that string and 38 bytes, returning live strings to the previous totals. Each idle start allocates one uncaptured 24-byte entry closure and frees the previous one; no other strings, tables or upvalues are allocated.";
   let before = halo::embed::last_collection(engine: engine);
-  let held = halo::embed::intern(engine: engine, bytes: &gc_probe_live_string[0_u64..14_u64]);
-  let held_kind = halo::embed::kind(value: held);
+  let held_value = halo::embed::intern(engine: engine, bytes: &gc_probe_live_string[0_u64..14_u64]);
+  let held_kind = halo::embed::kind(value: held_value);
   if held_kind != 3_u8 {
     return 150_u8;
   }
-  let pinned = halo::embed::pin(engine: engine, value: held);
+  let pinned = halo::embed::pin(engine: engine, value: held_value);
   let token = match pinned {
     None() => {
       return 150_u8;
