@@ -23,13 +23,11 @@ fn mark_value(decoder: &Decoder) -> result: unit writes(decoder) {
   let n = decoder^.stack.inner.len;
   if n > 0_u64 {
     let i = n - 1_u64;
-    if i < decoder^.stack.inner.len {
-      let phase = decoder^.stack.inner[i];
-      if phase <= 2_u8 {
-        set decoder^.stack.inner[i] = 1_u8;
-      } else {
-        set decoder^.stack.inner[i] = 7_u8;
-      }
+    let phase = decoder^.stack.inner[i];
+    if phase <= 2_u8 {
+      set decoder^.stack.inner[i] = 1_u8;
+    } else {
+      set decoder^.stack.inner[i] = 7_u8;
     }
   } else {
     set decoder^.root_done = True();
@@ -120,80 +118,74 @@ fn next(source: &[u8], decoder: &Decoder, decoded: &Box<Slots<u8>>) -> result: R
       }
       break @punctuation;
     }
-    if n > 0_u64 {
-      let i = n - 1_u64;
-      if i < decoder^.stack.inner.len {
-        let phase = decoder^.stack.inner[i];
-        if phase == 0_u8 {
-          if c == 93_u16 {
-            let dropped = take_back(window: &decoder^.stack.inner);
-            set decoder^.offset = p +sat 1_u64;
-            let event = Event::ArrayEnd();
-            return Ok<Event, Error>(value: event);
-          }
-          break @punctuation;
-        }
-        if phase == 2_u8 {
-          break @punctuation;
-        }
-        if phase == 6_u8 {
-          break @punctuation;
-        }
-        if phase == 1_u8 {
-          if c == 93_u16 {
-            let dropped = take_back(window: &decoder^.stack.inner);
-            set decoder^.offset = p +sat 1_u64;
-            let event = Event::ArrayEnd();
-            return Ok<Event, Error>(value: event);
-          }
-          if c != 44_u16 {
-            return failure(decoder: decoder, code: 4_u8, offset: p);
-          }
-          set decoder^.stack.inner[i] = 2_u8;
+    let i = n - 1_u64;
+    let phase = decoder^.stack.inner[i];
+    if phase == 0_u8 {
+      if c == 93_u16 {
+        let dropped = take_back(window: &decoder^.stack.inner);
+        set decoder^.offset = p +sat 1_u64;
+        let event = Event::ArrayEnd();
+        return Ok<Event, Error>(value: event);
+      }
+      break @punctuation;
+    }
+    if phase == 2_u8 {
+      break @punctuation;
+    }
+    if phase == 6_u8 {
+      break @punctuation;
+    }
+    if phase == 1_u8 {
+      if c == 93_u16 {
+        let dropped = take_back(window: &decoder^.stack.inner);
+        set decoder^.offset = p +sat 1_u64;
+        let event = Event::ArrayEnd();
+        return Ok<Event, Error>(value: event);
+      }
+      if c != 44_u16 {
+        return failure(decoder: decoder, code: 4_u8, offset: p);
+      }
+      set decoder^.stack.inner[i] = 2_u8;
+      set decoder^.offset = p +sat 1_u64;
+    } else if phase == 7_u8 {
+      if c == 125_u16 {
+        let dropped = take_back(window: &decoder^.stack.inner);
+        set decoder^.offset = p +sat 1_u64;
+        let event = Event::ObjectEnd();
+        return Ok<Event, Error>(value: event);
+      }
+      if c != 44_u16 {
+        return failure(decoder: decoder, code: 4_u8, offset: p);
+      }
+      set decoder^.stack.inner[i] = 4_u8;
+      set decoder^.offset = p +sat 1_u64;
+    } else if phase == 5_u8 {
+      if c != 58_u16 {
+        return failure(decoder: decoder, code: 3_u8, offset: p);
+      }
+      set decoder^.stack.inner[i] = 6_u8;
+      set decoder^.offset = p +sat 1_u64;
+    } else {
+      if phase == 3_u8 {
+        if c == 125_u16 {
+          let dropped = take_back(window: &decoder^.stack.inner);
           set decoder^.offset = p +sat 1_u64;
-        } else if phase == 7_u8 {
-          if c == 125_u16 {
-            let dropped = take_back(window: &decoder^.stack.inner);
-            set decoder^.offset = p +sat 1_u64;
-            let event = Event::ObjectEnd();
-            return Ok<Event, Error>(value: event);
-          }
-          if c != 44_u16 {
-            return failure(decoder: decoder, code: 4_u8, offset: p);
-          }
-          set decoder^.stack.inner[i] = 4_u8;
-          set decoder^.offset = p +sat 1_u64;
-        } else if phase == 5_u8 {
-          if c != 58_u16 {
-            return failure(decoder: decoder, code: 3_u8, offset: p);
-          }
-          set decoder^.stack.inner[i] = 6_u8;
-          set decoder^.offset = p +sat 1_u64;
-        } else {
-          if phase == 3_u8 {
-            if c == 125_u16 {
-              let dropped = take_back(window: &decoder^.stack.inner);
-              set decoder^.offset = p +sat 1_u64;
-              let event = Event::ObjectEnd();
-              return Ok<Event, Error>(value: event);
-            }
-          }
-          if c != 34_u16 {
-            return failure(decoder: decoder, code: 2_u8, offset: p);
-          }
-          match pkg::text::string(source: source, start: p, decoded: decoded) {
-            Ok(value: end) => {
-              set decoder^.offset = end;
-              if i < decoder^.stack.inner.len {
-                set decoder^.stack.inner[i] = 5_u8;
-              }
-              let event = Event::Key();
-              return Ok<Event, Error>(value: event);
-            }
-            Err(error: e) => {
-              return relay(decoder: decoder, error: move e);
-            }
-          }
+          let event = Event::ObjectEnd();
+          return Ok<Event, Error>(value: event);
+        }
+      }
+      if c != 34_u16 {
+        return failure(decoder: decoder, code: 2_u8, offset: p);
+      }
+      match pkg::text::string(source: source, start: p, decoded: decoded) {
+        Ok(value: end) => {
+          set decoder^.offset = end;
+          set decoder^.stack.inner[i] = 5_u8;
+          let event = Event::Key();
+          return Ok<Event, Error>(value: event);
+        }
+        Err(error: e) => {
+          return relay(decoder: decoder, error: move e);
         }
       }
     }

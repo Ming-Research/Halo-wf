@@ -49,15 +49,6 @@ fn instruction_move<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slo
     let failure = Step::Budget();
     return Err<u64, Step>(error: failure);
   }
-  if bnot(ok) {
-    if vm^.host_stopped {
-      restore_stopped_stack(vm: vm, stack: stack);
-      let failure = Step::Stop();
-      return Err<u64, Step>(error: failure);
-    }
-    let failure = unwind(vm: vm, stack: stack);
-    return Err<u64, Step>(error: failure);
-  }
   if next < n {
     return Ok<u64, Step>(value: next);
   }
@@ -82,15 +73,6 @@ fn instruction_load_k<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   set stack^.inner[ra] = v;
   if vm^.suspended {
     let failure = Step::Budget();
-    return Err<u64, Step>(error: failure);
-  }
-  if bnot(ok) {
-    if vm^.host_stopped {
-      restore_stopped_stack(vm: vm, stack: stack);
-      let failure = Step::Stop();
-      return Err<u64, Step>(error: failure);
-    }
-    let failure = unwind(vm: vm, stack: stack);
     return Err<u64, Step>(error: failure);
   }
   if next < n {
@@ -157,13 +139,6 @@ fn instruction_load_bool<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
   if vm^.suspended {
     return Step::Budget();
   }
-  if bnot(ok) {
-    if vm^.host_stopped {
-      restore_stopped_stack(vm: vm, stack: stack);
-      return Step::Stop();
-    }
-    return unwind(vm: vm, stack: stack);
-  }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
   }
@@ -192,13 +167,6 @@ fn instruction_load_nil<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box
   }
   if vm^.suspended {
     return Step::Budget();
-  }
-  if bnot(ok) {
-    if vm^.host_stopped {
-      restore_stopped_stack(vm: vm, stack: stack);
-      return Step::Stop();
-    }
-    return unwind(vm: vm, stack: stack);
   }
   if next < n {
     return Step::Jump(pc: next, base: base, kbase: kbase);
@@ -301,9 +269,6 @@ fn instruction_get_global<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &B
   let expect = False();
   set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
   set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: t, c: key, v: nil, breg: unlimited, creg: unlimited);
-  if frame_limit > stack^.inner.len {
-    return Step::Error();
-  }
   if vm^.suspended {
     return Step::Budget();
   }
@@ -339,9 +304,6 @@ fn instruction_set_global<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &B
   let expect = False();
   set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
   set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: t, c: key, v: value, breg: unlimited, creg: unlimited);
-  if frame_limit > stack^.inner.len {
-    return Step::Error();
-  }
   if vm^.suspended {
     return Step::Budget();
   }
@@ -383,9 +345,6 @@ fn instruction_get_table_r<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &
     set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
     let operand_b = cvt::<u8, u64>(tv);
     set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: t, c: key, v: nil, breg: operand_b, creg: unlimited);
-    if frame_limit > stack^.inner.len {
-      return Step::Error();
-    }
   }
   if vm^.suspended {
     return Step::Budget();
@@ -428,9 +387,6 @@ fn instruction_get_table_k<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &
     set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
     let operand_b = cvt::<u8, u64>(tv);
     set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: t, c: key, v: nil, breg: operand_b, creg: unlimited);
-    if frame_limit > stack^.inner.len {
-      return Step::Error();
-    }
   }
   if vm^.suspended {
     return Step::Budget();
@@ -481,9 +437,6 @@ fn instruction_set_table_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: 
     set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
     let operand_b = cvt::<u8, u64>(tv);
     set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: rt, b: t, c: key, v: value, breg: operand_b, creg: unlimited);
-    if frame_limit > stack^.inner.len {
-      return Step::Error();
-    }
   }
   if vm^.suspended {
     return Step::Budget();
@@ -535,9 +488,6 @@ fn instruction_set_table_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: 
     set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
     let operand_b = cvt::<u8, u64>(tv);
     set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: rt, b: t, c: key, v: value, breg: operand_b, creg: unlimited);
-    if frame_limit > stack^.inner.len {
-      return Step::Error();
-    }
   }
   if vm^.suspended {
     return Step::Budget();
@@ -589,9 +539,6 @@ fn instruction_set_table_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: 
     set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
     let operand_b = cvt::<u8, u64>(tv);
     set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: rt, b: t, c: key, v: value, breg: operand_b, creg: unlimited);
-    if frame_limit > stack^.inner.len {
-      return Step::Error();
-    }
   }
   if vm^.suspended {
     return Step::Budget();
@@ -644,9 +591,6 @@ fn instruction_set_table_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: 
     set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
     let operand_b = cvt::<u8, u64>(tv);
     set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: rt, b: t, c: key, v: value, breg: operand_b, creg: unlimited);
-    if frame_limit > stack^.inner.len {
-      return Step::Error();
-    }
   }
   if vm^.suspended {
     return Step::Budget();
@@ -732,9 +676,6 @@ fn instruction_self_r<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
     set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
     let operand_b = cvt::<u8, u64>(bv);
     set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: t, c: key, v: nil, breg: operand_b, creg: unlimited);
-    if frame_limit > stack^.inner.len {
-      return Step::Error();
-    }
   }
   if vm^.suspended {
     return Step::Budget();
@@ -792,9 +733,6 @@ fn instruction_self_k<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
     set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
     let operand_b = cvt::<u8, u64>(bv);
     set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: t, c: key, v: nil, breg: operand_b, creg: unlimited);
-    if frame_limit > stack^.inner.len {
-      return Step::Error();
-    }
   }
   if vm^.suspended {
     return Step::Budget();
@@ -840,9 +778,6 @@ fn instruction_add_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
           let operand_b = cvt::<u8, u64>(bv);
           let operand_c = cvt::<u8, u64>(cv);
           set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: operand_b, creg: operand_c);
-          if frame_limit > stack^.inner.len {
-            return Step::Error();
-          }
         }
       }
     }
@@ -854,9 +789,6 @@ fn instruction_add_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       let operand_b = cvt::<u8, u64>(bv);
       let operand_c = cvt::<u8, u64>(cv);
       set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: operand_b, creg: operand_c);
-      if frame_limit > stack^.inner.len {
-        return Step::Error();
-      }
     }
   }
   if vm^.suspended {
@@ -902,9 +834,6 @@ fn instruction_add_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
           set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
           let operand_b = cvt::<u8, u64>(bv);
           set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: operand_b, creg: unlimited);
-          if frame_limit > stack^.inner.len {
-            return Step::Error();
-          }
         }
       }
     }
@@ -915,9 +844,6 @@ fn instruction_add_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
       let operand_b = cvt::<u8, u64>(bv);
       set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: operand_b, creg: unlimited);
-      if frame_limit > stack^.inner.len {
-        return Step::Error();
-      }
     }
   }
   if vm^.suspended {
@@ -963,9 +889,6 @@ fn instruction_add_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
           set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
           let operand_c = cvt::<u8, u64>(cv);
           set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: unlimited, creg: operand_c);
-          if frame_limit > stack^.inner.len {
-            return Step::Error();
-          }
         }
       }
     }
@@ -976,9 +899,6 @@ fn instruction_add_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
       let operand_c = cvt::<u8, u64>(cv);
       set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: unlimited, creg: operand_c);
-      if frame_limit > stack^.inner.len {
-        return Step::Error();
-      }
     }
   }
   if vm^.suspended {
@@ -1023,9 +943,6 @@ fn instruction_add_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
           let expect = False();
           set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
           set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: unlimited, creg: unlimited);
-          if frame_limit > stack^.inner.len {
-            return Step::Error();
-          }
         }
       }
     }
@@ -1035,9 +952,6 @@ fn instruction_add_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       let expect = False();
       set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
       set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: unlimited, creg: unlimited);
-      if frame_limit > stack^.inner.len {
-        return Step::Error();
-      }
     }
   }
   if vm^.suspended {
@@ -1084,9 +998,6 @@ fn instruction_sub_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
           let operand_b = cvt::<u8, u64>(bv);
           let operand_c = cvt::<u8, u64>(cv);
           set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: operand_b, creg: operand_c);
-          if frame_limit > stack^.inner.len {
-            return Step::Error();
-          }
         }
       }
     }
@@ -1098,9 +1009,6 @@ fn instruction_sub_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       let operand_b = cvt::<u8, u64>(bv);
       let operand_c = cvt::<u8, u64>(cv);
       set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: operand_b, creg: operand_c);
-      if frame_limit > stack^.inner.len {
-        return Step::Error();
-      }
     }
   }
   if vm^.suspended {
@@ -1146,9 +1054,6 @@ fn instruction_sub_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
           set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
           let operand_b = cvt::<u8, u64>(bv);
           set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: operand_b, creg: unlimited);
-          if frame_limit > stack^.inner.len {
-            return Step::Error();
-          }
         }
       }
     }
@@ -1159,9 +1064,6 @@ fn instruction_sub_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
       let operand_b = cvt::<u8, u64>(bv);
       set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: operand_b, creg: unlimited);
-      if frame_limit > stack^.inner.len {
-        return Step::Error();
-      }
     }
   }
   if vm^.suspended {
@@ -1207,9 +1109,6 @@ fn instruction_sub_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
           set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
           let operand_c = cvt::<u8, u64>(cv);
           set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: unlimited, creg: operand_c);
-          if frame_limit > stack^.inner.len {
-            return Step::Error();
-          }
         }
       }
     }
@@ -1220,9 +1119,6 @@ fn instruction_sub_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
       let operand_c = cvt::<u8, u64>(cv);
       set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: unlimited, creg: operand_c);
-      if frame_limit > stack^.inner.len {
-        return Step::Error();
-      }
     }
   }
   if vm^.suspended {
@@ -1267,9 +1163,6 @@ fn instruction_sub_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
           let expect = False();
           set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
           set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: unlimited, creg: unlimited);
-          if frame_limit > stack^.inner.len {
-            return Step::Error();
-          }
         }
       }
     }
@@ -1279,9 +1172,6 @@ fn instruction_sub_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       let expect = False();
       set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
       set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: unlimited, creg: unlimited);
-      if frame_limit > stack^.inner.len {
-        return Step::Error();
-      }
     }
   }
   if vm^.suspended {
@@ -1328,9 +1218,6 @@ fn instruction_mul_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
           let operand_b = cvt::<u8, u64>(bv);
           let operand_c = cvt::<u8, u64>(cv);
           set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: operand_b, creg: operand_c);
-          if frame_limit > stack^.inner.len {
-            return Step::Error();
-          }
         }
       }
     }
@@ -1342,9 +1229,6 @@ fn instruction_mul_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       let operand_b = cvt::<u8, u64>(bv);
       let operand_c = cvt::<u8, u64>(cv);
       set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: operand_b, creg: operand_c);
-      if frame_limit > stack^.inner.len {
-        return Step::Error();
-      }
     }
   }
   if vm^.suspended {
@@ -1390,9 +1274,6 @@ fn instruction_mul_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
           set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
           let operand_b = cvt::<u8, u64>(bv);
           set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: operand_b, creg: unlimited);
-          if frame_limit > stack^.inner.len {
-            return Step::Error();
-          }
         }
       }
     }
@@ -1403,9 +1284,6 @@ fn instruction_mul_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
       let operand_b = cvt::<u8, u64>(bv);
       set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: operand_b, creg: unlimited);
-      if frame_limit > stack^.inner.len {
-        return Step::Error();
-      }
     }
   }
   if vm^.suspended {
@@ -1451,9 +1329,6 @@ fn instruction_mul_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
           set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
           let operand_c = cvt::<u8, u64>(cv);
           set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: unlimited, creg: operand_c);
-          if frame_limit > stack^.inner.len {
-            return Step::Error();
-          }
         }
       }
     }
@@ -1464,9 +1339,6 @@ fn instruction_mul_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
       let operand_c = cvt::<u8, u64>(cv);
       set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: unlimited, creg: operand_c);
-      if frame_limit > stack^.inner.len {
-        return Step::Error();
-      }
     }
   }
   if vm^.suspended {
@@ -1511,9 +1383,6 @@ fn instruction_mul_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
           let expect = False();
           set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
           set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: unlimited, creg: unlimited);
-          if frame_limit > stack^.inner.len {
-            return Step::Error();
-          }
         }
       }
     }
@@ -1523,9 +1392,6 @@ fn instruction_mul_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       let expect = False();
       set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
       set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: unlimited, creg: unlimited);
-      if frame_limit > stack^.inner.len {
-        return Step::Error();
-      }
     }
   }
   if vm^.suspended {
@@ -1572,9 +1438,6 @@ fn instruction_div_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
           let operand_b = cvt::<u8, u64>(bv);
           let operand_c = cvt::<u8, u64>(cv);
           set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: operand_b, creg: operand_c);
-          if frame_limit > stack^.inner.len {
-            return Step::Error();
-          }
         }
       }
     }
@@ -1586,9 +1449,6 @@ fn instruction_div_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       let operand_b = cvt::<u8, u64>(bv);
       let operand_c = cvt::<u8, u64>(cv);
       set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: operand_b, creg: operand_c);
-      if frame_limit > stack^.inner.len {
-        return Step::Error();
-      }
     }
   }
   if vm^.suspended {
@@ -1634,9 +1494,6 @@ fn instruction_div_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
           set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
           let operand_b = cvt::<u8, u64>(bv);
           set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: operand_b, creg: unlimited);
-          if frame_limit > stack^.inner.len {
-            return Step::Error();
-          }
         }
       }
     }
@@ -1647,9 +1504,6 @@ fn instruction_div_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
       let operand_b = cvt::<u8, u64>(bv);
       set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: operand_b, creg: unlimited);
-      if frame_limit > stack^.inner.len {
-        return Step::Error();
-      }
     }
   }
   if vm^.suspended {
@@ -1695,9 +1549,6 @@ fn instruction_div_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
           set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
           let operand_c = cvt::<u8, u64>(cv);
           set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: unlimited, creg: operand_c);
-          if frame_limit > stack^.inner.len {
-            return Step::Error();
-          }
         }
       }
     }
@@ -1708,9 +1559,6 @@ fn instruction_div_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
       let operand_c = cvt::<u8, u64>(cv);
       set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: unlimited, creg: operand_c);
-      if frame_limit > stack^.inner.len {
-        return Step::Error();
-      }
     }
   }
   if vm^.suspended {
@@ -1755,9 +1603,6 @@ fn instruction_div_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
           let expect = False();
           set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
           set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: unlimited, creg: unlimited);
-          if frame_limit > stack^.inner.len {
-            return Step::Error();
-          }
         }
       }
     }
@@ -1767,9 +1612,6 @@ fn instruction_div_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       let expect = False();
       set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
       set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: unlimited, creg: unlimited);
-      if frame_limit > stack^.inner.len {
-        return Step::Error();
-      }
     }
   }
   if vm^.suspended {
@@ -1819,9 +1661,6 @@ fn instruction_mod_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
           let operand_b = cvt::<u8, u64>(bv);
           let operand_c = cvt::<u8, u64>(cv);
           set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: operand_b, creg: operand_c);
-          if frame_limit > stack^.inner.len {
-            return Step::Error();
-          }
         }
       }
     }
@@ -1833,9 +1672,6 @@ fn instruction_mod_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       let operand_b = cvt::<u8, u64>(bv);
       let operand_c = cvt::<u8, u64>(cv);
       set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: operand_b, creg: operand_c);
-      if frame_limit > stack^.inner.len {
-        return Step::Error();
-      }
     }
   }
   if vm^.suspended {
@@ -1884,9 +1720,6 @@ fn instruction_mod_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
           set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
           let operand_b = cvt::<u8, u64>(bv);
           set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: operand_b, creg: unlimited);
-          if frame_limit > stack^.inner.len {
-            return Step::Error();
-          }
         }
       }
     }
@@ -1897,9 +1730,6 @@ fn instruction_mod_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
       let operand_b = cvt::<u8, u64>(bv);
       set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: operand_b, creg: unlimited);
-      if frame_limit > stack^.inner.len {
-        return Step::Error();
-      }
     }
   }
   if vm^.suspended {
@@ -1948,9 +1778,6 @@ fn instruction_mod_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
           set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
           let operand_c = cvt::<u8, u64>(cv);
           set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: unlimited, creg: operand_c);
-          if frame_limit > stack^.inner.len {
-            return Step::Error();
-          }
         }
       }
     }
@@ -1961,9 +1788,6 @@ fn instruction_mod_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
       let operand_c = cvt::<u8, u64>(cv);
       set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: unlimited, creg: operand_c);
-      if frame_limit > stack^.inner.len {
-        return Step::Error();
-      }
     }
   }
   if vm^.suspended {
@@ -2011,9 +1835,6 @@ fn instruction_mod_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
           let expect = False();
           set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
           set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: unlimited, creg: unlimited);
-          if frame_limit > stack^.inner.len {
-            return Step::Error();
-          }
         }
       }
     }
@@ -2023,9 +1844,6 @@ fn instruction_mod_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       let expect = False();
       set vm^.callback_plan = CallbackPlan(pc: next, base: base, kbase: kbase, kind: 0_u8, dest: 0_u64, first: 0_u64, index: 0_u64, target: 0_u64, expected: expect);
       set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: unlimited, creg: unlimited);
-      if frame_limit > stack^.inner.len {
-        return Step::Error();
-      }
     }
   }
   if vm^.suspended {
@@ -2071,9 +1889,6 @@ fn instruction_pow_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
           let operand_b = cvt::<u8, u64>(bv);
           let operand_c = cvt::<u8, u64>(cv);
           set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: operand_b, creg: operand_c);
-          if frame_limit > stack^.inner.len {
-            return Step::Error();
-          }
         }
       }
     }
@@ -2085,9 +1900,6 @@ fn instruction_pow_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
       let operand_b = cvt::<u8, u64>(bv);
       let operand_c = cvt::<u8, u64>(cv);
       set ok = slow::<Host<E>>(code: code, consts: consts, stack: stack, vm: vm, env: env, op: operation, dest: ra, b: vb, c: vc, v: nil, breg: operand_b, creg: operand_c);
-      if frame_limit > stack^.inner.len {
-        return Step::Error();
-      }
     }
   }
   if vm^.suspended {

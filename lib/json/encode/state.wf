@@ -41,30 +41,26 @@ fn prefix(writer: &Writer, output: &Box<Slots<u8>>) -> result: Result<unit, Erro
     set writer^.root_done = True();
     return Ok<unit, Error>(value: unit);
   }
-  if n > 0_u64 {
-    let i = n - 1_u64;
-    if i < writer^.stack.inner.len {
-      let phase = writer^.stack.inner[i];
-      if phase == 4_u8 {
-        set writer^.stack.inner[i] = 3_u8;
-        return Ok<unit, Error>(value: unit);
+  let i = n - 1_u64;
+  let phase = writer^.stack.inner[i];
+  if phase == 4_u8 {
+    set writer^.stack.inner[i] = 3_u8;
+    return Ok<unit, Error>(value: unit);
+  }
+  if phase >= 2_u8 {
+    return failure(code: 16_u8, offset: output^.inner.len);
+  }
+  if phase == 1_u8 {
+    match emit_byte(output: output, byte: 44_u8) {
+      Ok(value: done) => {
       }
-      if phase >= 2_u8 {
-        return failure(code: 16_u8, offset: output^.inner.len);
+      Err(error: e) => {
+        return Err<unit, Error>(error: move e);
       }
-      if phase == 1_u8 {
-        match emit_byte(output: output, byte: 44_u8) {
-          Ok(value: done) => {
-          }
-          Err(error: e) => {
-            return Err<unit, Error>(error: move e);
-          }
-        }
-      }
-      set writer^.stack.inner[i] = 1_u8;
-      return Ok<unit, Error>(value: unit);
     }
   }
+  set writer^.stack.inner[i] = 1_u8;
+  return Ok<unit, Error>(value: unit);
   return failure(code: 19_u8, offset: output^.inner.len);
 }
 

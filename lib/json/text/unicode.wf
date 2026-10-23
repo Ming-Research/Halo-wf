@@ -134,20 +134,14 @@ fn scalar(buffer: &Box<Slots<u8>>, value: u32) -> result: Bool writes(buffer) {
   }
   let low = iand(value, 63_u32);
   let last = ior(low, 128_u32);
-  if length > 0_u64 {
-    let tail = length - 1_u64;
-    if tail < 4_u64 {
-      set shifts[tail] = last;
-    }
-  }
+  let tail = length - 1_u64;
+  set shifts[tail] = last;
   for (i in 0_u64..length) {
-    if i < 4_u64 {
-      let code = shifts[i];
-      let byte = cvt.wrap::<u32, u8>(code);
-      if put(buffer: buffer, byte: byte) {
-      } else {
-        return False();
-      }
+    let code = shifts[i];
+    let byte = cvt.wrap::<u32, u8>(code);
+    if put(buffer: buffer, byte: byte) {
+    } else {
+      return False();
     }
   }
   return True();

@@ -546,9 +546,7 @@ fn prepare_inner<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<
           }
           set i = i - 1_u64;
         }
-        if fslot < stack^.inner.len {
-          set stack^.inner[fslot] = tm;
-        }
+        set stack^.inner[fslot] = tm;
         set nargs = nargs +sat 1_u64;
         if vm^.top < room {
           set vm^.top = room;
@@ -612,9 +610,7 @@ fn start<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm,
   let empty = array_filled::<u32, 0>(value: 0_u32);
   let cl = pkg::heap::new_closure(heap: &vm^.heap, proto: proto, upvals: &empty[0_u64..0_u64]);
   ensure_stack(stack: stack, size: 256_u64);
-  if stack^.inner.len > 0_u64 {
-    set stack^.inner[0_u64] = cl;
-  }
+  set stack^.inner[0_u64] = cl;
   let limited = vm^.heap.limit > 0_u64;
   let exceeded = vm^.heap.bytes > vm^.heap.limit;
   let allocated = vm^.heap.bytes_since_gc > vm^.heap.threshold;

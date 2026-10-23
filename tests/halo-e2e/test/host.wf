@@ -223,10 +223,8 @@ fn float_value(vm: &Vm, v: Value) -> r: Option<f64> reads(vm) {
         let n = vm^.heap.strings.inner[h].payload.bytes.inner.len;
         if n > 0_u64 {
           for (i in 0_u64..n) {
-            if i < vm^.heap.strings.inner[h].payload.bytes.inner.len {
-              if vm^.heap.strings.inner[h].payload.bytes.inner[i] == 0_u8 {
-                return None<f64>();
-              }
+            if vm^.heap.strings.inner[h].payload.bytes.inner[i] == 0_u8 {
+              return None<f64>();
             }
           }
           let first = vm^.heap.strings.inner[h].payload.bytes.inner[0_u64];
@@ -271,14 +269,10 @@ fn member_less(vm: &Vm, a: Value, b: Value) -> r: Bool reads(vm) {
               let nb = vm^.heap.strings.inner[hb].payload.bytes.inner.len;
               let shorter = imin(na, nb);
               for (i in 0_u64..shorter) {
-                if i < vm^.heap.strings.inner[ha].payload.bytes.inner.len {
-                  if i < vm^.heap.strings.inner[hb].payload.bytes.inner.len {
-                    let ba = vm^.heap.strings.inner[ha].payload.bytes.inner[i];
-                    let bb = vm^.heap.strings.inner[hb].payload.bytes.inner[i];
-                    if ba != bb {
-                      return ba < bb;
-                    }
-                  }
+                let ba = vm^.heap.strings.inner[ha].payload.bytes.inner[i];
+                let bb = vm^.heap.strings.inner[hb].payload.bytes.inner[i];
+                if ba != bb {
+                  return ba < bb;
                 }
               }
               return na < nb;
@@ -356,38 +350,28 @@ fn error_reply_table(vm: &Vm, argc: u64, v: Value) -> r: Value writes(vm) {
   let n = text.inner.len;
   let end = n;
   for (i in 0_u64..n) {
-    if i < text.inner.len {
-      if text.inner[i] == 0_u8 {
-        set end = i;
-        break;
-      }
+    if text.inner[i] == 0_u8 {
+      set end = i;
+      break;
     }
   }
   let start = 0_u64;
   if end > 0_u64 {
-    if text.inner.len > 0_u64 {
-      if text.inner[0_u64] == 45_u8 {
-        set start = 1_u64;
-      }
+    if text.inner[0_u64] == 45_u8 {
+      set start = 1_u64;
     }
   }
   let space = end;
   for (j in start..end) {
-    if j < text.inner.len {
-      if text.inner[j] == 32_u8 {
-        set space = j;
-        break;
-      }
+    if text.inner[j] == 32_u8 {
+      set space = j;
+      break;
     }
   }
   let out = box_slots_new::<u8>(capacity: 0_u64);
   let first = start;
   if space < end {
-    if start <= space {
-      if space <= text.inner.len {
-        text_bytes(out: &out, bytes: &text.inner[start..space]);
-      }
-    }
+    text_bytes(out: &out, bytes: &text.inner[start..space]);
     push(out: &out, byte: 32_u8);
     set first = space +sat 1_u64;
   } else {
@@ -396,9 +380,6 @@ fn error_reply_table(vm: &Vm, argc: u64, v: Value) -> r: Value writes(vm) {
   let last = end;
   loop {
     if first >= last {
-      break;
-    }
-    if first >= text.inner.len {
       break;
     }
     let lead = text.inner[first];
@@ -485,17 +466,13 @@ fn equals_text(vm: &Vm, value: Value, text: &[u8]) -> r: Bool reads(vm), reads(t
       if h_v14 < vm^.heap.strings.inner.len {
         if vm^.heap.strings.inner[h_v14].payload.bytes.inner.len == text^.len {
           for (i_v15 in 0_u64..text^.len) {
-            if i_v15 < vm^.heap.strings.inner[h_v14].payload.bytes.inner.len {
-              let b_v16 = vm^.heap.strings.inner[h_v14].payload.bytes.inner[i_v15];
-              if b_v16 >= 97_u8 {
-                if b_v16 <= 122_u8 {
-                  set b_v16 = b_v16 - 32_u8;
-                }
+            let b_v16 = vm^.heap.strings.inner[h_v14].payload.bytes.inner[i_v15];
+            if b_v16 >= 97_u8 {
+              if b_v16 <= 122_u8 {
+                set b_v16 = b_v16 - 32_u8;
               }
-              if b_v16 != text^[i_v15] {
-                return False();
-              }
-            } else {
+            }
+            if b_v16 != text^[i_v15] {
               return False();
             }
           }
@@ -622,32 +599,28 @@ fn parse_integer(vm: &Vm, value: Value) -> r: Option<i64> reads(vm) {
           }
           let n_v38 = 0_u64;
           for (i_v39 in start_v37..len_v35) {
-            if i_v39 < vm^.heap.strings.inner[h_v34].payload.bytes.inner.len {
-              let b_v40 = vm^.heap.strings.inner[h_v34].payload.bytes.inner[i_v39];
-              if b_v40 < 48_u8 {
-                return None<i64>();
-              }
-              if b_v40 > 57_u8 {
-                return None<i64>();
-              }
-              let digit_v41 = b_v40 - 48_u8;
-              let d_v42 = cvt::<u8, u64>(digit_v41);
-              if n_v38 > 922337203685477580_u64 {
-                return None<i64>();
-              }
-              let tens_v43 = n_v38 * 10_u64;
-              let next_v44 = tens_v43 + d_v42;
-              let max_v45 = 9223372036854775807_u64;
-              if neg_v36 {
-                set max_v45 = 9223372036854775808_u64;
-              }
-              if next_v44 > max_v45 {
-                return None<i64>();
-              }
-              set n_v38 = next_v44;
-            } else {
+            let b_v40 = vm^.heap.strings.inner[h_v34].payload.bytes.inner[i_v39];
+            if b_v40 < 48_u8 {
               return None<i64>();
             }
+            if b_v40 > 57_u8 {
+              return None<i64>();
+            }
+            let digit_v41 = b_v40 - 48_u8;
+            let d_v42 = cvt::<u8, u64>(digit_v41);
+            if n_v38 > 922337203685477580_u64 {
+              return None<i64>();
+            }
+            let tens_v43 = n_v38 * 10_u64;
+            let next_v44 = tens_v43 + d_v42;
+            let max_v45 = 9223372036854775807_u64;
+            if neg_v36 {
+              set max_v45 = 9223372036854775808_u64;
+            }
+            if next_v44 > max_v45 {
+              return None<i64>();
+            }
+            set n_v38 = next_v44;
           }
           if neg_v36 {
             if n_v38 == 9223372036854775808_u64 {
@@ -1241,21 +1214,19 @@ fn command(env: &Env, vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc: u64) 
         let from_first = fle(first_rank, at);
         let to_last = fle(at, last_rank);
         if band(from_first, to_last) {
-          if rank < members.inner.len {
-            let member = members.inner[rank];
-            let member_slot = cvt.nearest::<u64, f64>(slot);
-            let member_index = num(x: member_slot);
-            raw(vm: vm, table: ranked, key: member_index, value: member);
+          let member = members.inner[rank];
+          let member_slot = cvt.nearest::<u64, f64>(slot);
+          let member_index = num(x: member_slot);
+          raw(vm: vm, table: ranked, key: member_index, value: member);
+          set slot = slot +sat 1_u64;
+          if with_scores {
+            let stored_score = get(vm: vm, table: t_v184, key: member);
+            let score_number = number(vm: vm, v: stored_score);
+            let score_text = double_text(vm: vm, x: score_number);
+            let score_slot = cvt.nearest::<u64, f64>(slot);
+            let score_index = num(x: score_slot);
+            raw(vm: vm, table: ranked, key: score_index, value: score_text);
             set slot = slot +sat 1_u64;
-            if with_scores {
-              let stored_score = get(vm: vm, table: t_v184, key: member);
-              let score_number = number(vm: vm, v: stored_score);
-              let score_text = double_text(vm: vm, x: score_number);
-              let score_slot = cvt.nearest::<u64, f64>(slot);
-              let score_index = num(x: score_slot);
-              raw(vm: vm, table: ranked, key: score_index, value: score_text);
-              set slot = slot +sat 1_u64;
-            }
           }
         }
       }

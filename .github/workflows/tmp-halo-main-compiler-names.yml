@@ -82,8 +82,19 @@ jobs:
           exit $failed
 
   discover:
+    name: discover ${{ matrix.name }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {name: halo, graph: lib/halo, modules: "value execution number lex heap compile vm embed"}
+          - {name: json, graph: lib/json, modules: "number text decode encode"}
+          - {name: bench, graph: tests/halo-bench, modules: "host"}
+          - {name: e2e, graph: tests/halo-e2e, modules: "test"}
+          - {name: lib-runner, graph: tests/halo-lib, modules: "runner"}
+          - {name: json-check, graph: tests/json, modules: "check"}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -94,34 +105,16 @@ jobs:
           echo "release = $MAIN_RELEASE" > whitefoot.pin
           make toolchain
 
-      - name: Repair every OP-5 site in the workspace
+      - name: Repair every OP-5 site of the modules
         run: |
           wfc="$PWD/build/whitefoot/$MAIN_RELEASE/whitefootc"
-          tool=.github/tmp-op5-discover.py
-          python3 -B $tool 40 "$wfc" lib/fpconv modules
-          python3 -B $tool 60 "$wfc" lib/halo modules
-          python3 -B $tool 40 "$wfc" tests/halo-bench module host
-          python3 -B $tool 40 "$wfc" tests/halo-e2e module test
-          python3 -B $tool 40 "$wfc" tests/halo-lib module runner
-          python3 -B $tool 40 "$wfc" tests/json module check
-          python3 -B $tool 40 "$wfc" tests/msgpack module check
+          python3 -B .github/tmp-op5-discover.py 300 "$wfc" ${{ matrix.graph }} module ${{ matrix.modules }}
           git diff -- . ':!whitefoot.pin' > build/op5.patch
           git diff --stat -- . ':!whitefoot.pin'
 
-      - name: Check the repaired workspace's graphs
-        run: |
-          wfc="$PWD/build/whitefoot/$MAIN_RELEASE/whitefootc"
-          for graph in lib/fpconv lib/halo lib/halo/number/tests lib/json lib/msgpack tests/halo-bench tests/halo-e2e tests/halo-lib tests/json tests/msgpack; do
-            if (cd "$graph" && "$wfc" --graph modules.wfg --check-modules > "$RUNNER_TEMP/graph.log" 2>&1); then
-              echo "PASS $graph"
-            else
-              echo "FAIL $graph"; head -c 3000 "$RUNNER_TEMP/graph.log"
-            fi
-          done
-
       - uses: actions/upload-artifact@v4
         with:
-          name: op5-patch
+          name: op5-${{ matrix.name }}
           path: build/op5.patch
           retention-days: 7
 

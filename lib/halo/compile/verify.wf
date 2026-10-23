@@ -119,17 +119,13 @@ fn instruction_ok(i: &Ins, stack: i64, nk: i64, nups: i64, ncode: i64) -> result
     let arg_207 = band(bb, cc);
     return band(extra, arg_207);
   }
-  if op >= 12_u8 {
-    if op <= 17_u8 {
-      let bb = rk_ok(r: b, limit: stack, nk: nk);
-      let cc = rk_ok(r: c, limit: stack, nk: nk);
-      return band(bb, cc);
-    }
+  if op <= 17_u8 {
+    let bb = rk_ok(r: b, limit: stack, nk: nk);
+    let cc = rk_ok(r: c, limit: stack, nk: nk);
+    return band(bb, cc);
   }
-  if op >= 18_u8 {
-    if op <= 20_u8 {
-      return register_ok(r: b, limit: stack);
-    }
+  if op <= 20_u8 {
+    return register_ok(r: b, limit: stack);
   }
   if op == 21_u8 {
     if b > c {

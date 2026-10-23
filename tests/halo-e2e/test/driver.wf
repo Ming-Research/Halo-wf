@@ -116,18 +116,16 @@ fn json_bytes(vm: &Vm, value: Value, out: &Box<Slots<u8>>, sanitize: Bool, error
     let n_v25 = bytes_v24.inner.len;
     let end_v26 = n_v25;
     for (i_v27 in 0_u64..n_v25) {
-      if i_v27 < bytes_v24.inner.len {
-        let b_v28 = bytes_v24.inner[i_v27];
-        if b_v28 == 0_u8 {
-          if i_v27 < end_v26 {
-            set end_v26 = i_v27;
-          }
+      let b_v28 = bytes_v24.inner[i_v27];
+      if b_v28 == 0_u8 {
+        if i_v27 < end_v26 {
+          set end_v26 = i_v27;
         }
-        let lf_v29 = b_v28 == 10_u8;
-        let cr_v30 = b_v28 == 13_u8;
-        if bor(lf_v29, cr_v30) {
-          set bytes_v24.inner[i_v27] = 32_u8;
-        }
+      }
+      let lf_v29 = b_v28 == 10_u8;
+      let cr_v30 = b_v28 == 13_u8;
+      if bor(lf_v29, cr_v30) {
+        set bytes_v24.inner[i_v27] = 32_u8;
       }
     }
     loop {
@@ -174,11 +172,9 @@ fn reply_error_text(vm: &Vm, value: Value) -> r: Value writes(vm) {
   let n = bytes.inner.len;
   let end = n;
   for (i in 0_u64..n) {
-    if i < bytes.inner.len {
-      if bytes.inner[i] == 0_u8 {
-        set end = i;
-        break;
-      }
+    if bytes.inner[i] == 0_u8 {
+      set end = i;
+      break;
     }
   }
   loop {
@@ -387,9 +383,7 @@ fn serve_call(engine: &Engine, env: &Env, budget: u64) -> r: Outcome writes(engi
         set reply = reply_table(vm: vm, field: &s_30[0_u64..3_u64], v: reply);
       }
       let results = box_slots_new::<Value>(capacity: 1_u64);
-      if results.inner.len < results.inner.cap {
-        place_back(window: &results.inner, value: reply);
-      }
+      place_back(window: &results.inner, value: reply);
       let count = results.inner.len;
       return halo::embed::complete_call::<TestHost>(engine: engine, env: env, results: &results.inner[0_u64..count], budget: budget);
     }
@@ -645,10 +639,8 @@ fn read_source(factory: &HandleFactory, input: &InputStream, source: &Box<Slots<
     match got_v93 {
       Ok(value: count_v94) => {
         for (i_v95 in 0_u64..count_v94) {
-          if i_v95 < 4096_u64 {
-            let b_v96 = scratch_v91[i_v95];
-            push(out: source, byte: b_v96);
-          }
+          let b_v96 = scratch_v91[i_v95];
+          push(out: source, byte: b_v96);
         }
       }
       Err(error: stop_v97) => {
@@ -819,56 +811,52 @@ fn main(inputs: Inputs) -> status: ExitStatus pure waits {
       set end_v124 = n_v111;
     }
     if start_v124 <= end_v124 {
-      if end_v124 <= source_v109.inner.len {
-        let compiled_v125 = halo::embed::compile(engine: &engine_v114, chunk_name: &s_52[0_u64..12_u64], source: &source_v109.inner[start_v124..end_v124]);
-        match move compiled_v125 {
-          Err(error: problem_v126) => {
-            text_bytes(out: &out_v118, bytes: &s_39[0_u64..24_u64]);
-            let len_v127 = problem_v126.message.inner.len;
-            json_string(out: &out_v118, bytes: &problem_v126.message.inner[0_u64..len_v127]);
-            push(out: &out_v118, byte: 125_u8);
-          }
-          Ok(value: id_v128) => {
-            let outcome_v129 = run_script(engine: &engine_v114, env: &env_v117, id: id_v128, budget: budget_v119, collect_suspended: collect_suspended, isolate_frames: isolate_frames, omit_suspended_root: omit_suspended_root);
-            match outcome_v129 {
-              Done(count: count_v130) => {
-                let v_v131 = Value::Nil();
-                if count_v130 > 0_u64 {
-                  match halo::embed::result(engine: &engine_v114, index: 0_u64) {
-                    None() => {
-                    }
-                    Some(value: first_v132) => {
-                      set v_v131 = first_v132;
-                    }
+      let compiled_v125 = halo::embed::compile(engine: &engine_v114, chunk_name: &s_52[0_u64..12_u64], source: &source_v109.inner[start_v124..end_v124]);
+      match move compiled_v125 {
+        Err(error: problem_v126) => {
+          text_bytes(out: &out_v118, bytes: &s_39[0_u64..24_u64]);
+          let len_v127 = problem_v126.message.inner.len;
+          json_string(out: &out_v118, bytes: &problem_v126.message.inner[0_u64..len_v127]);
+          push(out: &out_v118, byte: 125_u8);
+        }
+        Ok(value: id_v128) => {
+          let outcome_v129 = run_script(engine: &engine_v114, env: &env_v117, id: id_v128, budget: budget_v119, collect_suspended: collect_suspended, isolate_frames: isolate_frames, omit_suspended_root: omit_suspended_root);
+          match outcome_v129 {
+            Done(count: count_v130) => {
+              let v_v131 = Value::Nil();
+              if count_v130 > 0_u64 {
+                match halo::embed::result(engine: &engine_v114, index: 0_u64) {
+                  None() => {
+                  }
+                  Some(value: first_v132) => {
+                    set v_v131 = first_v132;
                   }
                 }
-                reply(vm: &engine_v114.vm, value: v_v131, out: &out_v118, depth: 0_u64);
               }
-              Error() => {
-                let line = halo::embed::error_line(engine: &engine_v114);
-                let formatted = format_redis_error(engine: &engine_v114, source: &source_v109.inner[start_v124..end_v124], line: line);
-                let formatted_len = formatted.inner.len;
-                let error_reply = literal(vm: &engine_v114.vm, text: &formatted.inner[0_u64..formatted_len]);
-                text_bytes(out: &out_v118, bytes: &s_39[0_u64..24_u64]);
-                let yes_v134 = True();
-                let no_prefix = False();
-                json_bytes(vm: &engine_v114.vm, value: error_reply, out: &out_v118, sanitize: yes_v134, error: no_prefix);
-                push(out: &out_v118, byte: 125_u8);
-              }
-              Budget() => {
-                return std::process::exit_status(code: 5_u8);
-              }
-              HostStopped() => {
-                return std::process::exit_status(code: 6_u8);
-              }
-              HostCall() => {
-                return std::process::exit_status(code: 6_u8);
-              }
+              reply(vm: &engine_v114.vm, value: v_v131, out: &out_v118, depth: 0_u64);
+            }
+            Error() => {
+              let line = halo::embed::error_line(engine: &engine_v114);
+              let formatted = format_redis_error(engine: &engine_v114, source: &source_v109.inner[start_v124..end_v124], line: line);
+              let formatted_len = formatted.inner.len;
+              let error_reply = literal(vm: &engine_v114.vm, text: &formatted.inner[0_u64..formatted_len]);
+              text_bytes(out: &out_v118, bytes: &s_39[0_u64..24_u64]);
+              let yes_v134 = True();
+              let no_prefix = False();
+              json_bytes(vm: &engine_v114.vm, value: error_reply, out: &out_v118, sanitize: yes_v134, error: no_prefix);
+              push(out: &out_v118, byte: 125_u8);
+            }
+            Budget() => {
+              return std::process::exit_status(code: 5_u8);
+            }
+            HostStopped() => {
+              return std::process::exit_status(code: 6_u8);
+            }
+            HostCall() => {
+              return std::process::exit_status(code: 6_u8);
             }
           }
         }
-      } else {
-        return std::process::exit_status(code: 2_u8);
       }
     } else {
       return std::process::exit_status(code: 2_u8);
@@ -949,11 +937,7 @@ fn argument_is(args: &std::text::Args, index: u64, text: &[u8]) -> r: Bool reads
             return False();
           }
           for (i in 0_u64..text^.len) {
-            if i < bytes.inner.len {
-              if bytes.inner[i] != text^[i] {
-                return False();
-              }
-            } else {
+            if bytes.inner[i] != text^[i] {
               return False();
             }
           }
@@ -994,21 +978,17 @@ fn collect_checkpoint(engine: &Engine, env: &Env, id: ScriptId, omit_root: Bool)
   let slot = id.slot;
   let code = box_slots_new::<halo::value::Cell>(capacity: 1_u64);
   let jump = halo::value::Cell::Jmp(target: 0_u32);
-  if code.inner.len < code.inner.cap {
-    place_back(window: &code.inner, value: jump);
-  }
+  place_back(window: &code.inner, value: jump);
   let parked = box_slots_new::<Value>(capacity: 0_u64);
   if omit_root {
     swap(first: &parked, second: &engine^.vm.stopped_stack);
   }
   let budget = engine^.vm.budget;
   set engine^.vm.budget = 1_u64;
-  if code.inner.len > 0_u64 {
-    if slot < engine^.scripts.inner.len {
-      if engine^.scripts.inner[slot].consts.inner.len >= 256_u64 {
-        if engine^.stack.inner.len >= 256_u64 {
-          let outcome = halo::vm::run::<TestHost>(code: &code, consts: &engine^.scripts.inner[slot].consts, stack: &engine^.stack, vm: &engine^.vm, env: env, pc: 0_u64, base: 0_u64, kbase: 0_u64);
-        }
+  if slot < engine^.scripts.inner.len {
+    if engine^.scripts.inner[slot].consts.inner.len >= 256_u64 {
+      if engine^.stack.inner.len >= 256_u64 {
+        let outcome = halo::vm::run::<TestHost>(code: &code, consts: &engine^.scripts.inner[slot].consts, stack: &engine^.stack, vm: &engine^.vm, env: env, pc: 0_u64, base: 0_u64, kbase: 0_u64);
       }
     }
   }

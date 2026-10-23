@@ -227,21 +227,15 @@ fn format_error(engine: &Engine, line: u64) -> r: Box<Slots<u8>> reads(engine) {
         if n > name_length {
           set located = True();
           for (i in 0_u64..name_length) {
-            if i < engine^.vm.heap.strings.inner[h].payload.bytes.inner.len {
-              if i < engine^.vm.source.inner.len {
-                let b = engine^.vm.heap.strings.inner[h].payload.bytes.inner[i];
-                let expected = engine^.vm.source.inner[i];
-                if b != expected {
-                  set located = False();
-                }
-              }
-            }
-          }
-          if name_length < engine^.vm.heap.strings.inner[h].payload.bytes.inner.len {
-            let colon = engine^.vm.heap.strings.inner[h].payload.bytes.inner[name_length];
-            if colon != 58_u8 {
+            let b = engine^.vm.heap.strings.inner[h].payload.bytes.inner[i];
+            let expected = engine^.vm.source.inner[i];
+            if b != expected {
               set located = False();
             }
+          }
+          let colon = engine^.vm.heap.strings.inner[h].payload.bytes.inner[name_length];
+          if colon != 58_u8 {
+            set located = False();
           }
         }
       }

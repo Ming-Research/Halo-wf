@@ -603,17 +603,13 @@ fn cached_string_live(engine: &Engine, id: halo::embed::ScriptId) -> r: Bool rea
   if slot < engine^.scripts.inner.len {
     let n = engine^.scripts.inner[slot].consts.inner.len;
     for (i in 0_u64..n) {
-      if slot < engine^.scripts.inner.len {
-        if i < engine^.scripts.inner[slot].consts.inner.len {
-          let v = engine^.scripts.inner[slot].consts.inner[i];
-          match halo::embed::string_of(engine: engine, value: v) {
-            None() => {
-            }
-            Some(value: view) => {
-              if view.length == 27_u64 {
-                return True();
-              }
-            }
+      let v = engine^.scripts.inner[slot].consts.inner[i];
+      match halo::embed::string_of(engine: engine, value: v) {
+        None() => {
+        }
+        Some(value: view) => {
+          if view.length == 27_u64 {
+            return True();
           }
         }
       }
@@ -1324,11 +1320,7 @@ fn format_matches(engine: &Engine, line: u64, want: &[u8]) -> r: Bool reads(engi
     return False();
   }
   for (i in 0_u64..want^.len) {
-    if i < actual.inner.len {
-      if actual.inner[i] != want^[i] {
-        return False();
-      }
-    } else {
+    if actual.inner[i] != want^[i] {
       return False();
     }
   }

@@ -11,12 +11,6 @@ fn thread_storage_probe() -> r: u8 pure {
   if empty_bytes != 512_u64 {
     return 201_u8;
   }
-  if execution.stack.inner.cap != 0_u64 {
-    return 201_u8;
-  }
-  if execution.stopped_stack.inner.cap != 0_u64 {
-    return 201_u8;
-  }
   if execution.frames.inner.cap != 0_u64 {
     return 201_u8;
   }

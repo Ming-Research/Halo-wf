@@ -763,21 +763,19 @@ fn resolve(p: &Parser, id: u64, h: u32, base: Bool) -> result_value: Exp writes(
     }
     set n = n -wrap 1_i64;
     let i = cvt.wrap::<i64, u64>(n);
-    if id < p^.funcs.inner.len {
-      if i < p^.funcs.inner[id].locals.inner.len {
-        let record_index = p^.funcs.inner[id].locals.inner[i];
-        let record = cvt::<u32, u64>(record_index);
-        let found = False();
-        if record < p^.funcs.inner[id].local_debug.inner.len {
-          set found = p^.funcs.inner[id].local_debug.inner[record].name == h;
+    if i < p^.funcs.inner[id].locals.inner.len {
+      let record_index = p^.funcs.inner[id].locals.inner[i];
+      let record = cvt::<u32, u64>(record_index);
+      let found = False();
+      if record < p^.funcs.inner[id].local_debug.inner.len {
+        set found = p^.funcs.inner[id].local_debug.inner[record].name == h;
+      }
+      if found {
+        if base {
+        } else {
+          mark_upvalue(p: p, id: id, level: n);
         }
-        if found {
-          if base {
-          } else {
-            mark_upvalue(p: p, id: id, level: n);
-          }
-          return empty_exp(k: 6_u8, info: n);
-        }
+        return empty_exp(k: 6_u8, info: n);
       }
     }
   }

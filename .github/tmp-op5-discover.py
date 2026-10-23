@@ -18,9 +18,8 @@ import sys
 from pathlib import Path
 
 HEAD = re.compile(
-    r"^(?:[\w:]+: rejected: )?(\S+\.wf):(\d+):(\d+): error\[OP-5\]: RedundantCondition$"
+    r"^(?:[\w:]+: rejected: )?(\S+\.wf):(\d+):(\d+): error\[(OP-5|FN-1)\]: (?:RedundantCondition|UnreachableStatement)$"
 )
-OTHER = re.compile(r"error\[(?!OP-5\])[A-Z0-9-]+\]")
 
 
 def sites(output):
@@ -37,6 +36,8 @@ def sites(output):
                 decided = d.group(1) == "True"
                 break
         facts = next((l.strip() for l in lines[n + 1 : n + 8] if l.startswith("  facts:")), "")
+        if m.group(4) == "FN-1":
+            decided = "unreachable"
         found.append((m.group(1), int(m.group(2)), int(m.group(3)), decided, facts))
     return found
 
@@ -170,6 +171,39 @@ def repair(text, line, col, decided):
     return text[:if_start] + text[tail[1]:end] + text[end:], old, text[tail[1]:end]
 
 
+def delete_statement(text, line, col):
+    """Delete the `;`-terminated statement that starts at line:col (an unreachable one)."""
+    starts = [0]
+    for n, c in enumerate(text):
+        if c == "\n":
+            starts.append(n + 1)
+    begin = starts[line - 1] + col - 1
+    for word in ("if", "loop", "for", "match", "atomic"):
+        if keyword_at(text, begin, word):
+            return None
+    i = begin
+    depth = 0
+    while True:
+        c = text[i]
+        if c == '"':
+            i = skip_string(text, i)
+            continue
+        if c in "({":
+            depth += 1
+        elif c in ")}":
+            depth -= 1
+        elif c == ";" and depth == 0:
+            break
+        i += 1
+    end = i + 1
+    old = text[begin:end]
+    ls = text.rfind("\n", 0, begin) + 1
+    if not text[ls:begin].strip() and text[end:text.find("\n", end)].strip() == "":
+        le = text.find("\n", end) + 1
+        return text[:ls] + text[le:], old, ""
+    return text[:begin] + text[end:], old, ""
+
+
 def main():
     rounds, wfc, graph_dir, mode = int(sys.argv[1]), sys.argv[2], Path(sys.argv[3]), sys.argv[4]
     modules = sys.argv[5:]
@@ -178,18 +212,24 @@ def main():
         if mode == "modules"
         else [[wfc, "--graph", "modules.wfg", "--check-module", f"pkg::{m}"] for m in modules]
     )
+    original_commands = commands
     applied = []
     manual = []
     for round_number in range(1, rounds + 1):
         todo = {}
         other = []
+        failing = []
         for command in commands:
             result = subprocess.run(command, cwd=graph_dir, capture_output=True, text=True)
             output = result.stdout + result.stderr
+            if result.returncode != 0:
+                failing.append(command)
             if result.returncode != 0 and not sites(output):
                 other.append(output)
             for path, line, col, decided, facts in sites(output):
                 todo.setdefault((graph_dir / path).resolve(), {})[(line, col)] = (decided, facts)
+        # a module that passed is not run again
+        commands = failing
         print(f"== round {round_number}: {sum(len(v) for v in todo.values())} site(s), "
               f"{len(other)} command(s) rejected without OP-5", flush=True)
         for text in other:
@@ -200,7 +240,10 @@ def main():
             # bottom first, so earlier line numbers stay valid
             for (line, col), (decided, facts) in sorted(found.items(), reverse=True):
                 text = path.read_text()
-                done = None if decided is None else repair(text, line, col, decided)
+                if decided == "unreachable":
+                    done = delete_statement(text, line, col)
+                else:
+                    done = None if decided is None else repair(text, line, col, decided)
                 where = f"{path.relative_to(Path.cwd())}:{line}:{col}"
                 if done is None:
                     manual.append(where)
@@ -211,8 +254,9 @@ def main():
                 progress = True
                 applied.append(where)
                 print(f"REPAIRED {where} decided={decided}\n  {facts[:300]}\n--- old\n{old}\n--- new\n{new}\n---", flush=True)
-        if not todo or not progress:
+        if not todo or not progress or not commands:
             break
+    commands = original_commands
     print(f"repaired {len(applied)} site(s); manual {len(manual)}: {manual}")
     for command in commands:
         result = subprocess.run(command, cwd=graph_dir, capture_output=True, text=True)

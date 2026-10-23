@@ -809,10 +809,8 @@ fn fixture_vararg(budget: u64) -> r: Bool pure {
   let atom26 = True();
   put_proto(protos: &protos, start: 0_u32, params: 0_u8, vararg: atom26, ups: 0_u8, maxstack: 6_u8);
   for (i in 1_u64..5_u64) {
-    if i < stack.inner.len {
-      let x = cvt::<u64, f64>(i);
-      set stack.inner[i] = Value::Num(n: x);
-    }
+    let x = cvt::<u64, f64>(i);
+    set stack.inner[i] = Value::Num(n: x);
   }
   let debug_names = box_slots_new::<u8>(capacity: 0_u64);
   let local_variables = box_slots_new::<LocalVariable>(capacity: 0_u64);
@@ -885,10 +883,8 @@ fn fixture_tail(budget: u64) -> r: Bool pure {
   pad(consts: &consts);
   let atom28 = False();
   put_proto(protos: &protos, start: 0_u32, params: 2_u8, vararg: atom28, ups: 0_u8, maxstack: 5_u8);
-  if stack.inner.len >= 3_u64 {
-    set stack.inner[1_u64] = Value::Num(n: 1.0e5_f64);
-    set stack.inner[2_u64] = Value::Num(n: 0.0_f64);
-  }
+  set stack.inner[1_u64] = Value::Num(n: 1.0e5_f64);
+  set stack.inner[2_u64] = Value::Num(n: 0.0_f64);
   let ups = array_filled::<u32, 0>(value: 0_u32);
   let loopfun = halo::heap::new_closure(heap: &vm.heap, proto: 0_u32, upvals: &ups[0_u64..0_u64]);
   let globals = Value::Tab(h: vm.globals);

@@ -66,13 +66,11 @@ fn append_value(env: &Env, vm: &Vm, v: Value) -> r: unit reads(vm), writes(env) 
       if local_hi_5 < vm^.heap.strings.inner.len {
         let local_n_6 = vm^.heap.strings.inner[local_hi_5].payload.bytes.inner.len;
         for (i in 0_u64..local_n_6) {
-          if i < vm^.heap.strings.inner[local_hi_5].payload.bytes.inner.len {
-            let local_byte_7 = vm^.heap.strings.inner[local_hi_5].payload.bytes.inner[i];
-            if local_byte_7 == 0_u8 {
-              break;
-            }
-            put_byte(out: &env^.bytes, byte: local_byte_7);
+          let local_byte_7 = vm^.heap.strings.inner[local_hi_5].payload.bytes.inner[i];
+          if local_byte_7 == 0_u8 {
+            break;
           }
+          put_byte(out: &env^.bytes, byte: local_byte_7);
         }
       }
     }
@@ -198,9 +196,7 @@ fn main(inputs: Inputs) -> r: ExitStatus pure waits {
         if n == 0_u64 {
           break;
         }
-        if n <= 4096_u64 {
-          append_text(out: &local_source_25, text: &local_buffer_26[0_u64..n]);
-        }
+        append_text(out: &local_source_25, text: &local_buffer_26[0_u64..n]);
       }
       Err(error: stop) => {
         match stop {

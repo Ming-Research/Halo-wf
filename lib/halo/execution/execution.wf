@@ -57,9 +57,7 @@ fn storage_buffers(stack: &Box<Slots<Value>>, stopped_stack: &Box<Slots<Value>>,
   let charge_pattern_subs = pattern_subs^.inner.cap *sat 104_u64;
   set bytes = bytes +sat charge_pattern_subs;
   for (i in 0_u64..pattern_subs^.inner.len) {
-    if i < pattern_subs^.inner.len {
-      set bytes = bytes +sat pattern_subs^.inner[i].output.inner.cap;
-    }
+    set bytes = bytes +sat pattern_subs^.inner[i].output.inner.cap;
   }
   return bytes;
 }

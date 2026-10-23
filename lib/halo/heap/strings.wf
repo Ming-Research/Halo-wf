@@ -31,11 +31,7 @@ fn string_equal(heap: &Heap, h: u32, hash: u64, bytes: &[u8]) -> r: Bool reads(h
       if heap^.strings.inner[i].payload.hash == hash {
         if heap^.strings.inner[i].payload.bytes.inner.len == bytes^.len {
           for (k in 0_u64..bytes^.len) {
-            if k < heap^.strings.inner[i].payload.bytes.inner.len {
-              if heap^.strings.inner[i].payload.bytes.inner[k] != bytes^[k] {
-                return False();
-              }
-            } else {
+            if heap^.strings.inner[i].payload.bytes.inner[k] != bytes^[k] {
               return False();
             }
           }
@@ -168,40 +164,36 @@ fn remove_intern(heap: &Heap, h: u32) -> r: unit writes(heap) {
   doc "Delete the weak entry and reinsert its following probe cluster, retaining a true empty terminator. No tombstone handle is reserved.";
   let n = heap^.interned.inner.len;
   for (i in 0_u64..n) {
-    if i < heap^.interned.inner.len {
-      if heap^.interned.inner[i] == h {
-        set heap^.interned.inner[i] = no_handle;
-        let count = heap^.intern_count;
-        if count > 0_u64 {
-          set heap^.intern_count = count - 1_u64;
+    if heap^.interned.inner[i] == h {
+      set heap^.interned.inner[i] = no_handle;
+      let count = heap^.intern_count;
+      if count > 0_u64 {
+        set heap^.intern_count = count - 1_u64;
+      }
+      let last = n - 1_u64;
+      let j = i;
+      for (step in 0_u64..n) {
+        if j < last {
+          set j = j + 1_u64;
+        } else {
+          set j = 0_u64;
         }
-        if n > 0_u64 {
-          let last = n - 1_u64;
-          let j = i;
-          for (step in 0_u64..n) {
-            if j < last {
-              set j = j + 1_u64;
-            } else {
-              set j = 0_u64;
-            }
-            if j < heap^.interned.inner.len {
-              let moved = heap^.interned.inner[j];
-              if moved == no_handle {
-                return unit;
-              }
-              set heap^.interned.inner[j] = no_handle;
-              let si = cvt::<u32, u64>(moved);
-              if si < heap^.strings.inner.len {
-                if heap^.strings.inner[si].live {
-                  let hash = heap^.strings.inner[si].payload.hash;
-                  intern_place(slots: &heap^.interned, hash: hash, h: moved);
-                }
-              }
+        if j < heap^.interned.inner.len {
+          let moved = heap^.interned.inner[j];
+          if moved == no_handle {
+            return unit;
+          }
+          set heap^.interned.inner[j] = no_handle;
+          let si = cvt::<u32, u64>(moved);
+          if si < heap^.strings.inner.len {
+            if heap^.strings.inner[si].live {
+              let hash = heap^.strings.inner[si].payload.hash;
+              intern_place(slots: &heap^.interned, hash: hash, h: moved);
             }
           }
         }
-        return unit;
       }
+      return unit;
     }
   }
   return unit;

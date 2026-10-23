@@ -368,12 +368,8 @@ fn builtin<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>
           if total < 9223372036854775807_u64 {
             let nt = cvt::<u64, i64>(total);
             if index < 0_i64 {
-              if index >= -9223372036854775807_i64 {
-                set index = nt + index;
-                if index < 9223372036854775807_i64 {
-                  set index = index + 1_i64;
-                }
-              }
+              set index = nt + index;
+              set index = index + 1_i64;
             }
             if index > nt {
               set index = nt + 1_i64;

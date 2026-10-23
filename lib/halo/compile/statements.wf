@@ -503,9 +503,7 @@ fn assignment(p: &Parser, heap: &Heap, lhs: &Box<Slots<Exp>>) -> result_value: u
     } else {
       k_oneret(p: p, e: &e);
       let var = v;
-      if at < lhs^.inner.len {
-        set var = lhs^.inner[at];
-      }
+      set var = lhs^.inner[at];
       k_store(p: p, var: &var, e: &e);
       return unit;
     }

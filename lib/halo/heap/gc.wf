@@ -149,12 +149,10 @@ fn mark_table_contents(heap: &Heap, ti: u64) -> r: unit writes(heap) {
       return unit;
     }
   }
-  if ti < heap^.tables.inner.len {
-    let meta = heap^.tables.inner[ti].payload.meta;
-    if meta != no_handle {
-      let mv = Value::Tab(h: meta);
-      gc_mark(heap: heap, v: mv);
-    }
+  let meta = heap^.tables.inner[ti].payload.meta;
+  if meta != no_handle {
+    let mv = Value::Tab(h: meta);
+    gc_mark(heap: heap, v: mv);
   }
   return unit;
 }
@@ -315,10 +313,8 @@ fn mark_thread_contents(heap: &Heap, ti: u64) -> r: unit writes(heap) {
       return unit;
     }
   }
-  if ti < heap^.threads.inner.len {
-    let error = heap^.threads.inner[ti].payload.error;
-    gc_mark(heap: heap, v: error);
-  }
+  let error = heap^.threads.inner[ti].payload.error;
+  gc_mark(heap: heap, v: error);
   set i = 0_u64;
   loop {
     if ti < heap^.threads.inner.len {

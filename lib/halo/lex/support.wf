@@ -102,9 +102,7 @@ fn put(buffer: &Box<Slots<u8>>, byte: u8) -> result: unit writes(buffer) {
   if length == cap {
     let doubled = cap +sat cap;
     let target = imax(doubled, 32_u64);
-    if target >= cap {
-      grow(cell: buffer, capacity: target);
-    }
+    grow(cell: buffer, capacity: target);
   }
   if buffer^.inner.len < buffer^.inner.cap {
     place_back(window: &buffer^.inner, value: byte);

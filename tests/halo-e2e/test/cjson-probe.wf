@@ -56,11 +56,7 @@ fn cjson_configs_probe(stress: Bool) -> r: u8 pure {
     return 122_u8;
   }
   for (i in 1_u64..3_u64) {
-    if i < engine.vm.cjson_configs.inner.len {
-      if engine.vm.cjson_configs.inner[i].buffer.inner.cap == 0_u64 {
-        return 123_u8;
-      }
-    } else {
+    if engine.vm.cjson_configs.inner[i].buffer.inner.cap == 0_u64 {
       return 123_u8;
     }
   }
@@ -74,21 +70,15 @@ fn cjson_configs_probe(stress: Bool) -> r: u8 pure {
     return 125_u8;
   }
   for (i in 1_u64..3_u64) {
-    if i < engine.vm.cjson_configs.inner.len {
-      if engine.vm.cjson_configs.inner[i].buffer.inner.cap != 0_u64 {
-        return 126_u8;
-      }
-      if engine.vm.cjson_configs.inner[i].settings[2_u64] != 14_u64 {
-        return 127_u8;
-      }
-    } else {
+    if engine.vm.cjson_configs.inner[i].buffer.inner.cap != 0_u64 {
       return 126_u8;
     }
+    if engine.vm.cjson_configs.inner[i].settings[2_u64] != 14_u64 {
+      return 127_u8;
+    }
   }
-  if engine.vm.cjson_configs.inner.len > 1_u64 {
-    set engine.vm.cjson_configs.inner[1_u64].settings[2_u64] = 9_u64;
-    set engine.vm.cjson_configs.inner[1_u64].settings[3_u64] = 0_u64;
-  }
+  set engine.vm.cjson_configs.inner[1_u64].settings[2_u64] = 9_u64;
+  set engine.vm.cjson_configs.inner[1_u64].settings[3_u64] = 0_u64;
   let reused = cjson_probe_source(engine: &engine, env: &env, source: &cjson_probe_reuse[0_u64..212_u64]);
   let reused_failed = bnot(reused);
   if reused_failed {
@@ -97,24 +87,20 @@ fn cjson_configs_probe(stress: Bool) -> r: u8 pure {
   if engine.vm.cjson_configs.inner.len != 4_u64 {
     return 129_u8;
   }
-  if engine.vm.cjson_configs.inner.len > 3_u64 {
-    if engine.vm.cjson_configs.inner[1_u64].settings[2_u64] != 7_u64 {
-      return 130_u8;
-    }
-    if engine.vm.cjson_configs.inner[1_u64].buffer.inner.cap == 0_u64 {
-      return 130_u8;
-    }
-    if engine.vm.cjson_configs.inner[2_u64].settings[2_u64] != 14_u64 {
-      return 130_u8;
-    }
-    if engine.vm.cjson_configs.inner[3_u64].settings[2_u64] != 3_u64 {
-      return 131_u8;
-    }
-    if engine.vm.cjson_configs.inner[3_u64].buffer.inner.cap != 0_u64 {
-      return 131_u8;
-    }
-  } else {
-    return 129_u8;
+  if engine.vm.cjson_configs.inner[1_u64].settings[2_u64] != 7_u64 {
+    return 130_u8;
+  }
+  if engine.vm.cjson_configs.inner[1_u64].buffer.inner.cap == 0_u64 {
+    return 130_u8;
+  }
+  if engine.vm.cjson_configs.inner[2_u64].settings[2_u64] != 14_u64 {
+    return 130_u8;
+  }
+  if engine.vm.cjson_configs.inner[3_u64].settings[2_u64] != 3_u64 {
+    return 131_u8;
+  }
+  if engine.vm.cjson_configs.inner[3_u64].buffer.inner.cap != 0_u64 {
+    return 131_u8;
   }
   let compiled = halo::embed::compile(engine: &engine, chunk_name: &cjson_probe_name[0_u64..12_u64], source: &cjson_probe_cycle[0_u64..205_u64]);
   match move compiled {

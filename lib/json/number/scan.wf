@@ -10,9 +10,7 @@ fn scan(source: &[u8], start: u64) -> result: Scan reads(source) {
   let p = start;
   let c = byte_at(input: source, index: p);
   if c == 45_u8 {
-    if p < source^.len {
-      set p = p + 1_u64;
-    }
+    set p = p + 1_u64;
   }
   if p >= source^.len {
     return scan_bad(position: p);

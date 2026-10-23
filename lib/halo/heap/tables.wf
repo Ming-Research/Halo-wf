@@ -340,9 +340,7 @@ fn main_position(heap: &Heap, key: Value, n: u64) -> r: u64 reads(heap.strings) 
       set modulus = ior(last, 1_u64);
     }
   }
-  if modulus > 0_u64 {
-    return hash % modulus;
-  }
+  return hash % modulus;
   return 0_u64;
 }
 
