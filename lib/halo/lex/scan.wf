@@ -393,7 +393,7 @@ fn string_context(source: &[u8], start: u64, decoded: &Box<Slots<u8>>) -> result
 
 fn comment_context(source: &[u8], second: u64, end: u64, level: u64, decoded: &Box<Slots<u8>>) -> result: unit reads(source), writes(decoded) {
   doc "Reconstruct PUC's sparse long-comment buffer only on its line-limit error, avoiding normal comment allocations.";
-  clear(buffer: decoded);
+  empty(buffer: decoded);
   put(buffer: decoded, byte: 91_u8);
   let cursor = new();
   set cursor.offset = second;
@@ -413,7 +413,7 @@ fn comment_context(source: &[u8], second: u64, end: u64, level: u64, decoded: &B
       put(buffer: decoded, byte: 10_u8);
       line_step(source: source, state: &cursor);
       if cursor.offset < end {
-        clear(buffer: decoded);
+        empty(buffer: decoded);
       }
     } else {
       let bracket = c == 93_u16;

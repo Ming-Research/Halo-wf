@@ -119,9 +119,9 @@ fn main(inputs: Inputs) -> status: ExitStatus pure waits {
     } else {
       return std::process::exit_status(code: 1_u8);
     }
-    json::text::clear(buffer: &output);
-    json::text::clear(buffer: &events);
-    json::text::clear(buffer: &line);
+    json::text::empty(buffer: &output);
+    json::text::empty(buffer: &events);
+    json::text::empty(buffer: &line);
     let result = Ok<unit, json::text::Error>(value: unit);
     let slash = op == 2_u8;
     if op == 1_u8 {
@@ -168,7 +168,7 @@ fn main(inputs: Inputs) -> status: ExitStatus pure waits {
               record_byte(buffer: &output, byte: b);
             }
           }
-          json::text::clear(buffer: &events);
+          json::text::empty(buffer: &events);
         }
         Err(error: problem) => {
           set result = Err<unit, json::text::Error>(error: move problem);
@@ -189,7 +189,7 @@ fn main(inputs: Inputs) -> status: ExitStatus pure waits {
         hex_line(buffer: &line, bytes: &events.inner[0_u64..e]);
       }
       Err(error: problem) => {
-        json::text::clear(buffer: &events);
+        json::text::empty(buffer: &events);
         record_byte(buffer: &events, byte: problem.code);
         record_word(buffer: &events, value: problem.offset);
         let n = problem.message.len;

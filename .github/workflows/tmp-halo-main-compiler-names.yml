@@ -9,7 +9,7 @@ on:
 
 concurrency:
   group: tmp-halo-main-compiler-names-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 env:
   MAIN_RELEASE: wf-63b7cbb03820

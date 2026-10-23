@@ -83,7 +83,7 @@ fn line_step(source: &[u8], state: &State) -> result: unit reads(source), writes
   return unit;
 }
 
-fn clear(buffer: &Box<Slots<u8>>) -> result: unit writes(buffer) {
+fn empty(buffer: &Box<Slots<u8>>) -> result: unit writes(buffer) {
   doc "Retain capacity for reuse.";
   loop {
     if buffer^.inner.len > 0_u64 {

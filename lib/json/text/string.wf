@@ -1,5 +1,5 @@
 fn string(source: &[u8], start: u64, decoded: &Box<Slots<u8>>) -> result: Result<u64, Error> reads(source), writes(decoded) {
-  clear(buffer: decoded);
+  empty(buffer: decoded);
   let quote = at(source: source, index: start);
   if quote != 34_u16 {
     let offset = imin(start, source^.len);

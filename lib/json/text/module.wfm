@@ -10,7 +10,7 @@ public fn at(source: &[u8], index: u64) -> byte: u16 reads(source) doc "Byte or 
 
 public fn space(byte: u16) -> yes: Bool pure doc "RFC 8259 whitespace: space, tab, CR, LF.";
 
-public fn clear(buffer: &Box<Slots<u8>>) -> result: unit writes(buffer) doc "Empties without releasing capacity.";
+public fn empty(buffer: &Box<Slots<u8>>) -> result: unit writes(buffer) doc "Empties without releasing capacity.";
 
 public fn put(buffer: &Box<Slots<u8>>, byte: u8) -> result: Bool writes(buffer) doc "Appends with geometric growth; false at the u64 capacity ceiling, preserving all existing bytes.";
 
