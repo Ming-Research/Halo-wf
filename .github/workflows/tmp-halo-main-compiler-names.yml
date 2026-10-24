@@ -6,7 +6,7 @@
 # `check` is the acceptance check on the tree as pushed. The witnesses graph
 # holds probes that are refused on purpose, so its result does not fail the run.
 # `check-pin` checks the research hosts the gate does not build with the pinned
-# compiler.
+# compiler; `time-pin-vm` times the vm test graph's check with it.
 name: tmp-halo-main-compiler-names
 
 on:
@@ -110,3 +110,31 @@ jobs:
           wfc="$PWD/build/whitefoot/$release/whitefootc"
           cd ${{ matrix.graph }}
           "$wfc" --graph modules.wfg --check-modules
+
+  # Control for the main release's `--check-modules` of tests/halo-vm, which
+  # took about 48 minutes: the same check with the pinned compiler.
+  time-pin-vm:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Download the pinned compiler
+        run: |
+          make toolchain
+          cat whitefoot.pin
+
+      - name: Time the graph check
+        run: |
+          release=$(sed -n 's/^release = //p' whitefoot.pin)
+          wfc="$PWD/build/whitefoot/$release/whitefootc"
+          cd tests/halo-vm
+          start=$(date +%s)
+          "$wfc" --graph modules.wfg --check-modules
+          status=$?
+          end=$(date +%s)
+          echo "TIME tests/halo-vm --check-modules at $release: $((end - start)) s, exit $status"
+          exit $status
+
