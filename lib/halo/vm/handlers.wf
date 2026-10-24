@@ -39,9 +39,7 @@ fn instruction_move<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slo
   ensures when Ok(value: next): base + 256_u64 <= stack^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
-  let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
   let v = register_value(stack: stack, base: base, operand: bv);
   set stack^.inner[ra] = v;
@@ -65,9 +63,7 @@ fn instruction_load_k<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   ensures when Ok(value: next): base + 256_u64 <= stack^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
-  let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
   let v = constant_value(consts: consts, kbase: kbase, operand: kv);
   set stack^.inner[ra] = v;
@@ -89,7 +85,6 @@ fn instruction_load_kx<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
@@ -124,9 +119,7 @@ fn instruction_load_bool<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
-  let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
   let b = cvt::<u8, u64>(bv);
   let skip = cvt::<u8, u64>(skipv);
@@ -152,9 +145,7 @@ fn instruction_load_nil<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
-  let ok = True();
   let a = cvt::<u8, u64>(av);
   let b = cvt::<u8, u64>(bv);
   if a <= b {
@@ -183,7 +174,6 @@ fn instruction_get_upval<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
   ensures when Ok(value: next): base + 256_u64 <= stack^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
@@ -223,7 +213,6 @@ fn instruction_set_upval<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   match upvalue_handle(vm: vm, u: uv) {
@@ -258,7 +247,6 @@ fn instruction_get_global<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &B
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
@@ -292,7 +280,6 @@ fn instruction_set_global<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &B
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
@@ -327,7 +314,6 @@ fn instruction_get_table_r<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
@@ -369,7 +355,6 @@ fn instruction_get_table_k<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
@@ -411,7 +396,6 @@ fn instruction_set_table_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: 
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let rt = register_slot(stack: stack, base: base, operand: tv);
@@ -461,7 +445,6 @@ fn instruction_set_table_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: 
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let rt = register_slot(stack: stack, base: base, operand: tv);
@@ -512,7 +495,6 @@ fn instruction_set_table_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: 
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let rt = register_slot(stack: stack, base: base, operand: tv);
@@ -563,7 +545,6 @@ fn instruction_set_table_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: 
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let rt = register_slot(stack: stack, base: base, operand: tv);
@@ -615,7 +596,6 @@ fn instruction_new_table<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
@@ -652,7 +632,6 @@ fn instruction_self_r<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let a = cvt::<u8, u64>(av);
@@ -701,7 +680,6 @@ fn instruction_self_k<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
 } {
   doc "Copies the receiver and reads its constant method key, specializing strings and retaining the slow lookup on a miss.";
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let a = cvt::<u8, u64>(av);
@@ -757,7 +735,6 @@ fn instruction_add_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
@@ -814,7 +791,6 @@ fn instruction_add_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
@@ -869,7 +845,6 @@ fn instruction_add_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
@@ -924,7 +899,6 @@ fn instruction_add_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
@@ -977,7 +951,6 @@ fn instruction_sub_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
@@ -1034,7 +1007,6 @@ fn instruction_sub_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
@@ -1089,7 +1061,6 @@ fn instruction_sub_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
@@ -1144,7 +1115,6 @@ fn instruction_sub_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
@@ -1197,7 +1167,6 @@ fn instruction_mul_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
@@ -1254,7 +1223,6 @@ fn instruction_mul_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
@@ -1309,7 +1277,6 @@ fn instruction_mul_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
@@ -1364,7 +1331,6 @@ fn instruction_mul_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
@@ -1417,7 +1383,6 @@ fn instruction_div_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
@@ -1474,7 +1439,6 @@ fn instruction_div_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
@@ -1529,7 +1493,6 @@ fn instruction_div_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
@@ -1584,7 +1547,6 @@ fn instruction_div_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
@@ -1637,7 +1599,6 @@ fn instruction_mod_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
@@ -1697,7 +1658,6 @@ fn instruction_mod_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
@@ -1755,7 +1715,6 @@ fn instruction_mod_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
@@ -1813,7 +1772,6 @@ fn instruction_mod_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
@@ -1869,7 +1827,6 @@ fn instruction_pow_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
@@ -1925,7 +1882,6 @@ fn instruction_pow_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
@@ -1979,7 +1935,6 @@ fn instruction_pow_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
@@ -2033,7 +1988,6 @@ fn instruction_pow_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
@@ -2085,7 +2039,6 @@ fn instruction_unm<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slot
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
@@ -2128,9 +2081,7 @@ fn instruction_not<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slot
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
-  let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
   let v = register_value(stack: stack, base: base, operand: bv);
   let t = truthy(v: v);
@@ -2153,7 +2104,6 @@ fn instruction_len<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slot
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
@@ -2187,9 +2137,7 @@ fn instruction_concat<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
-  let ok = True();
   let dest = cvt::<u8, u64>(av);
   let first = cvt::<u8, u64>(bv);
   let last = cvt::<u8, u64>(cv);
@@ -2203,9 +2151,7 @@ fn instruction_jmp<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slot
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
-  let ok = True();
   let target = cvt::<u32, u64>(targetv);
   if target <= pc {
     let atom113 = charge_budget(vm: vm, pc: pc, base: base, kbase: kbase);
@@ -2241,7 +2187,6 @@ fn instruction_eq_jmp_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let a = cvt::<u8, u64>(av);
@@ -2303,7 +2248,6 @@ fn instruction_eq_jmp_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let a = cvt::<u8, u64>(av);
@@ -2365,7 +2309,6 @@ fn instruction_eq_jmp_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let a = cvt::<u8, u64>(av);
@@ -2427,7 +2370,6 @@ fn instruction_eq_jmp_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let a = cvt::<u8, u64>(av);
@@ -2489,7 +2431,6 @@ fn instruction_lt_jmp_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let a = cvt::<u8, u64>(av);
@@ -2551,7 +2492,6 @@ fn instruction_lt_jmp_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let a = cvt::<u8, u64>(av);
@@ -2613,7 +2553,6 @@ fn instruction_lt_jmp_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let a = cvt::<u8, u64>(av);
@@ -2675,7 +2614,6 @@ fn instruction_lt_jmp_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let a = cvt::<u8, u64>(av);
@@ -2737,7 +2675,6 @@ fn instruction_le_jmp_rr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let a = cvt::<u8, u64>(av);
@@ -2799,7 +2736,6 @@ fn instruction_le_jmp_rk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let a = cvt::<u8, u64>(av);
@@ -2861,7 +2797,6 @@ fn instruction_le_jmp_kr<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let a = cvt::<u8, u64>(av);
@@ -2923,7 +2858,6 @@ fn instruction_le_jmp_kk<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let a = cvt::<u8, u64>(av);
@@ -2985,9 +2919,7 @@ fn instruction_test_jmp<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
-  let ok = True();
   let c = cvt::<u8, u64>(cv);
   let target = cvt::<u32, u64>(targetv);
   let v = register_value(stack: stack, base: base, operand: av);
@@ -3012,9 +2944,7 @@ fn instruction_test_set_jmp<interface Host<E>>(code: &Box<Slots<Cell>>, consts: 
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
-  let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
   let c = cvt::<u8, u64>(cv);
   let target = cvt::<u32, u64>(targetv);
@@ -3041,9 +2971,7 @@ fn instruction_call<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slo
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
-  let ok = True();
   let a = cvt::<u8, u64>(av);
   let ra = base + a;
   let b = cvt::<u8, u64>(bv);
@@ -3101,9 +3029,7 @@ fn instruction_tail_call<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
-  let ok = True();
   let a = cvt::<u8, u64>(av);
   let ra = base + a;
   let b = cvt::<u8, u64>(bv);
@@ -3161,9 +3087,7 @@ fn instruction_return<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<S
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
-  let ok = True();
   let a = cvt::<u8, u64>(av);
   let ra = base + a;
   let b = cvt::<u8, u64>(bv);
@@ -3196,7 +3120,6 @@ fn instruction_for_loop<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box
   ensures when Ok(value: next): base + 256_u64 <= stack^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let a = cvt::<u8, u64>(av);
@@ -3287,7 +3210,6 @@ fn instruction_for_prep<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let a = cvt::<u8, u64>(av);
@@ -3352,7 +3274,6 @@ fn instruction_tfor_loop<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Bo
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let a = cvt::<u8, u64>(av);
@@ -3419,7 +3340,6 @@ fn instruction_set_list<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let a = cvt::<u8, u64>(av);
@@ -3479,9 +3399,7 @@ fn instruction_close<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Sl
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
-  let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
   close_upvalues(vm: vm, stack: stack, level: ra);
   if vm^.suspended {
@@ -3500,7 +3418,6 @@ fn instruction_closure<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
@@ -3537,9 +3454,7 @@ fn instruction_var_arg<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
-  let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
   let success = varargs(vm: vm, stack: stack, dest: ra, b: bv);
   if bnot(success) {
@@ -3558,7 +3473,6 @@ fn instruction_get_global_wide<interface Host<E>>(code: &Box<Slots<Cell>>, const
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
@@ -3598,7 +3512,6 @@ fn instruction_set_global_wide<interface Host<E>>(code: &Box<Slots<Cell>>, const
   requires kbase + 256_u64 <= consts^.inner.len;
 } {
   let n = code^.inner.len;
-  let frame_limit = base + 256_u64;
   let next = pc + 1_u64;
   let ok = True();
   let ra = register_slot(stack: stack, base: base, operand: av);
