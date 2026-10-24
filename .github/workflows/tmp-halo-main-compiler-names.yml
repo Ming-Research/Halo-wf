@@ -5,6 +5,8 @@
 #
 # `check` is the acceptance check on the tree as pushed. The witnesses graph
 # holds probes that are refused on purpose, so its result does not fail the run.
+# `check-pin` checks the research hosts the gate does not build with the pinned
+# compiler.
 name: tmp-halo-main-compiler-names
 
 on:
@@ -78,3 +80,33 @@ jobs:
             echo "::endgroup::"
           done
           exit $failed
+
+  # The gate at the pin does not build the three research hosts below, so this
+  # job checks them with the pinned compiler (whitefoot.pin is left as it is).
+  check-pin:
+    name: check at the pin ${{ matrix.graph }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        graph:
+          - research/experiments/halo-compile
+          - research/experiments/halo-heap-core
+          - research/experiments/halo-lex
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Download the pinned compiler
+        run: |
+          make toolchain
+          cat whitefoot.pin
+
+      - name: Check the graph
+        run: |
+          release=$(sed -n 's/^release = //p' whitefoot.pin)
+          wfc="$PWD/build/whitefoot/$release/whitefootc"
+          cd ${{ matrix.graph }}
+          "$wfc" --graph modules.wfg --check-modules
