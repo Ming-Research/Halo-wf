@@ -309,24 +309,22 @@ fn up_probe_execute(vm: &Vm, stack: &Box<Slots<Value>>, capture: u32) -> r: Bool
   up_probe_code_append(code: &code, cell: get_second);
   up_probe_code_append(code: &code, cell: stop);
   let consts = halo::vm::stack_new(size: 256_u64);
-  if consts.inner.len >= 256_u64 {
-    set consts.inner[0_u64] = Value::Num(n: 73.0_f64);
-    if stack^.inner.len >= 256_u64 {
-      if code.inner.len > 0_u64 {
-        let env = Probe(mode: 0_u8, calls: 0_u64);
-        let outcome = halo::vm::run::<ProbeHost>(code: &code, consts: &consts, stack: stack, vm: vm, env: &env, pc: 0_u64, base: 0_u64, kbase: 0_u64);
-        match outcome {
-          Budget() => {
-            return True();
-          }
-          Done(..) => {
-          }
-          Error() => {
-          }
-          HostStopped() => {
-          }
-          HostCall() => {
-          }
+  set consts.inner[0_u64] = Value::Num(n: 73.0_f64);
+  if stack^.inner.len >= 256_u64 {
+    if code.inner.len > 0_u64 {
+      let env = Probe(mode: 0_u8, calls: 0_u64);
+      let outcome = halo::vm::run::<ProbeHost>(code: &code, consts: &consts, stack: stack, vm: vm, env: &env, pc: 0_u64, base: 0_u64, kbase: 0_u64);
+      match outcome {
+        Budget() => {
+          return True();
+        }
+        Done(..) => {
+        }
+        Error() => {
+        }
+        HostStopped() => {
+        }
+        HostCall() => {
         }
       }
     }
@@ -350,9 +348,7 @@ fn up_probe_access(mode: u8) -> r: u8 pure {
       return 246_u8;
     }
     let saved = halo::vm::stack_new(size: 2_u64);
-    if saved.inner.len > 1_u64 {
-      set saved.inner[1_u64] = saved_value;
-    }
+    set saved.inner[1_u64] = saved_value;
     set vm.heap.threads.inner[owner_index].payload.stack = move saved;
     let refreshed = halo::heap::refresh_thread_storage(heap: &vm.heap, h: owner);
     if bnot(refreshed) {
@@ -384,9 +380,7 @@ fn up_probe_access(mode: u8) -> r: u8 pure {
       return 249_u8;
     }
   }
-  if stack.inner.len >= 256_u64 {
-    set stack.inner[1_u64] = active_value;
-  }
+  set stack.inner[1_u64] = active_value;
   let executed = up_probe_execute(vm: &vm, stack: &stack, capture: capture);
   if bnot(executed) {
     return 250_u8;
@@ -553,105 +547,99 @@ fn up_probe_capture() -> r: u8 pure {
   let env = Probe(mode: 0_u8, calls: 0_u64);
   let first_value = Value::Num(n: 11.0_f64);
   let second_value = Value::Num(n: 22.0_f64);
-  if stack.inner.len >= 256_u64 {
-    set stack.inner[1_u64] = first_value;
-    set stack.inner[2_u64] = second_value;
-    if consts.inner.len >= 256_u64 {
-      if code.inner.len > 8_u64 {
-        set vm.budget = 0_u64;
-        let outcome = halo::vm::run::<ProbeHost>(code: &code, consts: &consts, stack: &stack, vm: &vm, env: &env, pc: 0_u64, base: 0_u64, kbase: 0_u64);
-        match outcome {
-          Budget() => {
-          }
-          Done(..) => {
-            return 251_u8;
-          }
-          Error() => {
-            return 251_u8;
-          }
-          HostStopped() => {
-            return 251_u8;
-          }
-          HostCall() => {
-            return 251_u8;
-          }
+  set stack.inner[1_u64] = first_value;
+  set stack.inner[2_u64] = second_value;
+  if code.inner.len > 8_u64 {
+    set vm.budget = 0_u64;
+    let outcome = halo::vm::run::<ProbeHost>(code: &code, consts: &consts, stack: &stack, vm: &vm, env: &env, pc: 0_u64, base: 0_u64, kbase: 0_u64);
+    match outcome {
+      Budget() => {
+      }
+      Done(..) => {
+        return 251_u8;
+      }
+      Error() => {
+        return 251_u8;
+      }
+      HostStopped() => {
+        return 251_u8;
+      }
+      HostCall() => {
+        return 251_u8;
+      }
+    }
+    if stack.inner.len >= 256_u64 {
+      let own_low = up_probe_capture_handle(heap: &vm.heap, value: stack.inner[4_u64]);
+      let own_repeat = up_probe_capture_handle(heap: &vm.heap, value: stack.inner[5_u64]);
+      let own_high = up_probe_capture_handle(heap: &vm.heap, value: stack.inner[6_u64]);
+      if own_low == no_handle {
+        return 251_u8;
+      }
+      if own_low == foreign_capture {
+        return 251_u8;
+      }
+      if own_repeat != own_low {
+        return 251_u8;
+      }
+      let low_open = up_probe_open(heap: &vm.heap, capture: own_low, owner: vm.current_thread, slot: 1_u64);
+      let high_open = up_probe_open(heap: &vm.heap, capture: own_high, owner: vm.current_thread, slot: 2_u64);
+      if bnot(low_open) {
+        return 251_u8;
+      }
+      if bnot(high_open) {
+        return 251_u8;
+      }
+      let seen_high = False();
+      let seen_low = False();
+      for (index in 0_u64..vm.open_upvalues.inner.len) {
+        let capture = vm.open_upvalues.inner[index];
+        if capture == own_high {
+          set seen_high = True();
         }
-        if stack.inner.len >= 256_u64 {
-          let own_low = up_probe_capture_handle(heap: &vm.heap, value: stack.inner[4_u64]);
-          let own_repeat = up_probe_capture_handle(heap: &vm.heap, value: stack.inner[5_u64]);
-          let own_high = up_probe_capture_handle(heap: &vm.heap, value: stack.inner[6_u64]);
-          if own_low == no_handle {
-            return 251_u8;
-          }
-          if own_low == foreign_capture {
-            return 251_u8;
-          }
-          if own_repeat != own_low {
-            return 251_u8;
-          }
-          let low_open = up_probe_open(heap: &vm.heap, capture: own_low, owner: vm.current_thread, slot: 1_u64);
-          let high_open = up_probe_open(heap: &vm.heap, capture: own_high, owner: vm.current_thread, slot: 2_u64);
-          if bnot(low_open) {
-            return 251_u8;
-          }
-          if bnot(high_open) {
-            return 251_u8;
-          }
-          let seen_high = False();
-          let seen_low = False();
-          for (index in 0_u64..vm.open_upvalues.inner.len) {
-            if index < vm.open_upvalues.inner.len {
-              let capture = vm.open_upvalues.inner[index];
-              if capture == own_high {
-                set seen_high = True();
-              }
-              if capture == own_low {
-                set seen_low = True();
-                if bnot(seen_high) {
-                  return 252_u8;
-                }
-              }
-            }
-          }
+        if capture == own_low {
+          set seen_low = True();
           if bnot(seen_high) {
             return 252_u8;
           }
-          if bnot(seen_low) {
-            return 252_u8;
-          }
-          set vm.budget = 0_u64;
-          let closed_outcome = halo::vm::run::<ProbeHost>(code: &code, consts: &consts, stack: &stack, vm: &vm, env: &env, pc: 7_u64, base: 0_u64, kbase: 0_u64);
-          match closed_outcome {
-            Budget() => {
-            }
-            Done(..) => {
-              return 253_u8;
-            }
-            Error() => {
-              return 253_u8;
-            }
-            HostStopped() => {
-              return 253_u8;
-            }
-            HostCall() => {
-              return 253_u8;
-            }
-          }
-          let high_closed = up_probe_closed(heap: &vm.heap, capture: own_high, expected: second_value);
-          let low_retained = up_probe_open(heap: &vm.heap, capture: own_low, owner: vm.current_thread, slot: 1_u64);
-          let foreign_retained = up_probe_open(heap: &vm.heap, capture: foreign_capture, owner: foreign_owner, slot: 1_u64);
-          if bnot(high_closed) {
-            return 253_u8;
-          }
-          if bnot(low_retained) {
-            return 253_u8;
-          }
-          if bnot(foreign_retained) {
-            return 253_u8;
-          }
-          return 0_u8;
         }
       }
+      if bnot(seen_high) {
+        return 252_u8;
+      }
+      if bnot(seen_low) {
+        return 252_u8;
+      }
+      set vm.budget = 0_u64;
+      let closed_outcome = halo::vm::run::<ProbeHost>(code: &code, consts: &consts, stack: &stack, vm: &vm, env: &env, pc: 7_u64, base: 0_u64, kbase: 0_u64);
+      match closed_outcome {
+        Budget() => {
+        }
+        Done(..) => {
+          return 253_u8;
+        }
+        Error() => {
+          return 253_u8;
+        }
+        HostStopped() => {
+          return 253_u8;
+        }
+        HostCall() => {
+          return 253_u8;
+        }
+      }
+      let high_closed = up_probe_closed(heap: &vm.heap, capture: own_high, expected: second_value);
+      let low_retained = up_probe_open(heap: &vm.heap, capture: own_low, owner: vm.current_thread, slot: 1_u64);
+      let foreign_retained = up_probe_open(heap: &vm.heap, capture: foreign_capture, owner: foreign_owner, slot: 1_u64);
+      if bnot(high_closed) {
+        return 253_u8;
+      }
+      if bnot(low_retained) {
+        return 253_u8;
+      }
+      if bnot(foreign_retained) {
+        return 253_u8;
+      }
+      return 0_u8;
     }
   }
   return 251_u8;

@@ -48,9 +48,6 @@ fn table_foreach_run<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Sl
       Ok(value: table_foreach_next) => {
         match table_foreach_next {
           Some(value: table_foreach_pair) => {
-            if context >= vm^.library_contexts.inner.len {
-              break;
-            }
             set vm^.library_contexts.inner[context].foreach_key = table_foreach_pair.key;
             library_plan(vm: vm, index: context);
             let table_foreach_nil = Value::Nil();

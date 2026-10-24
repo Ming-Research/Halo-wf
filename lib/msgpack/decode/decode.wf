@@ -126,7 +126,7 @@ fn next(source: &[u8], offset: u64) -> r: Result<Option<Token>, Error> reads(sou
   } else if tag == 215_u8 {
     set size = 8_u64;
     set category = 7_u8;
-  } else if tag == 216_u8 {
+  } else {
     set size = 16_u64;
     set category = 7_u8;
   }

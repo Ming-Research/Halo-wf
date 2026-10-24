@@ -479,10 +479,8 @@ fn library_struct(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, pc: u64, 
             return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: index_v100, text: &struct_string_short[0_u64..16_u64]);
           }
           for (i_v101 in 0_u64..size_v47) {
-            if i_v101 < bytes_v99.inner.len {
-              let b_v102 = bytes_v99.inner[i_v101];
-              bytes_push(bytes: &data_v32, byte: b_v102);
-            }
+            let b_v102 = bytes_v99.inner[i_v101];
+            bytes_push(bytes: &data_v32, byte: b_v102);
           }
           if zero_string_v95 {
             bytes_push(bytes: &data_v32, byte: 0_u8);
@@ -526,12 +524,8 @@ fn library_struct(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, pc: u64, 
           if end_v108 > data_v32.inner.len {
             return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 2_u64, text: &struct_short[0_u64..21_u64]);
           }
-          if pos_v33 <= end_v108 {
-            if end_v108 <= data_v32.inner.len {
-              let v_v109 = intern(heap: &vm^.heap, bytes: &data_v32.inner[pos_v33..end_v108]);
-              codec_value_push(values: &results_v43, value: v_v109);
-            }
-          }
+          let v_v109 = intern(heap: &vm^.heap, bytes: &data_v32.inner[pos_v33..end_v108]);
+          codec_value_push(values: &results_v43, value: v_v109);
           if zero_string_v95 {
             set size_v47 = size_v47 +sat 1_u64;
           }

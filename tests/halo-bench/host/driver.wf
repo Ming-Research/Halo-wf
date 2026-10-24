@@ -29,9 +29,7 @@ fn emit_number(out: &Box<Slots<u8>>, value: f64) -> r: unit writes(out) {
   let buffer = array_filled::<u8, 32>(value: 0_u8);
   let n = halo::number::format_number(value: value, out: &buffer[0_u64..32_u64]);
   for (i in 0_u64..n) {
-    if i < 32_u64 {
-      push(out: out, byte: buffer[i]);
-    }
+    push(out: out, byte: buffer[i]);
   }
   push(out: out, byte: 10_u8);
   return unit;
@@ -49,9 +47,7 @@ fn print_call(env: &Output, vm: &Vm, stack: &Box<Slots<Value>>, func: u64, argc:
           Num(n: number) => {
             emit_number(out: &env^.bytes, value: number);
             set env^.printed = env^.printed +sat 1_u64;
-            if func < stack^.inner.len {
-              set stack^.inner[func] = Value::Nil();
-            }
+            set stack^.inner[func] = Value::Nil();
             return HostOutcome::Returned(count: 0_u64);
           }
           Nil() => {
@@ -92,10 +88,8 @@ fn read_source(factory: &HandleFactory, input: &InputStream, source: &Box<Slots<
     match got_v93 {
       Ok(value: count_v94) => {
         for (i_v95 in 0_u64..count_v94) {
-          if i_v95 < 4096_u64 {
-            let b_v96 = scratch_v91[i_v95];
-            push(out: source, byte: b_v96);
-          }
+          let b_v96 = scratch_v91[i_v95];
+          push(out: source, byte: b_v96);
         }
       }
       Err(error: stop_v97) => {

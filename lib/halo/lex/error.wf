@@ -87,7 +87,7 @@ fn format_chunk(chunk: &[u8], size: u64, output: &Box<Slots<u8>>) -> result: uni
 
 fn format_error(chunk: &[u8], error: &Error, decoded: &Box<Slots<u8>>, output: &Box<Slots<u8>>) -> result: unit reads(chunk), reads(error), reads(decoded), writes(output) {
   doc "The returned message and PUC's diagnostic buffer become a full lexical error string.";
-  clear(buffer: output);
+  empty(buffer: output);
   format_chunk(chunk: chunk, size: 80_u64, output: output);
   put(buffer: output, byte: 58_u8);
   append_decimal(buffer: output, value: error^.line);

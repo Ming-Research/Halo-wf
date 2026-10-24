@@ -129,9 +129,7 @@ fn sha1hex(bytes: &[u8]) -> r: Array<u8, 40> reads(bytes) {
     let part = ishr.wrap(state[word], shift);
     let index32 = iand(part, 15_u32);
     let index = cvt::<u32, u64>(index32);
-    if index < 16_u64 {
-      set out[i] = sha1_digits[index];
-    }
+    set out[i] = sha1_digits[index];
   }
   return out;
 }

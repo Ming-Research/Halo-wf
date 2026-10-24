@@ -95,14 +95,10 @@ fn library_error_location(vm: &Vm, pc: u64) -> r: unit writes(vm) {
         if bytes^.len > name_length {
           set already = True();
           for (i in 0_u64..name_length) {
-            if i < bytes^.len {
-              if i < vm^.source.inner.len {
-                let byte = bytes^[i];
-                let expected = vm^.source.inner[i];
-                if byte != expected {
-                  set already = False();
-                }
-              }
+            let byte = bytes^[i];
+            let expected = vm^.source.inner[i];
+            if byte != expected {
+              set already = False();
             }
           }
           let colon = bytes^[name_length];

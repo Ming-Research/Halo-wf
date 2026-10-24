@@ -1,6 +1,6 @@
 fn next(source: &[u8], state: &State, decoded: &Box<Slots<u8>>) -> result: Result<Token, Error> reads(source), writes(state), writes(decoded) {
   doc "Skip trivia and return one token, with the exact llex consumption boundaries.";
-  clear(buffer: decoded);
+  empty(buffer: decoded);
   loop {
     let start = state^.offset;
     let line = state^.line;

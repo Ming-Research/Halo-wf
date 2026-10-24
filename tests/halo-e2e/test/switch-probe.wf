@@ -375,14 +375,12 @@ fn switch_stop_probe(budget: u64, stress: Bool, source_mode: u8) -> r: u8 pure {
   }
   let captures = engine.vm.heap.upvalues.inner.len;
   for (capture_index in 0_u64..captures) {
-    if capture_index < engine.vm.heap.upvalues.inner.len {
-      if engine.vm.heap.upvalues.inner[capture_index].live {
-        match engine.vm.heap.upvalues.inner[capture_index].payload {
-          Open(..) => {
-            return 23_u8;
-          }
-          Closed(..) => {
-          }
+    if engine.vm.heap.upvalues.inner[capture_index].live {
+      match engine.vm.heap.upvalues.inner[capture_index].payload {
+        Open(..) => {
+          return 23_u8;
+        }
+        Closed(..) => {
         }
       }
     }
@@ -593,10 +591,8 @@ fn switch_edge_active(argument: Bool) -> r: Bool pure {
   set vm.transfer.func = 0_u64;
   if argument {
     set vm.transfer.argc = 1_u64;
-    if stack.inner.len >= 256_u64 {
-      set stack.inner[1_u64] = target;
-      set stack.inner[2_u64] = garbage;
-    }
+    set stack.inner[1_u64] = target;
+    set stack.inner[2_u64] = garbage;
   }
   let frames = box_slots_new::<halo::execution::Frame>(capacity: 1_u64);
   let frame = thread_edge_frame(closure: no_handle, top: 0_u64);
@@ -608,16 +604,10 @@ fn switch_edge_active(argument: Bool) -> r: Bool pure {
   let code = box_slots_new::<halo::value::Cell>(capacity: 1_u64);
   let jump = halo::value::Cell::Jmp(target: 0_u32);
   place_back(window: &code.inner, value: jump);
-  if code.inner.len > 0_u64 {
-    if stack.inner.len >= 256_u64 {
-      if consts.inner.len >= 256_u64 {
-        let outcome = halo::vm::run::<SwitchProbeHost>(code: &code, consts: &consts, stack: &stack, vm: &vm, env: &env, pc: 0_u64, base: 0_u64, kbase: 0_u64);
-        let outcome_kind = outcome_code(outcome: outcome);
-        if outcome_kind != 2_u8 {
-          return False();
-        }
-      }
-    }
+  let outcome = halo::vm::run::<SwitchProbeHost>(code: &code, consts: &consts, stack: &stack, vm: &vm, env: &env, pc: 0_u64, base: 0_u64, kbase: 0_u64);
+  let outcome_kind = outcome_code(outcome: outcome);
+  if outcome_kind != 2_u8 {
+    return False();
   }
   if vm.heap.collections == 0_u64 {
     return False();
@@ -847,12 +837,10 @@ fn switch_live_children(engine: &Engine) -> r: u64 reads(engine) {
   let count = 0_u64;
   let length = engine^.vm.heap.threads.inner.len;
   for (index in 0_u64..length) {
-    if index < engine^.vm.heap.threads.inner.len {
-      if engine^.vm.heap.threads.inner[index].live {
-        let main_index = cvt::<u32, u64>(engine^.vm.main_thread);
-        if index != main_index {
-          set count = count +sat 1_u64;
-        }
+    if engine^.vm.heap.threads.inner[index].live {
+      let main_index = cvt::<u32, u64>(engine^.vm.main_thread);
+      if index != main_index {
+        set count = count +sat 1_u64;
       }
     }
   }
@@ -1015,16 +1003,10 @@ fn switch_edge_current() -> r: Bool pure {
   let code = box_slots_new::<halo::value::Cell>(capacity: 1_u64);
   let jump = halo::value::Cell::Jmp(target: 0_u32);
   place_back(window: &code.inner, value: jump);
-  if code.inner.len > 0_u64 {
-    if stack.inner.len >= 256_u64 {
-      if consts.inner.len >= 256_u64 {
-        let outcome = halo::vm::run::<SwitchProbeHost>(code: &code, consts: &consts, stack: &stack, vm: &vm, env: &env, pc: 0_u64, base: 0_u64, kbase: 0_u64);
-        let outcome_kind = outcome_code(outcome: outcome);
-        if outcome_kind != 2_u8 {
-          return False();
-        }
-      }
-    }
+  let outcome = halo::vm::run::<SwitchProbeHost>(code: &code, consts: &consts, stack: &stack, vm: &vm, env: &env, pc: 0_u64, base: 0_u64, kbase: 0_u64);
+  let outcome_kind = outcome_code(outcome: outcome);
+  if outcome_kind != 2_u8 {
+    return False();
   }
   if vm.heap.collections == 0_u64 {
     return False();
@@ -1063,24 +1045,22 @@ fn switch_stopped_capture(engine: &Engine) -> r: Bool reads(engine) {
   }
   let length = engine^.vm.heap.upvalues.inner.len;
   for (index in 0_u64..length) {
-    if index < engine^.vm.heap.upvalues.inner.len {
-      if engine^.vm.heap.upvalues.inner[index].live {
-        match engine^.vm.heap.upvalues.inner[index].payload {
-          Open(owner: captured_owner, slot: captured_slot) => {
-            if captured_owner^ == engine^.vm.current_thread {
-              if captured_slot^ >= engine^.stack.inner.len {
-                if captured_slot^ < engine^.vm.stopped_stack.inner.len {
-                  let value = engine^.vm.stopped_stack.inner[captured_slot^];
-                  let correct = up_probe_number(value: value, expected: 23.0_f64);
-                  if correct {
-                    return True();
-                  }
+    if engine^.vm.heap.upvalues.inner[index].live {
+      match engine^.vm.heap.upvalues.inner[index].payload {
+        Open(owner: captured_owner, slot: captured_slot) => {
+          if captured_owner^ == engine^.vm.current_thread {
+            if captured_slot^ >= engine^.stack.inner.len {
+              if captured_slot^ < engine^.vm.stopped_stack.inner.len {
+                let value = engine^.vm.stopped_stack.inner[captured_slot^];
+                let correct = up_probe_number(value: value, expected: 23.0_f64);
+                if correct {
+                  return True();
                 }
               }
             }
           }
-          Closed(..) => {
-          }
+        }
+        Closed(..) => {
         }
       }
     }
@@ -1124,13 +1104,11 @@ const switch_wrap_wait_name: Array<u8, 9> = "wrap_wait";
 fn switch_wrap_child(engine: &Engine) -> r: u32 reads(engine) {
   let length = engine^.vm.heap.threads.inner.len;
   for (index in 0_u64..length) {
-    if index < engine^.vm.heap.threads.inner.len {
-      if engine^.vm.heap.threads.inner[index].live {
-        if index < 4294967295_u64 {
-          let handle = cvt::<u64, u32>(index);
-          if handle != engine^.vm.main_thread {
-            return handle;
-          }
+    if engine^.vm.heap.threads.inner[index].live {
+      if index < 4294967295_u64 {
+        let handle = cvt::<u64, u32>(index);
+        if handle != engine^.vm.main_thread {
+          return handle;
         }
       }
     }

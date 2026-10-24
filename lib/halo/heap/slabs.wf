@@ -76,10 +76,8 @@ fn alloc_string_cell(heap: &Heap, payload: String) -> r: Option<u32> writes(heap
       }
       grow(cell: &heap^.strings, capacity: capacity);
     }
-    if heap^.strings.inner.len < heap^.strings.inner.cap {
-      place_back(window: &heap^.strings.inner, value: move cell);
-      return Some<u32>(value: hnew);
-    }
+    place_back(window: &heap^.strings.inner, value: move cell);
+    return Some<u32>(value: hnew);
   }
   return None<u32>();
 }
@@ -142,10 +140,8 @@ fn alloc_table(heap: &Heap, payload: Table) -> r: Option<u32> writes(heap) {
       }
       grow(cell: &heap^.tables, capacity: capacity);
     }
-    if heap^.tables.inner.len < heap^.tables.inner.cap {
-      place_back(window: &heap^.tables.inner, value: move cell);
-      return Some<u32>(value: hnew);
-    }
+    place_back(window: &heap^.tables.inner, value: move cell);
+    return Some<u32>(value: hnew);
   }
   return None<u32>();
 }
@@ -210,10 +206,8 @@ fn alloc_closure(heap: &Heap, payload: Closure) -> r: Option<u32> writes(heap) {
       }
       grow(cell: &heap^.closures, capacity: capacity);
     }
-    if heap^.closures.inner.len < heap^.closures.inner.cap {
-      place_back(window: &heap^.closures.inner, value: move cell);
-      return Some<u32>(value: hnew);
-    }
+    place_back(window: &heap^.closures.inner, value: move cell);
+    return Some<u32>(value: hnew);
   }
   return None<u32>();
 }
@@ -274,10 +268,8 @@ fn alloc_upvalue(heap: &Heap, payload: Upval) -> r: Option<u32> writes(heap) {
       }
       grow(cell: &heap^.upvalues, capacity: capacity);
     }
-    if heap^.upvalues.inner.len < heap^.upvalues.inner.cap {
-      place_back(window: &heap^.upvalues.inner, value: cell);
-      return Some<u32>(value: hnew);
-    }
+    place_back(window: &heap^.upvalues.inner, value: cell);
+    return Some<u32>(value: hnew);
   }
   return None<u32>();
 }

@@ -36,12 +36,10 @@ fn cjson_default() -> r: CjsonConfig pure {
 fn cjson_config(vm: &Vm) -> r: u64 writes(vm) {
   doc "Reuses the lowest free slot before appending; rebuilds defaults because a host may have restored settings into a free slot.";
   for (i in 1_u64..vm^.cjson_configs.inner.len) {
-    if i < vm^.cjson_configs.inner.len {
-      if vm^.cjson_configs.inner[i].free {
-        let replacement = cjson_default();
-        set vm^.cjson_configs.inner[i] = move replacement;
-        return i;
-      }
+    if vm^.cjson_configs.inner[i].free {
+      let replacement = cjson_default();
+      set vm^.cjson_configs.inner[i] = move replacement;
+      return i;
     }
   }
   let cap_v3 = vm^.cjson_configs.inner.cap;
@@ -356,14 +354,10 @@ fn cjson_quote(writer: &json::encode::Writer, out: &Box<Slots<u8>>, bytes: &[u8]
       let lo_v40 = b_v37 % 16_u8;
       let high_v41 = cvt::<u8, u64>(hi_v39);
       let low_v42 = cvt::<u8, u64>(lo_v40);
-      if high_v41 < 16_u64 {
-        let digit_v43 = bit_digits[high_v41];
-        bytes_push(bytes: out, byte: digit_v43);
-      }
-      if low_v42 < 16_u64 {
-        let digit_v44 = bit_digits[low_v42];
-        bytes_push(bytes: out, byte: digit_v44);
-      }
+      let digit_v43 = bit_digits[high_v41];
+      bytes_push(bytes: out, byte: digit_v43);
+      let digit_v44 = bit_digits[low_v42];
+      bytes_push(bytes: out, byte: digit_v44);
     } else {
       bytes_push(bytes: out, byte: b_v37);
     }
@@ -596,9 +590,7 @@ fn library_cjson(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, pc: u64, v
     }
     let buffer_v113 = box_slots_new::<u8>(capacity: 0_u64);
     if settings_v111[3_u64] != 0_u64 {
-      if config_v108 < vm^.cjson_configs.inner.len {
-        swap(first: &buffer_v113, second: &vm^.cjson_configs.inner[config_v108].buffer);
-      }
+      swap(first: &buffer_v113, second: &vm^.cjson_configs.inner[config_v108].buffer);
     }
     cjson_truncate(out: &buffer_v113, length: 0_u64);
     let yes_v114 = True();
@@ -672,143 +664,139 @@ fn library_cjson(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, pc: u64, v
       set enumeration_v125 = True();
     }
     let value_v126 = argument(stack: stack, func: func, argc: argc, index: i_v121);
-    if setting_v122 < 9_u64 {
-      let current_v127 = settings_v111[setting_v122];
-      let chosen_v128 = current_v127;
-      let absent_v129 = is_nil(v: value_v126);
-      if bnot(absent_v129) {
-        if enumeration_v125 {
-          let kind_v130 = kind(v: value_v126);
-          if kind_v130 == 1_u8 {
-            set chosen_v128 = 0_u64;
-            if truthy(v: value_v126) {
-              set chosen_v128 = 1_u64;
+    let current_v127 = settings_v111[setting_v122];
+    let chosen_v128 = current_v127;
+    let absent_v129 = is_nil(v: value_v126);
+    if bnot(absent_v129) {
+      if enumeration_v125 {
+        let kind_v130 = kind(v: value_v126);
+        if kind_v130 == 1_u8 {
+          set chosen_v128 = 0_u64;
+          if truthy(v: value_v126) {
+            set chosen_v128 = 1_u64;
+          }
+        } else {
+          let string_v131 = coerce_string(vm: vm, v: value_v126);
+          let bytes_v132 = box_slots_new::<u8>(capacity: 0_u64);
+          bytes_string(vm: vm, bytes: &bytes_v132, value: string_v131);
+          let n_v133 = bytes_v132.inner.len;
+          for (option_byte in 0_u64..bytes_v132.inner.len) {
+            if bytes_v132.inner[option_byte] == 0_u8 {
+              set n_v133 = option_byte;
+              break;
             }
-          } else {
-            let string_v131 = coerce_string(vm: vm, v: value_v126);
-            let bytes_v132 = box_slots_new::<u8>(capacity: 0_u64);
-            bytes_string(vm: vm, bytes: &bytes_v132, value: string_v131);
-            let n_v133 = bytes_v132.inner.len;
-            for (option_byte in 0_u64..bytes_v132.inner.len) {
-              if bytes_v132.inner[option_byte] == 0_u8 {
-                set n_v133 = option_byte;
-                break;
+          }
+          let valid_v134 = False();
+          let two_bytes = bytes_v132.inner.len >= 2_u64;
+          let option_on = n_v133 == 2_u64;
+          if band(two_bytes, option_on) {
+            if bytes_v132.inner[0_u64] == 111_u8 {
+              if bytes_v132.inner[1_u64] == 110_u8 {
+                set chosen_v128 = 1_u64;
+                set valid_v134 = True();
               }
             }
-            let valid_v134 = False();
-            let two_bytes = bytes_v132.inner.len >= 2_u64;
-            let option_on = n_v133 == 2_u64;
-            if band(two_bytes, option_on) {
-              if bytes_v132.inner[0_u64] == 111_u8 {
-                if bytes_v132.inner[1_u64] == 110_u8 {
-                  set chosen_v128 = 1_u64;
+          }
+          let three_bytes = bytes_v132.inner.len >= 3_u64;
+          let option_off = n_v133 == 3_u64;
+          if band(three_bytes, option_off) {
+            if bytes_v132.inner[0_u64] == 111_u8 {
+              if bytes_v132.inner[1_u64] == 102_u8 {
+                if bytes_v132.inner[2_u64] == 102_u8 {
+                  set chosen_v128 = 0_u64;
                   set valid_v134 = True();
                 }
               }
             }
-            let three_bytes = bytes_v132.inner.len >= 3_u64;
-            let option_off = n_v133 == 3_u64;
-            if band(three_bytes, option_off) {
-              if bytes_v132.inner[0_u64] == 111_u8 {
-                if bytes_v132.inner[1_u64] == 102_u8 {
-                  if bytes_v132.inner[2_u64] == 102_u8 {
-                    set chosen_v128 = 0_u64;
-                    set valid_v134 = True();
-                  }
-                }
-              }
-            }
-            if id_v105 == 103_u32 {
-              let four_bytes = bytes_v132.inner.len >= 4_u64;
-              let option_null = n_v133 == 4_u64;
-              if band(four_bytes, option_null) {
-                if bytes_v132.inner[0_u64] == 110_u8 {
-                  if bytes_v132.inner[1_u64] == 117_u8 {
-                    if bytes_v132.inner[2_u64] == 108_u8 {
-                      if bytes_v132.inner[3_u64] == 108_u8 {
-                        set chosen_v128 = 2_u64;
-                        set valid_v134 = True();
-                      }
+          }
+          if id_v105 == 103_u32 {
+            let four_bytes = bytes_v132.inner.len >= 4_u64;
+            let option_null = n_v133 == 4_u64;
+            if band(four_bytes, option_null) {
+              if bytes_v132.inner[0_u64] == 110_u8 {
+                if bytes_v132.inner[1_u64] == 117_u8 {
+                  if bytes_v132.inner[2_u64] == 108_u8 {
+                    if bytes_v132.inner[3_u64] == 108_u8 {
+                      set chosen_v128 = 2_u64;
+                      set valid_v134 = True();
                     }
                   }
                 }
               }
             }
-            if bnot(valid_v134) {
-              let index_v135 = i_v121 +sat 1_u64;
-              match str_of(v: string_v131) {
-                NoHandle() => {
-                  return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: index_v135, argc: argc, value: value_v126, expected: &cj_string[0_u64..6_u64]);
-                }
-                Handle(..) => {
-                }
-              }
-              let message_v136 = box_slots_new::<u8>(capacity: 80_u64);
-              bytes_append(bytes: &message_v136, text: &cj_option[0_u64..16_u64]);
-              if n_v133 <= bytes_v132.inner.len {
-                bytes_append(bytes: &message_v136, text: &bytes_v132.inner[0_u64..n_v133]);
-              }
-              bytes_push(bytes: &message_v136, byte: 39_u8);
-              let length_v137 = message_v136.inner.len;
-              return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: index_v135, text: &message_v136.inner[0_u64..length_v137]);
-            }
           }
-        } else {
-          match lib_integer(vm: vm, value: value_v126) {
-            None() => {
-              let index_v138 = i_v121 +sat 1_u64;
-              return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: index_v138, argc: argc, value: value_v126, expected: &cj_number[0_u64..6_u64]);
-            }
-            Some(value: integer_v139) => {
-              let narrowed_v140 = cvt.wrap::<i64, i32>(integer_v139);
-              let n_v141 = cvt::<i32, i64>(narrowed_v140);
-              let min_v142 = cvt.wrap::<u64, i64>(minimum_v123);
-              let max_v143 = cvt.wrap::<u64, i64>(maximum_v124);
-              let below_v144 = n_v141 < min_v142;
-              let above_v145 = n_v141 > max_v143;
-              if bor(below_v144, above_v145) {
-                let message_v146 = box_slots_new::<u8>(capacity: 80_u64);
-                bytes_append(bytes: &message_v146, text: &cj_between[0_u64..25_u64]);
-                let x_v147 = cvt.nearest::<u64, f64>(minimum_v123);
-                let v_v148 = Value::Num(n: x_v147);
-                let s_v149 = coerce_string(vm: vm, v: v_v148);
-                bytes_string(vm: vm, bytes: &message_v146, value: s_v149);
-                bytes_append(bytes: &message_v146, text: &cj_and[0_u64..5_u64]);
-                let x_v150 = cvt.nearest::<u64, f64>(maximum_v124);
-                let v_v151 = Value::Num(n: x_v150);
-                let s_v152 = coerce_string(vm: vm, v: v_v151);
-                bytes_string(vm: vm, bytes: &message_v146, value: s_v152);
-                let length_v153 = message_v146.inner.len;
-                return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, text: &message_v146.inner[0_u64..length_v153]);
+          if bnot(valid_v134) {
+            let index_v135 = i_v121 +sat 1_u64;
+            match str_of(v: string_v131) {
+              NoHandle() => {
+                return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: index_v135, argc: argc, value: value_v126, expected: &cj_string[0_u64..6_u64]);
               }
-              set chosen_v128 = cvt.wrap::<i64, u64>(n_v141);
+              Handle(..) => {
+              }
             }
+            let message_v136 = box_slots_new::<u8>(capacity: 80_u64);
+            bytes_append(bytes: &message_v136, text: &cj_option[0_u64..16_u64]);
+            bytes_append(bytes: &message_v136, text: &bytes_v132.inner[0_u64..n_v133]);
+            bytes_push(bytes: &message_v136, byte: 39_u8);
+            let length_v137 = message_v136.inner.len;
+            return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: index_v135, text: &message_v136.inner[0_u64..length_v137]);
           }
-        }
-        if config_v108 < vm^.cjson_configs.inner.len {
-          set vm^.cjson_configs.inner[config_v108].settings[setting_v122] = chosen_v128;
-          if setting_v122 == 3_u64 {
-            if chosen_v128 == 0_u64 {
-              let empty_buffer = box_slots_new::<u8>(capacity: 0_u64);
-              set vm^.cjson_configs.inner[config_v108].buffer = move empty_buffer;
-            }
-          }
-        }
-      }
-      let result_v154 = Value::Nil();
-      if enumeration_v125 {
-        if chosen_v128 == 2_u64 {
-          set result_v154 = intern(heap: &vm^.heap, bytes: &cj_null[0_u64..4_u64]);
-        } else {
-          let yes_v155 = chosen_v128 != 0_u64;
-          set result_v154 = boolean(v: yes_v155);
         }
       } else {
-        let n_v156 = cvt.nearest::<u64, f64>(chosen_v128);
-        set result_v154 = Value::Num(n: n_v156);
+        match lib_integer(vm: vm, value: value_v126) {
+          None() => {
+            let index_v138 = i_v121 +sat 1_u64;
+            return lib_argerror(code: code, consts: consts, vm: vm, pc: pc, index: index_v138, argc: argc, value: value_v126, expected: &cj_number[0_u64..6_u64]);
+          }
+          Some(value: integer_v139) => {
+            let narrowed_v140 = cvt.wrap::<i64, i32>(integer_v139);
+            let n_v141 = cvt::<i32, i64>(narrowed_v140);
+            let min_v142 = cvt.wrap::<u64, i64>(minimum_v123);
+            let max_v143 = cvt.wrap::<u64, i64>(maximum_v124);
+            let below_v144 = n_v141 < min_v142;
+            let above_v145 = n_v141 > max_v143;
+            if bor(below_v144, above_v145) {
+              let message_v146 = box_slots_new::<u8>(capacity: 80_u64);
+              bytes_append(bytes: &message_v146, text: &cj_between[0_u64..25_u64]);
+              let x_v147 = cvt.nearest::<u64, f64>(minimum_v123);
+              let v_v148 = Value::Num(n: x_v147);
+              let s_v149 = coerce_string(vm: vm, v: v_v148);
+              bytes_string(vm: vm, bytes: &message_v146, value: s_v149);
+              bytes_append(bytes: &message_v146, text: &cj_and[0_u64..5_u64]);
+              let x_v150 = cvt.nearest::<u64, f64>(maximum_v124);
+              let v_v151 = Value::Num(n: x_v150);
+              let s_v152 = coerce_string(vm: vm, v: v_v151);
+              bytes_string(vm: vm, bytes: &message_v146, value: s_v152);
+              let length_v153 = message_v146.inner.len;
+              return lib_argtext(code: code, consts: consts, vm: vm, pc: pc, index: 1_u64, text: &message_v146.inner[0_u64..length_v153]);
+            }
+            set chosen_v128 = cvt.wrap::<i64, u64>(n_v141);
+          }
+        }
       }
-      codec_value_push(values: &results_v120, value: result_v154);
+      if config_v108 < vm^.cjson_configs.inner.len {
+        set vm^.cjson_configs.inner[config_v108].settings[setting_v122] = chosen_v128;
+        if setting_v122 == 3_u64 {
+          if chosen_v128 == 0_u64 {
+            let empty_buffer = box_slots_new::<u8>(capacity: 0_u64);
+            set vm^.cjson_configs.inner[config_v108].buffer = move empty_buffer;
+          }
+        }
+      }
     }
+    let result_v154 = Value::Nil();
+    if enumeration_v125 {
+      if chosen_v128 == 2_u64 {
+        set result_v154 = intern(heap: &vm^.heap, bytes: &cj_null[0_u64..4_u64]);
+      } else {
+        let yes_v155 = chosen_v128 != 0_u64;
+        set result_v154 = boolean(v: yes_v155);
+      }
+    } else {
+      let n_v156 = cvt.nearest::<u64, f64>(chosen_v128);
+      set result_v154 = Value::Num(n: n_v156);
+    }
+    codec_value_push(values: &results_v120, value: result_v154);
   }
   return codec_results(stack: stack, func: func, values: &results_v120);
 }

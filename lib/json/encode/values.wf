@@ -141,42 +141,38 @@ fn key(writer: &Writer, output: &Box<Slots<u8>>, bytes: &[u8]) -> result: Result
   let n = writer^.stack.inner.len;
   if n > 0_u64 {
     let i = n - 1_u64;
-    if i < writer^.stack.inner.len {
-      let phase = writer^.stack.inner[i];
-      if phase < 2_u8 {
-        return failure(code: 16_u8, offset: output^.inner.len);
-      }
-      if phase == 4_u8 {
-        return failure(code: 17_u8, offset: output^.inner.len);
-      }
-      if phase == 3_u8 {
-        match emit_byte(output: output, byte: 44_u8) {
-          Ok(value: done) => {
-          }
-          Err(error: e) => {
-            return Err<unit, Error>(error: move e);
-          }
-        }
-      }
-      match quoted(writer: writer, output: output, bytes: bytes) {
-        Ok(value: done) => {
-        }
-        Err(error: e) => {
-          return Err<unit, Error>(error: move e);
-        }
-      }
-      match emit_byte(output: output, byte: 58_u8) {
-        Ok(value: done) => {
-        }
-        Err(error: e) => {
-          return Err<unit, Error>(error: move e);
-        }
-      }
-      if i < writer^.stack.inner.len {
-        set writer^.stack.inner[i] = 4_u8;
-      }
-      return Ok<unit, Error>(value: unit);
+    let phase = writer^.stack.inner[i];
+    if phase < 2_u8 {
+      return failure(code: 16_u8, offset: output^.inner.len);
     }
+    if phase == 4_u8 {
+      return failure(code: 17_u8, offset: output^.inner.len);
+    }
+    if phase == 3_u8 {
+      match emit_byte(output: output, byte: 44_u8) {
+        Ok(value: done) => {
+        }
+        Err(error: e) => {
+          return Err<unit, Error>(error: move e);
+        }
+      }
+    }
+    match quoted(writer: writer, output: output, bytes: bytes) {
+      Ok(value: done) => {
+      }
+      Err(error: e) => {
+        return Err<unit, Error>(error: move e);
+      }
+    }
+    match emit_byte(output: output, byte: 58_u8) {
+      Ok(value: done) => {
+      }
+      Err(error: e) => {
+        return Err<unit, Error>(error: move e);
+      }
+    }
+    set writer^.stack.inner[i] = 4_u8;
+    return Ok<unit, Error>(value: unit);
   }
   return failure(code: 16_u8, offset: output^.inner.len);
 }

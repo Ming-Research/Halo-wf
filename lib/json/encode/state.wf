@@ -41,31 +41,26 @@ fn prefix(writer: &Writer, output: &Box<Slots<u8>>) -> result: Result<unit, Erro
     set writer^.root_done = True();
     return Ok<unit, Error>(value: unit);
   }
-  if n > 0_u64 {
-    let i = n - 1_u64;
-    if i < writer^.stack.inner.len {
-      let phase = writer^.stack.inner[i];
-      if phase == 4_u8 {
-        set writer^.stack.inner[i] = 3_u8;
-        return Ok<unit, Error>(value: unit);
+  let i = n - 1_u64;
+  let phase = writer^.stack.inner[i];
+  if phase == 4_u8 {
+    set writer^.stack.inner[i] = 3_u8;
+    return Ok<unit, Error>(value: unit);
+  }
+  if phase >= 2_u8 {
+    return failure(code: 16_u8, offset: output^.inner.len);
+  }
+  if phase == 1_u8 {
+    match emit_byte(output: output, byte: 44_u8) {
+      Ok(value: done) => {
       }
-      if phase >= 2_u8 {
-        return failure(code: 16_u8, offset: output^.inner.len);
+      Err(error: e) => {
+        return Err<unit, Error>(error: move e);
       }
-      if phase == 1_u8 {
-        match emit_byte(output: output, byte: 44_u8) {
-          Ok(value: done) => {
-          }
-          Err(error: e) => {
-            return Err<unit, Error>(error: move e);
-          }
-        }
-      }
-      set writer^.stack.inner[i] = 1_u8;
-      return Ok<unit, Error>(value: unit);
     }
   }
-  return failure(code: 19_u8, offset: output^.inner.len);
+  set writer^.stack.inner[i] = 1_u8;
+  return Ok<unit, Error>(value: unit);
 }
 
 fn begin(writer: &Writer, output: &Box<Slots<u8>>, object: Bool) -> result: Result<unit, Error> writes(writer), writes(output) {
@@ -101,34 +96,29 @@ fn close(writer: &Writer, output: &Box<Slots<u8>>, object: Bool) -> result: Resu
   if n == 0_u64 {
     return failure(code: 18_u8, offset: output^.inner.len);
   }
-  if n > 0_u64 {
-    let i = n - 1_u64;
-    if i < writer^.stack.inner.len {
-      let phase = writer^.stack.inner[i];
-      let byte = 93_u8;
-      if object {
-        if phase < 2_u8 {
-          return failure(code: 18_u8, offset: output^.inner.len);
-        }
-        if phase == 4_u8 {
-          return failure(code: 17_u8, offset: output^.inner.len);
-        }
-        set byte = 125_u8;
-      } else if phase >= 2_u8 {
-        return failure(code: 18_u8, offset: output^.inner.len);
-      }
-      match emit_byte(output: output, byte: byte) {
-        Ok(value: done) => {
-        }
-        Err(error: e) => {
-          return Err<unit, Error>(error: move e);
-        }
-      }
-      let dropped = take_back(window: &writer^.stack.inner);
-      return Ok<unit, Error>(value: unit);
+  let i = n - 1_u64;
+  let phase = writer^.stack.inner[i];
+  let byte = 93_u8;
+  if object {
+    if phase < 2_u8 {
+      return failure(code: 18_u8, offset: output^.inner.len);
+    }
+    if phase == 4_u8 {
+      return failure(code: 17_u8, offset: output^.inner.len);
+    }
+    set byte = 125_u8;
+  } else if phase >= 2_u8 {
+    return failure(code: 18_u8, offset: output^.inner.len);
+  }
+  match emit_byte(output: output, byte: byte) {
+    Ok(value: done) => {
+    }
+    Err(error: e) => {
+      return Err<unit, Error>(error: move e);
     }
   }
-  return failure(code: 18_u8, offset: output^.inner.len);
+  let dropped = take_back(window: &writer^.stack.inner);
+  return Ok<unit, Error>(value: unit);
 }
 
 fn finish(writer: &Writer, output: &Box<Slots<u8>>) -> result: Result<unit, Error> reads(writer), reads(output) {

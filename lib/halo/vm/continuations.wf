@@ -13,9 +13,7 @@ fn push_callback(vm: &Vm, frame: CallbackFrame) -> r: unit writes(vm.callbacks) 
       let capacity = count + 1_u64;
       grow(cell: &vm^.callbacks, capacity: capacity);
     }
-    if vm^.callbacks.inner.len < vm^.callbacks.inner.cap {
-      place_back(window: &vm^.callbacks.inner, value: frame);
-    }
+    place_back(window: &vm^.callbacks.inner, value: frame);
   }
   return unit;
 }

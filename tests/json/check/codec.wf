@@ -20,10 +20,8 @@ fn record_text(buffer: &Box<Slots<u8>>, decoded: &Box<Slots<u8>>) -> result: uni
   let n = decoded^.inner.len;
   record_word(buffer: buffer, value: n);
   for (i in 0_u64..n) {
-    if i < decoded^.inner.len {
-      let b = decoded^.inner[i];
-      record_byte(buffer: buffer, byte: b);
-    }
+    let b = decoded^.inner[i];
+    record_byte(buffer: buffer, byte: b);
   }
   return unit;
 }
