@@ -512,9 +512,7 @@ fn run(factory: &HandleFactory, output: &OutputStream) -> r: Bool writes(factory
     } else {
       return False();
     }
-    if key < 97_u64 {
-      set model[key] = val;
-    }
+    set model[key] = val;
     let probe_key = numeric(n: key);
     let got = halo::heap::table_get(heap: &heap, t: t, key: probe_key);
     let got_number = number_value(v: got);
@@ -561,9 +559,7 @@ fn run(factory: &HandleFactory, output: &OutputStream) -> r: Bool writes(factory
                   } else {
                     return False();
                   }
-                  if k < 97_u64 {
-                    set model[k] = 0_u64;
-                  }
+                  set model[k] = 0_u64;
                 }
               }
             }
@@ -849,16 +845,14 @@ fn mixed(factory: &HandleFactory, output: &OutputStream) -> r: Bool writes(facto
         set value = step + 1_u64;
         set val = numeric(n: value);
       }
-      if id < 162_u64 {
-        match halo::heap::table_set(heap: &heap, t: t, key: keys[id], val: val) {
-          Err(error: problem) => {
-            return False();
-          }
-          Ok(value: done) => {
-          }
+      match halo::heap::table_set(heap: &heap, t: t, key: keys[id], val: val) {
+        Err(error: problem) => {
+          return False();
         }
-        set model[id] = value;
+        Ok(value: done) => {
+        }
       }
+      set model[id] = value;
       for (i in 0_u64..162_u64) {
         let got = halo::heap::table_get(heap: &heap, t: t, key: keys[i]);
         let actual = number_value(v: got);

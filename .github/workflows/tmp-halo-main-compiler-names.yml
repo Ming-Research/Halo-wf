@@ -3,11 +3,8 @@
 # prelude `clear` of Whitefoot#486. The pin in the repository is not moved:
 # the workspace's whitefoot.pin is rewritten for this run only.
 #
-# `check` is the acceptance check on the tree as pushed. `discover` finds every
-# OP-5 site by repairing a disposable workspace round by round
-# (.github/tmp-op5-discover.py) and keeps the repairs as a patch for review; it
-# is removed once the sites are in the repository. The witnesses graph holds
-# probes that are refused on purpose, so its result does not fail the run.
+# `check` is the acceptance check on the tree as pushed. The witnesses graph
+# holds probes that are refused on purpose, so its result does not fail the run.
 name: tmp-halo-main-compiler-names
 
 on:
@@ -81,37 +78,3 @@ jobs:
             echo "::endgroup::"
           done
           exit $failed
-
-  discover:
-    name: discover ${{ matrix.name }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 120
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - {name: research-lex, graph: research/experiments/halo-lex, modules: "dump"}
-          - {name: research-compile, graph: research/experiments/halo-compile, modules: "dump"}
-          - {name: research-heap-core, graph: research/experiments/halo-heap-core, modules: "test"}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
-
-      - name: Download the main release's compiler
-        run: |
-          echo "release = $MAIN_RELEASE" > whitefoot.pin
-          make toolchain
-
-      - name: Repair every OP-5 site of the modules
-        run: |
-          wfc="$PWD/build/whitefoot/$MAIN_RELEASE/whitefootc"
-          python3 -B .github/tmp-op5-discover.py 300 "$wfc" ${{ matrix.graph }} module ${{ matrix.modules }}
-          git diff -- . ':!whitefoot.pin' > build/op5.patch
-          git diff --stat -- . ':!whitefoot.pin'
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: op5-${{ matrix.name }}
-          path: build/op5.patch
-          retention-days: 7

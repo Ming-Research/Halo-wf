@@ -10,9 +10,7 @@ fn push(out: &Box<Slots<u8>>, byte: u8) -> result: unit writes(out) {
   if out^.inner.len == cap {
     let twice = cap +sat cap;
     let target = imax(twice, 4096_u64);
-    if target >= cap {
-      grow(cell: out, capacity: target);
-    }
+    grow(cell: out, capacity: target);
   }
   if out^.inner.len < out^.inner.cap {
     place_back(window: &out^.inner, value: byte);
@@ -87,10 +85,8 @@ fn read_source(factory: &HandleFactory, input: &InputStream, source: &Box<Slots<
     match got {
       Ok(value: count) => {
         for (i in 0_u64..count) {
-          if i < 4096_u64 {
-            let b = scratch[i];
-            push(out: source, byte: b);
-          }
+          let b = scratch[i];
+          push(out: source, byte: b);
         }
       }
       Err(error: stop) => {
@@ -224,10 +220,8 @@ fn main(inputs: Inputs) -> status: ExitStatus pure waits {
       let remaining = size - cursor;
       if payload_length <= remaining {
         let end = cursor + payload_length;
-        if name_start <= name_end {
-          if name_end <= size {
-            dump_source(bytes: &bytes^[cursor..end], name: &bytes^[name_start..name_end], initial_line: initial_line, out: &out);
-          }
+        if name_end <= size {
+          dump_source(bytes: &bytes^[cursor..end], name: &bytes^[name_start..name_end], initial_line: initial_line, out: &out);
         }
         set cursor = end;
       } else {
