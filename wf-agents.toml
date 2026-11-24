@@ -36,8 +36,10 @@ expected = [
 [ci.fast]
 # Runs only the tests it is given, after the compiler and its LLVM where they need it.
 workflow = "fast.yml"
-# GitHub's own machines, ubuntu-24.04, which every job of check.yml has always used.
-runner = "github"
+# The owner's own machine, the self-hosted runner 14900k: an agent waits for this workflow each time it asks for tests,
+# and that machine keeps the checkout, the compiler and the reference Lua between runs, so a run builds again only what
+# changed. Every test runs there; none needs root.
+runner = "14900k"
 # check.yml gives each part 30 minutes, and fast.yml its one job 60; a run not complete by then is cancelled, and said
 # as what it found.
 too_long = "90m"
