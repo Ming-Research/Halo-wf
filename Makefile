@@ -21,6 +21,11 @@ DESIGN_REVIEW_BASE ?= origin/main
 # projects written in Whitefoot (whitefoot-kit/downstream.md).
 include $(ROOT)/whitefoot-kit/whitefoot.mk
 
+# The tests, as CI and the engine of wf-agents name them: each a target that
+# CI runs by itself through whitefoot-kit/ci/run-tests.py, which reports it as
+# JUnit XML (whitefoot-kit/downstream.md, "Tests in CI").
+include $(ROOT)/whitefoot-kit/tests.mk
+
 # The collector's mutant controls (tests/halo-gc/controls.sh),
 # one part each; gate-parts checks that controls.sh lists the same labels.
 ROOTS_MUTANTS := open-upvalues frame-closure constants
@@ -33,10 +38,20 @@ ROOTS_MUTANT_CHECKS := $(ROOTS_MUTANTS:%=check-roots-mutant-%)
 EXTENDED_PARTS := roots-base $(ROOTS_MUTANTS:%=roots-mutant-%) hosts-vm hosts-lib-json
 GATE_PARTS := core $(EXTENDED_PARTS) reference
 
+# The tests of each part, each a target CI's job of the part runs by itself,
+# after the compiler's download; a part not listed here is one test, of its
+# own name. `make part-tests PART=<part>` prints one part's, one a line.
+# TESTS is every part's, each in exactly one part, and the two checks of
+# design-readiness.yml.
+PART_TESTS_core := oracle double-text design-lint gate-parts
+PART_TESTS_hosts-lib-json := hosts-lib json
+PART_TESTS_reference := number msgpack
+TESTS := $(foreach part,$(GATE_PARTS),$(or $(PART_TESTS_$(part)),$(part))) design-ready pin-ready
+
 .PHONY: check check-core check-extended check-reference \
 	check-roots-base $(ROOTS_MUTANT_CHECKS) check-hosts-vm check-hosts-lib-json \
 	oracle double-text roots roots-base $(ROOTS_MUTANT_TARGETS) hosts hosts-vm hosts-lib json \
-	reference-lua number msgpack design-lint design-ready gate-parts FORCE
+	reference-lua number msgpack design-lint design-ready gate-parts part-tests FORCE
 
 # `make check` runs three groups: the core (the embedding probe, the oracle
 # corpus, the double texts, the design lint and gate-parts), the extended
@@ -46,9 +61,9 @@ GATE_PARTS := core $(EXTENDED_PARTS) reference
 # library, the MessagePack package). `check` and `check-extended` are made of
 # their parts, so they run exactly what CI's jobs run.
 check: $(GATE_PARTS:%=check-%)
-check-core: compiler oracle double-text design-lint gate-parts
+check-core: compiler $(PART_TESTS_core)
 check-extended: $(EXTENDED_PARTS:%=check-%)
-check-reference: compiler number msgpack
+check-reference: compiler $(PART_TESTS_reference)
 
 # CI runs each part as a parallel job, so that no job builds more than three
 # Whitefoot programs, nor more than one end-to-end test program, and the
@@ -61,7 +76,10 @@ check-reference: compiler number msgpack
 check-roots-base: compiler roots-base
 $(ROOTS_MUTANT_CHECKS): check-roots-mutant-%: compiler roots-mutant-%
 check-hosts-vm: compiler hosts-vm
-check-hosts-lib-json: compiler hosts-lib json
+check-hosts-lib-json: compiler $(PART_TESTS_hosts-lib-json)
+
+part-tests:
+	@$(if $(filter $(PART),$(GATE_PARTS)),printf '%s\n' $(or $(PART_TESTS_$(PART)),$(PART)),echo "no part of the gate is named '$(PART)'" >&2; exit 1)
 
 # The parts stay in step, checked without compiling anything: check.yml's
 # matrix runs exactly GATE_PARTS, each once, so every check of `make check`
