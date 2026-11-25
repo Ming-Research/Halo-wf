@@ -1,4 +1,5 @@
 alias Value = pkg::value::Value;
+alias DebugName = pkg::value::DebugName;
 alias TableError = pkg::heap::TableError;
 alias Pair = pkg::heap::Pair;
 alias StringView = pkg::heap::StringView;
@@ -212,11 +213,31 @@ fn decimal(out: &Box<Slots<u8>>, number: u64) -> r: unit writes(out) {
 
 const nonstring: Array<u8, 30> = "(error object is not a string)";
 
+fn error_chunk(engine: &Engine) -> r: DebugName reads(engine) {
+  doc "The chunk name an error is located in: that of the code at the raise point, or, when none is recorded, that of the script the engine is running.";
+  let at = engine^.vm.raise_pc;
+  if at > 0_u64 {
+    return pkg::vm::chunk_name_at(vm: &engine^.vm, pc: at - 1_u64);
+  }
+  let active = engine^.active;
+  match active {
+    None() => {
+    }
+    Some(value: id) => {
+      if id.slot < engine^.vm.chunks.inner.len {
+        return engine^.vm.chunks.inner[id.slot].name;
+      }
+    }
+  }
+  return DebugName(offset: 0_u64, length: 0_u64);
+}
+
 fn format_error(engine: &Engine, line: u64) -> r: Box<Slots<u8>> reads(engine) {
   let out = box_slots_new::<u8>(capacity: 0_u64);
   let value = engine^.vm.error;
   let located = False();
-  let name_length = engine^.vm.source.inner.len;
+  let chunk = error_chunk(engine: engine);
+  let name_length = chunk.length;
   match string_of(engine: engine, value: value) {
     None() => {
     }
@@ -228,8 +249,13 @@ fn format_error(engine: &Engine, line: u64) -> r: Box<Slots<u8>> reads(engine) {
           set located = True();
           for (i in 0_u64..name_length) {
             let b = engine^.vm.heap.strings.inner[h].payload.bytes.inner[i];
-            let expected = engine^.vm.source.inner[i];
-            if b != expected {
+            let at = chunk.offset +sat i;
+            if at < engine^.vm.source.inner.len {
+              let expected = engine^.vm.source.inner[at];
+              if b != expected {
+                set located = False();
+              }
+            } else {
               set located = False();
             }
           }
@@ -243,7 +269,10 @@ fn format_error(engine: &Engine, line: u64) -> r: Box<Slots<u8>> reads(engine) {
   }
   if bnot(located) {
     if line > 0_u64 {
-      text(out: &out, bytes: &engine^.vm.source.inner[0_u64..name_length]);
+      let name_end = chunk.offset +sat name_length;
+      if name_end <= engine^.vm.source.inner.len {
+        text(out: &out, bytes: &engine^.vm.source.inner[chunk.offset..name_end]);
+      }
       byte(out: &out, b: 58_u8);
       decimal(out: &out, number: line);
       byte(out: &out, b: 58_u8);

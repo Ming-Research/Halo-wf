@@ -534,6 +534,13 @@ fn root_updates_probe(omit_refresh: u8) -> r: u8 pure {
   if bnot(cached_live) {
     return 69_u8;
   }
+  match halo::embed::string_of(engine: &engine, value: held_value) {
+    None() => {
+      return 115_u8;
+    }
+    Some(..) => {
+    }
+  }
   halo::embed::unpin(engine: &engine, token: token);
   let omit_unpin = omit_refresh == 3_u8;
   let second = root_probe_resume(engine: &engine, env: &env, id: active, omitted: omit_unpin);
@@ -589,8 +596,8 @@ fn root_probe_resume(engine: &Engine, env: &Probe, id: halo::embed::ScriptId, om
   doc "The negative controls skip the embedding bridge refresh for one checkpoint, using the same VM resume and collector with the stale bridge. Ordinary probes use the embedding API.";
   if omitted {
     let slot = id.slot;
-    if slot < engine^.scripts.inner.len {
-      return halo::vm::resume::<ProbeHost>(script: &engine^.scripts.inner[slot], stack: &engine^.stack, vm: &engine^.vm, env: env, budget: 1_u64);
+    if slot < engine^.entries.inner.len {
+      return halo::vm::resume::<ProbeHost>(program: &engine^.program, stack: &engine^.stack, vm: &engine^.vm, env: env, budget: 1_u64);
     }
     return Outcome::Error();
   }
@@ -598,12 +605,12 @@ fn root_probe_resume(engine: &Engine, env: &Probe, id: halo::embed::ScriptId, om
 }
 
 fn cached_string_live(engine: &Engine, id: halo::embed::ScriptId) -> r: Bool reads(engine) {
-  doc "The inactive chunk's sole string constant is the independently written 27-byte return literal; it must survive before another root mutation or start can refresh the bridge.";
+  doc "The inactive chunk's sole string constant is the independently written 27-byte return literal, found among the program's constants; it must survive before another root mutation or start can refresh the bridge.";
   let slot = id.slot;
-  if slot < engine^.scripts.inner.len {
-    let n = engine^.scripts.inner[slot].consts.inner.len;
+  if slot < engine^.entries.inner.len {
+    let n = engine^.program.consts.inner.len;
     for (i in 0_u64..n) {
-      let v = engine^.scripts.inner[slot].consts.inner[i];
+      let v = engine^.program.consts.inner[i];
       match halo::embed::string_of(engine: engine, value: v) {
         None() => {
         }
@@ -778,13 +785,13 @@ fn pending_probe() -> r: u8 pure {
     return 89_u8;
   }
   let slot = top.slot;
-  if slot < engine.scripts.inner.len {
-    let direct = halo::vm::resume::<ProbeHost>(script: &engine.scripts.inner[slot], stack: &engine.stack, vm: &engine.vm, env: &env, budget: 1_u64);
+  if slot < engine.entries.inner.len {
+    let direct = halo::vm::resume::<ProbeHost>(program: &engine.program, stack: &engine.stack, vm: &engine.vm, env: &env, budget: 1_u64);
     let direct_code = outcome_code(outcome: direct);
     if direct_code != 1_u8 {
       return 90_u8;
     }
-    let after = halo::vm::complete_call::<ProbeHost>(script: &engine.scripts.inner[slot], stack: &engine.stack, vm: &engine.vm, env: &env, results: &results[0_u64..1_u64], budget: 1_u64);
+    let after = halo::vm::complete_call::<ProbeHost>(program: &engine.program, stack: &engine.stack, vm: &engine.vm, env: &env, results: &results[0_u64..1_u64], budget: 1_u64);
     let after_code = outcome_code(outcome: after);
     if after_code != 1_u8 {
       return 91_u8;

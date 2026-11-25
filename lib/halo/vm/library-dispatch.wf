@@ -91,13 +91,19 @@ fn library_error_location(vm: &Vm, pc: u64) -> r: unit writes(vm) {
       let hi = cvt::<u32, u64>(handle);
       if hi < vm^.heap.strings.inner.len {
         let bytes = &vm^.heap.strings.inner[hi].payload.bytes.inner;
-        let name_length = vm^.source.inner.len;
+        let chunk = chunk_name_at(vm: vm, pc: pc);
+        let name_length = chunk.length;
         if bytes^.len > name_length {
           set already = True();
           for (i in 0_u64..name_length) {
             let byte = bytes^[i];
-            let expected = vm^.source.inner[i];
-            if byte != expected {
+            let at = chunk.offset +sat i;
+            if at < vm^.source.inner.len {
+              let expected = vm^.source.inner[at];
+              if byte != expected {
+                set already = False();
+              }
+            } else {
               set already = False();
             }
           }

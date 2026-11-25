@@ -220,18 +220,23 @@ fn main(inputs: Inputs) -> r: ExitStatus pure waits {
   let local_env_34 = Env(bytes: move local_bytes_33);
   let local_stack_35 = halo::vm::stack_new(size: 256_u64);
   let local_length_36 = local_source_25.inner.len;
-  match halo::compile::compile(heap: &local_vm_28.heap, chunk_name: &run_source_name[0_u64..12_u64], source: &local_source_25.inner[0_u64..local_length_36]) {
+  let local_program_code = box_slots_new::<halo::value::Cell>(capacity: 0_u64);
+  let local_program_consts = box_slots_new::<Value>(capacity: 0_u64);
+  let local_program = halo::value::Program(code: move local_program_code, consts: move local_program_consts);
+  let local_bases = halo::vm::bases(program: &local_program, vm: &local_vm_28);
+  match halo::compile::compile(heap: &local_vm_28.heap, chunk_name: &run_source_name[0_u64..12_u64], source: &local_source_25.inner[0_u64..local_length_36], bases: local_bases) {
     Err(error: problem) => {
       let local_n_37 = problem.message.inner.len;
       let local_complete_38 = emit(factory: &factory, output: &stderr, bytes: &problem.message.inner[0_u64..local_n_37], count: local_n_37);
       return std::process::exit_status(code: 3_u8);
     }
     Ok(value: script) => {
-      let local_outcome_39 = halo::vm::start::<PrintHost>(script: &script, stack: &local_stack_35, vm: &local_vm_28, env: &local_env_34, proto: 0_u32, argc: 0_u64, budget: local_budget_19);
+      let local_entry = halo::vm::install(program: &local_program, vm: &local_vm_28, script: &script);
+      let local_outcome_39 = halo::vm::start::<PrintHost>(program: &local_program, stack: &local_stack_35, vm: &local_vm_28, env: &local_env_34, proto: local_entry, argc: 0_u64, budget: local_budget_19);
       loop {
         match local_outcome_39 {
           Budget() => {
-            set local_outcome_39 = halo::vm::resume::<PrintHost>(script: &script, stack: &local_stack_35, vm: &local_vm_28, env: &local_env_34, budget: local_budget_19);
+            set local_outcome_39 = halo::vm::resume::<PrintHost>(program: &local_program, stack: &local_stack_35, vm: &local_vm_28, env: &local_env_34, budget: local_budget_19);
           }
           Done(..) => {
             break;

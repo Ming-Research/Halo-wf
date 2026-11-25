@@ -5,6 +5,7 @@ alias Value = pkg::value::Value;
 alias Cell = pkg::value::Cell;
 alias Proto = pkg::value::Proto;
 alias Script = pkg::value::Script;
+alias Chunk = pkg::value::Chunk;
 alias Heap = pkg::heap::Heap;
 alias Upval = pkg::heap::Upval;
 alias num_of = pkg::value::num_of;
@@ -366,6 +367,7 @@ fn vm_new(limit: u64) -> r: Vm pure {
   let local_variables = box_slots_new::<LocalVariable>(capacity: 0_u64);
   let upvalue_names = box_slots_new::<DebugName>(capacity: 0_u64);
   let source = box_slots_new::<u8>(capacity: 0_u64);
+  let chunks = box_slots_new::<Chunk>(capacity: 0_u64);
   let nil = Value::Nil();
   let stopped_stack = box_slots_new::<Value>(capacity: 0_u64);
   let atom3 = False();
@@ -379,7 +381,15 @@ fn vm_new(limit: u64) -> r: Vm pure {
   let pcall_field = box_slots_new::<u8>(capacity: 0_u64);
   let no_call = PendingCall(id: 0_u32, argc: 0_u64, func: 0_u64, wanted: 0_i64, return_pc: 0_u64, base: 0_u64, kbase: 0_u64, tail: atom3, activation: 0_u32, top: 0_u64);
   let transfer = pkg::execution::coroutine_call_empty();
-  return Vm(main_thread: main_thread, current_thread: main_thread, native_entries: 0_u32, transfer_kind: 0_u8, transfer: transfer, resume_call: transfer, yield_call: transfer, c_depth: 0_u32, open_limit: 0_u64, pattern_subs: move pattern_subs, cjson_configs: move cjson_configs, cjson_active_config: 0_u64, library_contexts: move library_contexts, sort_frames: move sort_frames, random_state: 20017429951246_u64, heap: move heap, frames: move frames, open_upvalues: move opens, protos: move protos, lineinfo: move lineinfo, source: move source, top: 0_u64, budget: unlimited, saved_pc: 0_u64, saved_base: 0_u64, saved_kbase: 0_u64, error: nil, activation: 0_u32, globals: gh, type_metatables: type_metatables, host_stopped: atom3, stopped_stack: move stopped_stack, callback_plan: callback_plan, callbacks: move callbacks, suspended: atom3, pending: no_call, call_pending: atom3, raise_pc: 0_u64, native_raise: atom3, pcall_field: move pcall_field, post_catch: unlimited, debug_names: move debug_names, local_variables: move local_variables, upvalue_names: move upvalue_names);
+  return Vm(main_thread: main_thread, current_thread: main_thread, native_entries: 0_u32, transfer_kind: 0_u8, transfer: transfer, resume_call: transfer, yield_call: transfer, c_depth: 0_u32, open_limit: 0_u64, pattern_subs: move pattern_subs, cjson_configs: move cjson_configs, cjson_active_config: 0_u64, library_contexts: move library_contexts, sort_frames: move sort_frames, random_state: 20017429951246_u64, heap: move heap, frames: move frames, open_upvalues: move opens, protos: move protos, proto_floor: 0_u32, chunks: move chunks, lineinfo: move lineinfo, source: move source, top: 0_u64, budget: unlimited, saved_pc: 0_u64, saved_base: 0_u64, saved_kbase: 0_u64, error: nil, activation: 0_u32, globals: gh, type_metatables: type_metatables, host_stopped: atom3, stopped_stack: move stopped_stack, callback_plan: callback_plan, callbacks: move callbacks, suspended: atom3, pending: no_call, call_pending: atom3, raise_pc: 0_u64, native_raise: atom3, pcall_field: move pcall_field, post_catch: unlimited, debug_names: move debug_names, local_variables: move local_variables, upvalue_names: move upvalue_names);
+}
+
+fn proto_slot(vm: &Vm, id: u32) -> r: u64 reads(vm.proto_floor) {
+  doc "Where prototype number id sits in the VM's prototype table, which starts at proto_floor, the number after the last freed one; the largest u64, outside any table, for a number below it.";
+  if id < vm^.proto_floor {
+    return 18446744073709551615_u64;
+  }
+  return cvt::<u32, u64>(id -sat vm^.proto_floor);
 }
 
 fn raise_text(vm: &Vm, text: &[u8]) -> r: Bool reads(text), writes(vm) {
@@ -943,7 +953,7 @@ const operand_text_upvalue: Array<u8, 7> = "upvalue";
 
 const operand_text_method: Array<u8, 6> = "method";
 
-fn symbolic_name(code: &Box<Slots<Cell>>, vm: &Vm, proto: Proto, lastpc: u64, reg: u64) -> r: NameOrigin reads(code), reads(vm.protos) {
+fn symbolic_name(code: &Box<Slots<Cell>>, vm: &Vm, proto: Proto, lastpc: u64, reg: u64) -> r: NameOrigin reads(code), reads(vm.protos), reads(vm.proto_floor) {
   doc "Ports Lua 5.1 ldebug.c symbexec/getobjname/kname and lfunc.c luaF_getlocalname under the Lua MIT notice in LICENSE.md. Tracks the last writer before lastpc using lopcodes.c's A column and opcode-specific writes; neutral origin is the final RETURN default, and kind 6 is MOVE recursion, not a displayed kind. LOADBOOL does not skip; SELF gives both destinations the method origin; CALL/TAILCALL invalidate registers >= A; VARARG writes only A. Visit absorbed JMPs after tests, including TFORLOOP; cell targets already include pc++, and backward edges are ignored. SETLIST's count word is absorbed; CLOSURE skips retained capture pseudo-cells by nup. Validation already checked the stream.";
   let last = NameOrigin(kind: 0_u8, index: 0_u64);
   let pc = cvt::<u32, u64>(proto.start);
@@ -1248,7 +1258,7 @@ fn symbolic_name(code: &Box<Slots<Cell>>, vm: &Vm, proto: Proto, lastpc: u64, re
       Closure(a: traced_a, proto: child_proto) => {
         let dest = cvt::<u8, u64>(traced_a);
         set changed = dest == reg;
-        let child = cvt::<u32, u64>(child_proto);
+        let child = proto_slot(vm: vm, id: child_proto);
         if child < vm^.protos.inner.len {
           let count = vm^.protos.inner[child].nups;
           let captures = cvt::<u8, u64>(count);
@@ -1353,7 +1363,7 @@ fn operand_name(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, fr
   let id = unlimited;
   match callee {
     Lua(proto: proto_index) => {
-      set id = cvt::<u32, u64>(proto_index);
+      set id = proto_slot(vm: vm, id: proto_index);
     }
     Native(..) => {
       return 0_u8;

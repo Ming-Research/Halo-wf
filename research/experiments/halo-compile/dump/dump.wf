@@ -1408,7 +1408,8 @@ fn main(inputs: Inputs) -> status: ExitStatus pure waits {
     }
   }
   let n = source.inner.len;
-  let compiled = halo::compile::compile(heap: &heap, chunk_name: &chunk_name[0_u64..6_u64], source: &source.inner[0_u64..n]);
+  let bases = halo::value::Bases(code: 0_u64, consts: 0_u64, protos: 0_u32, debug: 0_u64, locals: 0_u64, upvalues: 0_u64);
+  let compiled = halo::compile::compile(heap: &heap, chunk_name: &chunk_name[0_u64..6_u64], source: &source.inner[0_u64..n], bases: bases);
   match move compiled {
     Ok(value: script) => {
       dump_script(heap: &heap, script: &script, out: &out);

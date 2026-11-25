@@ -31,7 +31,7 @@ enum Capture {
 fn create_closure(code: &Box<Slots<Cell>>, vm: &Vm, stack: &Box<Slots<Value>>, dest: u64, proto: u32, pc: u64, base: u64) -> r: Created reads(code), writes(vm), writes(stack) contract {
   ensures stack^.inner.len == entry(stack)^.inner.len;
 } {
-  let pi = cvt::<u32, u64>(proto);
+  let pi = proto_slot(vm: vm, id: proto);
   if pi < vm^.protos.inner.len {
     let count = cvt::<u8, u64>(vm^.protos.inner[pi].nups);
     let ups = box_slots_new::<u32>(capacity: count);

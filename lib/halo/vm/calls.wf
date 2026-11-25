@@ -5,6 +5,9 @@ alias Value = pkg::value::Value;
 alias Cell = pkg::value::Cell;
 alias Proto = pkg::value::Proto;
 alias Script = pkg::value::Script;
+alias Program = pkg::value::Program;
+alias Bases = pkg::value::Bases;
+alias Chunk = pkg::value::Chunk;
 alias num_of = pkg::value::num_of;
 alias tab_of = pkg::value::tab_of;
 alias str_of = pkg::value::str_of;
@@ -17,6 +20,8 @@ alias PendingCall = pkg::execution::PendingCall;
 const calls_text_0: Array<u8, 14> = "stack overflow";
 
 const calls_text_1: Array<u8, 19> = "invalid Lua closure";
+
+const calls_text_flushed: Array<u8, 46> = "attempt to call a function of a flushed script";
 
 const calls_text_2: Array<u8, 14> = "stack overflow";
 
@@ -219,7 +224,11 @@ fn enter_lua(vm: &Vm, stack: &Box<Slots<Value>>, h: u32, func: u64, argc: u64, w
       let pi = vm^.protos.inner.len;
       match callee {
         Lua(proto: lua_proto) => {
-          set pi = cvt::<u32, u64>(lua_proto);
+          if lua_proto < vm^.proto_floor {
+            let ignored = raise_text(vm: vm, text: &calls_text_flushed[0_u64..46_u64]);
+            return Step::Error();
+          }
+          set pi = proto_slot(vm: vm, id: lua_proto);
         }
         Native(..) => {
         }
@@ -556,56 +565,9 @@ fn prepare_inner<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<
   }
 }
 
-fn start<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, proto: u32, argc: u64, budget: u64) -> r: Outcome reads(script), writes(stack), writes(vm), writes(env) {
+fn start<interface Host<E>>(program: &Program, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, proto: u32, argc: u64, budget: u64) -> r: Outcome reads(program), writes(stack), writes(vm), writes(env) {
+  doc "Calls the prototype numbered proto of the installed program with arguments at stack[1..1+argc), returning results at slot zero. The program and the VM's tables of it are not copied: they hold every script installed, and a closure's prototype number names the same code in every run.";
   reset(vm: vm, stack: stack);
-  let ps = box_slots_new::<Proto>(capacity: script^.protos.inner.len);
-  for (i in 0_u64..script^.protos.inner.len) {
-    if ps.inner.len < ps.inner.cap {
-      let p = script^.protos.inner[i];
-      place_back(window: &ps.inner, value: p);
-    }
-  }
-  set vm^.protos = move ps;
-  let lines = box_slots_new::<u32>(capacity: script^.lineinfo.inner.len);
-  for (i in 0_u64..script^.lineinfo.inner.len) {
-    if lines.inner.len < lines.inner.cap {
-      let line = script^.lineinfo.inner[i];
-      place_back(window: &lines.inner, value: line);
-    }
-  }
-  set vm^.lineinfo = move lines;
-  let name = box_slots_new::<u8>(capacity: script^.source.inner.len);
-  for (i in 0_u64..script^.source.inner.len) {
-    if name.inner.len < name.inner.cap {
-      let b = script^.source.inner[i];
-      place_back(window: &name.inner, value: b);
-    }
-  }
-  set vm^.source = move name;
-  let debug_names = box_slots_new::<u8>(capacity: script^.debug_names.inner.len);
-  for (i in 0_u64..script^.debug_names.inner.len) {
-    if debug_names.inner.len < debug_names.inner.cap {
-      let record = script^.debug_names.inner[i];
-      place_back(window: &debug_names.inner, value: record);
-    }
-  }
-  set vm^.debug_names = move debug_names;
-  let local_variables = box_slots_new::<LocalVariable>(capacity: script^.local_variables.inner.len);
-  for (i in 0_u64..script^.local_variables.inner.len) {
-    if local_variables.inner.len < local_variables.inner.cap {
-      let record = script^.local_variables.inner[i];
-      place_back(window: &local_variables.inner, value: record);
-    }
-  }
-  set vm^.local_variables = move local_variables;
-  let upvalue_names = box_slots_new::<DebugName>(capacity: script^.upvalue_names.inner.len);
-  for (i in 0_u64..script^.upvalue_names.inner.len) {
-    if upvalue_names.inner.len < upvalue_names.inner.cap {
-      let record = script^.upvalue_names.inner[i];
-      place_back(window: &upvalue_names.inner, value: record);
-    }
-  }
-  set vm^.upvalue_names = move upvalue_names;
   set vm^.budget = budget;
   let empty = array_filled::<u32, 0>(value: 0_u32);
   let cl = pkg::heap::new_closure(heap: &vm^.heap, proto: proto, upvals: &empty[0_u64..0_u64]);
@@ -617,17 +579,17 @@ fn start<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm,
   let limit_due = band(limited, exceeded);
   let allocation_due = bor(limit_due, allocated);
   if bor(vm^.heap.gc_stress, allocation_due) {
-    let collected = collect_if_due(vm: vm, stack: stack, consts: &script^.consts);
+    let collected = collect_if_due(vm: vm, stack: stack, consts: &program^.consts);
     if bnot(collected) {
       return Outcome::Error();
     }
   }
   let atom0 = False();
-  let step = prepare::<Host<E>>(code: &script^.code, consts: &script^.consts, vm: vm, stack: stack, env: env, func: 0_u64, argc: argc, wanted: -1_i64, return_pc: 0_u64, base: 0_u64, kbase: 0_u64, tail: atom0);
-  return drive::<Host<E>>(script: script, stack: stack, vm: vm, env: env, step: step);
+  let step = prepare::<Host<E>>(code: &program^.code, consts: &program^.consts, vm: vm, stack: stack, env: env, func: 0_u64, argc: argc, wanted: -1_i64, return_pc: 0_u64, base: 0_u64, kbase: 0_u64, tail: atom0);
+  return drive::<Host<E>>(program: program, stack: stack, vm: vm, env: env, step: step);
 }
 
-fn resume<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, budget: u64) -> r: Outcome reads(script), writes(stack), writes(vm), writes(env) {
+fn resume<interface Host<E>>(program: &Program, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, budget: u64) -> r: Outcome reads(program), writes(stack), writes(vm), writes(env) {
   if vm^.call_pending {
     set vm^.call_pending = False();
     let ignored = raise_text(vm: vm, text: &calls_text_pending[0_u64..22_u64]);
@@ -639,7 +601,7 @@ fn resume<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm
     set vm^.suspended = False();
   }
   let step = Step::Jump(pc: vm^.saved_pc, base: vm^.saved_base, kbase: vm^.saved_kbase);
-  return drive::<Host<E>>(script: script, stack: stack, vm: vm, env: env, step: step);
+  return drive::<Host<E>>(program: program, stack: stack, vm: vm, env: env, step: step);
 }
 
 fn suspension(vm: &Vm) -> r: Outcome reads(vm) {
@@ -650,9 +612,9 @@ fn suspension(vm: &Vm) -> r: Outcome reads(vm) {
   return Outcome::Budget();
 }
 
-fn drive<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, step: Step) -> r: Outcome reads(script), writes(stack), writes(vm), writes(env) {
+fn drive<interface Host<E>>(program: &Program, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, step: Step) -> r: Outcome reads(program), writes(stack), writes(vm), writes(env) {
   doc "Consumes coroutine transfers only after native callback entries return, restoring their complete parked stack before exchanging execution owners. Callback activation completions are resolved before a coroutine root returns to its resumer. A completion that leaves the finishing coroutine installed found no live resumer to exchange with, which only a broken collector invariant produces; the run ends with an error instead of completing the same coroutine again.";
-  let outcome = dispatch_step::<Host<E>>(code: &script^.code, consts: &script^.consts, stack: stack, vm: vm, env: env, step: step);
+  let outcome = dispatch_step::<Host<E>>(code: &program^.code, consts: &program^.consts, stack: stack, vm: vm, env: env, step: step);
   loop {
     match outcome {
       HostStopped() => {
@@ -672,7 +634,7 @@ fn drive<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm,
       if accounted {
         if vm^.heap.limit > 0_u64 {
           if vm^.heap.bytes > vm^.heap.limit {
-            set accounted = collect_if_due(vm: vm, stack: stack, consts: &script^.consts);
+            set accounted = collect_if_due(vm: vm, stack: stack, consts: &program^.consts);
           }
         }
       }
@@ -686,7 +648,7 @@ fn drive<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm,
         set vm^.transfer = pkg::execution::coroutine_call_empty();
         let ignored = raise_text(vm: vm, text: &collection_memory_error[0_u64..17_u64]);
         let exhausted = unwind(vm: vm, stack: stack);
-        set outcome = dispatch_step::<Host<E>>(code: &script^.code, consts: &script^.consts, stack: stack, vm: vm, env: env, step: exhausted);
+        set outcome = dispatch_step::<Host<E>>(code: &program^.code, consts: &program^.consts, stack: stack, vm: vm, env: env, step: exhausted);
         match outcome {
           Budget() => {
             continue;
@@ -712,7 +674,7 @@ fn drive<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm,
               set vm^.suspended = False();
             }
             let transferred = coroutine_transfer(vm: vm, stack: stack);
-            set outcome = dispatch_step::<Host<E>>(code: &script^.code, consts: &script^.consts, stack: stack, vm: vm, env: env, step: transferred);
+            set outcome = dispatch_step::<Host<E>>(code: &program^.code, consts: &program^.consts, stack: stack, vm: vm, env: env, step: transferred);
             continue;
           }
         }
@@ -734,16 +696,16 @@ fn drive<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm,
               let ignored = raise_text(vm: vm, text: &calls_text_resumer[0_u64..25_u64]);
               return Outcome::Error();
             }
-            set outcome = dispatch_step::<Host<E>>(code: &script^.code, consts: &script^.consts, stack: stack, vm: vm, env: env, step: completed);
+            set outcome = dispatch_step::<Host<E>>(code: &program^.code, consts: &program^.consts, stack: stack, vm: vm, env: env, step: completed);
             continue;
           }
           return Outcome::Done(count: countv);
         }
         let frame = take_back(window: &vm^.callbacks.inner);
         complete_callback(vm: vm, stack: stack, frame: frame, count: countv);
-        let continued = continue_callback::<Host<E>>(code: &script^.code, consts: &script^.consts, stack: stack, vm: vm, env: env, plan: frame.plan);
+        let continued = continue_callback::<Host<E>>(code: &program^.code, consts: &program^.consts, stack: stack, vm: vm, env: env, plan: frame.plan);
         note_plan_raise(vm: vm, step: continued, plan: frame.plan);
-        set outcome = dispatch_step::<Host<E>>(code: &script^.code, consts: &script^.consts, stack: stack, vm: vm, env: env, step: continued);
+        set outcome = dispatch_step::<Host<E>>(code: &program^.code, consts: &program^.consts, stack: stack, vm: vm, env: env, step: continued);
       }
       Error() => {
         if vm^.callbacks.inner.len == 0_u64 {
@@ -755,7 +717,7 @@ fn drive<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm,
               let ignored = raise_text(vm: vm, text: &calls_text_resumer[0_u64..25_u64]);
               return Outcome::Error();
             }
-            set outcome = dispatch_step::<Host<E>>(code: &script^.code, consts: &script^.consts, stack: stack, vm: vm, env: env, step: completed);
+            set outcome = dispatch_step::<Host<E>>(code: &program^.code, consts: &program^.consts, stack: stack, vm: vm, env: env, step: completed);
             continue;
           }
           return Outcome::Error();
@@ -767,12 +729,12 @@ fn drive<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm,
         let raised = Step::Error();
         if frame.plan.kind == 4_u8 {
           let failed = True();
-          set raised = resume_library::<Host<E>>(code: &script^.code, consts: &script^.consts, stack: stack, vm: vm, env: env, plan: frame.plan, failed: failed);
+          set raised = resume_library::<Host<E>>(code: &program^.code, consts: &program^.consts, stack: stack, vm: vm, env: env, plan: frame.plan, failed: failed);
         } else {
           set raised = unwind(vm: vm, stack: stack);
         }
         note_plan_raise(vm: vm, step: raised, plan: frame.plan);
-        set outcome = dispatch_step::<Host<E>>(code: &script^.code, consts: &script^.consts, stack: stack, vm: vm, env: env, step: raised);
+        set outcome = dispatch_step::<Host<E>>(code: &program^.code, consts: &program^.consts, stack: stack, vm: vm, env: env, step: raised);
       }
     }
   }
@@ -833,7 +795,7 @@ fn resume_pending(stack: &Box<Slots<Value>>, vm: &Vm, budget: u64) -> r: Pending
   return call;
 }
 
-fn complete_call<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, results: &[Value], budget: u64) -> r: Outcome reads(script), reads(results), writes(stack), writes(vm), writes(env) {
+fn complete_call<interface Host<E>>(program: &Program, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, results: &[Value], budget: u64) -> r: Outcome reads(program), reads(results), writes(stack), writes(vm), writes(env) {
   if bnot(vm^.call_pending) {
     let ignored = raise_text(vm: vm, text: &calls_text_no_call[0_u64..23_u64]);
     return Outcome::Error();
@@ -865,10 +827,10 @@ fn complete_call<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, 
   if bnot(finished) {
     set step = finish(vm: vm, stack: stack, dest: func, wanted: call.wanted, return_pc: call.return_pc, src: func, count: count);
   }
-  return drive::<Host<E>>(script: script, stack: stack, vm: vm, env: env, step: step);
+  return drive::<Host<E>>(program: program, stack: stack, vm: vm, env: env, step: step);
 }
 
-fn fail_call<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, error: Value, budget: u64) -> r: Outcome reads(script), writes(stack), writes(vm), writes(env) {
+fn fail_call<interface Host<E>>(program: &Program, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, error: Value, budget: u64) -> r: Outcome reads(program), writes(stack), writes(vm), writes(env) {
   doc "Raises a pending host error and sends its catch step to the driver, including any recorded post-catch lookup.";
   if bnot(vm^.call_pending) {
     let ignored = raise_text(vm: vm, text: &calls_text_no_call[0_u64..23_u64]);
@@ -891,7 +853,7 @@ fn fail_call<interface Host<E>>(script: &Script, stack: &Box<Slots<Value>>, vm: 
     Budget() => {
     }
   }
-  return drive::<Host<E>>(script: script, stack: stack, vm: vm, env: env, step: step);
+  return drive::<Host<E>>(program: program, stack: stack, vm: vm, env: env, step: step);
 }
 
 const calls_text_pending: Array<u8, 22> = "a host call is pending";
@@ -1013,4 +975,200 @@ fn checked_step(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, stack: &Box
       return Err<Cursor, Outcome>(error: budget);
     }
   }
+}
+
+fn append_cells(out: &Box<Slots<Cell>>, src: &Box<Slots<Cell>>) -> r: unit reads(src), writes(out) {
+  doc "Appends every item of src to out, growing out once.";
+  let need = out^.inner.len +sat src^.inner.len;
+  if need > out^.inner.cap {
+    let doubled = out^.inner.cap +sat out^.inner.cap;
+    grow(cell: out, capacity: imax(need, doubled));
+  }
+  for (i in 0_u64..src^.inner.len) {
+    if out^.inner.len < out^.inner.cap {
+      let item = src^.inner[i];
+      place_back(window: &out^.inner, value: item);
+    }
+  }
+  return unit;
+}
+
+fn append_values(out: &Box<Slots<Value>>, src: &Box<Slots<Value>>) -> r: unit reads(src), writes(out) {
+  doc "Appends every item of src to out, growing out once.";
+  let need = out^.inner.len +sat src^.inner.len;
+  if need > out^.inner.cap {
+    let doubled = out^.inner.cap +sat out^.inner.cap;
+    grow(cell: out, capacity: imax(need, doubled));
+  }
+  for (i in 0_u64..src^.inner.len) {
+    if out^.inner.len < out^.inner.cap {
+      let item = src^.inner[i];
+      place_back(window: &out^.inner, value: item);
+    }
+  }
+  return unit;
+}
+
+fn append_protos(out: &Box<Slots<Proto>>, src: &Box<Slots<Proto>>) -> r: unit reads(src), writes(out) {
+  doc "Appends every item of src to out, growing out once.";
+  let need = out^.inner.len +sat src^.inner.len;
+  if need > out^.inner.cap {
+    let doubled = out^.inner.cap +sat out^.inner.cap;
+    grow(cell: out, capacity: imax(need, doubled));
+  }
+  for (i in 0_u64..src^.inner.len) {
+    if out^.inner.len < out^.inner.cap {
+      let item = src^.inner[i];
+      place_back(window: &out^.inner, value: item);
+    }
+  }
+  return unit;
+}
+
+fn append_lines(out: &Box<Slots<u32>>, src: &Box<Slots<u32>>) -> r: unit reads(src), writes(out) {
+  doc "Appends every item of src to out, growing out once.";
+  let need = out^.inner.len +sat src^.inner.len;
+  if need > out^.inner.cap {
+    let doubled = out^.inner.cap +sat out^.inner.cap;
+    grow(cell: out, capacity: imax(need, doubled));
+  }
+  for (i in 0_u64..src^.inner.len) {
+    if out^.inner.len < out^.inner.cap {
+      let item = src^.inner[i];
+      place_back(window: &out^.inner, value: item);
+    }
+  }
+  return unit;
+}
+
+fn append_bytes(out: &Box<Slots<u8>>, src: &Box<Slots<u8>>) -> r: unit reads(src), writes(out) {
+  doc "Appends every item of src to out, growing out once.";
+  let need = out^.inner.len +sat src^.inner.len;
+  if need > out^.inner.cap {
+    let doubled = out^.inner.cap +sat out^.inner.cap;
+    grow(cell: out, capacity: imax(need, doubled));
+  }
+  for (i in 0_u64..src^.inner.len) {
+    if out^.inner.len < out^.inner.cap {
+      let item = src^.inner[i];
+      place_back(window: &out^.inner, value: item);
+    }
+  }
+  return unit;
+}
+
+fn append_locals(out: &Box<Slots<LocalVariable>>, src: &Box<Slots<LocalVariable>>) -> r: unit reads(src), writes(out) {
+  doc "Appends every item of src to out, growing out once.";
+  let need = out^.inner.len +sat src^.inner.len;
+  if need > out^.inner.cap {
+    let doubled = out^.inner.cap +sat out^.inner.cap;
+    grow(cell: out, capacity: imax(need, doubled));
+  }
+  for (i in 0_u64..src^.inner.len) {
+    if out^.inner.len < out^.inner.cap {
+      let item = src^.inner[i];
+      place_back(window: &out^.inner, value: item);
+    }
+  }
+  return unit;
+}
+
+fn append_names(out: &Box<Slots<DebugName>>, src: &Box<Slots<DebugName>>) -> r: unit reads(src), writes(out) {
+  doc "Appends every item of src to out, growing out once.";
+  let need = out^.inner.len +sat src^.inner.len;
+  if need > out^.inner.cap {
+    let doubled = out^.inner.cap +sat out^.inner.cap;
+    grow(cell: out, capacity: imax(need, doubled));
+  }
+  for (i in 0_u64..src^.inner.len) {
+    if out^.inner.len < out^.inner.cap {
+      let item = src^.inner[i];
+      place_back(window: &out^.inner, value: item);
+    }
+  }
+  return unit;
+}
+
+fn bases(program: &Program, vm: &Vm) -> r: Bases reads(program), reads(vm) {
+  doc "Where the next script compiled for this program starts: the sizes of the program's code and constants, the next prototype number, and the sizes of the VM's debug tables. The compiler gives a script absolute positions from these, and install appends it there.";
+  let protos = vm^.proto_floor +sat cvt.wrap::<u64, u32>(vm^.protos.inner.len);
+  return Bases(code: program^.code.inner.len, consts: program^.consts.inner.len, protos: protos, debug: vm^.debug_names.inner.len, locals: vm^.local_variables.inner.len, upvalues: vm^.upvalue_names.inner.len);
+}
+
+fn install(program: &Program, vm: &Vm, script: &Script) -> r: u32 reads(script), writes(program), writes(vm) {
+  doc "Appends a script compiled from bases(program, vm) to the program and the VM's tables, registers its chunk name by where its code starts, and returns the number of its main prototype. Nothing else changes, so every earlier script keeps its code, constants and prototype numbers.";
+  let entry = vm^.proto_floor +sat cvt.wrap::<u64, u32>(vm^.protos.inner.len);
+  let name = DebugName(offset: vm^.source.inner.len, length: script^.source.inner.len);
+  let chunk = Chunk(start: program^.code.inner.len, name: name);
+  append_cells(out: &program^.code, src: &script^.code);
+  append_values(out: &program^.consts, src: &script^.consts);
+  append_protos(out: &vm^.protos, src: &script^.protos);
+  append_lines(out: &vm^.lineinfo, src: &script^.lineinfo);
+  append_bytes(out: &vm^.source, src: &script^.source);
+  append_bytes(out: &vm^.debug_names, src: &script^.debug_names);
+  append_locals(out: &vm^.local_variables, src: &script^.local_variables);
+  append_names(out: &vm^.upvalue_names, src: &script^.upvalue_names);
+  let wanted = vm^.chunks.inner.len +sat 1_u64;
+  if wanted > vm^.chunks.inner.cap {
+    let doubled = vm^.chunks.inner.cap +sat vm^.chunks.inner.cap;
+    grow(cell: &vm^.chunks, capacity: imax(wanted, doubled));
+  }
+  if vm^.chunks.inner.len < vm^.chunks.inner.cap {
+    place_back(window: &vm^.chunks.inner, value: chunk);
+  }
+  return entry;
+}
+
+fn clear_program(program: &Program, vm: &Vm) -> r: unit writes(program), writes(vm) {
+  doc "Frees every installed script's code, constants, prototypes and debug tables. Prototype numbers are never reused: proto_floor moves past the freed ones, so calling a closure of a freed script raises an error instead of running another script's code. Call it only while no run is active.";
+  set vm^.proto_floor = vm^.proto_floor +sat cvt.wrap::<u64, u32>(vm^.protos.inner.len);
+  let code = box_slots_new::<Cell>(capacity: 0_u64);
+  set program^.code = move code;
+  let consts = box_slots_new::<Value>(capacity: 0_u64);
+  set program^.consts = move consts;
+  let protos = box_slots_new::<Proto>(capacity: 0_u64);
+  set vm^.protos = move protos;
+  let lines = box_slots_new::<u32>(capacity: 0_u64);
+  set vm^.lineinfo = move lines;
+  let source = box_slots_new::<u8>(capacity: 0_u64);
+  set vm^.source = move source;
+  let debug_names = box_slots_new::<u8>(capacity: 0_u64);
+  set vm^.debug_names = move debug_names;
+  let local_variables = box_slots_new::<LocalVariable>(capacity: 0_u64);
+  set vm^.local_variables = move local_variables;
+  let upvalue_names = box_slots_new::<DebugName>(capacity: 0_u64);
+  set vm^.upvalue_names = move upvalue_names;
+  let chunks = box_slots_new::<Chunk>(capacity: 0_u64);
+  set vm^.chunks = move chunks;
+  return unit;
+}
+
+fn chunk_name_at(vm: &Vm, pc: u64) -> r: DebugName reads(vm) {
+  doc "The name of the chunk whose code holds pc: of the installed chunks, which start in increasing order, the last one that starts at or before pc; an empty name when there is none.";
+  let lo = 0_u64;
+  let hi = vm^.chunks.inner.len;
+  loop {
+    if lo >= hi {
+      break;
+    }
+    let span = hi -sat lo;
+    let half = span / 2_u64;
+    let mid = lo +sat half;
+    if mid < vm^.chunks.inner.len {
+      if vm^.chunks.inner[mid].start <= pc {
+        set lo = mid +sat 1_u64;
+      } else {
+        set hi = mid;
+      }
+    } else {
+      break;
+    }
+  }
+  if lo > 0_u64 {
+    let last = lo -sat 1_u64;
+    if last < vm^.chunks.inner.len {
+      return vm^.chunks.inner[last].name;
+    }
+  }
+  return DebugName(offset: 0_u64, length: 0_u64);
 }

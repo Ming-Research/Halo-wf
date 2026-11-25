@@ -2,9 +2,10 @@ alias Value = pkg::value::Value;
 alias Cell = pkg::value::Cell;
 alias Proto = pkg::value::Proto;
 alias Script = pkg::value::Script;
+alias Bases = pkg::value::Bases;
 alias Heap = pkg::heap::Heap;
 
-fn compile(heap: &Heap, chunk_name: &[u8], source: &[u8]) -> result_value: Result<Script, CompileError> reads(chunk_name), reads(source), writes(heap) {
+fn compile(heap: &Heap, chunk_name: &[u8], source: &[u8], bases: Bases) -> result_value: Result<Script, CompileError> reads(chunk_name), reads(source), writes(heap) {
   doc "The public Lua 5.1 compile path: lex, parse and generate with PUC expression descriptors, verify, then assemble cells. Strings and names are interned in the supplied heap; compilation does not collect that heap.";
   let input = box_slots_new::<u8>(capacity: 0_u64);
   text(buf: &input, s: source);
@@ -52,5 +53,5 @@ fn compile(heap: &Heap, chunk_name: &[u8], source: &[u8]) -> result_value: Resul
     let error = CompileError(line: arg_205, message: move result);
     return Err<Script, CompileError>(error: move error);
   }
-  return assemble(p: &p, heap: heap);
+  return assemble(p: &p, heap: heap, bases: bases);
 }
