@@ -1450,18 +1450,41 @@ fn describe_operand(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm
 
 const state_flushed_call: Array<u8, 46> = "attempt to call a function of a flushed script";
 
+fn flushed_call_error(vm: &Vm, return_pc: u64) -> r: Bool writes(vm) {
+  doc "The error for calling a Lua function whose script was flushed, which luaG_runerror raises in the calling cell: located in the Lua caller as call_type_error locates a call error there, and bare through a pcall marker or a callback. return_pc is the point after the call cell.";
+  let activation = vm^.activation;
+  let saved_plan = vm^.callback_plan;
+  let count = vm^.frames.inner.len;
+  if count > 0_u64 {
+    let last = count - 1_u64;
+    let frame = vm^.frames.inner[last];
+    if frame.activation == activation {
+      if frame.closure != no_handle {
+        let plan = saved_plan;
+        set plan.pc = return_pc;
+        set plan.base = frame.base;
+        set plan.kbase = frame.kbase;
+        set plan.kind = 0_u8;
+        set vm^.callback_plan = plan;
+      }
+    } else {
+      let nested = frame.activation +sat 1_u32;
+      if nested == activation {
+        let plan = vm^.callback_plan;
+        if plan.kind == 3_u8 {
+          set vm^.activation = frame.activation;
+        }
+      }
+    }
+  }
+  let failed = raise_text(vm: vm, text: &state_flushed_call[0_u64..46_u64]);
+  locate_type_error(vm: vm);
+  set vm^.activation = activation;
+  set vm^.callback_plan = saved_plan;
+  return failed;
+}
+
 fn call_type_error(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, v: Value, func: u64, return_pc: u64) -> r: Bool reads(code), reads(consts), writes(vm) {
-  let located = False();
-  return call_error(code: code, consts: consts, vm: vm, v: v, func: func, return_pc: return_pc, flushed: located);
-}
-
-fn flushed_call_error(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, v: Value, func: u64, return_pc: u64) -> r: Bool reads(code), reads(consts), writes(vm) {
-  doc "The error for calling a Lua function whose script was flushed: luaG_runerror's text, located as call_type_error locates a call error, in the Lua caller, and bare through a pcall or a callback.";
-  let flushed = True();
-  return call_error(code: code, consts: consts, vm: vm, v: v, func: func, return_pc: return_pc, flushed: flushed);
-}
-
-fn call_error(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, v: Value, func: u64, return_pc: u64, flushed: Bool) -> r: Bool reads(code), reads(consts), writes(vm) {
   doc "ldo.c tryfuncTM describes CALL/TAILCALL's function slot. CALL's fast path installs no callback plan, so an actual Lua caller supplies return_pc for the error location; a pcall marker is a native frame. TFORLOOP uses A+3 in its Lua caller even though Halo invokes the iterator through a nested activation; builtin callbacks have no Lua operand.";
   let reg = unlimited;
   let activation = vm^.activation;
@@ -1497,13 +1520,7 @@ fn call_error(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, v: V
       }
     }
   }
-  let failed = False();
-  if flushed {
-    set failed = raise_text(vm: vm, text: &state_flushed_call[0_u64..46_u64]);
-    locate_type_error(vm: vm);
-  } else {
-    set failed = type_error(code: code, consts: consts, vm: vm, v: v, op: 2_u8, reg: reg);
-  }
+  let failed = type_error(code: code, consts: consts, vm: vm, v: v, op: 2_u8, reg: reg);
   set vm^.activation = activation;
   set vm^.callback_plan = saved_plan;
   return failed;
