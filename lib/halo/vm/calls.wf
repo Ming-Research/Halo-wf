@@ -21,8 +21,6 @@ const calls_text_0: Array<u8, 14> = "stack overflow";
 
 const calls_text_1: Array<u8, 19> = "invalid Lua closure";
 
-const calls_text_flushed: Array<u8, 46> = "attempt to call a function of a flushed script";
-
 const calls_text_2: Array<u8, 14> = "stack overflow";
 
 const calls_text_3: Array<u8, 14> = "value expected";
@@ -215,6 +213,24 @@ fn unwind(vm: &Vm, stack: &Box<Slots<Value>>) -> r: Step writes(vm), writes(stac
   }
 }
 
+fn closure_flushed(vm: &Vm, h: u32) -> r: Bool reads(vm) {
+  doc "True for a live Lua closure whose prototype number is below the VM's floor: its script was flushed.";
+  let hi = cvt::<u32, u64>(h);
+  if hi < vm^.heap.closures.inner.len {
+    if vm^.heap.closures.inner[hi].live {
+      let callee = vm^.heap.closures.inner[hi].payload.callee;
+      match callee {
+        Lua(proto: lua_proto) => {
+          return lua_proto < vm^.proto_floor;
+        }
+        Native(..) => {
+        }
+      }
+    }
+  }
+  return False();
+}
+
 fn enter_lua(vm: &Vm, stack: &Box<Slots<Value>>, h: u32, func: u64, argc: u64, wanted: i64, return_pc: u64, tail: Bool) -> r: Step writes(vm), writes(stack) {
   doc "Pushes a Lua frame. A tail call replaces the calling frame and keeps its destination, result count and return point, and the new frame counts the calls it replaced as OP_TAILCALL increments ci->tailcalls: the replaced frame's count plus one.";
   let hi = cvt::<u32, u64>(h);
@@ -225,7 +241,7 @@ fn enter_lua(vm: &Vm, stack: &Box<Slots<Value>>, h: u32, func: u64, argc: u64, w
       match callee {
         Lua(proto: lua_proto) => {
           if lua_proto < vm^.proto_floor {
-            let ignored = raise_text(vm: vm, text: &calls_text_flushed[0_u64..46_u64]);
+            let ignored = raise_text(vm: vm, text: &state_flushed_call[0_u64..46_u64]);
             return Step::Error();
           }
           set pi = proto_slot(vm: vm, id: lua_proto);
@@ -395,6 +411,10 @@ fn prepare_inner<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<
     }
     match view {
       Lua(h: bound_h_2) => {
+        if closure_flushed(vm: vm, h: bound_h_2) {
+          let ignored = flushed_call_error(code: code, consts: consts, vm: vm, v: v, func: fslot, return_pc: return_pc);
+          return Step::Error();
+        }
         return enter_lua(vm: vm, stack: stack, h: bound_h_2, func: fslot, argc: nargs, wanted: nr, return_pc: return_pc, tail: tailing);
       }
       Native(id: bound_id_1) => {

@@ -1447,7 +1447,18 @@ fn describe_operand(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm
   return True();
 }
 
+const state_flushed_call: Array<u8, 46> = "attempt to call a function of a flushed script";
+
 fn call_type_error(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, v: Value, func: u64, return_pc: u64) -> r: Bool reads(code), reads(consts), writes(vm) {
+  return call_error(code: code, consts: consts, vm: vm, v: v, func: func, return_pc: return_pc, flushed: False());
+}
+
+fn flushed_call_error(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, v: Value, func: u64, return_pc: u64) -> r: Bool reads(code), reads(consts), writes(vm) {
+  doc "The error for calling a Lua function whose script was flushed: luaG_runerror's text, located as call_type_error locates a call error, in the Lua caller, and bare through a pcall or a callback.";
+  return call_error(code: code, consts: consts, vm: vm, v: v, func: func, return_pc: return_pc, flushed: True());
+}
+
+fn call_error(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, v: Value, func: u64, return_pc: u64, flushed: Bool) -> r: Bool reads(code), reads(consts), writes(vm) {
   doc "ldo.c tryfuncTM describes CALL/TAILCALL's function slot. CALL's fast path installs no callback plan, so an actual Lua caller supplies return_pc for the error location; a pcall marker is a native frame. TFORLOOP uses A+3 in its Lua caller even though Halo invokes the iterator through a nested activation; builtin callbacks have no Lua operand.";
   let reg = unlimited;
   let activation = vm^.activation;
@@ -1483,7 +1494,13 @@ fn call_type_error(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm,
       }
     }
   }
-  let failed = type_error(code: code, consts: consts, vm: vm, v: v, op: 2_u8, reg: reg);
+  let failed = False();
+  if flushed {
+    set failed = raise_text(vm: vm, text: &state_flushed_call[0_u64..46_u64]);
+    locate_type_error(vm: vm);
+  } else {
+    set failed = type_error(code: code, consts: consts, vm: vm, v: v, op: 2_u8, reg: reg);
+  }
   set vm^.activation = activation;
   set vm^.callback_plan = saved_plan;
   return failed;
