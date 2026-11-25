@@ -8,9 +8,12 @@ PY ?= python3
 ROOT := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 BUILD := $(ROOT)/build
 
-# The live design trees: every root node file directly under design/ except
-# the log and the constitution, so a tree is linted in the same change that
-# adds it.
+# The live design trees of Design-skill's form: every root node file directly
+# under design/ except the log and the constitution, so a tree is linted in
+# the same change that adds it. Halo's tree is now in the form of wf-agents'
+# engine (design/decisions/, which the engine checks), and no node file of the
+# older form is left, so this list is empty and design-lint and design-ready
+# pass with "no live tree".
 DESIGN_TREES := $(filter-out log constitution,$(basename $(notdir $(wildcard $(ROOT)/design/*.md))))
 
 # The revision a design-tree change is reviewed against. CI selects it per
@@ -218,8 +221,10 @@ msgpack: $(PIN) $(WHITEFOOTC) reference-lua FORCE
 		--redis-src $(REFERENCE_LUA) --lua-lib $(REFERENCE_LUA)/liblua.a \
 		--scratch $(MSGPACK_SCRATCH) --generated $(MSGPACK_GENERATED)
 
-# The design skill's own tests, then the lint of every live tree; until the
-# first tree lands there is nothing to lint.
+# The design skill's own tests, then the lint of every live tree of the older
+# form. None is left since the tree moved to design/decisions/, so both
+# targets print "no live tree" and pass; design/log.md stays as the record of
+# the older tree's changes.
 design-lint:
 	@$(PY) -B -m unittest discover -s $(ROOT)/design/skill -p 'test_lint.py'
 	@$(if $(DESIGN_TREES),$(PY) -B $(ROOT)/design/skill/lint.py --root $(ROOT)/design --trees $(DESIGN_TREES) --base "$(DESIGN_REVIEW_BASE)",echo "design lint: no live tree")

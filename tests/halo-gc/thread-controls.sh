@@ -273,7 +273,8 @@ while IFS='|' read -r label probes file line replacement flags; do
   fi
   # Keep each established isolated observation, entry:exit. For an edge whose
   # omission changes no reply, the owner accepted this observation as its
-  # validation, with the reason recorded (design/halo/heap/collector-validation.md);
+  # validation (decision an-edge-no-reply-shows-is-checked-by-its-probe in
+  # design/decisions/halo/heap/collector.md);
   # for every other edge it is evidence beside the oracle result. A survived
   # row still fails this run, so the report shows it.
   for probe in $probes; do

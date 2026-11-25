@@ -1,9 +1,9 @@
 # Halo-wf's declaration for the engine of wf-agents, read from main as the engine starts: what is Halo's own, which the
 # agents of its works are given and the engine runs. A path is from the root of Halo's checkout.
 
-# The directory that holds Halo's design tree, which the engine looks at on each work's branch. The tree is still in its
-# older form (Design-skill's nodes, design/halo.md and design/halo/, and design/log.md); the engine's form check and its
-# agents read only the entries under design/principles/ and design/decisions/, which it does not have yet.
+# The directory that holds Halo's design tree, which the engine looks at on each work's branch. The tree is in the
+# engine's form: its decisions under design/decisions/, and design/principles/ once the owner writes any. design/log.md
+# stays as the record of the older tree's changes and is not part of the tree.
 tree = "design/"
 
 # Halo's guide for its agents: its goal and priorities, its reference, and its research and checks.
