@@ -19,7 +19,7 @@ public struct ScriptId {
 public struct Engine {
   public vm: Vm;
   public stack: Box<Slots<Value>>;
-  public readonly program: Program;
+  public readonly image: Program;
   public readonly entries: Box<Slots<u32>>;
   public readonly constant_length: u64;
   public readonly pins: Box<Slots<Value>>;
@@ -59,7 +59,7 @@ public fn forget_all(engine: &Engine) -> r: unit writes(engine) doc "Resets and 
 
 public fn reset(engine: &Engine) -> r: unit writes(engine) doc "Closes active upvalues and clears results and suspended execution.";
 
-public fn start<interface Host<E>>(engine: &Engine, env: &E, script: ScriptId, budget: u64) -> r: Outcome writes(engine), writes(env) doc "Starts a cached script with zero arguments and returns the VM outcome. Every compiled script stays in the engine's one program, so a Lua closure kept from another script, held in a global or by pin, runs its own code in this run.";
+public fn start<interface Host<E>>(engine: &Engine, env: &E, script: ScriptId, budget: u64) -> r: Outcome writes(engine), writes(env) doc "Starts a cached script with zero arguments and returns the VM outcome. Every compiled script stays in the engine's one image, so a Lua closure kept from another script, held in a global or by pin, runs its own code in this run.";
 
 public fn resume<interface Host<E>>(engine: &Engine, env: &E, budget: u64) -> r: Outcome writes(engine), writes(env) doc "Resumes a Budget checkpoint with a fresh safepoint budget. HostStopped is terminal until reset/start.";
 

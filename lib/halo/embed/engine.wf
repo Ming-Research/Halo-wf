@@ -34,15 +34,15 @@ fn refresh_roots(engine: &Engine) -> r: unit writes(engine) {
     return unit;
   }
   loop {
-    if engine^.program.consts.inner.len > engine^.constant_length {
-      let dropped = take_back(window: &engine^.program.consts.inner);
+    if engine^.image.consts.inner.len > engine^.constant_length {
+      let dropped = take_back(window: &engine^.image.consts.inner);
     } else {
       break;
     }
   }
   for (i in 0_u64..engine^.pins.inner.len) {
     let v = engine^.pins.inner[i];
-    append_value(out: &engine^.program.consts, value: v);
+    append_value(out: &engine^.image.consts, value: v);
   }
   set engine^.roots_valid = True();
   return unit;
@@ -53,12 +53,12 @@ fn new_engine(limit: u64) -> r: Engine pure {
   let stack = pkg::vm::stack_new(size: 256_u64);
   let code = box_slots_new::<Cell>(capacity: 0_u64);
   let consts = box_slots_new::<Value>(capacity: 0_u64);
-  let program = Program(code: move code, consts: move consts);
+  let image = Program(code: move code, consts: move consts);
   let entries = box_slots_new::<u32>(capacity: 0_u64);
   let pins = box_slots_new::<Value>(capacity: 0_u64);
   let active = None<ScriptId>();
   let no = False();
-  let engine = Engine(vm: move vm, stack: move stack, program: move program, entries: move entries, constant_length: 0_u64, pins: move pins, roots_valid: no, generation: 0_u64, active: active, result_count: 0_u64, resumable: no, calling: no);
+  let engine = Engine(vm: move vm, stack: move stack, image: move image, entries: move entries, constant_length: 0_u64, pins: move pins, roots_valid: no, generation: 0_u64, active: active, result_count: 0_u64, resumable: no, calling: no);
   install_core(engine: &engine);
   pkg::vm::install_libraries(vm: &engine.vm);
   return move engine;
@@ -83,7 +83,7 @@ fn compile(engine: &Engine, chunk_name: &[u8], source: &[u8]) -> r: Result<Scrip
   if engine^.generation == 18446744073709551615_u64 {
     return cache_failure();
   }
-  let at = pkg::vm::bases(program: &engine^.program, vm: &engine^.vm);
+  let at = pkg::vm::bases(image: &engine^.image, vm: &engine^.vm);
   if at.protos > 4000000000_u32 {
     return cache_failure();
   }
@@ -103,15 +103,15 @@ fn compile(engine: &Engine, chunk_name: &[u8], source: &[u8]) -> r: Result<Scrip
         }
         if engine^.entries.inner.len < engine^.entries.inner.cap {
           loop {
-            if engine^.program.consts.inner.len > engine^.constant_length {
-              let dropped = take_back(window: &engine^.program.consts.inner);
+            if engine^.image.consts.inner.len > engine^.constant_length {
+              let dropped = take_back(window: &engine^.image.consts.inner);
             } else {
               break;
             }
           }
-          let entry = pkg::vm::install(program: &engine^.program, vm: &engine^.vm, script: &script);
-          place_back(window: &engine^.entries.inner, value: entry);
-          set engine^.constant_length = engine^.program.consts.inner.len;
+          let main_proto = pkg::vm::install(image: &engine^.image, vm: &engine^.vm, script: &script);
+          place_back(window: &engine^.entries.inner, value: main_proto);
+          set engine^.constant_length = engine^.image.consts.inner.len;
           invalidate_roots(engine: engine);
           let id = ScriptId(slot: n, generation: engine^.generation);
           return Ok<ScriptId, CompileError>(value: id);
@@ -138,7 +138,7 @@ fn reset(engine: &Engine) -> r: unit writes(engine) {
 fn forget_all(engine: &Engine) -> r: unit writes(engine) {
   doc "Frees every compiled script. The prototype numbers they held are never reused, so a Lua function kept from before raises an error when called.";
   reset(engine: engine);
-  pkg::vm::clear_program(program: &engine^.program, vm: &engine^.vm);
+  pkg::vm::clear_program(image: &engine^.image, vm: &engine^.vm);
   let entries = box_slots_new::<u32>(capacity: 0_u64);
   set engine^.entries = move entries;
   set engine^.constant_length = 0_u64;
@@ -188,8 +188,8 @@ fn start<interface Host<E>>(engine: &Engine, env: &E, script: ScriptId, budget: 
     refresh_roots(engine: engine);
     if s < engine^.entries.inner.len {
       set engine^.active = Some<ScriptId>(value: script);
-      let entry = engine^.entries.inner[s];
-      let out = pkg::vm::start::<Host<E>>(program: &engine^.program, stack: &engine^.stack, vm: &engine^.vm, env: env, proto: entry, argc: 0_u64, budget: budget);
+      let main_proto = engine^.entries.inner[s];
+      let out = pkg::vm::start::<Host<E>>(image: &engine^.image, stack: &engine^.stack, vm: &engine^.vm, env: env, proto: main_proto, argc: 0_u64, budget: budget);
       return record(engine: engine, outcome: out);
     }
   }
@@ -205,7 +205,7 @@ fn resume<interface Host<E>>(engine: &Engine, env: &E, budget: u64) -> r: Outcom
       Some(value: id) => {
         if id.generation == engine^.generation {
           refresh_roots(engine: engine);
-          let out = pkg::vm::resume::<Host<E>>(program: &engine^.program, stack: &engine^.stack, vm: &engine^.vm, env: env, budget: budget);
+          let out = pkg::vm::resume::<Host<E>>(image: &engine^.image, stack: &engine^.stack, vm: &engine^.vm, env: env, budget: budget);
           return record(engine: engine, outcome: out);
         }
       }
@@ -238,7 +238,7 @@ fn complete_call<interface Host<E>>(engine: &Engine, env: &E, results: &[Value],
       Some(value: id) => {
         if id.generation == engine^.generation {
           refresh_roots(engine: engine);
-          let out = pkg::vm::complete_call::<Host<E>>(program: &engine^.program, stack: &engine^.stack, vm: &engine^.vm, env: env, results: results, budget: budget);
+          let out = pkg::vm::complete_call::<Host<E>>(image: &engine^.image, stack: &engine^.stack, vm: &engine^.vm, env: env, results: results, budget: budget);
           return record(engine: engine, outcome: out);
         }
       }
@@ -256,7 +256,7 @@ fn fail_call<interface Host<E>>(engine: &Engine, env: &E, error: Value, budget: 
       Some(value: id) => {
         if id.generation == engine^.generation {
           refresh_roots(engine: engine);
-          let out = pkg::vm::fail_call::<Host<E>>(program: &engine^.program, stack: &engine^.stack, vm: &engine^.vm, env: env, error: error, budget: budget);
+          let out = pkg::vm::fail_call::<Host<E>>(image: &engine^.image, stack: &engine^.stack, vm: &engine^.vm, env: env, error: error, budget: budget);
           return record(engine: engine, outcome: out);
         }
       }

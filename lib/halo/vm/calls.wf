@@ -585,7 +585,7 @@ fn prepare_inner<interface Host<E>>(code: &Box<Slots<Cell>>, consts: &Box<Slots<
   }
 }
 
-fn start<interface Host<E>>(program: &Program, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, proto: u32, argc: u64, budget: u64) -> r: Outcome reads(program), writes(stack), writes(vm), writes(env) {
+fn start<interface Host<E>>(image: &Program, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, proto: u32, argc: u64, budget: u64) -> r: Outcome reads(image), writes(stack), writes(vm), writes(env) {
   doc "Calls the prototype numbered proto of the installed program with arguments at stack[1..1+argc), returning results at slot zero. The program and the VM's tables of it are not copied: they hold every script installed, and a closure's prototype number names the same code in every run.";
   reset(vm: vm, stack: stack);
   set vm^.budget = budget;
@@ -599,17 +599,17 @@ fn start<interface Host<E>>(program: &Program, stack: &Box<Slots<Value>>, vm: &V
   let limit_due = band(limited, exceeded);
   let allocation_due = bor(limit_due, allocated);
   if bor(vm^.heap.gc_stress, allocation_due) {
-    let collected = collect_if_due(vm: vm, stack: stack, consts: &program^.consts);
+    let collected = collect_if_due(vm: vm, stack: stack, consts: &image^.consts);
     if bnot(collected) {
       return Outcome::Error();
     }
   }
   let atom0 = False();
-  let step = prepare::<Host<E>>(code: &program^.code, consts: &program^.consts, vm: vm, stack: stack, env: env, func: 0_u64, argc: argc, wanted: -1_i64, return_pc: 0_u64, base: 0_u64, kbase: 0_u64, tail: atom0);
-  return drive::<Host<E>>(program: program, stack: stack, vm: vm, env: env, step: step);
+  let step = prepare::<Host<E>>(code: &image^.code, consts: &image^.consts, vm: vm, stack: stack, env: env, func: 0_u64, argc: argc, wanted: -1_i64, return_pc: 0_u64, base: 0_u64, kbase: 0_u64, tail: atom0);
+  return drive::<Host<E>>(image: image, stack: stack, vm: vm, env: env, step: step);
 }
 
-fn resume<interface Host<E>>(program: &Program, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, budget: u64) -> r: Outcome reads(program), writes(stack), writes(vm), writes(env) {
+fn resume<interface Host<E>>(image: &Program, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, budget: u64) -> r: Outcome reads(image), writes(stack), writes(vm), writes(env) {
   if vm^.call_pending {
     set vm^.call_pending = False();
     let ignored = raise_text(vm: vm, text: &calls_text_pending[0_u64..22_u64]);
@@ -621,7 +621,7 @@ fn resume<interface Host<E>>(program: &Program, stack: &Box<Slots<Value>>, vm: &
     set vm^.suspended = False();
   }
   let step = Step::Jump(pc: vm^.saved_pc, base: vm^.saved_base, kbase: vm^.saved_kbase);
-  return drive::<Host<E>>(program: program, stack: stack, vm: vm, env: env, step: step);
+  return drive::<Host<E>>(image: image, stack: stack, vm: vm, env: env, step: step);
 }
 
 fn suspension(vm: &Vm) -> r: Outcome reads(vm) {
@@ -632,9 +632,9 @@ fn suspension(vm: &Vm) -> r: Outcome reads(vm) {
   return Outcome::Budget();
 }
 
-fn drive<interface Host<E>>(program: &Program, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, step: Step) -> r: Outcome reads(program), writes(stack), writes(vm), writes(env) {
+fn drive<interface Host<E>>(image: &Program, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, step: Step) -> r: Outcome reads(image), writes(stack), writes(vm), writes(env) {
   doc "Consumes coroutine transfers only after native callback entries return, restoring their complete parked stack before exchanging execution owners. Callback activation completions are resolved before a coroutine root returns to its resumer. A completion that leaves the finishing coroutine installed found no live resumer to exchange with, which only a broken collector invariant produces; the run ends with an error instead of completing the same coroutine again.";
-  let outcome = dispatch_step::<Host<E>>(code: &program^.code, consts: &program^.consts, stack: stack, vm: vm, env: env, step: step);
+  let outcome = dispatch_step::<Host<E>>(code: &image^.code, consts: &image^.consts, stack: stack, vm: vm, env: env, step: step);
   loop {
     match outcome {
       HostStopped() => {
@@ -654,7 +654,7 @@ fn drive<interface Host<E>>(program: &Program, stack: &Box<Slots<Value>>, vm: &V
       if accounted {
         if vm^.heap.limit > 0_u64 {
           if vm^.heap.bytes > vm^.heap.limit {
-            set accounted = collect_if_due(vm: vm, stack: stack, consts: &program^.consts);
+            set accounted = collect_if_due(vm: vm, stack: stack, consts: &image^.consts);
           }
         }
       }
@@ -668,7 +668,7 @@ fn drive<interface Host<E>>(program: &Program, stack: &Box<Slots<Value>>, vm: &V
         set vm^.transfer = pkg::execution::coroutine_call_empty();
         let ignored = raise_text(vm: vm, text: &collection_memory_error[0_u64..17_u64]);
         let exhausted = unwind(vm: vm, stack: stack);
-        set outcome = dispatch_step::<Host<E>>(code: &program^.code, consts: &program^.consts, stack: stack, vm: vm, env: env, step: exhausted);
+        set outcome = dispatch_step::<Host<E>>(code: &image^.code, consts: &image^.consts, stack: stack, vm: vm, env: env, step: exhausted);
         match outcome {
           Budget() => {
             continue;
@@ -694,7 +694,7 @@ fn drive<interface Host<E>>(program: &Program, stack: &Box<Slots<Value>>, vm: &V
               set vm^.suspended = False();
             }
             let transferred = coroutine_transfer(vm: vm, stack: stack);
-            set outcome = dispatch_step::<Host<E>>(code: &program^.code, consts: &program^.consts, stack: stack, vm: vm, env: env, step: transferred);
+            set outcome = dispatch_step::<Host<E>>(code: &image^.code, consts: &image^.consts, stack: stack, vm: vm, env: env, step: transferred);
             continue;
           }
         }
@@ -716,16 +716,16 @@ fn drive<interface Host<E>>(program: &Program, stack: &Box<Slots<Value>>, vm: &V
               let ignored = raise_text(vm: vm, text: &calls_text_resumer[0_u64..25_u64]);
               return Outcome::Error();
             }
-            set outcome = dispatch_step::<Host<E>>(code: &program^.code, consts: &program^.consts, stack: stack, vm: vm, env: env, step: completed);
+            set outcome = dispatch_step::<Host<E>>(code: &image^.code, consts: &image^.consts, stack: stack, vm: vm, env: env, step: completed);
             continue;
           }
           return Outcome::Done(count: countv);
         }
         let frame = take_back(window: &vm^.callbacks.inner);
         complete_callback(vm: vm, stack: stack, frame: frame, count: countv);
-        let continued = continue_callback::<Host<E>>(code: &program^.code, consts: &program^.consts, stack: stack, vm: vm, env: env, plan: frame.plan);
+        let continued = continue_callback::<Host<E>>(code: &image^.code, consts: &image^.consts, stack: stack, vm: vm, env: env, plan: frame.plan);
         note_plan_raise(vm: vm, step: continued, plan: frame.plan);
-        set outcome = dispatch_step::<Host<E>>(code: &program^.code, consts: &program^.consts, stack: stack, vm: vm, env: env, step: continued);
+        set outcome = dispatch_step::<Host<E>>(code: &image^.code, consts: &image^.consts, stack: stack, vm: vm, env: env, step: continued);
       }
       Error() => {
         if vm^.callbacks.inner.len == 0_u64 {
@@ -737,7 +737,7 @@ fn drive<interface Host<E>>(program: &Program, stack: &Box<Slots<Value>>, vm: &V
               let ignored = raise_text(vm: vm, text: &calls_text_resumer[0_u64..25_u64]);
               return Outcome::Error();
             }
-            set outcome = dispatch_step::<Host<E>>(code: &program^.code, consts: &program^.consts, stack: stack, vm: vm, env: env, step: completed);
+            set outcome = dispatch_step::<Host<E>>(code: &image^.code, consts: &image^.consts, stack: stack, vm: vm, env: env, step: completed);
             continue;
           }
           return Outcome::Error();
@@ -749,12 +749,12 @@ fn drive<interface Host<E>>(program: &Program, stack: &Box<Slots<Value>>, vm: &V
         let raised = Step::Error();
         if frame.plan.kind == 4_u8 {
           let failed = True();
-          set raised = resume_library::<Host<E>>(code: &program^.code, consts: &program^.consts, stack: stack, vm: vm, env: env, plan: frame.plan, failed: failed);
+          set raised = resume_library::<Host<E>>(code: &image^.code, consts: &image^.consts, stack: stack, vm: vm, env: env, plan: frame.plan, failed: failed);
         } else {
           set raised = unwind(vm: vm, stack: stack);
         }
         note_plan_raise(vm: vm, step: raised, plan: frame.plan);
-        set outcome = dispatch_step::<Host<E>>(code: &program^.code, consts: &program^.consts, stack: stack, vm: vm, env: env, step: raised);
+        set outcome = dispatch_step::<Host<E>>(code: &image^.code, consts: &image^.consts, stack: stack, vm: vm, env: env, step: raised);
       }
     }
   }
@@ -815,7 +815,7 @@ fn resume_pending(stack: &Box<Slots<Value>>, vm: &Vm, budget: u64) -> r: Pending
   return call;
 }
 
-fn complete_call<interface Host<E>>(program: &Program, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, results: &[Value], budget: u64) -> r: Outcome reads(program), reads(results), writes(stack), writes(vm), writes(env) {
+fn complete_call<interface Host<E>>(image: &Program, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, results: &[Value], budget: u64) -> r: Outcome reads(image), reads(results), writes(stack), writes(vm), writes(env) {
   if bnot(vm^.call_pending) {
     let ignored = raise_text(vm: vm, text: &calls_text_no_call[0_u64..23_u64]);
     return Outcome::Error();
@@ -847,10 +847,10 @@ fn complete_call<interface Host<E>>(program: &Program, stack: &Box<Slots<Value>>
   if bnot(finished) {
     set step = finish(vm: vm, stack: stack, dest: func, wanted: call.wanted, return_pc: call.return_pc, src: func, count: count);
   }
-  return drive::<Host<E>>(program: program, stack: stack, vm: vm, env: env, step: step);
+  return drive::<Host<E>>(image: image, stack: stack, vm: vm, env: env, step: step);
 }
 
-fn fail_call<interface Host<E>>(program: &Program, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, error: Value, budget: u64) -> r: Outcome reads(program), writes(stack), writes(vm), writes(env) {
+fn fail_call<interface Host<E>>(image: &Program, stack: &Box<Slots<Value>>, vm: &Vm, env: &E, error: Value, budget: u64) -> r: Outcome reads(image), writes(stack), writes(vm), writes(env) {
   doc "Raises a pending host error and sends its catch step to the driver, including any recorded post-catch lookup.";
   if bnot(vm^.call_pending) {
     let ignored = raise_text(vm: vm, text: &calls_text_no_call[0_u64..23_u64]);
@@ -873,7 +873,7 @@ fn fail_call<interface Host<E>>(program: &Program, stack: &Box<Slots<Value>>, vm
     Budget() => {
     }
   }
-  return drive::<Host<E>>(program: program, stack: stack, vm: vm, env: env, step: step);
+  return drive::<Host<E>>(image: image, stack: stack, vm: vm, env: env, step: step);
 }
 
 const calls_text_pending: Array<u8, 22> = "a host call is pending";
@@ -1109,19 +1109,19 @@ fn append_names(out: &Box<Slots<DebugName>>, src: &Box<Slots<DebugName>>) -> r: 
   return unit;
 }
 
-fn bases(program: &Program, vm: &Vm) -> r: Bases reads(program), reads(vm) {
+fn bases(image: &Program, vm: &Vm) -> r: Bases reads(image), reads(vm) {
   doc "Where the next script compiled for this program starts: the sizes of the program's code and constants, the next prototype number, and the sizes of the VM's debug tables. The compiler gives a script absolute positions from these, and install appends it there.";
   let protos = vm^.proto_floor +sat cvt.wrap::<u64, u32>(vm^.protos.inner.len);
-  return Bases(code: program^.code.inner.len, consts: program^.consts.inner.len, protos: protos, debug: vm^.debug_names.inner.len, locals: vm^.local_variables.inner.len, upvalues: vm^.upvalue_names.inner.len);
+  return Bases(code: image^.code.inner.len, consts: image^.consts.inner.len, protos: protos, debug: vm^.debug_names.inner.len, locals: vm^.local_variables.inner.len, upvalues: vm^.upvalue_names.inner.len);
 }
 
-fn install(program: &Program, vm: &Vm, script: &Script) -> r: u32 reads(script), writes(program), writes(vm) {
-  doc "Appends a script compiled from bases(program, vm) to the program and the VM's tables, registers its chunk name by where its code starts, and returns the number of its main prototype. Nothing else changes, so every earlier script keeps its code, constants and prototype numbers.";
-  let entry = vm^.proto_floor +sat cvt.wrap::<u64, u32>(vm^.protos.inner.len);
+fn install(image: &Program, vm: &Vm, script: &Script) -> r: u32 reads(script), writes(image), writes(vm) {
+  doc "Appends a script compiled from bases(image, vm) to the program and the VM's tables, registers its chunk name by where its code starts, and returns the number of its main prototype. Nothing else changes, so every earlier script keeps its code, constants and prototype numbers.";
+  let main_proto = vm^.proto_floor +sat cvt.wrap::<u64, u32>(vm^.protos.inner.len);
   let name = DebugName(offset: vm^.source.inner.len, length: script^.source.inner.len);
-  let chunk = Chunk(start: program^.code.inner.len, name: name);
-  append_cells(out: &program^.code, src: &script^.code);
-  append_values(out: &program^.consts, src: &script^.consts);
+  let chunk = Chunk(start: image^.code.inner.len, name: name);
+  append_cells(out: &image^.code, src: &script^.code);
+  append_values(out: &image^.consts, src: &script^.consts);
   append_protos(out: &vm^.protos, src: &script^.protos);
   append_lines(out: &vm^.lineinfo, src: &script^.lineinfo);
   append_bytes(out: &vm^.source, src: &script^.source);
@@ -1136,16 +1136,16 @@ fn install(program: &Program, vm: &Vm, script: &Script) -> r: u32 reads(script),
   if vm^.chunks.inner.len < vm^.chunks.inner.cap {
     place_back(window: &vm^.chunks.inner, value: chunk);
   }
-  return entry;
+  return main_proto;
 }
 
-fn clear_program(program: &Program, vm: &Vm) -> r: unit writes(program), writes(vm) {
+fn clear_program(image: &Program, vm: &Vm) -> r: unit writes(image), writes(vm) {
   doc "Frees every installed script's code, constants, prototypes and debug tables. Prototype numbers are never reused: proto_floor moves past the freed ones, so calling a closure of a freed script raises an error instead of running another script's code. Call it only while no run is active.";
   set vm^.proto_floor = vm^.proto_floor +sat cvt.wrap::<u64, u32>(vm^.protos.inner.len);
   let code = box_slots_new::<Cell>(capacity: 0_u64);
-  set program^.code = move code;
+  set image^.code = move code;
   let consts = box_slots_new::<Value>(capacity: 0_u64);
-  set program^.consts = move consts;
+  set image^.consts = move consts;
   let protos = box_slots_new::<Proto>(capacity: 0_u64);
   set vm^.protos = move protos;
   let lines = box_slots_new::<u32>(capacity: 0_u64);

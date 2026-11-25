@@ -986,9 +986,9 @@ fn collect_checkpoint(engine: &Engine, env: &Env, id: ScriptId, omit_root: Bool)
   let budget = engine^.vm.budget;
   set engine^.vm.budget = 1_u64;
   if slot < engine^.entries.inner.len {
-    if engine^.program.consts.inner.len >= 256_u64 {
+    if engine^.image.consts.inner.len >= 256_u64 {
       if engine^.stack.inner.len >= 256_u64 {
-        let outcome = halo::vm::run::<TestHost>(code: &code, consts: &engine^.program.consts, stack: &engine^.stack, vm: &engine^.vm, env: env, pc: 0_u64, base: 0_u64, kbase: 0_u64);
+        let outcome = halo::vm::run::<TestHost>(code: &code, consts: &engine^.image.consts, stack: &engine^.stack, vm: &engine^.vm, env: env, pc: 0_u64, base: 0_u64, kbase: 0_u64);
       }
     }
   }

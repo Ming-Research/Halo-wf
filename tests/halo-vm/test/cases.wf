@@ -162,9 +162,9 @@ fn fixture_smoke(budget: u64) -> r: Bool pure {
   let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source, debug_names: move debug_names, local_variables: move local_variables, upvalue_names: move upvalue_names);
   let program_code = box_slots_new::<Cell>(capacity: 0_u64);
   let program_consts = box_slots_new::<Value>(capacity: 0_u64);
-  let program = halo::value::Program(code: move program_code, consts: move program_consts);
-  let entry = halo::vm::install(program: &program, vm: &vm, script: &script);
-  let out = halo::vm::start::<TestHost>(program: &program, stack: &stack, vm: &vm, env: &env, proto: entry, argc: 0_u64, budget: budget);
+  let image = halo::value::Program(code: move program_code, consts: move program_consts);
+  let main_proto = halo::vm::install(image: &image, vm: &vm, script: &script);
+  let out = halo::vm::start::<TestHost>(image: &image, stack: &stack, vm: &vm, env: &env, proto: main_proto, argc: 0_u64, budget: budget);
   let suspensions = 0_u64;
   loop {
     match out {
@@ -189,7 +189,7 @@ fn fixture_smoke(budget: u64) -> r: Bool pure {
       }
       Budget() => {
         set suspensions = suspensions +sat 1_u64;
-        set out = halo::vm::resume::<TestHost>(program: &program, stack: &stack, vm: &vm, env: &env, budget: budget);
+        set out = halo::vm::resume::<TestHost>(image: &image, stack: &stack, vm: &vm, env: &env, budget: budget);
       }
     }
   }
@@ -257,9 +257,9 @@ fn fixture_fib(budget: u64) -> r: Bool pure {
   let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source, debug_names: move debug_names, local_variables: move local_variables, upvalue_names: move upvalue_names);
   let program_code = box_slots_new::<Cell>(capacity: 0_u64);
   let program_consts = box_slots_new::<Value>(capacity: 0_u64);
-  let program = halo::value::Program(code: move program_code, consts: move program_consts);
-  let entry = halo::vm::install(program: &program, vm: &vm, script: &script);
-  let out = halo::vm::start::<TestHost>(program: &program, stack: &stack, vm: &vm, env: &env, proto: entry, argc: 0_u64, budget: budget);
+  let image = halo::value::Program(code: move program_code, consts: move program_consts);
+  let main_proto = halo::vm::install(image: &image, vm: &vm, script: &script);
+  let out = halo::vm::start::<TestHost>(image: &image, stack: &stack, vm: &vm, env: &env, proto: main_proto, argc: 0_u64, budget: budget);
   let suspensions = 0_u64;
   loop {
     match out {
@@ -284,7 +284,7 @@ fn fixture_fib(budget: u64) -> r: Bool pure {
       }
       Budget() => {
         set suspensions = suspensions +sat 1_u64;
-        set out = halo::vm::resume::<TestHost>(program: &program, stack: &stack, vm: &vm, env: &env, budget: budget);
+        set out = halo::vm::resume::<TestHost>(image: &image, stack: &stack, vm: &vm, env: &env, budget: budget);
       }
     }
   }
@@ -331,9 +331,9 @@ fn fixture_numeric_for(budget: u64) -> r: Bool pure {
   let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source, debug_names: move debug_names, local_variables: move local_variables, upvalue_names: move upvalue_names);
   let program_code = box_slots_new::<Cell>(capacity: 0_u64);
   let program_consts = box_slots_new::<Value>(capacity: 0_u64);
-  let program = halo::value::Program(code: move program_code, consts: move program_consts);
-  let entry = halo::vm::install(program: &program, vm: &vm, script: &script);
-  let out = halo::vm::start::<TestHost>(program: &program, stack: &stack, vm: &vm, env: &env, proto: entry, argc: 0_u64, budget: budget);
+  let image = halo::value::Program(code: move program_code, consts: move program_consts);
+  let main_proto = halo::vm::install(image: &image, vm: &vm, script: &script);
+  let out = halo::vm::start::<TestHost>(image: &image, stack: &stack, vm: &vm, env: &env, proto: main_proto, argc: 0_u64, budget: budget);
   let suspensions = 0_u64;
   loop {
     match out {
@@ -358,7 +358,7 @@ fn fixture_numeric_for(budget: u64) -> r: Bool pure {
       }
       Budget() => {
         set suspensions = suspensions +sat 1_u64;
-        set out = halo::vm::resume::<TestHost>(program: &program, stack: &stack, vm: &vm, env: &env, budget: budget);
+        set out = halo::vm::resume::<TestHost>(image: &image, stack: &stack, vm: &vm, env: &env, budget: budget);
       }
     }
   }
@@ -419,9 +419,9 @@ fn fixture_counter(budget: u64) -> r: Bool pure {
   let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source, debug_names: move debug_names, local_variables: move local_variables, upvalue_names: move upvalue_names);
   let program_code = box_slots_new::<Cell>(capacity: 0_u64);
   let program_consts = box_slots_new::<Value>(capacity: 0_u64);
-  let program = halo::value::Program(code: move program_code, consts: move program_consts);
-  let entry = halo::vm::install(program: &program, vm: &vm, script: &script);
-  let out = halo::vm::start::<TestHost>(program: &program, stack: &stack, vm: &vm, env: &env, proto: entry, argc: 0_u64, budget: budget);
+  let image = halo::value::Program(code: move program_code, consts: move program_consts);
+  let main_proto = halo::vm::install(image: &image, vm: &vm, script: &script);
+  let out = halo::vm::start::<TestHost>(image: &image, stack: &stack, vm: &vm, env: &env, proto: main_proto, argc: 0_u64, budget: budget);
   let suspensions = 0_u64;
   loop {
     match out {
@@ -450,7 +450,7 @@ fn fixture_counter(budget: u64) -> r: Bool pure {
       }
       Budget() => {
         set suspensions = suspensions +sat 1_u64;
-        set out = halo::vm::resume::<TestHost>(program: &program, stack: &stack, vm: &vm, env: &env, budget: budget);
+        set out = halo::vm::resume::<TestHost>(image: &image, stack: &stack, vm: &vm, env: &env, budget: budget);
       }
     }
   }
@@ -498,9 +498,9 @@ fn fixture_tables(budget: u64) -> r: Bool pure {
   let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source, debug_names: move debug_names, local_variables: move local_variables, upvalue_names: move upvalue_names);
   let program_code = box_slots_new::<Cell>(capacity: 0_u64);
   let program_consts = box_slots_new::<Value>(capacity: 0_u64);
-  let program = halo::value::Program(code: move program_code, consts: move program_consts);
-  let entry = halo::vm::install(program: &program, vm: &vm, script: &script);
-  let out = halo::vm::start::<TestHost>(program: &program, stack: &stack, vm: &vm, env: &env, proto: entry, argc: 0_u64, budget: budget);
+  let image = halo::value::Program(code: move program_code, consts: move program_consts);
+  let main_proto = halo::vm::install(image: &image, vm: &vm, script: &script);
+  let out = halo::vm::start::<TestHost>(image: &image, stack: &stack, vm: &vm, env: &env, proto: main_proto, argc: 0_u64, budget: budget);
   let suspensions = 0_u64;
   loop {
     match out {
@@ -525,7 +525,7 @@ fn fixture_tables(budget: u64) -> r: Bool pure {
       }
       Budget() => {
         set suspensions = suspensions +sat 1_u64;
-        set out = halo::vm::resume::<TestHost>(program: &program, stack: &stack, vm: &vm, env: &env, budget: budget);
+        set out = halo::vm::resume::<TestHost>(image: &image, stack: &stack, vm: &vm, env: &env, budget: budget);
       }
     }
   }
@@ -618,9 +618,9 @@ fn fixture_meta(budget: u64) -> r: Bool pure {
   let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source, debug_names: move debug_names, local_variables: move local_variables, upvalue_names: move upvalue_names);
   let program_code = box_slots_new::<Cell>(capacity: 0_u64);
   let program_consts = box_slots_new::<Value>(capacity: 0_u64);
-  let program = halo::value::Program(code: move program_code, consts: move program_consts);
-  let entry = halo::vm::install(program: &program, vm: &vm, script: &script);
-  let out = halo::vm::start::<TestHost>(program: &program, stack: &stack, vm: &vm, env: &env, proto: entry, argc: 0_u64, budget: budget);
+  let image = halo::value::Program(code: move program_code, consts: move program_consts);
+  let main_proto = halo::vm::install(image: &image, vm: &vm, script: &script);
+  let out = halo::vm::start::<TestHost>(image: &image, stack: &stack, vm: &vm, env: &env, proto: main_proto, argc: 0_u64, budget: budget);
   let suspensions = 0_u64;
   loop {
     match out {
@@ -650,7 +650,7 @@ fn fixture_meta(budget: u64) -> r: Bool pure {
       }
       Budget() => {
         set suspensions = suspensions +sat 1_u64;
-        set out = halo::vm::resume::<TestHost>(program: &program, stack: &stack, vm: &vm, env: &env, budget: budget);
+        set out = halo::vm::resume::<TestHost>(image: &image, stack: &stack, vm: &vm, env: &env, budget: budget);
       }
     }
   }
@@ -742,9 +742,9 @@ fn fixture_protected_error(budget: u64) -> r: Bool pure {
   let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source, debug_names: move debug_names, local_variables: move local_variables, upvalue_names: move upvalue_names);
   let program_code = box_slots_new::<Cell>(capacity: 0_u64);
   let program_consts = box_slots_new::<Value>(capacity: 0_u64);
-  let program = halo::value::Program(code: move program_code, consts: move program_consts);
-  let entry = halo::vm::install(program: &program, vm: &vm, script: &script);
-  let out = halo::vm::start::<TestHost>(program: &program, stack: &stack, vm: &vm, env: &env, proto: entry, argc: 0_u64, budget: budget);
+  let image = halo::value::Program(code: move program_code, consts: move program_consts);
+  let main_proto = halo::vm::install(image: &image, vm: &vm, script: &script);
+  let out = halo::vm::start::<TestHost>(image: &image, stack: &stack, vm: &vm, env: &env, proto: main_proto, argc: 0_u64, budget: budget);
   let suspensions = 0_u64;
   loop {
     match out {
@@ -803,7 +803,7 @@ fn fixture_protected_error(budget: u64) -> r: Bool pure {
       }
       Budget() => {
         set suspensions = suspensions +sat 1_u64;
-        set out = halo::vm::resume::<TestHost>(program: &program, stack: &stack, vm: &vm, env: &env, budget: budget);
+        set out = halo::vm::resume::<TestHost>(image: &image, stack: &stack, vm: &vm, env: &env, budget: budget);
       }
     }
   }
@@ -847,9 +847,9 @@ fn fixture_vararg(budget: u64) -> r: Bool pure {
   let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source, debug_names: move debug_names, local_variables: move local_variables, upvalue_names: move upvalue_names);
   let program_code = box_slots_new::<Cell>(capacity: 0_u64);
   let program_consts = box_slots_new::<Value>(capacity: 0_u64);
-  let program = halo::value::Program(code: move program_code, consts: move program_consts);
-  let entry = halo::vm::install(program: &program, vm: &vm, script: &script);
-  let out = halo::vm::start::<TestHost>(program: &program, stack: &stack, vm: &vm, env: &env, proto: entry, argc: 4_u64, budget: budget);
+  let image = halo::value::Program(code: move program_code, consts: move program_consts);
+  let main_proto = halo::vm::install(image: &image, vm: &vm, script: &script);
+  let out = halo::vm::start::<TestHost>(image: &image, stack: &stack, vm: &vm, env: &env, proto: main_proto, argc: 4_u64, budget: budget);
   let suspensions = 0_u64;
   loop {
     match out {
@@ -874,7 +874,7 @@ fn fixture_vararg(budget: u64) -> r: Bool pure {
       }
       Budget() => {
         set suspensions = suspensions +sat 1_u64;
-        set out = halo::vm::resume::<TestHost>(program: &program, stack: &stack, vm: &vm, env: &env, budget: budget);
+        set out = halo::vm::resume::<TestHost>(image: &image, stack: &stack, vm: &vm, env: &env, budget: budget);
       }
     }
   }
@@ -928,9 +928,9 @@ fn fixture_tail(budget: u64) -> r: Bool pure {
   let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source, debug_names: move debug_names, local_variables: move local_variables, upvalue_names: move upvalue_names);
   let program_code = box_slots_new::<Cell>(capacity: 0_u64);
   let program_consts = box_slots_new::<Value>(capacity: 0_u64);
-  let program = halo::value::Program(code: move program_code, consts: move program_consts);
-  let entry = halo::vm::install(program: &program, vm: &vm, script: &script);
-  let out = halo::vm::start::<TestHost>(program: &program, stack: &stack, vm: &vm, env: &env, proto: entry, argc: 2_u64, budget: budget);
+  let image = halo::value::Program(code: move program_code, consts: move program_consts);
+  let main_proto = halo::vm::install(image: &image, vm: &vm, script: &script);
+  let out = halo::vm::start::<TestHost>(image: &image, stack: &stack, vm: &vm, env: &env, proto: main_proto, argc: 2_u64, budget: budget);
   let suspensions = 0_u64;
   loop {
     match out {
@@ -966,7 +966,7 @@ fn fixture_tail(budget: u64) -> r: Bool pure {
       }
       Budget() => {
         set suspensions = suspensions +sat 1_u64;
-        set out = halo::vm::resume::<TestHost>(program: &program, stack: &stack, vm: &vm, env: &env, budget: budget);
+        set out = halo::vm::resume::<TestHost>(image: &image, stack: &stack, vm: &vm, env: &env, budget: budget);
       }
     }
   }
@@ -1334,9 +1334,9 @@ fn fixture_self_global_hits(budget: u64) -> r: Bool pure {
   let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source, debug_names: move debug_names, local_variables: move local_variables, upvalue_names: move upvalue_names);
   let program_code = box_slots_new::<Cell>(capacity: 0_u64);
   let program_consts = box_slots_new::<Value>(capacity: 0_u64);
-  let program = halo::value::Program(code: move program_code, consts: move program_consts);
-  let entry = halo::vm::install(program: &program, vm: &vm, script: &script);
-  let out = halo::vm::start::<TestHost>(program: &program, stack: &stack, vm: &vm, env: &env, proto: entry, argc: 0_u64, budget: budget);
+  let image = halo::value::Program(code: move program_code, consts: move program_consts);
+  let main_proto = halo::vm::install(image: &image, vm: &vm, script: &script);
+  let out = halo::vm::start::<TestHost>(image: &image, stack: &stack, vm: &vm, env: &env, proto: main_proto, argc: 0_u64, budget: budget);
   match out {
     Done(count: got) => {
       if got != 13_u64 {
@@ -1453,9 +1453,9 @@ fn fixture_self_global_misses(budget: u64) -> r: Bool pure {
   let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source, debug_names: move debug_names, local_variables: move local_variables, upvalue_names: move upvalue_names);
   let program_code = box_slots_new::<Cell>(capacity: 0_u64);
   let program_consts = box_slots_new::<Value>(capacity: 0_u64);
-  let program = halo::value::Program(code: move program_code, consts: move program_consts);
-  let entry = halo::vm::install(program: &program, vm: &vm, script: &script);
-  let out = halo::vm::start::<TestHost>(program: &program, stack: &stack, vm: &vm, env: &env, proto: entry, argc: 0_u64, budget: budget);
+  let image = halo::value::Program(code: move program_code, consts: move program_consts);
+  let main_proto = halo::vm::install(image: &image, vm: &vm, script: &script);
+  let out = halo::vm::start::<TestHost>(image: &image, stack: &stack, vm: &vm, env: &env, proto: main_proto, argc: 0_u64, budget: budget);
   loop {
     match out {
       Done(count: got) => {
@@ -1485,7 +1485,7 @@ fn fixture_self_global_misses(budget: u64) -> r: Bool pure {
         return False();
       }
       Budget() => {
-        set out = halo::vm::resume::<TestHost>(program: &program, stack: &stack, vm: &vm, env: &env, budget: budget);
+        set out = halo::vm::resume::<TestHost>(image: &image, stack: &stack, vm: &vm, env: &env, budget: budget);
       }
     }
   }
@@ -1559,9 +1559,9 @@ fn fixture_host(mode: u8, metamethod: Bool) -> r: Bool pure {
   let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source, debug_names: move debug_names, local_variables: move local_variables, upvalue_names: move upvalue_names);
   let program_code = box_slots_new::<Cell>(capacity: 0_u64);
   let program_consts = box_slots_new::<Value>(capacity: 0_u64);
-  let program = halo::value::Program(code: move program_code, consts: move program_consts);
-  let entry = halo::vm::install(program: &program, vm: &vm, script: &script);
-  let result = halo::vm::start::<TestHost>(program: &program, stack: &stack, vm: &vm, env: &env, proto: entry, argc: 0_u64, budget: unlimited);
+  let image = halo::value::Program(code: move program_code, consts: move program_consts);
+  let main_proto = halo::vm::install(image: &image, vm: &vm, script: &script);
+  let result = halo::vm::start::<TestHost>(image: &image, stack: &stack, vm: &vm, env: &env, proto: main_proto, argc: 0_u64, budget: unlimited);
   if env.calls != 1_u64 {
     return False();
   }
@@ -1723,9 +1723,9 @@ fn fixture_error_level(level: u8, callback: u8) -> r: Bool pure {
   let script = Script(code: move code, consts: move consts, protos: move protos, lineinfo: move lines, source: move source, debug_names: move debug_names, local_variables: move local_variables, upvalue_names: move upvalue_names);
   let program_code = box_slots_new::<Cell>(capacity: 0_u64);
   let program_consts = box_slots_new::<Value>(capacity: 0_u64);
-  let program = halo::value::Program(code: move program_code, consts: move program_consts);
-  let entry = halo::vm::install(program: &program, vm: &vm, script: &script);
-  let out = halo::vm::start::<TestHost>(program: &program, stack: &stack, vm: &vm, env: &env, proto: entry, argc: 0_u64, budget: unlimited);
+  let image = halo::value::Program(code: move program_code, consts: move program_consts);
+  let main_proto = halo::vm::install(image: &image, vm: &vm, script: &script);
+  let out = halo::vm::start::<TestHost>(image: &image, stack: &stack, vm: &vm, env: &env, proto: main_proto, argc: 0_u64, budget: unlimited);
   match out {
     Done(count: got) => {
       if got == 2_u64 {

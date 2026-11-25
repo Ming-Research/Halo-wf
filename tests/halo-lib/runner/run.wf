@@ -223,7 +223,7 @@ fn main(inputs: Inputs) -> r: ExitStatus pure waits {
   let local_program_code = box_slots_new::<halo::value::Cell>(capacity: 0_u64);
   let local_program_consts = box_slots_new::<Value>(capacity: 0_u64);
   let local_program = halo::value::Program(code: move local_program_code, consts: move local_program_consts);
-  let local_bases = halo::vm::bases(program: &local_program, vm: &local_vm_28);
+  let local_bases = halo::vm::bases(image: &local_program, vm: &local_vm_28);
   match halo::compile::compile(heap: &local_vm_28.heap, chunk_name: &run_source_name[0_u64..12_u64], source: &local_source_25.inner[0_u64..local_length_36], bases: local_bases) {
     Err(error: problem) => {
       let local_n_37 = problem.message.inner.len;
@@ -231,12 +231,12 @@ fn main(inputs: Inputs) -> r: ExitStatus pure waits {
       return std::process::exit_status(code: 3_u8);
     }
     Ok(value: script) => {
-      let local_entry = halo::vm::install(program: &local_program, vm: &local_vm_28, script: &script);
-      let local_outcome_39 = halo::vm::start::<PrintHost>(program: &local_program, stack: &local_stack_35, vm: &local_vm_28, env: &local_env_34, proto: local_entry, argc: 0_u64, budget: local_budget_19);
+      let local_entry = halo::vm::install(image: &local_program, vm: &local_vm_28, script: &script);
+      let local_outcome_39 = halo::vm::start::<PrintHost>(image: &local_program, stack: &local_stack_35, vm: &local_vm_28, env: &local_env_34, proto: local_entry, argc: 0_u64, budget: local_budget_19);
       loop {
         match local_outcome_39 {
           Budget() => {
-            set local_outcome_39 = halo::vm::resume::<PrintHost>(program: &local_program, stack: &local_stack_35, vm: &local_vm_28, env: &local_env_34, budget: local_budget_19);
+            set local_outcome_39 = halo::vm::resume::<PrintHost>(image: &local_program, stack: &local_stack_35, vm: &local_vm_28, env: &local_env_34, budget: local_budget_19);
           }
           Done(..) => {
             break;

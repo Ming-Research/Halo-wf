@@ -597,7 +597,7 @@ fn root_probe_resume(engine: &Engine, env: &Probe, id: halo::embed::ScriptId, om
   if omitted {
     let slot = id.slot;
     if slot < engine^.entries.inner.len {
-      return halo::vm::resume::<ProbeHost>(program: &engine^.program, stack: &engine^.stack, vm: &engine^.vm, env: env, budget: 1_u64);
+      return halo::vm::resume::<ProbeHost>(image: &engine^.image, stack: &engine^.stack, vm: &engine^.vm, env: env, budget: 1_u64);
     }
     return Outcome::Error();
   }
@@ -608,9 +608,9 @@ fn cached_string_live(engine: &Engine, id: halo::embed::ScriptId) -> r: Bool rea
   doc "The inactive chunk's sole string constant is the independently written 27-byte return literal, found among the program's constants; it must survive before another root mutation or start can refresh the bridge.";
   let slot = id.slot;
   if slot < engine^.entries.inner.len {
-    let n = engine^.program.consts.inner.len;
+    let n = engine^.image.consts.inner.len;
     for (i in 0_u64..n) {
-      let v = engine^.program.consts.inner[i];
+      let v = engine^.image.consts.inner[i];
       match halo::embed::string_of(engine: engine, value: v) {
         None() => {
         }
@@ -786,12 +786,12 @@ fn pending_probe() -> r: u8 pure {
   }
   let slot = top.slot;
   if slot < engine.entries.inner.len {
-    let direct = halo::vm::resume::<ProbeHost>(program: &engine.program, stack: &engine.stack, vm: &engine.vm, env: &env, budget: 1_u64);
+    let direct = halo::vm::resume::<ProbeHost>(image: &engine.image, stack: &engine.stack, vm: &engine.vm, env: &env, budget: 1_u64);
     let direct_code = outcome_code(outcome: direct);
     if direct_code != 1_u8 {
       return 90_u8;
     }
-    let after = halo::vm::complete_call::<ProbeHost>(program: &engine.program, stack: &engine.stack, vm: &engine.vm, env: &env, results: &results[0_u64..1_u64], budget: 1_u64);
+    let after = halo::vm::complete_call::<ProbeHost>(image: &engine.image, stack: &engine.stack, vm: &engine.vm, env: &env, results: &results[0_u64..1_u64], budget: 1_u64);
     let after_code = outcome_code(outcome: after);
     if after_code != 1_u8 {
       return 91_u8;
