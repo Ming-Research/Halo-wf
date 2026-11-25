@@ -77,8 +77,10 @@ LLVM major the pinned release names (`make toolchain` installs it).
   ([VM.md](research/investigations/halo/VM.md)).
 - [research/experiments](research/experiments/): measured results, each with
   its sources, commands and caveats.
-- `design/`: the decisions Halo is built on, with their reasons and refused
-  alternatives, and their change log.
+- [design/decisions](design/decisions/): the decisions Halo is built on,
+  each with the approaches the owner turned down or changed and why;
+  `design/constitution.md` holds what Halo is for, and `design/log.md` the
+  changes of the tree's older form.
 - [AGENTS.md](AGENTS.md): the rules agents follow in this repository.
 
 ## License
