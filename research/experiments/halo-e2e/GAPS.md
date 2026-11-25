@@ -7,11 +7,12 @@ binding treats this experiment as full Redis compatibility.
 ## Collector roots
 
 The VM collector's `mark_roots` scans the active constant pool, but has no
-embedding root-list argument. Before each engine start/resume, the embedding
-module rebuilds the unused tail of that pool from every cached script's original
-constants and every host pin. The compiled constant ranges and indexes stay
-unchanged. This makes host pins and inactive cached constants real roots without
-adding globals that a Lua program could enumerate or changing VM files.
+embedding root-list argument. The engine's one program holds every cached
+script's constants, so inactive scripts' constants are scanned with the active
+ones. Before each engine start/resume, the embedding module rebuilds the unused
+tail of that pool from every host pin. The compiled constant ranges and indexes
+stay unchanged. This makes host pins real roots without adding globals that a
+Lua program could enumerate.
 
 Pins are acquired/released while the engine is idle or suspended. A Host callback
 receives the VM and stack, not the engine; it must keep values needed across
@@ -20,8 +21,7 @@ contract to pin/unpin *during* a running callback needs a VM-visible registry/ro
 list. VM.md section 2 specifies a registry, but the current VM exposes none.
 Unpin removes the root at the next start/resume mirror refresh, not by collecting
 immediately. Pin tokens are never reused; released slots remain nil until engine
-destruction. Root mirroring consumes memory proportional to the cached constants
-and pin token slots; this experiment does not measure that cost.
+destruction. Root mirroring consumes memory proportional to the pin token slots; this experiment does not measure that cost.
 
 The probe forces collection to distinguish retention of a pin and an inactive
 script's string from accidental survival, then forces another collection after
