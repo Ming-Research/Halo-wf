@@ -1361,7 +1361,7 @@ fn retain_flush() -> r: Bool pure {
 }
 
 fn retain_pinned() -> r: Bool pure {
-  doc "A function the host only pins stays callable through collections, and a script the compiler refuses does not take the pin's root away: a run mirrors the pin into the pool first, so a compile that dropped the mirror without invalidating it would leave the pin unrooted.";
+  doc "A function the host only pins stays callable through collections, and a script the compiler refuses does not take the pin's root away: a run first mirrors the pin into the pool, and a compile that dropped the mirror without invalidating it would leave the pin unrooted for the next run of the same script.";
   let engine = halo::embed::new_engine(limit: 67108864_u64);
   let env = Probe(mode: 0_u8, calls: 0_u64);
   let stress = True();
@@ -1383,23 +1383,32 @@ fn retain_pinned() -> r: Bool pure {
         Some(..) => {
         }
       }
-      let mirrored = run_code(engine: &engine, env: &env, chunk: &probe_text_4[0_u64..12_u64], source: &collect_source[0_u64..44_u64]);
-      if mirrored != 0_u8 {
-        return False();
-      }
-      let refused = run_code(engine: &engine, env: &env, chunk: &probe_text_4[0_u64..12_u64], source: &retain_bad[0_u64..8_u64]);
-      if refused != 255_u8 {
-        return False();
-      }
-      let before = halo::embed::collection_count(engine: &engine);
-      halo::embed::collect_at_next_safepoint(engine: &engine);
-      let looped = run_code(engine: &engine, env: &env, chunk: &probe_text_4[0_u64..12_u64], source: &collect_source[0_u64..44_u64]);
-      if looped != 0_u8 {
-        return False();
-      }
-      let after = halo::embed::collection_count(engine: &engine);
-      if after <= before {
-        return False();
+      match compile_chunk(engine: &engine, chunk: &probe_text_4[0_u64..12_u64], source: &collect_source[0_u64..44_u64]) {
+        None() => {
+          return False();
+        }
+        Some(value: looping) => {
+          let mirrored = probe_run(engine: &engine, env: &env, script: looping);
+          let mirrored_code = outcome_code(outcome: mirrored);
+          if mirrored_code != 0_u8 {
+            return False();
+          }
+          let refused = run_code(engine: &engine, env: &env, chunk: &probe_text_4[0_u64..12_u64], source: &retain_bad[0_u64..8_u64]);
+          if refused != 255_u8 {
+            return False();
+          }
+          let before = halo::embed::collection_count(engine: &engine);
+          halo::embed::collect_at_next_safepoint(engine: &engine);
+          let again = probe_run(engine: &engine, env: &env, script: looping);
+          let again_code = outcome_code(outcome: again);
+          if again_code != 0_u8 {
+            return False();
+          }
+          let after = halo::embed::collection_count(engine: &engine);
+          if after <= before {
+            return False();
+          }
+        }
       }
       let put = halo::embed::set_global(engine: &engine, name: &retain_name[0_u64..4_u64], value: kept);
       return run_returns(engine: &engine, env: &env, source: &retain_caller[0_u64..13_u64], expected: 42.0_f64);
