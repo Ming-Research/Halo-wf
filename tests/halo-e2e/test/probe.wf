@@ -1236,6 +1236,88 @@ const sealed_error: Array<u8, 49> = "user_script:1: Attempt to modify a readonly
 
 const sealed_key: Array<u8, 1> = "x";
 
+fn retained_closure_probe() -> r: u8 pure {
+  doc "A Lua closure the host keeps from one script runs its own code in a later script, whether that script has fewer functions or one with the same number, and after the scripts are flushed calling it is an error whatever a script compiled afterwards holds.";
+  let engine = halo::embed::new_engine(limit: 67108864_u64);
+  let env = Probe(mode: 0_u8, calls: 0_u64);
+  let first = halo::embed::compile(engine: &engine, chunk_name: &probe_text_4[0_u64..12_u64], source: &retain_maker[0_u64..31_u64]);
+  match move first {
+    Err(..) => {
+      return 212_u8;
+    }
+    Ok(value: maker) => {
+      let made = probe_run(engine: &engine, env: &env, script: maker);
+      let made_code = outcome_code(outcome: made);
+      if made_code != 0_u8 {
+        return 213_u8;
+      }
+      match halo::embed::result(engine: &engine, index: 0_u64) {
+        None() => {
+          return 214_u8;
+        }
+        Some(value: kept) => {
+          let put = halo::embed::set_global(engine: &engine, name: &retain_name[0_u64..4_u64], value: kept);
+        }
+      }
+    }
+  }
+  let fewer = halo::embed::compile(engine: &engine, chunk_name: &probe_text_4[0_u64..12_u64], source: &retain_caller[0_u64..13_u64]);
+  match move fewer {
+    Err(..) => {
+      return 215_u8;
+    }
+    Ok(value: caller) => {
+      let called = probe_run(engine: &engine, env: &env, script: caller);
+      let called_code = outcome_code(outcome: called);
+      if called_code != 0_u8 {
+        return 216_u8;
+      }
+      if bnot(returned(engine: &engine, expected: 42.0_f64)) {
+        return 217_u8;
+      }
+    }
+  }
+  let same = halo::embed::compile(engine: &engine, chunk_name: &probe_text_4[0_u64..12_u64], source: &retain_shadow[0_u64..45_u64]);
+  match move same {
+    Err(..) => {
+      return 218_u8;
+    }
+    Ok(value: shadow) => {
+      let shadowed = probe_run(engine: &engine, env: &env, script: shadow);
+      let shadowed_code = outcome_code(outcome: shadowed);
+      if shadowed_code != 0_u8 {
+        return 219_u8;
+      }
+      if bnot(returned(engine: &engine, expected: 42.0_f64)) {
+        return 220_u8;
+      }
+    }
+  }
+  halo::embed::forget_all(engine: &engine);
+  let after = halo::embed::compile(engine: &engine, chunk_name: &probe_text_4[0_u64..12_u64], source: &retain_shadow[0_u64..45_u64]);
+  match move after {
+    Err(..) => {
+      return 221_u8;
+    }
+    Ok(value: later) => {
+      let flushed = probe_run(engine: &engine, env: &env, script: later);
+      let flushed_code = outcome_code(outcome: flushed);
+      if flushed_code != 1_u8 {
+        return 222_u8;
+      }
+    }
+  }
+  return 0_u8;
+}
+
+const retain_maker: Array<u8, 31> = "return function() return 42 end";
+
+const retain_caller: Array<u8, 13> = "return held()";
+
+const retain_shadow: Array<u8, 45> = "local g=function() return 7 end return held()";
+
+const retain_name: Array<u8, 4> = "held";
+
 fn smoke() -> status: ExitStatus pure {
   doc "Runs the embedding lifecycle observations, including cjson reclamation, collection statistics, configurable pause and thread ownership/accounting with ordinary and stress collection.";
   let code = embed_probe();
@@ -1286,6 +1368,9 @@ fn smoke() -> status: ExitStatus pure {
   }
   if code == 0_u8 {
     set code = switch_probe();
+  }
+  if code == 0_u8 {
+    set code = retained_closure_probe();
   }
   return std::process::exit_status(code: code);
 }
