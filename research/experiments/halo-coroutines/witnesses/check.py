@@ -125,11 +125,24 @@ def compare_entry(entry, record, directory):
             problems.append('symbol-check failed')
         disassembly = directory / 'disassemble.stdout'
         assembly = disassembly.read_text(errors='replace') if disassembly.exists() else ''
-        for name, symbol in record.get('symbols', {}).items():
-            for line in function_block(assembly, symbol) or []:
-                match = CALL.search(line)
-                if match and any(word in match[1] for word in FORBIDDEN_CALLS):
-                    problems.append(f'{name} calls {match[1]}')
+        problems += assembly_problems(record.get('symbols', {}), assembly)
+    return problems
+
+
+def assembly_problems(symbols, assembly):
+    """The problems of a set of studied functions: none listed, a function with no body, or a forbidden call."""
+    problems = []
+    if not symbols:
+        problems.append('no studied function is listed')
+    for name, symbol in symbols.items():
+        block = function_block(assembly, symbol)
+        if not block:
+            problems.append(f'{name} ({symbol}): no function body in the disassembly')
+            continue
+        for line in block:
+            match = CALL.search(line)
+            if match and any(word in match[1] for word in FORBIDDEN_CALLS):
+                problems.append(f'{name} calls {match[1]}')
     return problems
 
 
