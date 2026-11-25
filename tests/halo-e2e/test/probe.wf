@@ -329,6 +329,19 @@ fn embed_probe() -> r: u8 pure {
       return 33_u8;
     }
   }
+  let located = halo::embed::compile(engine: &engine, chunk_name: &probe_text_4[0_u64..12_u64], source: &collect_source[0_u64..44_u64]);
+  match move located {
+    Err(..) => {
+      return 116_u8;
+    }
+    Ok(value: located_id) => {
+      let located_run = probe_run(engine: &engine, env: &env, script: located_id);
+      let located_code = outcome_code(outcome: located_run);
+      if located_code != 0_u8 {
+        return 117_u8;
+      }
+    }
+  }
   let plain_value = halo::embed::intern(engine: &engine, bytes: &format_plain[0_u64..4_u64]);
   set engine.vm.error = plain_value;
   let plain_ok = format_matches(engine: &engine, line: 17_u64, want: &expect_plain[0_u64..20_u64]);
