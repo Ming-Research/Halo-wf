@@ -50,12 +50,15 @@ GATE_PARTS := core $(EXTENDED_PARTS) reference
 PART_TESTS_core := oracle double-text design-lint gate-parts
 PART_TESTS_hosts-lib-json := hosts-lib json
 PART_TESTS_reference := number msgpack
-TESTS := $(foreach part,$(GATE_PARTS),$(or $(PART_TESTS_$(part)),$(part))) design-ready pin-ready
+# TEMPORARY, item 274: the one-off checks of the coroutine witnesses and of the
+# upgrade benchmark are named here until the work merges, then removed.
+TESTS := $(foreach part,$(GATE_PARTS),$(or $(PART_TESTS_$(part)),$(part))) design-ready pin-ready coroutine-witnesses
 
 .PHONY: check check-core check-extended check-reference \
 	check-roots-base $(ROOTS_MUTANT_CHECKS) check-hosts-vm check-hosts-lib-json \
 	oracle double-text roots roots-base $(ROOTS_MUTANT_TARGETS) hosts hosts-vm hosts-lib json \
-	reference-lua number msgpack design-lint design-ready gate-parts part-tests FORCE
+	reference-lua number msgpack design-lint design-ready gate-parts part-tests \
+	coroutine-witnesses FORCE
 
 # `make check` runs three groups: the core (the embedding probe, the oracle
 # corpus, the double texts, the design lint and gate-parts), the extended
@@ -231,5 +234,14 @@ design-lint:
 
 design-ready:
 	@$(if $(DESIGN_TREES),$(PY) -B $(ROOT)/design/skill/lint.py --root $(ROOT)/design --trees $(DESIGN_TREES) --base "$(DESIGN_REVIEW_BASE)" --require-approval,echo "design ready: no live tree")
+
+# TEMPORARY, item 274: one run of the coroutine witnesses with the pinned compiler, in report
+# mode, which fails on purpose so that run_tests returns what each program gave.
+WITNESS_OBJDUMP ?= /usr/bin/llvm-objdump-22
+WITNESS_OUT := $(BUILD)/coroutine-witnesses
+coroutine-witnesses: compiler FORCE
+	@-$(PY) -B $(ROOT)/research/experiments/halo-coroutines/inspect.py --compiler $(WHITEFOOTC) \
+		--objdump $(WITNESS_OBJDUMP) --out $(WITNESS_OUT)
+	@$(PY) -B $(ROOT)/research/experiments/halo-coroutines/witnesses/check.py report $(WITNESS_OUT)
 
 FORCE:
