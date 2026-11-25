@@ -271,8 +271,9 @@ fn format_error(engine: &Engine, line: u64) -> r: Box<Slots<u8>> reads(engine) {
   if bnot(located) {
     if line > 0_u64 {
       let name_end = chunk.offset +sat name_length;
+      let name_start = chunk.offset;
       if name_end <= engine^.vm.source.inner.len {
-        text(out: &out, bytes: &engine^.vm.source.inner[chunk.offset..name_end]);
+        text(out: &out, bytes: &engine^.vm.source.inner[name_start..name_end]);
       }
       byte(out: &out, b: 58_u8);
       decimal(out: &out, number: line);

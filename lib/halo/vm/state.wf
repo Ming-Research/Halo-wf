@@ -1451,12 +1451,14 @@ fn describe_operand(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm
 const state_flushed_call: Array<u8, 46> = "attempt to call a function of a flushed script";
 
 fn call_type_error(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, v: Value, func: u64, return_pc: u64) -> r: Bool reads(code), reads(consts), writes(vm) {
-  return call_error(code: code, consts: consts, vm: vm, v: v, func: func, return_pc: return_pc, flushed: False());
+  let located = False();
+  return call_error(code: code, consts: consts, vm: vm, v: v, func: func, return_pc: return_pc, flushed: located);
 }
 
 fn flushed_call_error(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, v: Value, func: u64, return_pc: u64) -> r: Bool reads(code), reads(consts), writes(vm) {
   doc "The error for calling a Lua function whose script was flushed: luaG_runerror's text, located as call_type_error locates a call error, in the Lua caller, and bare through a pcall or a callback.";
-  return call_error(code: code, consts: consts, vm: vm, v: v, func: func, return_pc: return_pc, flushed: True());
+  let flushed = True();
+  return call_error(code: code, consts: consts, vm: vm, v: v, func: func, return_pc: return_pc, flushed: flushed);
 }
 
 fn call_error(code: &Box<Slots<Cell>>, consts: &Box<Slots<Value>>, vm: &Vm, v: Value, func: u64, return_pc: u64, flushed: Bool) -> r: Bool reads(code), reads(consts), writes(vm) {

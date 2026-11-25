@@ -6,6 +6,7 @@ alias Host = halo::vm::Host;
 alias Vm = halo::vm::Vm;
 alias ExitStatus = std::process::ExitStatus;
 alias TableError = halo::heap::TableError;
+alias ScriptId = halo::embed::ScriptId;
 
 struct Probe {
   mode: u8;
@@ -1243,15 +1244,15 @@ const sealed_error: Array<u8, 49> = "user_script:1: Attempt to modify a readonly
 
 const sealed_key: Array<u8, 1> = "x";
 
-fn compile_chunk(engine: &Engine, chunk: &[u8], source: &[u8]) -> r: Option<halo::embed::ScriptId> reads(chunk), reads(source), writes(engine) {
+fn compile_chunk(engine: &Engine, chunk: &[u8], source: &[u8]) -> r: Option<ScriptId> reads(chunk), reads(source), writes(engine) {
   doc "Compiles source under the chunk name, or None when the compiler refuses it.";
   let compiled = halo::embed::compile(engine: engine, chunk_name: chunk, source: source);
   match move compiled {
     Err(..) => {
-      return None<halo::embed::ScriptId>();
+      return None<ScriptId>();
     }
     Ok(value: id) => {
-      return Some<halo::embed::ScriptId>(value: id);
+      return Some<ScriptId>(value: id);
     }
   }
 }
