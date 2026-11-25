@@ -1361,7 +1361,7 @@ fn retain_flush() -> r: Bool pure {
 }
 
 fn retain_pinned() -> r: Bool pure {
-  doc "A function the host only pins stays callable through collections, and a script the compiler refuses does not take the pin's root away.";
+  doc "A function the host only pins stays callable through collections, and a script the compiler refuses does not take the pin's root away: a run mirrors the pin into the pool first, so a compile that dropped the mirror without invalidating it would leave the pin unrooted.";
   let engine = halo::embed::new_engine(limit: 67108864_u64);
   let env = Probe(mode: 0_u8, calls: 0_u64);
   let stress = True();
@@ -1382,6 +1382,10 @@ fn retain_pinned() -> r: Bool pure {
         }
         Some(..) => {
         }
+      }
+      let mirrored = run_code(engine: &engine, env: &env, chunk: &probe_text_4[0_u64..12_u64], source: &collect_source[0_u64..44_u64]);
+      if mirrored != 0_u8 {
+        return False();
       }
       let refused = run_code(engine: &engine, env: &env, chunk: &probe_text_4[0_u64..12_u64], source: &retain_bad[0_u64..8_u64]);
       if refused != 255_u8 {
