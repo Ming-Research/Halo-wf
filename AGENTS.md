@@ -71,6 +71,12 @@ The upgrade's benchmark is
   release names (`make toolchain` installs it).
 - `make pin-ready` runs with the readiness check and refuses an experiment
   pin.
+- Each test is a target in `TESTS` of the Makefile: each part's tests
+  (`make part-tests PART=<part>`), then `design-ready` and `pin-ready`. CI
+  runs each by itself through `whitefoot-kit/ci/run-tests.py`, which reports
+  it as JUnit XML; `fast.yml` runs, by hand only, just the tests it is given
+  ([downstream.md](whitefoot-kit/downstream.md#tests-in-ci)). A push to a
+  branch the engine of wf-agents makes (`work-…`, `wf-try/…`) runs no check.
 - The completion review uses [docs/review-checklist.md](docs/review-checklist.md).
 
 ## Reports
