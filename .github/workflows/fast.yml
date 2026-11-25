@@ -64,9 +64,6 @@ jobs:
       TESTS_JUNIT: ${{ github.workspace }}/build/test-results/tests (14900k).xml
       TESTS_SUITE: tests (14900k)
       TESTS_STOP: ${{ inputs.test_stop }}
-      # The machine's runners share /tmp: msgpack's scratch, which the
-      # Makefile puts in /tmp, is the job's own here.
-      MSGPACK_SCRATCH: ${{ runner.temp }}/halo-msgpack-check
     steps:
       - uses: actions/checkout@v4
         with:
@@ -77,6 +74,12 @@ jobs:
           # No later step pushes, so the token is not left in the checkout,
           # which the runner keeps.
           persist-credentials: false
+
+      # The machine's runners share /tmp: msgpack's scratch, which the
+      # Makefile puts in /tmp, is the job's own here. The runner context is
+      # not available to a job's env, so the step names it.
+      - name: Name the job's msgpack scratch
+        run: echo "MSGPACK_SCRATCH=$RUNNER_TEMP/halo-msgpack-check" >> "$GITHUB_ENV"
 
       # What the builds make stays; the results go, since run-tests.py adds
       # to them.
