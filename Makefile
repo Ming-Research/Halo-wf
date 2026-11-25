@@ -52,13 +52,13 @@ PART_TESTS_hosts-lib-json := hosts-lib json
 PART_TESTS_reference := number msgpack
 # TEMPORARY, item 274: the one-off checks of the coroutine witnesses and of the
 # upgrade benchmark are named here until the work merges, then removed.
-TESTS := $(foreach part,$(GATE_PARTS),$(or $(PART_TESTS_$(part)),$(part))) design-ready pin-ready coroutine-witnesses
+TESTS := $(foreach part,$(GATE_PARTS),$(or $(PART_TESTS_$(part)),$(part))) design-ready pin-ready coroutine-witnesses bench-upgrade-sample bench-upgrade-full
 
 .PHONY: check check-core check-extended check-reference \
 	check-roots-base $(ROOTS_MUTANT_CHECKS) check-hosts-vm check-hosts-lib-json \
 	oracle double-text roots roots-base $(ROOTS_MUTANT_TARGETS) hosts hosts-vm hosts-lib json \
 	reference-lua number msgpack design-lint design-ready gate-parts part-tests \
-	coroutine-witnesses FORCE
+	coroutine-witnesses bench-upgrade-sample bench-upgrade-full FORCE
 
 # `make check` runs three groups: the core (the embedding probe, the oracle
 # corpus, the double texts, the design lint and gate-parts), the extended
@@ -243,5 +243,13 @@ coroutine-witnesses: compiler FORCE
 	@-$(PY) -B $(ROOT)/research/experiments/halo-coroutines/inspect.py --compiler $(WHITEFOOTC) \
 		--objdump $(WITNESS_OBJDUMP) --out $(WITNESS_OUT)
 	@$(PY) -B $(ROOT)/research/experiments/halo-coroutines/witnesses/check.py report $(WITNESS_OUT)
+
+# TEMPORARY, item 274: the Whitefoot upgrade benchmark through the fast workflow, as the kit's
+# downstream guide asks (on the 14900K). The sample times one kernel once; the full run is the seven
+# kernels of RESULTS.md's compiler-upgrade procedure. Both always fail, so the summary comes back.
+bench-upgrade-sample: compiler reference-lua FORCE
+	@cd $(ROOT) && sh research/experiments/halo-bench/upgrade-check.sh sample $(WHITEFOOTC) $(REFERENCE_LUA)/lua $(BUILD)/bench-upgrade-sample
+bench-upgrade-full: compiler reference-lua FORCE
+	@cd $(ROOT) && sh research/experiments/halo-bench/upgrade-check.sh full $(WHITEFOOTC) $(REFERENCE_LUA)/lua $(BUILD)/bench-upgrade-full
 
 FORCE:
