@@ -82,12 +82,90 @@ def objdump_lines(used):
     return [f'objdump lookup: {shown}; llvm-objdump-22 on PATH: {on_path}', verdict]
 
 
+# Expected outcomes: the rows of witnesses/README.md, with qualified_constant's refusal as measured
+# (MOD-5 at the constant's own line, the v0.146 prediction kept in the README as history). FN-9 is
+# UndischargedPostcondition.
+EXPECTED = {
+    'length_transport': dict(exit=1, code='FN-9', line_has='return'),
+    'box_exchange': dict(exit=0, code=None),
+    'owner_branch': dict(exit=0, code=None),
+    'dispatch_exchange': dict(exit=0, code=None),
+    'qualified_constant': dict(exit=1, code='MOD-5', line_has='qualified_source::marker'),
+}
+FORBIDDEN_CALLS = ('alloc', 'release', 'memcpy')
+DIAGNOSTIC = re.compile(r'probe\.wf:(\d+):\d+: error\[([A-Z]+-\d+)\]')
+
+
+def compare_entry(entry, record, directory):
+    expected = EXPECTED[entry]
+    problems = []
+    compile_exit = record.get('compile', {}).get('exit')
+    if compile_exit != expected['exit']:
+        problems.append(f'compile exit {compile_exit}, expected {expected["exit"]}')
+    text = ''
+    for name in ('compile.stdout', 'compile.stderr'):
+        if (directory / name).exists():
+            text += (directory / name).read_text(errors='replace')
+    found = DIAGNOSTIC.search(text)
+    code = found[2] if found else None
+    if code != expected['code']:
+        problems.append(f'diagnostic code {code}, expected {expected["code"]}')
+    if expected.get('line_has'):
+        line = int(found[1]) if found else 0
+        source = (Path(__file__).parent / entry / 'probe.wf').read_text().splitlines()
+        text_line = source[line - 1] if 0 < line <= len(source) else ''
+        if expected['line_has'] not in text_line:
+            problems.append(f'refusal at line {line}, which is not a line with {expected["line_has"]}')
+    if expected['exit'] == 0:
+        for stage in ('ordinary-run', 'emit', 'retained-object', 'disassemble'):
+            exit_code = record.get(stage, {}).get('exit')
+            if exit_code != 0:
+                problems.append(f'{stage} exit {exit_code}')
+        if record.get('symbol-check', {}).get('exit') != 0:
+            problems.append('symbol-check failed')
+        disassembly = directory / 'disassemble.stdout'
+        assembly = disassembly.read_text(errors='replace') if disassembly.exists() else ''
+        for name, symbol in record.get('symbols', {}).items():
+            for line in function_block(assembly, symbol) or []:
+                match = CALL.search(line)
+                if match and any(word in match[1] for word in FORBIDDEN_CALLS):
+                    problems.append(f'{name} calls {match[1]}')
+    return problems
+
+
+def compare(out, header):
+    for line in header:
+        print(line)
+    results = out / 'results.json'
+    if not results.exists():
+        print('inspect wrote no results.json: the inspection did not run; see its output above')
+        return 1
+    records = json.loads(results.read_text())
+    failed = False
+    for entry in EXPECTED:
+        if entry not in records:
+            print(f'{entry}: no record')
+            failed = True
+            continue
+        problems = compare_entry(entry, records[entry], out / entry)
+        if problems:
+            failed = True
+            print(f'{entry}: DIFFERS: ' + '; '.join(problems))
+        else:
+            print(f'{entry}: as expected')
+    for line in header:
+        print(line)
+    return int(failed)
+
+
 def main():
-    if len(sys.argv) != 4 or sys.argv[1] != 'report':
-        raise SystemExit('usage: check.py report <inspect output directory> <objdump>')
+    if len(sys.argv) != 4 or sys.argv[1] not in ('report', 'compare'):
+        raise SystemExit('usage: check.py report|compare <inspect output directory> <objdump>')
     out = Path(sys.argv[2])
     used = sys.argv[3]
     header = objdump_lines(used)
+    if sys.argv[1] == 'compare':
+        return compare(out, header)
     print('coroutine witnesses, report mode: nothing is compared, this run fails on purpose')
     for line in header:
         print(line)

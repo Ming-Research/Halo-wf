@@ -244,7 +244,7 @@ WITNESS_OUT := $(BUILD)/coroutine-witnesses
 coroutine-witnesses: compiler FORCE
 	@-$(PY) -I -B $(ROOT)/research/experiments/halo-coroutines/inspect.py --compiler $(WHITEFOOTC) \
 		--objdump $(WITNESS_OBJDUMP) --out $(WITNESS_OUT)
-	@$(PY) -B $(ROOT)/research/experiments/halo-coroutines/witnesses/check.py report $(WITNESS_OUT) $(WITNESS_OBJDUMP)
+	@$(PY) -B $(ROOT)/research/experiments/halo-coroutines/witnesses/check.py compare $(WITNESS_OUT) $(WITNESS_OBJDUMP)
 
 # TEMPORARY, item 274: the Whitefoot upgrade benchmark through the fast workflow, as the kit's
 # downstream guide asks (on the 14900K). The sample times one kernel once; the full run is the seven
