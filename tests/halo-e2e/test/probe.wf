@@ -1236,78 +1236,192 @@ const sealed_error: Array<u8, 49> = "user_script:1: Attempt to modify a readonly
 
 const sealed_key: Array<u8, 1> = "x";
 
-fn retained_closure_probe() -> r: u8 pure {
-  doc "A Lua closure the host keeps from one script runs its own code in a later script, whether that script has fewer functions or one with the same number, and after the scripts are flushed calling it is an error whatever a script compiled afterwards holds.";
+fn compile_chunk(engine: &Engine, chunk: &[u8], source: &[u8]) -> r: Option<halo::embed::ScriptId> reads(chunk), reads(source), writes(engine) {
+  doc "Compiles source under the chunk name, or None when the compiler refuses it.";
+  let compiled = halo::embed::compile(engine: engine, chunk_name: chunk, source: source);
+  match move compiled {
+    Err(..) => {
+      return None<halo::embed::ScriptId>();
+    }
+    Ok(value: id) => {
+      return Some<halo::embed::ScriptId>(value: id);
+    }
+  }
+}
+
+fn run_code(engine: &Engine, env: &Probe, chunk: &[u8], source: &[u8]) -> r: u8 reads(chunk), reads(source), writes(engine), writes(env) {
+  doc "Compiles and runs source, and gives its outcome code, or 255 when it does not compile.";
+  match compile_chunk(engine: engine, chunk: chunk, source: source) {
+    None() => {
+      return 255_u8;
+    }
+    Some(value: id) => {
+      let ran = probe_run(engine: engine, env: env, script: id);
+      return outcome_code(outcome: ran);
+    }
+  }
+}
+
+fn run_returns(engine: &Engine, env: &Probe, source: &[u8], expected: f64) -> r: Bool reads(source), writes(engine), writes(env) {
+  doc "Runs source under the probe's usual chunk name and checks that it returned the number expected.";
+  let code = run_code(engine: engine, env: env, chunk: &probe_text_4[0_u64..12_u64], source: source);
+  if code != 0_u8 {
+    return False();
+  }
+  return returned(engine: engine, expected: expected);
+}
+
+fn keep_function(engine: &Engine, env: &Probe, chunk: &[u8], maker: &[u8]) -> r: Option<Value> reads(chunk), reads(maker), writes(engine), writes(env) {
+  doc "Runs a script that returns a function and keeps the function as the global held.";
+  let code = run_code(engine: engine, env: env, chunk: chunk, source: maker);
+  if code != 0_u8 {
+    return None<Value>();
+  }
+  match halo::embed::result(engine: engine, index: 0_u64) {
+    None() => {
+      return None<Value>();
+    }
+    Some(value: kept) => {
+      let put = halo::embed::set_global(engine: engine, name: &retain_name[0_u64..4_u64], value: kept);
+      return Some<Value>(value: kept);
+    }
+  }
+}
+
+fn retain_fewer() -> r: Bool pure {
+  doc "A function kept from a script of two functions runs its own code under a script of one.";
   let engine = halo::embed::new_engine(limit: 67108864_u64);
   let env = Probe(mode: 0_u8, calls: 0_u64);
-  let first = halo::embed::compile(engine: &engine, chunk_name: &probe_text_4[0_u64..12_u64], source: &retain_maker[0_u64..31_u64]);
-  match move first {
-    Err(..) => {
-      return 212_u8;
+  match keep_function(engine: &engine, env: &env, chunk: &probe_text_4[0_u64..12_u64], maker: &retain_maker[0_u64..31_u64]) {
+    None() => {
+      return False();
     }
-    Ok(value: maker) => {
-      let made = probe_run(engine: &engine, env: &env, script: maker);
-      let made_code = outcome_code(outcome: made);
-      if made_code != 0_u8 {
-        return 213_u8;
+    Some(..) => {
+      return run_returns(engine: &engine, env: &env, source: &retain_caller[0_u64..13_u64], expected: 42.0_f64);
+    }
+  }
+}
+
+fn retain_same() -> r: Bool pure {
+  doc "A function kept from one script runs its own code, not the code of the function that has its number in a later script.";
+  let engine = halo::embed::new_engine(limit: 67108864_u64);
+  let env = Probe(mode: 0_u8, calls: 0_u64);
+  match keep_function(engine: &engine, env: &env, chunk: &probe_text_4[0_u64..12_u64], maker: &retain_maker[0_u64..31_u64]) {
+    None() => {
+      return False();
+    }
+    Some(..) => {
+      return run_returns(engine: &engine, env: &env, source: &retain_shadow[0_u64..45_u64], expected: 42.0_f64);
+    }
+  }
+}
+
+fn retain_flush() -> r: Bool pure {
+  doc "After forget_all, calling a function kept from before is an error, as luaG_runerror raises it: bare when a pcall called it, located at the Lua caller otherwise, and it never runs another script's code.";
+  let engine = halo::embed::new_engine(limit: 67108864_u64);
+  let env = Probe(mode: 0_u8, calls: 0_u64);
+  match keep_function(engine: &engine, env: &env, chunk: &probe_text_4[0_u64..12_u64], maker: &retain_maker[0_u64..31_u64]) {
+    None() => {
+      return False();
+    }
+    Some(..) => {
+      halo::embed::forget_all(engine: &engine);
+      let caught = run_returns(engine: &engine, env: &env, source: &retain_catch[0_u64..136_u64], expected: 1.0_f64);
+      if bnot(caught) {
+        return False();
       }
-      match halo::embed::result(engine: &engine, index: 0_u64) {
+      let code = run_code(engine: &engine, env: &env, chunk: &probe_text_4[0_u64..12_u64], source: &retain_direct[0_u64..55_u64]);
+      if code != 1_u8 {
+        return False();
+      }
+      return format_matches(engine: &engine, line: 0_u64, want: &retain_direct_error[0_u64..61_u64]);
+    }
+  }
+}
+
+fn retain_pinned() -> r: Bool pure {
+  doc "A function the host only pins stays callable through collections, and a script the compiler refuses does not take the pin's root away.";
+  let engine = halo::embed::new_engine(limit: 67108864_u64);
+  let env = Probe(mode: 0_u8, calls: 0_u64);
+  let stress = True();
+  halo::embed::set_gc_stress(engine: &engine, enabled: stress);
+  let code = run_code(engine: &engine, env: &env, chunk: &probe_text_4[0_u64..12_u64], source: &retain_maker[0_u64..31_u64]);
+  if code != 0_u8 {
+    return False();
+  }
+  match halo::embed::result(engine: &engine, index: 0_u64) {
+    None() => {
+      return False();
+    }
+    Some(value: kept) => {
+      let pinned = halo::embed::pin(engine: &engine, value: kept);
+      match pinned {
         None() => {
-          return 214_u8;
+          return False();
         }
-        Some(value: kept) => {
-          let put = halo::embed::set_global(engine: &engine, name: &retain_name[0_u64..4_u64], value: kept);
+        Some(..) => {
         }
       }
+      let refused = run_code(engine: &engine, env: &env, chunk: &probe_text_4[0_u64..12_u64], source: &retain_bad[0_u64..8_u64]);
+      if refused != 255_u8 {
+        return False();
+      }
+      let before = halo::embed::collection_count(engine: &engine);
+      halo::embed::collect_at_next_safepoint(engine: &engine);
+      let looped = run_code(engine: &engine, env: &env, chunk: &probe_text_4[0_u64..12_u64], source: &collect_source[0_u64..44_u64]);
+      if looped != 0_u8 {
+        return False();
+      }
+      let after = halo::embed::collection_count(engine: &engine);
+      if after <= before {
+        return False();
+      }
+      let put = halo::embed::set_global(engine: &engine, name: &retain_name[0_u64..4_u64], value: kept);
+      return run_returns(engine: &engine, env: &env, source: &retain_caller[0_u64..13_u64], expected: 42.0_f64);
     }
   }
-  let fewer = halo::embed::compile(engine: &engine, chunk_name: &probe_text_4[0_u64..12_u64], source: &retain_caller[0_u64..13_u64]);
-  match move fewer {
-    Err(..) => {
-      return 215_u8;
+}
+
+fn retain_chunk() -> r: Bool pure {
+  doc "An error a kept function raises is located in the chunk name its own script was compiled under.";
+  let engine = halo::embed::new_engine(limit: 67108864_u64);
+  let env = Probe(mode: 0_u8, calls: 0_u64);
+  match keep_function(engine: &engine, env: &env, chunk: &retain_one[0_u64..4_u64], maker: &retain_thrower[0_u64..35_u64]) {
+    None() => {
+      return False();
     }
-    Ok(value: caller) => {
-      let called = probe_run(engine: &engine, env: &env, script: caller);
-      let called_code = outcome_code(outcome: called);
-      if called_code != 0_u8 {
-        return 216_u8;
+    Some(..) => {
+      let code = run_code(engine: &engine, env: &env, chunk: &retain_two[0_u64..4_u64], source: &retain_caller[0_u64..13_u64]);
+      if code != 1_u8 {
+        return False();
       }
-      if bnot(returned(engine: &engine, expected: 42.0_f64)) {
-        return 217_u8;
-      }
+      return format_matches(engine: &engine, line: 0_u64, want: &retain_thrown[0_u64..11_u64]);
     }
   }
-  let same = halo::embed::compile(engine: &engine, chunk_name: &probe_text_4[0_u64..12_u64], source: &retain_shadow[0_u64..45_u64]);
-  match move same {
-    Err(..) => {
-      return 218_u8;
-    }
-    Ok(value: shadow) => {
-      let shadowed = probe_run(engine: &engine, env: &env, script: shadow);
-      let shadowed_code = outcome_code(outcome: shadowed);
-      if shadowed_code != 0_u8 {
-        return 219_u8;
-      }
-      if bnot(returned(engine: &engine, expected: 42.0_f64)) {
-        return 220_u8;
-      }
-    }
+}
+
+fn retained_closure_probe() -> r: u8 pure {
+  doc "A Lua closure the host keeps runs its own code in later scripts. Each case runs on its own engine; the exit code is 223 plus the cases that failed: 1 a later script with fewer functions, 2 a later script with a function of the same number, 4 the scripts flushed, 8 the function only pinned through a refused compile and collections, 16 an error located in the kept function's own chunk.";
+  let mask = 0_u8;
+  if bnot(retain_fewer()) {
+    set mask = mask +sat 1_u8;
   }
-  halo::embed::forget_all(engine: &engine);
-  let after = halo::embed::compile(engine: &engine, chunk_name: &probe_text_4[0_u64..12_u64], source: &retain_shadow[0_u64..45_u64]);
-  match move after {
-    Err(..) => {
-      return 221_u8;
-    }
-    Ok(value: later) => {
-      let flushed = probe_run(engine: &engine, env: &env, script: later);
-      let flushed_code = outcome_code(outcome: flushed);
-      if flushed_code != 1_u8 {
-        return 222_u8;
-      }
-    }
+  if bnot(retain_same()) {
+    set mask = mask +sat 2_u8;
   }
-  return 0_u8;
+  if bnot(retain_flush()) {
+    set mask = mask +sat 4_u8;
+  }
+  if bnot(retain_pinned()) {
+    set mask = mask +sat 8_u8;
+  }
+  if bnot(retain_chunk()) {
+    set mask = mask +sat 16_u8;
+  }
+  if mask == 0_u8 {
+    return 0_u8;
+  }
+  return 223_u8 +sat mask;
 }
 
 const retain_maker: Array<u8, 31> = "return function() return 42 end";
@@ -1317,6 +1431,22 @@ const retain_caller: Array<u8, 13> = "return held()";
 const retain_shadow: Array<u8, 45> = "local g=function() return 7 end return held()";
 
 const retain_name: Array<u8, 4> = "held";
+
+const retain_catch: Array<u8, 136> = "local g=function() return 7 end local ok,e=pcall(held) if e=='attempt to call a function of a flushed script' then return 1 end return 0";
+
+const retain_direct: Array<u8, 55> = "local g=function() return 7 end local r=held() return r";
+
+const retain_direct_error: Array<u8, 61> = "user_script:1: attempt to call a function of a flushed script";
+
+const retain_bad: Array<u8, 8> = "return +";
+
+const retain_thrower: Array<u8, 35> = "return function() error('boom') end";
+
+const retain_thrown: Array<u8, 11> = "one:1: boom";
+
+const retain_one: Array<u8, 4> = "@one";
+
+const retain_two: Array<u8, 4> = "@two";
 
 fn smoke() -> status: ExitStatus pure {
   doc "Runs the embedding lifecycle observations, including cjson reclamation, collection statistics, configurable pause and thread ownership/accounting with ordinary and stress collection.";
