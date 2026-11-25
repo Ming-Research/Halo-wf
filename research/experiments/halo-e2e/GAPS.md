@@ -33,14 +33,20 @@ ScriptIds pair a slot and a flush generation. Reset preserves the cache; flush
 closes active upvalues, removes scripts and invalidates their IDs. Generation
 exhaustion refuses subsequent compilation rather than reusing an identity.
 
-VM `start` replaces its prototype and line metadata from one script. A closure
-retained by the host or in a global table from one cached script cannot safely be
-called by another script: prototype/code identities are script-relative. The
-embedding currently follows that VM interface; it does not rebase/merge scripts.
-A flush likewise cannot preserve callable closures of flushed scripts. Reopen
-with a two-script witness retaining a closure across start, and assign script
-ownership to closures or use one engine-wide code/prototype identity space before
-supporting that use. Corpus cases run independent engines and do not verify it.
+The engine keeps every cached script in one program: `compile` appends the
+script's code, constants, prototypes, line numbers and debug names after the
+earlier scripts', with code positions, constant bases and prototype numbers
+absolute from the program's current sizes, and `start` copies nothing. A closure
+the host keeps, in a global or by `pin`, therefore runs its own code in every
+later script. Prototype numbers are never reused: `forget_all` frees the program
+and moves the prototype floor past the freed numbers, so calling a closure kept
+from before the flush raises `attempt to call a function of a flushed script`
+(located at the Lua caller, bare through `pcall`) and never runs another
+script's code. Errors a kept function raises are located in the chunk name of
+the script that holds the code. Redis runs no such function (its reply
+conversion turns functions into nil and Firn keeps no Lua value between
+scripts), so no recorded oracle covers it; the probe's retained-closure cases in
+`tests/halo-e2e/test/probe.wf` do.
 
 ## Error locations and Stop
 

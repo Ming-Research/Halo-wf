@@ -3,7 +3,7 @@
 How a heap closure names what it calls, and how `cjson.new()` instances keep their configurations.
 
 ### decision a-closure-names-its-callee
-A heap closure records its callee explicitly, a Lua prototype or a builtin ID, and a native closure keeps its state in closed captures.
+A heap closure records its callee explicitly, a Lua prototype or a builtin ID, and a native closure keeps its state in closed captures; a prototype id is engine-wide and never reused.
 - rejected: an agent proposed a reserved prototype value for each kind of native closure; the owner rejected it, because the kinds stay apart only while each new native closure picks an unused value and every reader compares against all of them, which no check enforces.
 - rejected: an agent proposed keeping native closures' bindings in a VM registry; the owner rejected it, because a registry's lifetime can drift apart from recycled closure handles.
 

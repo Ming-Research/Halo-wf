@@ -32,6 +32,12 @@ The embedding gives a host three general functions: set or clear a table's metat
 - rejected: an agent proposed a function that lifts the read-only mark, called around a host's own writes as Redis 7.2.16 does; the owner rejected it, because host writes already reach a read-only table, so the pair adds two calls to each `EVAL`, and a host missing the second leaves it writable.
 
 ### decision embedding-roots-cross-through-a-persistent-bridge
-Each cached script keeps its embedding root bridge in its constant-pool tail; compile, pin and unpin invalidate every bridge, and a rebuild reads only original constants and current pins.
+The engine keeps one embedding root bridge in its program's constant-pool tail; compile, pin and unpin invalidate it, and a rebuild reads only original constants and current pins.
+- replaced: A bridge in each cached script's constant-pool tail, rebuilt from every script's original constants, was on main; the owner changed it, because one program holds every script's constants, so an inactive script's constants need no copying and start copies no per-script tables.
 - replaced: Copying the embedding's roots again on every resume was on main; the owner changed it, because a persistent bridge cut the budgeted loop's time by 55.39% in same-source pairs, with the same replies, collections and root controls (data: `research/experiments/halo-bench/RESULTS.md`).
 - rejected: an agent proposed a separate root registry passed to the collector as its own argument; the owner rejected it, because it would change the collector's boundary without improving what the experiment had to show.
+
+### decision the-program-is-shared-by-every-cached-script
+An engine keeps all cached scripts in one program with absolute code positions and prototype ids it never reuses; a flush frees it, and calling an older function then raises an error.
+- replaced: A separate set of tables for each script, copied into the VM at every start, was on main; the owner changed it, because a Lua function the host kept from one script then ran the same-numbered code of the next script.
+- rejected: an agent proposed that a closure names its script and a call into another script runs as a nested activation; the owner rejected it, because every Lua call would compare scripts and a cross-script call would take one of the 200 nested levels and could not suspend.
