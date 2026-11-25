@@ -8,11 +8,14 @@ a failure; nothing is compared here.
 """
 import json
 import re
+import shutil
 import sys
 from pathlib import Path
 
-LINES_PER_ENTRY = 25
+LINES_PER_ENTRY = 12
+DIAGNOSTIC_LINES = 8
 CALL = re.compile(r'\bcall[qlw]?\s.*<([^>]+)>')
+CANDIDATES = ('/usr/bin/llvm-objdump-22', '/usr/lib/llvm-22/bin/llvm-objdump')
 
 
 def function_block(assembly, symbol):
@@ -44,7 +47,7 @@ def entry_report(entry, record, directory):
             if path.exists():
                 text += path.read_text(errors='replace')
         lines.append('  diagnostic:')
-        lines += ['    ' + line for line in text.splitlines()[:12]]
+        lines += ['    ' + line for line in text.splitlines()[:DIAGNOSTIC_LINES]]
     if record.get('symbol-check'):
         lines.append(f'  symbol-check: {record["symbol-check"]}')
     symbols = record.get('symbols', {})
@@ -68,15 +71,33 @@ def entry_report(entry, record, directory):
     return lines
 
 
+def objdump_lines(used):
+    """The objdump lookup: which candidate exists, and which one the assembly checks used."""
+    shown = ', '.join(f'{path} {"exists" if Path(path).exists() else "absent"}' for path in CANDIDATES)
+    on_path = shutil.which('llvm-objdump-22') or 'none'
+    if Path(used).exists():
+        verdict = f'objdump used: {used}'
+    else:
+        verdict = 'objdump used: NONE; assembly checks did not run'
+    return [f'objdump lookup: {shown}; llvm-objdump-22 on PATH: {on_path}', verdict]
+
+
 def main():
-    if len(sys.argv) != 3 or sys.argv[1] != 'report':
-        raise SystemExit('usage: check.py report <inspect output directory>')
+    if len(sys.argv) != 4 or sys.argv[1] != 'report':
+        raise SystemExit('usage: check.py report <inspect output directory> <objdump>')
     out = Path(sys.argv[2])
+    used = sys.argv[3]
     records = json.loads((out / 'results.json').read_text())
+    header = objdump_lines(used)
     print('coroutine witnesses, report mode: nothing is compared, this run fails on purpose')
+    for line in header:
+        print(line)
     for entry, record in records.items():
         for line in entry_report(entry, record, out / entry):
             print(line)
+    # The same lookup again as the last lines, so that a cut at either end keeps it.
+    for line in header:
+        print(line)
     return 1
 
 

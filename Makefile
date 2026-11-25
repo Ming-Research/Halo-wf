@@ -237,12 +237,14 @@ design-ready:
 
 # TEMPORARY, item 274: one run of the coroutine witnesses with the pinned compiler, in report
 # mode, which fails on purpose so that run_tests returns what each program gave.
-WITNESS_OBJDUMP ?= /usr/bin/llvm-objdump-22
+# The first llvm-objdump that exists; if neither does, a path that does not, so that the compile
+# stages still run and the report says that the assembly checks did not run.
+WITNESS_OBJDUMP ?= $(or $(firstword $(wildcard /usr/bin/llvm-objdump-22 /usr/lib/llvm-22/bin/llvm-objdump)),/nonexistent/llvm-objdump)
 WITNESS_OUT := $(BUILD)/coroutine-witnesses
 coroutine-witnesses: compiler FORCE
 	@-$(PY) -B $(ROOT)/research/experiments/halo-coroutines/inspect.py --compiler $(WHITEFOOTC) \
 		--objdump $(WITNESS_OBJDUMP) --out $(WITNESS_OUT)
-	@$(PY) -B $(ROOT)/research/experiments/halo-coroutines/witnesses/check.py report $(WITNESS_OUT)
+	@$(PY) -B $(ROOT)/research/experiments/halo-coroutines/witnesses/check.py report $(WITNESS_OUT) $(WITNESS_OBJDUMP)
 
 # TEMPORARY, item 274: the Whitefoot upgrade benchmark through the fast workflow, as the kit's
 # downstream guide asks (on the 14900K). The sample times one kernel once; the full run is the seven
