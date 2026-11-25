@@ -242,7 +242,7 @@ design-ready:
 WITNESS_OBJDUMP ?= $(or $(firstword $(wildcard /usr/bin/llvm-objdump-22 /usr/lib/llvm-22/bin/llvm-objdump)),/nonexistent/llvm-objdump)
 WITNESS_OUT := $(BUILD)/coroutine-witnesses
 coroutine-witnesses: compiler FORCE
-	@-$(PY) -B $(ROOT)/research/experiments/halo-coroutines/inspect.py --compiler $(WHITEFOOTC) \
+	@-$(PY) -I -B $(ROOT)/research/experiments/halo-coroutines/inspect.py --compiler $(WHITEFOOTC) \
 		--objdump $(WITNESS_OBJDUMP) --out $(WITNESS_OUT)
 	@$(PY) -B $(ROOT)/research/experiments/halo-coroutines/witnesses/check.py report $(WITNESS_OUT) $(WITNESS_OBJDUMP)
 

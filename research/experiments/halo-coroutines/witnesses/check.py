@@ -87,11 +87,17 @@ def main():
         raise SystemExit('usage: check.py report <inspect output directory> <objdump>')
     out = Path(sys.argv[2])
     used = sys.argv[3]
-    records = json.loads((out / 'results.json').read_text())
     header = objdump_lines(used)
     print('coroutine witnesses, report mode: nothing is compared, this run fails on purpose')
     for line in header:
         print(line)
+    results = out / 'results.json'
+    if not results.exists():
+        print('inspect wrote no results.json: the inspection did not run; see its output above')
+        for line in header:
+            print(line)
+        return 1
+    records = json.loads(results.read_text())
     for entry, record in records.items():
         for line in entry_report(entry, record, out / entry):
             print(line)
