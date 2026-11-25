@@ -23,11 +23,12 @@ old="$out/old/whitefootc"
 
 if [ "$mode" = sample ]; then
   kernels=fib
-  runs=1
+  batches="1"
   scale=
 else
+  # The three batches of RESULTS.md's compiler-upgrade procedure, in its order, in one request.
   kernels=fib,loop,integer-table,string-key,concat,sort,binary-trees
-  runs=6
+  batches="1 3 6"
   scale="--scale binary-trees=14"
 fi
 
@@ -36,13 +37,21 @@ graph=research/experiments/halo-bench/modules.wfg
 "$old" --graph "$graph" --entry bench --full-lto -o "$out/halo-before"
 
 status=0
-# shellcheck disable=SC2086
-python3 -B research/experiments/halo-bench/run.py --lua "$lua" \
-  --before-binary "$out/halo-before" --binary "$out/halo-after" \
-  --kernels "$kernels" $scale --runs "$runs" --out "$out/compare.json" \
-  --compiler "$wfc" > "$out/compare.log" 2>&1 || status=$?
+for runs in $batches; do
+  code=0
+  # shellcheck disable=SC2086
+  python3 -B research/experiments/halo-bench/run.py --lua "$lua" \
+    --before-binary "$out/halo-before" --binary "$out/halo-after" \
+    --kernels "$kernels" $scale --runs "$runs" --out "$out/compare-$runs.json" \
+    --compiler "$wfc" > "$out/compare-$runs.log" 2>&1 || code=$?
+  [ "$code" = 0 ] || status=$code
+  echo "batch runs=$runs: run.py exit $code"
+done
 
-echo "upgrade benchmark, $mode mode: run.py exit $status; $old_release -> $(basename "$wfc")"
+echo "upgrade benchmark, $mode mode: $old_release -> $(basename "$wfc"); run.py exit $status"
 sha256sum "$wfc" "$old" "$out/halo-before" "$out/halo-after"
-tail -n 60 "$out/compare.log"
+for runs in $batches; do
+  echo "--- batch runs=$runs, last 20 lines"
+  tail -n 20 "$out/compare-$runs.log"
+done
 exit 1
