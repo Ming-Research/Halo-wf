@@ -1410,19 +1410,24 @@ fn retain_chunk() -> r: Bool pure {
 fn retained_closure_probe() -> r: u8 pure {
   doc "A Lua closure the host keeps runs its own code in later scripts. Each case runs on its own engine; the exit code is 223 plus the cases that failed: 1 a later script with fewer functions, 2 a later script with a function of the same number, 4 the scripts flushed, 8 the function only pinned through a refused compile and collections, 16 an error located in the kept function's own chunk.";
   let mask = 0_u8;
-  if bnot(retain_fewer()) {
+  let fewer_passed = retain_fewer();
+  if bnot(fewer_passed) {
     set mask = mask +sat 1_u8;
   }
-  if bnot(retain_same()) {
+  let same_passed = retain_same();
+  if bnot(same_passed) {
     set mask = mask +sat 2_u8;
   }
-  if bnot(retain_flush()) {
+  let flush_passed = retain_flush();
+  if bnot(flush_passed) {
     set mask = mask +sat 4_u8;
   }
-  if bnot(retain_pinned()) {
+  let pinned_passed = retain_pinned();
+  if bnot(pinned_passed) {
     set mask = mask +sat 8_u8;
   }
-  if bnot(retain_chunk()) {
+  let chunk_passed = retain_chunk();
+  if bnot(chunk_passed) {
     set mask = mask +sat 16_u8;
   }
   if mask == 0_u8 {

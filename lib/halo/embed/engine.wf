@@ -99,7 +99,8 @@ fn compile(engine: &Engine, chunk_name: &[u8], source: &[u8]) -> r: Result<Scrip
         let wanted = n + 1_u64;
         if wanted > engine^.entries.inner.cap {
           let doubled = engine^.entries.inner.cap +sat engine^.entries.inner.cap;
-          grow(cell: &engine^.entries, capacity: imax(wanted, doubled));
+          let capacity = imax(wanted, doubled);
+          grow(cell: &engine^.entries, capacity: capacity);
         }
         if engine^.entries.inner.len < engine^.entries.inner.cap {
           loop {

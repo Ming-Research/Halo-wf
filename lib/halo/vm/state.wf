@@ -389,7 +389,8 @@ fn proto_slot(vm: &Vm, id: u32) -> r: u64 reads(vm.proto_floor) {
   if id < vm^.proto_floor {
     return 18446744073709551615_u64;
   }
-  return cvt::<u32, u64>(id -sat vm^.proto_floor);
+  let offset = id -sat vm^.proto_floor;
+  return cvt::<u32, u64>(offset);
 }
 
 fn raise_text(vm: &Vm, text: &[u8]) -> r: Bool reads(text), writes(vm) {

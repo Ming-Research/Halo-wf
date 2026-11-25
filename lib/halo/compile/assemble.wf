@@ -155,7 +155,8 @@ fn to_cell(i: &Ins, t: u32, proto_base: u32) -> result_value: Cell reads(i) {
     return Cell::Close(a: a);
   }
   if op == 36_u8 {
-    return Cell::Closure(a: a, proto: bx +sat proto_base);
+    let child = bx +sat proto_base;
+    return Cell::Closure(a: a, proto: child);
   }
   if op == 37_u8 {
     return Cell::VarArg(a: a, b: b);
@@ -440,5 +441,6 @@ fn copy_debug_name(heap: &Heap, names: &Box<Slots<u8>>, base: u64, handle: u32) 
     text(buf: names, s: &heap^.strings.inner[index].payload.bytes.inner[0_u64..length]);
   }
   let length = names^.inner.len -sat offset;
-  return DebugName(offset: base +sat offset, length: length);
+  let absolute = base +sat offset;
+  return DebugName(offset: absolute, length: length);
 }

@@ -1002,7 +1002,8 @@ fn append_cells(out: &Box<Slots<Cell>>, src: &Box<Slots<Cell>>) -> r: unit reads
   let need = out^.inner.len +sat src^.inner.len;
   if need > out^.inner.cap {
     let doubled = out^.inner.cap +sat out^.inner.cap;
-    grow(cell: out, capacity: imax(need, doubled));
+    let capacity = imax(need, doubled);
+    grow(cell: out, capacity: capacity);
   }
   for (i in 0_u64..src^.inner.len) {
     if out^.inner.len < out^.inner.cap {
@@ -1018,7 +1019,8 @@ fn append_values(out: &Box<Slots<Value>>, src: &Box<Slots<Value>>) -> r: unit re
   let need = out^.inner.len +sat src^.inner.len;
   if need > out^.inner.cap {
     let doubled = out^.inner.cap +sat out^.inner.cap;
-    grow(cell: out, capacity: imax(need, doubled));
+    let capacity = imax(need, doubled);
+    grow(cell: out, capacity: capacity);
   }
   for (i in 0_u64..src^.inner.len) {
     if out^.inner.len < out^.inner.cap {
@@ -1034,7 +1036,8 @@ fn append_protos(out: &Box<Slots<Proto>>, src: &Box<Slots<Proto>>) -> r: unit re
   let need = out^.inner.len +sat src^.inner.len;
   if need > out^.inner.cap {
     let doubled = out^.inner.cap +sat out^.inner.cap;
-    grow(cell: out, capacity: imax(need, doubled));
+    let capacity = imax(need, doubled);
+    grow(cell: out, capacity: capacity);
   }
   for (i in 0_u64..src^.inner.len) {
     if out^.inner.len < out^.inner.cap {
@@ -1050,7 +1053,8 @@ fn append_lines(out: &Box<Slots<u32>>, src: &Box<Slots<u32>>) -> r: unit reads(s
   let need = out^.inner.len +sat src^.inner.len;
   if need > out^.inner.cap {
     let doubled = out^.inner.cap +sat out^.inner.cap;
-    grow(cell: out, capacity: imax(need, doubled));
+    let capacity = imax(need, doubled);
+    grow(cell: out, capacity: capacity);
   }
   for (i in 0_u64..src^.inner.len) {
     if out^.inner.len < out^.inner.cap {
@@ -1066,7 +1070,8 @@ fn append_bytes(out: &Box<Slots<u8>>, src: &Box<Slots<u8>>) -> r: unit reads(src
   let need = out^.inner.len +sat src^.inner.len;
   if need > out^.inner.cap {
     let doubled = out^.inner.cap +sat out^.inner.cap;
-    grow(cell: out, capacity: imax(need, doubled));
+    let capacity = imax(need, doubled);
+    grow(cell: out, capacity: capacity);
   }
   for (i in 0_u64..src^.inner.len) {
     if out^.inner.len < out^.inner.cap {
@@ -1082,7 +1087,8 @@ fn append_locals(out: &Box<Slots<LocalVariable>>, src: &Box<Slots<LocalVariable>
   let need = out^.inner.len +sat src^.inner.len;
   if need > out^.inner.cap {
     let doubled = out^.inner.cap +sat out^.inner.cap;
-    grow(cell: out, capacity: imax(need, doubled));
+    let capacity = imax(need, doubled);
+    grow(cell: out, capacity: capacity);
   }
   for (i in 0_u64..src^.inner.len) {
     if out^.inner.len < out^.inner.cap {
@@ -1098,7 +1104,8 @@ fn append_names(out: &Box<Slots<DebugName>>, src: &Box<Slots<DebugName>>) -> r: 
   let need = out^.inner.len +sat src^.inner.len;
   if need > out^.inner.cap {
     let doubled = out^.inner.cap +sat out^.inner.cap;
-    grow(cell: out, capacity: imax(need, doubled));
+    let capacity = imax(need, doubled);
+    grow(cell: out, capacity: capacity);
   }
   for (i in 0_u64..src^.inner.len) {
     if out^.inner.len < out^.inner.cap {
@@ -1111,13 +1118,15 @@ fn append_names(out: &Box<Slots<DebugName>>, src: &Box<Slots<DebugName>>) -> r: 
 
 fn bases(image: &Program, vm: &Vm) -> r: Bases reads(image), reads(vm) {
   doc "Where the next script compiled for this program starts: the sizes of the program's code and constants, the next prototype number, and the sizes of the VM's debug tables. The compiler gives a script absolute positions from these, and install appends it there.";
-  let protos = vm^.proto_floor +sat cvt.wrap::<u64, u32>(vm^.protos.inner.len);
+  let count = cvt.wrap::<u64, u32>(vm^.protos.inner.len);
+  let protos = vm^.proto_floor +sat count;
   return Bases(code: image^.code.inner.len, consts: image^.consts.inner.len, protos: protos, debug: vm^.debug_names.inner.len, locals: vm^.local_variables.inner.len, upvalues: vm^.upvalue_names.inner.len);
 }
 
 fn install(image: &Program, vm: &Vm, script: &Script) -> r: u32 reads(script), writes(image), writes(vm) {
   doc "Appends a script compiled from bases(image, vm) to the program and the VM's tables, registers its chunk name by where its code starts, and returns the number of its main prototype. Nothing else changes, so every earlier script keeps its code, constants and prototype numbers.";
-  let main_proto = vm^.proto_floor +sat cvt.wrap::<u64, u32>(vm^.protos.inner.len);
+  let count = cvt.wrap::<u64, u32>(vm^.protos.inner.len);
+  let main_proto = vm^.proto_floor +sat count;
   let name = DebugName(offset: vm^.source.inner.len, length: script^.source.inner.len);
   let chunk = Chunk(start: image^.code.inner.len, name: name);
   append_cells(out: &image^.code, src: &script^.code);
@@ -1131,7 +1140,8 @@ fn install(image: &Program, vm: &Vm, script: &Script) -> r: u32 reads(script), w
   let wanted = vm^.chunks.inner.len +sat 1_u64;
   if wanted > vm^.chunks.inner.cap {
     let doubled = vm^.chunks.inner.cap +sat vm^.chunks.inner.cap;
-    grow(cell: &vm^.chunks, capacity: imax(wanted, doubled));
+    let capacity = imax(wanted, doubled);
+    grow(cell: &vm^.chunks, capacity: capacity);
   }
   if vm^.chunks.inner.len < vm^.chunks.inner.cap {
     place_back(window: &vm^.chunks.inner, value: chunk);
@@ -1141,7 +1151,8 @@ fn install(image: &Program, vm: &Vm, script: &Script) -> r: u32 reads(script), w
 
 fn clear_program(image: &Program, vm: &Vm) -> r: unit writes(image), writes(vm) {
   doc "Frees every installed script's code, constants, prototypes and debug tables. Prototype numbers are never reused: proto_floor moves past the freed ones, so calling a closure of a freed script raises an error instead of running another script's code. Call it only while no run is active.";
-  set vm^.proto_floor = vm^.proto_floor +sat cvt.wrap::<u64, u32>(vm^.protos.inner.len);
+  let count = cvt.wrap::<u64, u32>(vm^.protos.inner.len);
+  set vm^.proto_floor = vm^.proto_floor +sat count;
   let code = box_slots_new::<Cell>(capacity: 0_u64);
   set image^.code = move code;
   let consts = box_slots_new::<Value>(capacity: 0_u64);

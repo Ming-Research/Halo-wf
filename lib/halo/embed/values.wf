@@ -217,7 +217,8 @@ fn error_chunk(engine: &Engine) -> r: DebugName reads(engine) {
   doc "The chunk name an error is located in: that of the code at the raise point, or, when none is recorded, that of the script the engine is running.";
   let at = engine^.vm.raise_pc;
   if at > 0_u64 {
-    return pkg::vm::chunk_name_at(vm: &engine^.vm, pc: at - 1_u64);
+    let pc = at - 1_u64;
+    return pkg::vm::chunk_name_at(vm: &engine^.vm, pc: pc);
   }
   let active = engine^.active;
   match active {
