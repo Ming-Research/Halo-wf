@@ -304,30 +304,30 @@ fn lp_literals() -> r: Bool pure {
 }
 
 fn later_scripts_probe() -> r: u8 pure {
-  doc "Scripts compiled after others, in one engine, run as they run alone. Each case gives its own code when it fails, the first failing one: 157 scripts compiled after others, run in order and in reverse, 159 functions kept from later scripts, 160 flushes, 161 chunk names, 163 a coroutine of the last run, 164 string constants of scripts not running.";
+  doc "Scripts compiled after others, in one engine, run as they run alone. Each case gives its own code when it fails, the first failing one: 105 scripts compiled after others, run in order and in reverse, 106 functions kept from later scripts, 107 flushes, 108 chunk names, 109 a coroutine of the last run, 118 string constants of scripts not running. No other probe returns these codes.";
   let numeric_passed = lp_numeric();
   if bnot(numeric_passed) {
-    return 157_u8;
+    return 105_u8;
   }
   let kept_passed = lp_kept_later();
   if bnot(kept_passed) {
-    return 159_u8;
+    return 106_u8;
   }
   let flush_passed = lp_flushes();
   if bnot(flush_passed) {
-    return 160_u8;
+    return 107_u8;
   }
   let chunks_passed = lp_chunks();
   if bnot(chunks_passed) {
-    return 161_u8;
+    return 108_u8;
   }
   let coroutine_passed = lp_coroutine();
   if bnot(coroutine_passed) {
-    return 163_u8;
+    return 109_u8;
   }
   let literals_passed = lp_literals();
   if bnot(literals_passed) {
-    return 164_u8;
+    return 118_u8;
   }
   return 0_u8;
 }
