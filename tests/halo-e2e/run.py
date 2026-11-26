@@ -217,6 +217,9 @@ def main():
     parser.add_argument('--gc-stress', action='store_true', help='force full collection at every collector safepoint')
     parser.add_argument('--cases', type=Path, default=ORACLE, help='case root with scripts/GROUP/*.lua and expected/GROUP/*.txt')
     parser.add_argument('--filter', default='')
+    parser.add_argument('--scripts', nargs='+', default=[], metavar='NAME',
+                        help='run only these: a group (apps) or a script (apps/hash-cas), each exactly; '
+                             'a name that is neither is refused')
     parser.add_argument('--report', type=Path)
     parser.add_argument('--actual', type=Path, help='scratch directory for typed replies')
     parser.add_argument('--scratch-root', type=Path, default=Path('/private/tmp'), help='existing directory for temporary build and fixture files')
@@ -236,10 +239,18 @@ def main():
     case_root = args.cases.resolve()
     cases = sorted((case_root / 'scripts').glob('*/*.lua'))
     cases = [p for p in cases if str(p.relative_to(case_root / 'scripts').with_suffix('')).startswith(args.filter)]
+    if args.scripts:
+        def named(path, name):
+            relative = path.relative_to(case_root / 'scripts').with_suffix('')
+            return relative.as_posix() == name or relative.parts[0] == name
+        unknown = [name for name in args.scripts if not any(named(p, name) for p in cases)]
+        if unknown:
+            parser.error('no group or script is named ' + ', '.join(unknown))
+        cases = [p for p in cases if any(named(p, name) for name in args.scripts)]
     if not cases:
         parser.error('filter matched no scripts')
     required = {p.relative_to(case_root / 'scripts').with_suffix('.txt') for p in cases}
-    if not args.filter:
+    if not args.filter and not args.scripts:
         present = {p.relative_to(case_root / 'expected') for p in (case_root / 'expected').glob('*/*.txt')}
         if required != present:
             raise ValueError('missing or surplus baseline files')

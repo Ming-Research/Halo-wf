@@ -13,16 +13,30 @@
 # reported as nothing, which the engine reads as a test that did not run.
 # What became of each test is JUnit XML in the artifact `test-results`.
 #
+# A name of a family of TEST_FAMILIES in the Makefile is a test too, such as
+# `oracle/apps/hash-cas`, one oracle script; run-tests.py runs it through the
+# family's target and reports it under the name given.
+#
 # The tests run on the owner's own machine, the self-hosted runner 14900k, as
 # the fast workflow of wf-agents does, because an agent waits for this
-# workflow each time it asks for tests. Each runner of that machine keeps its
-# checkout between runs, and with it build/: the compiler's download, the
-# programs the tests build and the reference Lua built from Redis 7.2.16's
-# source (build/redis/), so a run builds again only what changed. The
-# checkout leaves them in place (`clean: false`), and the step after it
-# clears the rest of what the last run left. A job there has no root, and
-# needs none: it checks the LLVM the machine keeps (`make toolchain-check`)
-# and installs nothing. Every test runs there.
+# workflow each time it asks for tests. The build is kept per work, not per
+# runner, so that a work's runs build again only what the work changed since
+# its last run, whichever runner takes it (.github/fast-state.sh): the
+# compiler's download, the test programs, the reference Lua built from Redis
+# 7.2.16's source and the compiler's cache are in
+# $HOME/fast-state/Halo-wf/<work>/, which a work's first run copies from
+# main/, which fast-state.yml keeps up to date. The checkout itself is cleared
+# of what the last run left. A job there has no root, and needs none: it
+# checks the LLVM the machine keeps (`make toolchain-check`) and installs
+# nothing. Every test runs there.
+#
+# Time: the engine gives the time the named tests may take together
+# (budget_seconds), which run-tests.py keeps (--budget); a test it stops for
+# that, or does not start, is said so in the results. The step that runs the
+# tests and the job have limits of their own, the repository variables
+# HALO_FAST_TEST_MINUTES and HALO_FAST_JOB_MINUTES, which are 15 and 20 where
+# they are not set: the step's is met first, so the results are still
+# written; the job's ends a job that hangs.
 #
 # It runs only by hand, never on a pull request: the repository is public,
 # and a trigger by a pull request would run anyone's code on the owner's
@@ -47,6 +61,14 @@ on:
         description: How long one test may run before it is stopped, in whole seconds; empty for no stop but the job's limit
         required: false
         default: ''
+      budget_seconds:
+        description: How long the named tests may take together, in whole seconds; empty for no budget but the step's limit
+        required: false
+        default: ''
+      work:
+        description: The engine's work this run is for, whose build it keeps; empty for a run a person asks for
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -58,12 +80,13 @@ jobs:
   tests:
     name: tests (14900k)
     runs-on: [self-hosted, 14900k]
-    # check.yml gives each part 30 minutes; the tests of two parts fit here.
-    timeout-minutes: 60
+    # The job's limit; the head of this file says where it is set.
+    timeout-minutes: ${{ fromJSON(vars.HALO_FAST_JOB_MINUTES || '20') }}
     env:
       TESTS_JUNIT: ${{ github.workspace }}/build/test-results/tests (14900k).xml
       TESTS_SUITE: tests (14900k)
       TESTS_STOP: ${{ inputs.test_stop }}
+      TESTS_BUDGET: ${{ inputs.budget_seconds }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -81,13 +104,25 @@ jobs:
       - name: Name the job's msgpack scratch
         run: echo "MSGPACK_SCRATCH=$RUNNER_TEMP/halo-msgpack-check" >> "$GITHUB_ENV"
 
-      # What the builds make stays; the results go, since run-tests.py adds
-      # to them.
+      # The builds are kept outside the checkout, per work, so all of the
+      # checkout's own goes, the results with it, since run-tests.py adds to
+      # them.
       - name: Clear what the last run left
         run: |
-          git clean -ffdxq -e /build
+          git clean -ffdxq
           git submodule foreach --quiet --recursive git clean -ffdxq
-          rm -rf build/test-results
+
+      # The work's build: HALO_BUILD for the Makefile, WHITEFOOT_CACHE for
+      # the compiler's cache, made from main's where the work has none yet.
+      - name: Use the build kept for this work
+        env:
+          WORK: ${{ inputs.work }}
+        run: |
+          state=$(.github/fast-state.sh use "$WORK")
+          echo "FAST_STATE=$state" >> "$GITHUB_ENV"
+          echo "HALO_BUILD=$state/build" >> "$GITHUB_ENV"
+          echo "WHITEFOOT_CACHE=$state/cache" >> "$GITHUB_ENV"
+          echo "The build of this run is kept in $state"
 
       # The names given, one a line, and whether they need the compiler.
       - name: Read the names
@@ -125,12 +160,12 @@ jobs:
       # The pinned release's Linux compiler runs /usr/bin/clang and links
       # with LLD of the LLVM major its manifest names. The machine keeps its
       # own, which no job may change, so the job checks it (make
-      # toolchain-check, which downloads the compiler first when build/ lacks
-      # it) and installs nothing.
+      # toolchain-check, which downloads the compiler first when the work's
+      # build lacks it, holding the work's lock) and installs nothing.
       - name: Download the pinned compiler and check the machine's LLVM
         if: steps.names.outputs.compiler == 'true'
         run: |
-          make toolchain-check
+          .github/fast-state.sh lock "$FAST_STATE" make toolchain-check
           ld.lld --version
           /usr/bin/clang --version
           python3 --version
@@ -149,8 +184,24 @@ jobs:
           fi
           "$(command -v cc || echo "$RUNNER_TEMP/cc/cc")" --version | head -n 1
 
+      # The step's limit is met before the job's, so the next step still
+      # writes the results; the head of this file says where it is set. Two
+      # runs of one work take turns here, on the work's lock.
       - name: Test
-        run: whitefoot-kit/ci/run-tests.py --names "$RUNNER_TEMP/names"
+        timeout-minutes: ${{ fromJSON(vars.HALO_FAST_TEST_MINUTES || '15') }}
+        run: |
+          # A kit from before --budget would refuse it; the step's limit
+          # then holds alone.
+          budget=()
+          if [ -n "$TESTS_BUDGET" ]; then
+            if grep -q -- '--budget' whitefoot-kit/ci/run-tests.py; then
+              budget=(--budget "$TESTS_BUDGET")
+            else
+              echo "::warning::whitefoot-kit's run-tests.py has no --budget; the budget of $TESTS_BUDGET s is not kept"
+            fi
+          fi
+          .github/fast-state.sh lock "$FAST_STATE" \
+            whitefoot-kit/ci/run-tests.py "${budget[@]}" --names "$RUNNER_TEMP/names"
 
       - name: Name the job's end in its results
         if: ${{ !cancelled() }}

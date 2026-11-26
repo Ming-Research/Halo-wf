@@ -6,7 +6,9 @@ PY ?= python3
 # Every path is relative to this Makefile, so each target works from any
 # working directory.
 ROOT := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
-BUILD := $(ROOT)/build
+# What the builds make: build/, or HALO_BUILD where it is set, as fast.yml sets
+# it to the build kept for one work outside the checkout.
+BUILD := $(or $(HALO_BUILD),$(ROOT)/build)
 
 # The live design trees of Design-skill's form: every root node file directly
 # under design/ except the log and the constitution, so a tree is linted in
@@ -29,6 +31,26 @@ include $(ROOT)/whitefoot-kit/whitefoot.mk
 # CI runs by itself through whitefoot-kit/ci/run-tests.py, which reports it as
 # JUnit XML (whitefoot-kit/downstream.md, "Tests in CI").
 include $(ROOT)/whitefoot-kit/tests.mk
+
+# The test programs (the end-to-end test program, the collector mutants and
+# halo-vm's two) are built by tests/build-program.py, which compiles only
+# when the compiler or a file of the program's graph and packages has changed
+# since the program was last built, by their content, so a run that changed
+# nothing a program uses does not build it again. With WHITEFOOT_CACHE set, as
+# fast.yml sets it, the compiler keeps its cache in WHITEFOOT_CACHE/halo, one
+# for every program, and builds again only what changed; without it, as in
+# check.yml, it builds without a cache. The json, number and msgpack runners
+# read WHITEFOOT_CACHE themselves (tests/compiler_cache.py).
+PROGRAM_CACHE := $(if $(WHITEFOOT_CACHE),$(WHITEFOOT_CACHE)/halo)
+BUILD_PROGRAM = $(PY) -B $(ROOT)/tests/build-program.py --compiler $(WHITEFOOTC) $(if $(PROGRAM_CACHE),--cache $(PROGRAM_CACHE))
+export PROGRAM_CACHE
+
+# A test may also be named by a pattern of names, each run by the target after
+# the `=` with TEST_NAME set to the name given (whitefoot-kit/tests.mk):
+# `oracle/<group>/<script>` is one oracle script and `oracle/<group>` every
+# script of a group, each in both modes at budgets 1, 7 and 1000, and
+# `oracle/probe` the embedding probe alone.
+TEST_FAMILIES := oracle/*=oracle-script
 
 # The collector's mutant controls (tests/halo-gc/controls.sh),
 # one part each; gate-parts checks that controls.sh lists the same labels.
@@ -55,7 +77,7 @@ TESTS := $(foreach part,$(GATE_PARTS),$(or $(PART_TESTS_$(part)),$(part))) desig
 .PHONY: check check-core check-extended check-reference \
 	check-roots-base $(ROOTS_MUTANT_CHECKS) check-hosts-vm check-hosts-lib-json \
 	oracle double-text roots roots-base $(ROOTS_MUTANT_TARGETS) hosts hosts-vm hosts-lib json \
-	reference-lua number msgpack design-lint design-ready gate-parts part-tests FORCE
+	reference-lua number msgpack design-lint design-ready gate-parts part-tests oracle-script hosts-vm-programs test-programs FORCE
 
 # `make check` runs three groups: the core (the embedding probe, the oracle
 # corpus, the double texts, the design lint and gate-parts), the extended
@@ -117,25 +139,43 @@ gate-parts:
 # failure or difference in either mode, after running all three, and keeps
 # each mode's report and actual replies under build/halo-e2e/ for
 # inspection. The test
-# program is built once, with the graph always named by the same relative
-# path so that the compiler's cache key stays stable.
+# program is built with the graph always named by the same relative path so
+# that the compiler's cache key stays stable. Its recipe always runs, and
+# build-program.py compiles only when the program's inputs changed.
 E2E := $(BUILD)/halo-e2e
 E2E_TEST := $(E2E)/test
-E2E_RUN = cd $(ROOT) && $(PY) -B tests/halo-e2e/run.py \
-	--compiler $(WHITEFOOTC) --binary $(E2E_TEST) --budgets 1,7,1000 --scratch-root $(E2E) \
-	--verify-errors --verify-sha1 --verify-memory
+E2E_ONE = cd $(ROOT) && $(PY) -B tests/halo-e2e/run.py \
+	--compiler $(WHITEFOOTC) --binary $(E2E_TEST) --budgets 1,7,1000 --scratch-root $(E2E)
+E2E_RUN = $(E2E_ONE) --verify-errors --verify-sha1 --verify-memory
+E2E_PROBE = if $(E2E_TEST) probe probe probe < /dev/null; then echo "embedding probe: passed"; \
+	else echo "embedding probe: failed observation $$?"; status=1; fi
 
 $(E2E_TEST): $(PIN) $(WHITEFOOTC) FORCE
-	@mkdir -p $(E2E)
-	@cd $(ROOT)/tests/halo-e2e && $(WHITEFOOTC) --graph modules.wfg --entry test -o $@
+	@$(BUILD_PROGRAM) --graph $(ROOT)/tests/halo-e2e/modules.wfg --entry test -o $@
 
 oracle: $(E2E_TEST)
 	@rm -rf $(E2E)/ordinary $(E2E)/stress
 	@status=0; \
-	if $(E2E_TEST) probe probe probe < /dev/null; then echo "embedding probe: passed"; \
-	else echo "embedding probe: failed observation $$?"; status=1; fi; \
+	$(E2E_PROBE); \
 	$(E2E_RUN) --report $(E2E)/ordinary.md --actual $(E2E)/ordinary || status=1; \
 	$(E2E_RUN) --gc-stress --report $(E2E)/stress.md --actual $(E2E)/stress || status=1; \
+	exit $$status
+
+# One name of the `oracle/*` family (TEST_FAMILIES): the probe, or the scripts
+# it names in both modes, without the checks of errors, sha1 and memory that
+# only `oracle` runs. run.py refuses a name that is no group or script.
+ORACLE_PART = $(patsubst oracle/%,%,$(TEST_NAME))
+oracle-script: $(E2E_TEST)
+	@case '$(TEST_NAME)' in \
+	  oracle/?*) ;; \
+	  *) echo "oracle-script: TEST_NAME must be oracle/probe, oracle/<group> or oracle/<group>/<script>, not '$(TEST_NAME)'" >&2; exit 2 ;; \
+	esac; \
+	case '$(ORACLE_PART)' in *[!A-Za-z0-9_./-]*|*..*) echo "oracle-script: '$(TEST_NAME)' is not a script's name" >&2; exit 2 ;; esac
+	@status=0; \
+	if [ '$(ORACLE_PART)' = probe ]; then $(E2E_PROBE); exit $$status; fi; \
+	rm -rf $(E2E)/ordinary $(E2E)/stress; \
+	$(E2E_ONE) --scripts '$(ORACLE_PART)' --report $(E2E)/ordinary.md --actual $(E2E)/ordinary || status=1; \
+	$(E2E_ONE) --scripts '$(ORACLE_PART)' --gc-stress --report $(E2E)/stress.md --actual $(E2E)/stress || status=1; \
 	exit $$status
 
 # The double texts (tests/redis-double-text): the same test
@@ -177,12 +217,18 @@ $(ROOTS_MUTANT_TARGETS): roots-mutant-%: $(PIN) $(WHITEFOOTC) FORCE
 HOSTS := $(BUILD)/halo-hosts
 hosts: hosts-vm hosts-lib
 
-hosts-vm: $(PIN) $(WHITEFOOTC) FORCE
-	@mkdir -p $(HOSTS)
-	@cd $(ROOT)/tests/halo-vm && $(WHITEFOOTC) --graph modules.wfg --entry smoke -o $(HOSTS)/vm-smoke
-	@cd $(ROOT)/tests/halo-vm && $(WHITEFOOTC) --graph modules.wfg --entry suite -o $(HOSTS)/vm-suite
+hosts-vm: hosts-vm-programs
 	@$(HOSTS)/vm-smoke && echo "halo-vm smoke: passed"
 	@$(HOSTS)/vm-suite && echo "halo-vm suite: passed"
+
+hosts-vm-programs: $(PIN) $(WHITEFOOTC) FORCE
+	@$(BUILD_PROGRAM) --graph $(ROOT)/tests/halo-vm/modules.wfg --entry smoke -o $(HOSTS)/vm-smoke
+	@$(BUILD_PROGRAM) --graph $(ROOT)/tests/halo-vm/modules.wfg --entry suite -o $(HOSTS)/vm-suite
+
+# What fast-state.yml builds on main, so that a work's first fast run starts
+# from it: the test programs that need no mutant, and the reference Lua. It
+# runs no test.
+test-programs: $(E2E_TEST) hosts-vm-programs reference-lua
 
 hosts-lib: $(PIN) $(WHITEFOOTC) FORCE
 	@mkdir -p $(HOSTS)
