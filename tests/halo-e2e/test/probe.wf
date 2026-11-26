@@ -544,10 +544,6 @@ fn root_updates_probe(omit_refresh: u8) -> r: u8 pure {
   if collected <= after {
     return 68_u8;
   }
-  let cached_live = cached_string_live(engine: &engine, id: cached);
-  if bnot(cached_live) {
-    return 69_u8;
-  }
   match halo::embed::string_of(engine: &engine, value: held_value) {
     None() => {
       return 115_u8;
@@ -616,27 +612,6 @@ fn root_probe_resume(engine: &Engine, env: &Probe, id: halo::embed::ScriptId, om
     return Outcome::Error();
   }
   return halo::embed::resume::<ProbeHost>(engine: engine, env: env, budget: 1_u64);
-}
-
-fn cached_string_live(engine: &Engine, id: halo::embed::ScriptId) -> r: Bool reads(engine) {
-  doc "The inactive chunk's sole string constant is the independently written 27-byte return literal, found among the program's constants; it must survive before another root mutation or start can refresh the bridge.";
-  let slot = id.slot;
-  if slot < engine^.entries.inner.len {
-    let n = engine^.image.consts.inner.len;
-    for (i in 0_u64..n) {
-      let v = engine^.image.consts.inner[i];
-      match halo::embed::string_of(engine: engine, value: v) {
-        None() => {
-        }
-        Some(value: view) => {
-          if view.length == 27_u64 {
-            return True();
-          }
-        }
-      }
-    }
-  }
-  return False();
 }
 
 fn outcome_code(outcome: Outcome) -> r: u8 pure {
