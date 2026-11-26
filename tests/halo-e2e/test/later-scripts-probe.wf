@@ -328,7 +328,7 @@ fn lp_literals() -> r: Bool pure {
   let id_2 = lp_id(engine: &engine, chunk: &lp_chunk_s[0_u64..2_u64], source: &lp_src_s2[0_u64..72_u64]);
   let before = halo::embed::collection_count(engine: &engine);
   for (round in 0_u64..4_u64) {
-    let made = lp_expect(engine: &engine, env: &env, id: id_2, quota: 1000000_u64, expected: 200.0_f64);
+    let made = lp_expect(engine: &engine, env: &env, id: id_2, quota: 1000000_u64, expected: 2.0e2_f64);
     if bnot(made) {
       return False();
     }
