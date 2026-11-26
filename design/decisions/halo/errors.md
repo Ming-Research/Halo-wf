@@ -16,7 +16,7 @@ The walk that names an operand reads Halo's own cells, a fused compare or test a
 - rejected: an agent proposed keeping a second copy of Lua's 32-bit instruction words for the error path; the owner rejected it, because the cells carry every operand the walk reads, and the cell map keeps the order that `symbexec`'s forward-jump rule compares.
 
 ### decision local-names-are-kept-outside-the-lua-heap
-Each prototype's local-variable ranges, as `lparser.c` records them, and its upvalue names are kept in the script as bytes outside the Lua heap.
+Each prototype's local-variable ranges, as `lparser.c` records them, and its upvalue names are kept in the VM's program metadata as bytes outside the Lua heap.
 - rejected: an agent proposed keeping them as heap string handles; the owner rejected it, because they would add roots that the removed-root controls would also have to cover, while bytes leave the collector, its roots and its accounting as they are.
 
 ### decision only-lual-error-raises-take-the-callers-line

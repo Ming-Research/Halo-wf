@@ -4,6 +4,7 @@ alias Value = pkg::value::Value;
 alias Cell = pkg::value::Cell;
 alias Proto = pkg::value::Proto;
 alias Script = pkg::value::Script;
+alias Bases = pkg::value::Bases;
 alias Heap = pkg::heap::Heap;
 
 fn fused(op: u8) -> result_value: Bool pure {
@@ -63,7 +64,7 @@ fn target(map: &Box<Slots<u32>>, at: i64) -> result_value: u32 reads(map) {
   return 4294967295_u32;
 }
 
-fn to_cell(i: &Ins, t: u32) -> result_value: Cell reads(i) {
+fn to_cell(i: &Ins, t: u32, proto_base: u32) -> result_value: Cell reads(i) {
   doc "Fused comparisons mean exactly: if (cmp(b, c) == a) jump to target else fall through. TEST and TESTSET use truth(value) == c. RK operand narrowing intentionally removes the 256 tag; the verifier has already established all register and constant domains.";
   let arg_177 = i^.a;
   let a = cvt.wrap::<i64, u8>(arg_177);
@@ -154,7 +155,8 @@ fn to_cell(i: &Ins, t: u32) -> result_value: Cell reads(i) {
     return Cell::Close(a: a);
   }
   if op == 36_u8 {
-    return Cell::Closure(a: a, proto: bx);
+    let child = bx +sat proto_base;
+    return Cell::Closure(a: a, proto: child);
   }
   if op == 37_u8 {
     return Cell::VarArg(a: a, b: b);
@@ -300,7 +302,8 @@ fn to_cell(i: &Ins, t: u32) -> result_value: Cell reads(i) {
   return Cell::Return(a: 0_u8, b: 1_u8);
 }
 
-fn assemble(p: &Parser, heap: &Heap) -> result_value: Result<Script, CompileError> reads(p), reads(heap) {
+fn assemble(p: &Parser, heap: &Heap, bases: Bases) -> result_value: Result<Script, CompileError> reads(p), reads(heap) {
+  doc "Assembles the parsed functions into a script whose code positions, constant bases, prototype numbers and debug offsets are absolute from the given bases, so the script can be appended to a program that already holds other scripts.";
   let code = box_slots_new::<Cell>(capacity: 0_u64);
   let consts = box_slots_new::<Value>(capacity: 0_u64);
   let protos = box_slots_new::<Proto>(capacity: 0_u64);
@@ -310,8 +313,8 @@ fn assemble(p: &Parser, heap: &Heap) -> result_value: Result<Script, CompileErro
   let upvalue_names = box_slots_new::<DebugName>(capacity: 0_u64);
   for (id in 0_u64..p^.funcs.inner.len) {
     let s = &p^.funcs.inner[id];
-    let start = code.inner.len;
-    let kbase = consts.inner.len;
+    let start = bases.code +sat code.inner.len;
+    let kbase = bases.consts +sat consts.inner.len;
     let map = cellmap(s: s, start: start);
     let nk = s^.ks.inner.len;
     let nups = s^.ups.inner.len;
@@ -324,12 +327,12 @@ fn assemble(p: &Parser, heap: &Heap) -> result_value: Result<Script, CompileErro
     let arg_188 = s^.maxstack;
     let arg_189 = cvt.wrap::<i64, u8>(arg_188);
     let arg_190 = cvt.wrap::<u64, u8>(nups);
-    let local_base = local_variables.inner.len;
+    let local_base = bases.locals +sat local_variables.inner.len;
     let local_count = s^.local_debug.inner.len;
-    let upvalue_name_base = upvalue_names.inner.len;
+    let upvalue_name_base = bases.upvalues +sat upvalue_names.inner.len;
     for (j in 0_u64..s^.local_debug.inner.len) {
       let record = s^.local_debug.inner[j];
-      let name = copy_debug_name(heap: heap, names: &debug_names, handle: record.name);
+      let name = copy_debug_name(heap: heap, names: &debug_names, base: bases.debug, handle: record.name);
       let startcell = target(map: &map, at: record.startpc);
       let endcell = target(map: &map, at: record.endpc);
       let local = LocalVariable(name: name, startcell: startcell, endcell: endcell);
@@ -337,7 +340,7 @@ fn assemble(p: &Parser, heap: &Heap) -> result_value: Result<Script, CompileErro
     }
     for (j in 0_u64..s^.ups.inner.len) {
       let handle = s^.ups.inner[j].name;
-      let name = copy_debug_name(heap: heap, names: &debug_names, handle: handle);
+      let name = copy_debug_name(heap: heap, names: &debug_names, base: bases.debug, handle: handle);
       push_debug_name(buf: &upvalue_names, v: name);
     }
     let proto = Proto(start: arg_182, kbase: arg_183, nk: arg_184, numparams: arg_186, is_vararg: arg_187, maxstack: arg_189, nups: arg_190, local_base: local_base, local_count: local_count, upvalue_name_base: upvalue_name_base);
@@ -380,7 +383,7 @@ fn assemble(p: &Parser, heap: &Heap) -> result_value: Result<Script, CompileErro
           let arg_196 = i.b;
           set t = target(map: &map, at: arg_196);
         }
-        let cell = to_cell(i: &i, t: t);
+        let cell = to_cell(i: &i, t: t, proto_base: bases.protos);
         push_cell(buf: &code, v: cell);
         let arg_199 = i.line;
         let arg_200 = cvt.wrap::<u64, u32>(arg_199);
@@ -429,7 +432,7 @@ fn push_debug_name(buf: &Box<Slots<DebugName>>, v: DebugName) -> result_value: u
   return unit;
 }
 
-fn copy_debug_name(heap: &Heap, names: &Box<Slots<u8>>, handle: u32) -> result_value: DebugName reads(heap), writes(names) {
+fn copy_debug_name(heap: &Heap, names: &Box<Slots<u8>>, base: u64, handle: u32) -> result_value: DebugName reads(heap), writes(names) {
   doc "Copies parser-interned names into script-owned bytes, outside the Lua heap and collector roots.";
   let offset = names^.inner.len;
   let index = cvt::<u32, u64>(handle);
@@ -438,5 +441,6 @@ fn copy_debug_name(heap: &Heap, names: &Box<Slots<u8>>, handle: u32) -> result_v
     text(buf: names, s: &heap^.strings.inner[index].payload.bytes.inner[0_u64..length]);
   }
   let length = names^.inner.len -sat offset;
-  return DebugName(offset: offset, length: length);
+  let absolute = base +sat offset;
+  return DebugName(offset: absolute, length: length);
 }

@@ -130,6 +130,25 @@ public struct LocalVariable {
   public endcell: u32;
 }
 
+public struct Program {
+  public code: Box<Slots<Cell>>;
+  public consts: Box<Slots<Value>>;
+}
+
+public struct Bases {
+  public code: u64;
+  public consts: u64;
+  public protos: u32;
+  public debug: u64;
+  public locals: u64;
+  public upvalues: u64;
+}
+
+public struct Chunk {
+  public start: u64;
+  public name: DebugName;
+}
+
 public struct Script {
   public code: Box<Slots<Cell>>;
   public consts: Box<Slots<Value>>;

@@ -76,7 +76,7 @@ members.
 
 The `smoke` entry and `test` executable with three arguments run the embedding
 probe (stdin is unused): cache, flush, reset, budget resumption, host outcomes,
-and forced collection of pins and cached constants, including pin/compile/unpin
+and forced collection of pins and of an inactive script's constants, including pin/compile/unpin
 changes between suspended budget checkpoints, the chunk name runtime errors
 are located in, and host calls left pending: completed, failed into a `pcall`
 inside a library callback, and refused by `resume`. Its protection
@@ -226,7 +226,9 @@ and its own survival/release observation after each edit. For discriminating
 controls, the executable's `--omit-pin-refresh`, `--omit-compile-refresh` and
 `--omit-unpin-refresh` modes bypass the embedding refresh at exactly that
 checkpoint through the existing VM resume. They must fail with probe exits
-59 (pin lost), 69 (cached literal lost) and 62 (released pin retained), while
-ordinary `a b c` smoke mode exits 0. These modes serve the root-invalidation
+59 (pin lost), 115 (pin lost across a compile, which cuts the bridge's pin
+tail) and 62 (released pin retained), while ordinary `a b c` smoke mode exits
+0. No Makefile target, controls.sh part or workflow runs these modes; they are
+run by hand with the built test program. These modes serve the root-invalidation
 observations and are retired with the research probe or replaced by a
 maintained embedding test; they do not change GC or oracle expectations.
