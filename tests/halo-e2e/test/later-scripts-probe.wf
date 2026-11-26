@@ -416,7 +416,7 @@ fn lp_diag() -> r: u8 pure {
     let ok = lp_alone(chunk: &probe_text_4[0_u64..12_u64], source: &lp_src_bd[0_u64..1378_u64], quota: 1000000_u64, expected: want);
     if ok {
       let code = cvt.wrap::<u64, u8>(k);
-      return 100_u8 + code;
+      return 100_u8 +sat code;
     }
   }
   return 99_u8;
