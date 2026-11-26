@@ -237,35 +237,40 @@ fn lp_chunks() -> r: Bool pure {
   if code_3 != 1_u8 {
     return False();
   }
-  if bnot(format_matches(engine: &engine, line: 0_u64, want: &lp_err_x3[0_u64..7_u64])) {
+  let located_lp_err_x3 = format_matches(engine: &engine, line: 0_u64, want: &lp_err_x3[0_u64..7_u64]);
+  if bnot(located_lp_err_x3) {
     return False();
   }
   let code_1 = lp_run(engine: &engine, env: &env, id: id_1, quota: 1000000_u64);
   if code_1 != 1_u8 {
     return False();
   }
-  if bnot(format_matches(engine: &engine, line: 0_u64, want: &lp_err_x1[0_u64..7_u64])) {
+  let located_lp_err_x1 = format_matches(engine: &engine, line: 0_u64, want: &lp_err_x1[0_u64..7_u64]);
+  if bnot(located_lp_err_x1) {
     return False();
   }
   let code_5 = lp_run(engine: &engine, env: &env, id: id_5, quota: 1000000_u64);
   if code_5 != 1_u8 {
     return False();
   }
-  if bnot(format_matches(engine: &engine, line: 0_u64, want: &lp_err_x5[0_u64..45_u64])) {
+  let located_lp_err_x5 = format_matches(engine: &engine, line: 0_u64, want: &lp_err_x5[0_u64..45_u64]);
+  if bnot(located_lp_err_x5) {
     return False();
   }
   let code_4 = lp_run(engine: &engine, env: &env, id: id_4, quota: 1000000_u64);
   if code_4 != 1_u8 {
     return False();
   }
-  if bnot(format_matches(engine: &engine, line: 0_u64, want: &lp_err_x4[0_u64..10_u64])) {
+  let located_lp_err_x4 = format_matches(engine: &engine, line: 0_u64, want: &lp_err_x4[0_u64..10_u64]);
+  if bnot(located_lp_err_x4) {
     return False();
   }
   let code_2 = lp_run(engine: &engine, env: &env, id: id_2, quota: 1000000_u64);
   if code_2 != 1_u8 {
     return False();
   }
-  if bnot(format_matches(engine: &engine, line: 0_u64, want: &lp_err_x2[0_u64..7_u64])) {
+  let located_lp_err_x2 = format_matches(engine: &engine, line: 0_u64, want: &lp_err_x2[0_u64..7_u64]);
+  if bnot(located_lp_err_x2) {
     return False();
   }
   let code_1b = lp_run(engine: &engine, env: &env, id: id_1, quota: 1000000_u64);
@@ -387,8 +392,11 @@ fn lp_many() -> r: Bool pure {
   }
   for (j in 0_u64..300_u64) {
     let k = 299_u64 - j;
-    let id = ScriptId(slot: k, generation: engine.generation);
-    let want = cvt::<u64, f64>(k % 3_u64 + 1_u64);
+    let generation = engine.generation;
+    let id = ScriptId(slot: k, generation: generation);
+    let kind_of = k % 3_u64;
+    let number = kind_of + 1_u64;
+    let want = cvt::<u64, f64>(number);
     let ok = lp_expect(engine: &engine, env: &env, id: id, quota: 1000000_u64, expected: want);
     if bnot(ok) {
       return False();
