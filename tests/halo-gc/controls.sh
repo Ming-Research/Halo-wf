@@ -211,7 +211,10 @@ mutant() {
   if [ "$removed" != 1 ]; then
     echo "roots mutant $label: removed $removed lines, want 1"; status=1; return
   fi
-  if ! (cd "$tree/tests/halo-e2e" && "$wfc" --graph modules.wfg --entry test -o "$out/mutant-$label") > "$out/build-$label.log" 2>&1; then
+  # build-program.py compiles only when the copy's content differs from what
+  # the mutant was last built from, with the Makefile's PROGRAM_CACHE when set.
+  if ! python3 -B "$root/tests/build-program.py" --compiler "$wfc" --graph "$tree/tests/halo-e2e/modules.wfg" \
+      --entry test -o "$out/mutant-$label" ${PROGRAM_CACHE:+--cache "$PROGRAM_CACHE"} > "$out/build-$label.log" 2>&1; then
     echo "roots mutant $label: build failed"; status=1; cat "$out/build-$label.log"
   fi
 }

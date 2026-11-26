@@ -18,7 +18,7 @@ path = "design/constitution.md"
 # Where an agent keeps what it makes for research, committed: research/investigations/ and research/experiments/.
 research = "research/"
 # How an agent names a test to `run_tests`, as check.yml, design-readiness.yml and fast.yml name it in their JUnit.
-test_names = "a test of Halo by its target in TESTS of the Makefile: `oracle` (every oracle script, both modes), `double-text`, `design-lint`, `gate-parts`, `roots-base`, `roots-mutant-<label>`, `hosts-vm`, `hosts-lib`, `json`, `number`, `msgpack`, `design-ready` or `pin-ready`; a single oracle script or case is not named alone"
+test_names = "a test of Halo by its target in TESTS of the Makefile: `oracle` (the embedding probe, the error, sha1 and memory checks and every oracle script, both modes), `double-text`, `design-lint`, `gate-parts`, `roots-base`, `roots-mutant-<label>`, `hosts-vm`, `hosts-lib`, `json`, `number`, `msgpack`, `design-ready` or `pin-ready`; or a part of `oracle` alone: `oracle/<group>/<script>`, one script of tests/halo-oracle/scripts/ without `.lua` (such as `oracle/apps/hash-cas`), `oracle/<group>`, every script of a group (`apps`, `coroutines`, `libs`, `lua-core`, `redis-api`), each in both modes at budgets 1, 7 and 1000, or `oracle/probe`, the embedding probe"
 
 # Where Halo's tests are, as git pathspecs, which are all a line that changes only the tests may change: the gate's
 # runners, hosts and oracle fixtures, all under tests/ (tests/README.md). The data its tests expect: the replies recorded
@@ -37,12 +37,16 @@ expected = [
 # Runs only the tests it is given, after the compiler and its LLVM where they need it.
 workflow = "fast.yml"
 # The owner's own machine, the self-hosted runner 14900k: an agent waits for this workflow each time it asks for tests,
-# and that machine keeps the checkout, the compiler and the reference Lua between runs, so a run builds again only what
-# changed. Every test runs there; none needs root.
+# and that machine keeps each work's build (the compiler, the test programs, the reference Lua and the compiler's cache)
+# between its runs, so a run builds again only what the work changed. Every test runs there; none needs root.
 runner = "14900k"
-# check.yml gives each part 30 minutes, and fast.yml its one job 60; a run not complete by then is cancelled, and said
+# The input that takes how long the named tests may take together, which fast.yml gives run-tests.py as its budget.
+budget_input = "budget_seconds"
+# The input that takes the work's number, by which fast.yml keeps the work's build.
+work_input = "work"
+# fast.yml's job has a limit of 20 minutes (HALO_FAST_JOB_MINUTES); a run not complete by then is cancelled, and said
 # as what it found.
-too_long = "90m"
+too_long = "25m"
 
 [ci.full]
 # Every check a merge needs, run once before the merge: the eight parts of the gate (check.yml), and the design tree's
@@ -99,6 +103,9 @@ commands = [
   "python3 -B research/experiments/halo-bench/run.py",
   "research/experiments/halo-bench/interpreters.sh",
   "whitefoot-kit/ci/run-tests.py",
+  "python3 tests/build-program.py",
+  "python3 -B tests/build-program.py",
+  "tests/build-program.py",
   "python3 whitefoot-kit/ci/run-tests.py",
 ]
 

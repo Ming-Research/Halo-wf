@@ -1,0 +1,74 @@
+# The build fast.yml keeps per work on the 14900k (.github/fast-state.sh):
+# after each push to main it builds main's test programs into main/, from
+# which a work's first fast run starts, so that run builds only what the work
+# changed; and it removes each work's build that no run has used for 24 hours.
+# It also runs once a day, for the removal when nothing is pushed, and by
+# hand. It is a workflow of its own, not a job of fast.yml, so that a run of
+# fast.yml is always one the engine asked for.
+#
+# It runs on the owner's machine, as fast.yml does, and never on a pull
+# request: the repository is public, and only a push to main, which only
+# someone who may write to the repository makes, runs it.
+#
+# The job's limit is the repository variable HALO_FAST_STATE_MINUTES, 60
+# where it is not set: a build of main from nothing takes the longest.
+name: fast-state
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '23 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One at a time, in order: each builds main-next/ from the main/ the last one
+# left.
+concurrency:
+  group: fast-state
+  cancel-in-progress: false
+
+jobs:
+  main:
+    name: build main, remove unused (14900k)
+    runs-on: [self-hosted, 14900k]
+    timeout-minutes: ${{ fromJSON(vars.HALO_FAST_STATE_MINUTES || '60') }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          submodules: true
+          clean: false
+          persist-credentials: false
+
+      - name: Clear what the last run left
+        run: |
+          git clean -ffdxq
+          git submodule foreach --quiet --recursive git clean -ffdxq
+
+      - name: Remove the builds no run has used for 24 hours
+        run: .github/fast-state.sh clean
+
+      # The reference Lua's build runs `cc`; as in fast.yml, it is the
+      # machine's /usr/bin/clang where it has none.
+      - name: Name a C compiler cc
+        run: |
+          if ! command -v cc > /dev/null; then
+            mkdir -p "$RUNNER_TEMP/cc"
+            ln -sf /usr/bin/clang "$RUNNER_TEMP/cc/cc"
+            echo "$RUNNER_TEMP/cc" >> "$GITHUB_PATH"
+          fi
+
+      # main-next/ starts as a copy of main/, so this builds only what the
+      # push changed; a failed build leaves main/ as it was.
+      - name: Build main's test programs
+        run: |
+          state=$(.github/fast-state.sh warm-begin)
+          export HALO_BUILD="$state/build" WHITEFOOT_CACHE="$state/cache"
+          make toolchain-check
+          make test-programs
+
+      - name: Make it the build a work starts from
+        run: .github/fast-state.sh warm-end
