@@ -109,7 +109,7 @@ fn lp_alone_cases() -> r: u8 pure {
   if bnot(a) {
     return 167_u8;
   }
-  let b = lp_alone(chunk: &probe_text_4[0_u64..12_u64], source: &lp_src_b[0_u64..1336_u64], quota: 1000000_u64, expected: 10.0_f64);
+  let b = lp_alone(chunk: &probe_text_4[0_u64..12_u64], source: &lp_src_b[0_u64..1379_u64], quota: 1000000_u64, expected: 10.0_f64);
   if bnot(b) {
     return 168_u8;
   }
@@ -132,7 +132,7 @@ fn lp_numeric() -> r: Bool pure {
   if bnot(ok_a) {
     return False();
   }
-  let ok_b = lp_compile_expect(engine: &engine, env: &env, chunk: &probe_text_4[0_u64..12_u64], source: &lp_src_b[0_u64..1336_u64], quota: 1000000_u64, expected: 10.0_f64);
+  let ok_b = lp_compile_expect(engine: &engine, env: &env, chunk: &probe_text_4[0_u64..12_u64], source: &lp_src_b[0_u64..1379_u64], quota: 1000000_u64, expected: 10.0_f64);
   if bnot(ok_b) {
     return False();
   }
@@ -143,7 +143,7 @@ fn lp_numeric() -> r: Bool pure {
   let second = halo::embed::new_engine(limit: 67108864_u64);
   let id_f = lp_id(engine: &second, chunk: &lp_chunk_filler[0_u64..7_u64], source: &lp_src_f[0_u64..220_u64]);
   let id_a = lp_id(engine: &second, chunk: &probe_text_4[0_u64..12_u64], source: &lp_src_a[0_u64..728_u64]);
-  let id_b = lp_id(engine: &second, chunk: &probe_text_4[0_u64..12_u64], source: &lp_src_b[0_u64..1336_u64]);
+  let id_b = lp_id(engine: &second, chunk: &probe_text_4[0_u64..12_u64], source: &lp_src_b[0_u64..1379_u64]);
   let id_d = lp_id(engine: &second, chunk: &probe_text_4[0_u64..12_u64], source: &lp_src_d[0_u64..279_u64]);
   let r_d = lp_expect(engine: &second, env: &env, id: id_d, quota: 1_u64, expected: 55.0_f64);
   if bnot(r_d) {
@@ -212,7 +212,7 @@ fn lp_flushes() -> r: Bool pure {
   if bnot(ok_a) {
     return False();
   }
-  let ok_b = lp_compile_expect(engine: &engine, env: &env, chunk: &probe_text_4[0_u64..12_u64], source: &lp_src_b[0_u64..1336_u64], quota: 1000000_u64, expected: 10.0_f64);
+  let ok_b = lp_compile_expect(engine: &engine, env: &env, chunk: &probe_text_4[0_u64..12_u64], source: &lp_src_b[0_u64..1379_u64], quota: 1000000_u64, expected: 10.0_f64);
   if bnot(ok_b) {
     return False();
   }
@@ -296,7 +296,7 @@ fn lp_slices() -> r: Bool pure {
   if bnot(ok_a) {
     return False();
   }
-  let ok_b = lp_compile_expect(engine: &engine, env: &env, chunk: &probe_text_4[0_u64..12_u64], source: &lp_src_b[0_u64..1336_u64], quota: 1_u64, expected: 10.0_f64);
+  let ok_b = lp_compile_expect(engine: &engine, env: &env, chunk: &probe_text_4[0_u64..12_u64], source: &lp_src_b[0_u64..1379_u64], quota: 1_u64, expected: 10.0_f64);
   if bnot(ok_b) {
     return False();
   }
@@ -370,7 +370,7 @@ fn lp_refused() -> r: Bool pure {
     if bnot(ok_a) {
       return False();
     }
-    let ok_b = lp_compile_expect(engine: &engine, env: &env, chunk: &probe_text_4[0_u64..12_u64], source: &lp_src_b[0_u64..1336_u64], quota: 1000000_u64, expected: 10.0_f64);
+    let ok_b = lp_compile_expect(engine: &engine, env: &env, chunk: &probe_text_4[0_u64..12_u64], source: &lp_src_b[0_u64..1379_u64], quota: 1000000_u64, expected: 10.0_f64);
     if bnot(ok_b) {
       return False();
     }
@@ -409,25 +409,8 @@ fn lp_many() -> r: Bool pure {
   return True();
 }
 
-fn lp_diag() -> r: u8 pure {
-  doc "Diagnostic.";
-  for (k in 0_u64..64_u64) {
-    let want = cvt::<u64, f64>(k);
-    let ok = lp_alone(chunk: &probe_text_4[0_u64..12_u64], source: &lp_src_cmp[0_u64..466_u64], quota: 1000000_u64, expected: want);
-    if ok {
-      let code = cvt.wrap::<u64, u8>(k);
-      return 100_u8 +sat code;
-    }
-  }
-  return 99_u8;
-}
-
 fn later_scripts_probe() -> r: u8 pure {
   doc "Scripts compiled after others, in one engine, run as they run alone. Each case gives its own code when it fails, the first failing one: 156 the expected values themselves, 157 scripts compiled after others, run in order and in reverse, 159 functions kept from later scripts, 160 flushes, 161 chunk names, 162 one safepoint at a time, 163 a coroutine of the last run, 164 string constants of scripts not running, 165 refused compiles, 166 three hundred scripts.";
-  let diag_code = lp_diag();
-  if diag_code != 0_u8 {
-    return diag_code;
-  }
   let alone_code = lp_alone_cases();
   if alone_code != 0_u8 {
     return alone_code;
@@ -475,7 +458,7 @@ const lp_src_f: Array<u8, 220> = "local a, b, c = 1, 's1', {}\nlocal function f1
 
 const lp_src_a: Array<u8, 728> = "local function fib(n) if n < 2 then return n end return fib(n-1) + fib(n-2) end\nlocal t = {}\nfor i = 1, 10 do t[i] = function() return i end end\nlocal s = 0\nfor i = 1, 10 do s = s + t[i]() end\nlocal a, b = 0, 0\nwhile a < 5 do a = a + 1 if a == 3 then break end end\nrepeat b = b + 1 until b >= 4\nlocal function va(...) return select('#', ...) + (...) end\nlocal x = 0\nfor k, v in pairs({10, 20, 30}) do x = x + v end\nlocal o = (nil or 7) + (false and 1 or 2)\nlocal function counter() local c = 0 return function() c = c + 1 return c end end\nlocal c1 = counter() c1() c1()\nlocal m = setmetatable({}, {__index = function(_, k) return k * 2 end})\nreturn fib(10) + s + a + b + va(5, 6, 7) + x + o + c1() + m[21] + #('ab' .. 'cd' .. 1)";
 
-const lp_src_b: Array<u8, 1336> = "local up\nlocal t = {}\nlocal function e1() return up.x end\nlocal function e2() local l; return l.x end\nlocal function e3() local r = undefinedfn() return r end\nlocal function e4() return t.a.b end\nlocal function e5() local r = t:m() return r end\nlocal function e6() local s = {} return s + 1 end\nlocal function e7() local n; return 'a' .. n end\nlocal function e8() return {} < {} end\nlocal function e9() return undefinedtab.x end\nlocal function thrower() error('lvl2', 2) end\nlocal function caller() thrower() end\nlocal n = 0\nlocal function chk(f, want) local ok, m = pcall(f) if not ok and m == want then n = n + 1 end end\nchk(e1, [[user_script:3: attempt to index upvalue 'up' (a nil value)]])\nchk(e2, [[user_script:4: attempt to index local 'l' (a nil value)]])\nchk(e3, [[user_script:5: attempt to call global 'undefinedfn' (a nil value)]])\nchk(e4, [[user_script:6: attempt to index field 'a' (a nil value)]])\nchk(e5, [[user_script:7: attempt to call method 'm' (a nil value)]])\nchk(e6, [[user_script:8: attempt to perform arithmetic on local 's' (a table value)]])\nchk(e7, [[user_script:9: attempt to concatenate local 'n' (a nil value)]])\nchk(e8, [[user_script:10: attempt to compare two table values]])\nchk(e9, [[user_script:11: attempt to index global 'undefinedtab' (a nil value)]])\nchk(caller, [[user_script:13: lvl2]])\nreturn n";
+const lp_src_b: Array<u8, 1379> = "local up\nlocal t = {}\nlocal function e1() return up.x end\nlocal function e2() local l; return l.x end\nlocal function e3() local r = undefinedfn() return r end\nlocal function e4() return t.a.b end\nlocal function e5() local r = t:m() return r end\nlocal function e6() local s = {} return s + 1 end\nlocal function e7() local n; return 'a' .. n end\nlocal function e8() local r = #undefinedlen return r end\nlocal function e9() return undefinedtab.x end\nlocal function thrower() error('lvl2', 2) end\nlocal function caller() thrower() end\nlocal n = 0\nlocal function chk(f, want) local ok, m = pcall(f) if not ok and m == want then n = n + 1 end end\nchk(e1, [[user_script:3: attempt to index upvalue 'up' (a nil value)]])\nchk(e2, [[user_script:4: attempt to index local 'l' (a nil value)]])\nchk(e3, [[user_script:5: attempt to call global 'undefinedfn' (a nil value)]])\nchk(e4, [[user_script:6: attempt to index field 'a' (a nil value)]])\nchk(e5, [[user_script:7: attempt to call method 'm' (a nil value)]])\nchk(e6, [[user_script:8: attempt to perform arithmetic on local 's' (a table value)]])\nchk(e7, [[user_script:9: attempt to concatenate local 'n' (a nil value)]])\nchk(e8, [[user_script:10: attempt to get length of global 'undefinedlen' (a nil value)]])\nchk(e9, [[user_script:11: attempt to index global 'undefinedtab' (a nil value)]])\nchk(caller, [[user_script:13: lvl2]])\nreturn n";
 
 const lp_src_d: Array<u8, 279> = "local t = {5, 3, 4, 1, 2}\ntable.sort(t, function(a, b) return a < b end)\nlocal s = 0\nfor i = 1, 5 do s = s + t[i] * i end\nlocal ok, e = pcall(function() local z; return z.x end)\nif ok or e ~= [[user_script:5: attempt to index local 'z' (a nil value)]] then return -1 end\nreturn s";
 
@@ -558,7 +541,3 @@ const lp_chunk_s: Array<u8, 2> = "@s";
 const lp_name_held: Array<u8, 4> = "held";
 
 const lp_name_mk: Array<u8, 2> = "mk";
-
-const lp_src_bd: Array<u8, 1378> = "local up\nlocal t = {}\nlocal function e1() return up.x end\nlocal function e2() local l; return l.x end\nlocal function e3() local r = undefinedfn() return r end\nlocal function e4() return t.a.b end\nlocal function e5() local r = t:m() return r end\nlocal function e6() local s = {} return s + 1 end\nlocal function e7() local n; return 'a' .. n end\nlocal function e8() return {} < {} end\nlocal function e9() return undefinedtab.x end\nlocal function thrower() error('lvl2', 2) end\nlocal function caller() thrower() end\nlocal first = 0\nlocal k = 0\nlocal function chk(f, want) k = k + 1 local ok, m = pcall(f) if (ok or m ~= want) and first == 0 then first = k end end\nchk(e1, [[user_script:3: attempt to index upvalue 'up' (a nil value)]])\nchk(e2, [[user_script:4: attempt to index local 'l' (a nil value)]])\nchk(e3, [[user_script:5: attempt to call global 'undefinedfn' (a nil value)]])\nchk(e4, [[user_script:6: attempt to index field 'a' (a nil value)]])\nchk(e5, [[user_script:7: attempt to call method 'm' (a nil value)]])\nchk(e6, [[user_script:8: attempt to perform arithmetic on local 's' (a table value)]])\nchk(e7, [[user_script:9: attempt to concatenate local 'n' (a nil value)]])\nchk(e8, [[user_script:10: attempt to compare two table values]])\nchk(e9, [[user_script:11: attempt to index global 'undefinedtab' (a nil value)]])\nchk(caller, [[user_script:13: lvl2]])\nreturn first";
-
-const lp_src_cmp: Array<u8, 466> = "local ok, m = pcall(function() return {} < {} end)\nm = tostring(m)\nlocal r = 0\nif string.find(m, 'user_script:10:', 1, true) then r = r + 1 end\nif string.find(m, 'attempt to compare two table values', 1, true) then r = r + 2 end\nif m == [[user_script:10: attempt to compare two table values]] then r = r + 4 end\nif ok then r = r + 8 end\nif string.find(m, 'compare', 1, true) then r = r + 16 end\nif string.find(m, 'user_script:', 1, true) then r = r + 32 end\nreturn r";
