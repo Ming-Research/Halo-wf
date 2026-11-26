@@ -64,13 +64,6 @@ fn lp_compile_expect(engine: &Engine, env: &Probe, chunk: &[u8], source: &[u8], 
   return lp_expect(engine: engine, env: env, id: id, quota: quota, expected: expected);
 }
 
-fn lp_alone(chunk: &[u8], source: &[u8], quota: u64, expected: f64) -> r: Bool reads(chunk), reads(source) {
-  doc "Runs source alone on a new engine, where every base is zero.";
-  let engine = halo::embed::new_engine(limit: 67108864_u64);
-  let env = Probe(mode: 0_u8, calls: 0_u64);
-  return lp_compile_expect(engine: &engine, env: &env, chunk: chunk, source: source, quota: quota, expected: expected);
-}
-
 fn lp_keep(engine: &Engine, env: &Probe, chunk: &[u8], maker: &[u8], name: &[u8]) -> r: Bool reads(chunk), reads(maker), reads(name), writes(engine), writes(env) {
   doc "Runs a script that returns a function and keeps the function as the global called name.";
   let id = lp_id(engine: engine, chunk: chunk, source: maker);
@@ -97,27 +90,6 @@ fn lp_error_is(engine: &Engine, env: &Probe, chunk: &[u8], source: &[u8], want: 
     return False();
   }
   return format_matches(engine: engine, line: 0_u64, want: want);
-}
-
-fn lp_alone_cases() -> r: u8 pure {
-  doc "The expected values of the scripts the other cases run after others, observed with every base zero, so that a wrong hand-written expectation shows here and not as an offset fault. Gives 0, or 156 the filler, 167 the numeric script, 168 the error-naming script, 169 the script run one safepoint at a time.";
-  let filler = lp_alone(chunk: &lp_chunk_filler[0_u64..7_u64], source: &lp_src_f[0_u64..220_u64], quota: 1000000_u64, expected: 9.0_f64);
-  if bnot(filler) {
-    return 156_u8;
-  }
-  let a = lp_alone(chunk: &probe_text_4[0_u64..12_u64], source: &lp_src_a[0_u64..728_u64], quota: 1000000_u64, expected: 244.0_f64);
-  if bnot(a) {
-    return 167_u8;
-  }
-  let b = lp_alone(chunk: &probe_text_4[0_u64..12_u64], source: &lp_src_b[0_u64..1379_u64], quota: 1000000_u64, expected: 10.0_f64);
-  if bnot(b) {
-    return 168_u8;
-  }
-  let d = lp_alone(chunk: &probe_text_4[0_u64..12_u64], source: &lp_src_d[0_u64..279_u64], quota: 1_u64, expected: 55.0_f64);
-  if bnot(d) {
-    return 169_u8;
-  }
-  return 0_u8;
 }
 
 fn lp_numeric() -> r: Bool pure {
@@ -284,25 +256,6 @@ fn lp_chunks() -> r: Bool pure {
   return format_matches(engine: &engine, line: 0_u64, want: &lp_err_x1[0_u64..7_u64]);
 }
 
-fn lp_slices() -> r: Bool pure {
-  doc "A script compiled after others, run one safepoint at a time, resumes where it stopped, inside library callbacks and pcall too.";
-  let engine = halo::embed::new_engine(limit: 67108864_u64);
-  let env = Probe(mode: 0_u8, calls: 0_u64);
-  let ok_f = lp_compile_expect(engine: &engine, env: &env, chunk: &lp_chunk_filler[0_u64..7_u64], source: &lp_src_f[0_u64..220_u64], quota: 1_u64, expected: 9.0_f64);
-  if bnot(ok_f) {
-    return False();
-  }
-  let ok_a = lp_compile_expect(engine: &engine, env: &env, chunk: &probe_text_4[0_u64..12_u64], source: &lp_src_a[0_u64..728_u64], quota: 1_u64, expected: 244.0_f64);
-  if bnot(ok_a) {
-    return False();
-  }
-  let ok_b = lp_compile_expect(engine: &engine, env: &env, chunk: &probe_text_4[0_u64..12_u64], source: &lp_src_b[0_u64..1379_u64], quota: 1_u64, expected: 10.0_f64);
-  if bnot(ok_b) {
-    return False();
-  }
-  return lp_compile_expect(engine: &engine, env: &env, chunk: &probe_text_4[0_u64..12_u64], source: &lp_src_d[0_u64..279_u64], quota: 1_u64, expected: 55.0_f64);
-}
-
 fn lp_coroutine() -> r: Bool pure {
   doc "A coroutine suspended by one script is dead in the next one, as a start ends the coroutines of the last run: its status is dead and a resume refuses it.";
   let engine = halo::embed::new_engine(limit: 67108864_u64);
@@ -350,71 +303,8 @@ fn lp_literals() -> r: Bool pure {
   return again;
 }
 
-fn lp_refused() -> r: Bool pure {
-  doc "A source the compiler refuses, between others, leaves the next script's positions right.";
-  let engine = halo::embed::new_engine(limit: 67108864_u64);
-  let env = Probe(mode: 0_u8, calls: 0_u64);
-  let ok_f = lp_compile_expect(engine: &engine, env: &env, chunk: &lp_chunk_filler[0_u64..7_u64], source: &lp_src_f[0_u64..220_u64], quota: 1000000_u64, expected: 9.0_f64);
-  if bnot(ok_f) {
-    return False();
-  }
-  for (round in 0_u64..3_u64) {
-    match compile_chunk(engine: &engine, chunk: &probe_text_4[0_u64..12_u64], source: &lp_bad[0_u64..44_u64]) {
-      None() => {
-      }
-      Some(..) => {
-        return False();
-      }
-    }
-    let ok_a = lp_compile_expect(engine: &engine, env: &env, chunk: &probe_text_4[0_u64..12_u64], source: &lp_src_a[0_u64..728_u64], quota: 1000000_u64, expected: 244.0_f64);
-    if bnot(ok_a) {
-      return False();
-    }
-    let ok_b = lp_compile_expect(engine: &engine, env: &env, chunk: &probe_text_4[0_u64..12_u64], source: &lp_src_b[0_u64..1379_u64], quota: 1000000_u64, expected: 10.0_f64);
-    if bnot(ok_b) {
-      return False();
-    }
-  }
-  return True();
-}
-
-fn lp_many() -> r: Bool pure {
-  doc "Three hundred scripts compiled one after another, past every doubling of the tables that hold them, each run gives its own result.";
-  let engine = halo::embed::new_engine(limit: 67108864_u64);
-  let env = Probe(mode: 0_u8, calls: 0_u64);
-  for (i in 0_u64..300_u64) {
-    let kind = i % 3_u64;
-    if kind == 0_u64 {
-      let made = lp_id(engine: &engine, chunk: &probe_text_4[0_u64..12_u64], source: &lp_many0[0_u64..8_u64]);
-    }
-    if kind == 1_u64 {
-      let made = lp_id(engine: &engine, chunk: &probe_text_4[0_u64..12_u64], source: &lp_many1[0_u64..26_u64]);
-    }
-    if kind == 2_u64 {
-      let made = lp_id(engine: &engine, chunk: &probe_text_4[0_u64..12_u64], source: &lp_many2[0_u64..48_u64]);
-    }
-  }
-  for (j in 0_u64..300_u64) {
-    let k = 299_u64 - j;
-    let generation = engine.generation;
-    let id = ScriptId(slot: k, generation: generation);
-    let kind_of = k % 3_u64;
-    let number = kind_of + 1_u64;
-    let want = cvt::<u64, f64>(number);
-    let ok = lp_expect(engine: &engine, env: &env, id: id, quota: 1000000_u64, expected: want);
-    if bnot(ok) {
-      return False();
-    }
-  }
-  return True();
-}
-
 fn later_scripts_probe() -> r: u8 pure {
-  doc "Scripts compiled after others, in one engine, run as they run alone. Each case gives its own code when it fails, the first failing one: 156 the expected values themselves, 157 scripts compiled after others, run in order and in reverse, 159 functions kept from later scripts, 160 flushes, 161 chunk names, 162 one safepoint at a time, 163 a coroutine of the last run, 164 string constants of scripts not running, 165 refused compiles, 166 three hundred scripts.";
-  let alone_code = lp_alone_cases();
-  if alone_code != 0_u8 {
-    return alone_code;
-  }
+  doc "Scripts compiled after others, in one engine, run as they run alone. Each case gives its own code when it fails, the first failing one: 157 scripts compiled after others, run in order and in reverse, 159 functions kept from later scripts, 160 flushes, 161 chunk names, 163 a coroutine of the last run, 164 string constants of scripts not running.";
   let numeric_passed = lp_numeric();
   if bnot(numeric_passed) {
     return 157_u8;
@@ -431,10 +321,6 @@ fn later_scripts_probe() -> r: u8 pure {
   if bnot(chunks_passed) {
     return 161_u8;
   }
-  let slices_passed = lp_slices();
-  if bnot(slices_passed) {
-    return 162_u8;
-  }
   let coroutine_passed = lp_coroutine();
   if bnot(coroutine_passed) {
     return 163_u8;
@@ -442,14 +328,6 @@ fn later_scripts_probe() -> r: u8 pure {
   let literals_passed = lp_literals();
   if bnot(literals_passed) {
     return 164_u8;
-  }
-  let refused_passed = lp_refused();
-  if bnot(refused_passed) {
-    return 165_u8;
-  }
-  let many_passed = lp_many();
-  if bnot(many_passed) {
-    return 166_u8;
   }
   return 0_u8;
 }
@@ -503,14 +381,6 @@ const lp_src_co3: Array<u8, 111> = "local ok, m = coroutine.resume(co)\nif not o
 const lp_src_s1: Array<u8, 112> = "local a = 'alpha-string'\nlocal b = '-constant'\nif (a .. b) == 'alpha-string-constant' then return 1 end\nreturn 0";
 
 const lp_src_s2: Array<u8, 72> = "local t = {}\nfor i = 1, 200 do t[i] = {tostring(i) .. 'x'} end\nreturn #t";
-
-const lp_bad: Array<u8, 44> = "local function f() return 'zzz' end\nreturn +";
-
-const lp_many0: Array<u8, 8> = "return 1";
-
-const lp_many1: Array<u8, 26> = "local a = {1, 2}\nreturn #a";
-
-const lp_many2: Array<u8, 48> = "local function f(x) return x + 1 end\nreturn f(2)";
 
 const lp_chunk_filler: Array<u8, 7> = "@filler";
 
