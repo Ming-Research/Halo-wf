@@ -99,21 +99,25 @@ fn lp_error_is(engine: &Engine, env: &Probe, chunk: &[u8], source: &[u8], want: 
   return format_matches(engine: engine, line: 0_u64, want: want);
 }
 
-fn lp_alone_cases() -> r: Bool pure {
-  doc "The expected values of the scripts the other cases run after others, observed with every base zero, so that a wrong hand-written expectation shows here and not as an offset fault.";
+fn lp_alone_cases() -> r: u8 pure {
+  doc "The expected values of the scripts the other cases run after others, observed with every base zero, so that a wrong hand-written expectation shows here and not as an offset fault. Gives 0, or 156 the filler, 167 the numeric script, 168 the error-naming script, 169 the script run one safepoint at a time.";
   let filler = lp_alone(chunk: &lp_chunk_filler[0_u64..7_u64], source: &lp_src_f[0_u64..220_u64], quota: 1000000_u64, expected: 9.0_f64);
   if bnot(filler) {
-    return False();
+    return 156_u8;
   }
   let a = lp_alone(chunk: &probe_text_4[0_u64..12_u64], source: &lp_src_a[0_u64..728_u64], quota: 1000000_u64, expected: 244.0_f64);
   if bnot(a) {
-    return False();
+    return 167_u8;
   }
   let b = lp_alone(chunk: &probe_text_4[0_u64..12_u64], source: &lp_src_b[0_u64..1336_u64], quota: 1000000_u64, expected: 10.0_f64);
   if bnot(b) {
-    return False();
+    return 168_u8;
   }
-  return lp_alone(chunk: &probe_text_4[0_u64..12_u64], source: &lp_src_d[0_u64..279_u64], quota: 1_u64, expected: 55.0_f64);
+  let d = lp_alone(chunk: &probe_text_4[0_u64..12_u64], source: &lp_src_d[0_u64..279_u64], quota: 1_u64, expected: 55.0_f64);
+  if bnot(d) {
+    return 169_u8;
+  }
+  return 0_u8;
 }
 
 fn lp_numeric() -> r: Bool pure {
@@ -407,9 +411,9 @@ fn lp_many() -> r: Bool pure {
 
 fn later_scripts_probe() -> r: u8 pure {
   doc "Scripts compiled after others, in one engine, run as they run alone. Each case gives its own code when it fails, the first failing one: 156 the expected values themselves, 157 scripts compiled after others, run in order and in reverse, 159 functions kept from later scripts, 160 flushes, 161 chunk names, 162 one safepoint at a time, 163 a coroutine of the last run, 164 string constants of scripts not running, 165 refused compiles, 166 three hundred scripts.";
-  let alone_passed = lp_alone_cases();
-  if bnot(alone_passed) {
-    return 156_u8;
+  let alone_code = lp_alone_cases();
+  if alone_code != 0_u8 {
+    return alone_code;
   }
   let numeric_passed = lp_numeric();
   if bnot(numeric_passed) {
