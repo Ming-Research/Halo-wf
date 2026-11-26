@@ -409,8 +409,25 @@ fn lp_many() -> r: Bool pure {
   return True();
 }
 
+fn lp_diag() -> r: u8 pure {
+  doc "Diagnostic.";
+  for (k in 0_u64..11_u64) {
+    let want = cvt::<u64, f64>(k);
+    let ok = lp_alone(chunk: &probe_text_4[0_u64..12_u64], source: &lp_src_bd[0_u64..1378_u64], quota: 1000000_u64, expected: want);
+    if ok {
+      let code = cvt::<u64, u8>(k);
+      return 100_u8 + code;
+    }
+  }
+  return 99_u8;
+}
+
 fn later_scripts_probe() -> r: u8 pure {
   doc "Scripts compiled after others, in one engine, run as they run alone. Each case gives its own code when it fails, the first failing one: 156 the expected values themselves, 157 scripts compiled after others, run in order and in reverse, 159 functions kept from later scripts, 160 flushes, 161 chunk names, 162 one safepoint at a time, 163 a coroutine of the last run, 164 string constants of scripts not running, 165 refused compiles, 166 three hundred scripts.";
+  let diag_code = lp_diag();
+  if diag_code != 0_u8 {
+    return diag_code;
+  }
   let alone_code = lp_alone_cases();
   if alone_code != 0_u8 {
     return alone_code;
@@ -541,3 +558,4 @@ const lp_chunk_s: Array<u8, 2> = "@s";
 const lp_name_held: Array<u8, 4> = "held";
 
 const lp_name_mk: Array<u8, 2> = "mk";
+const lp_src_bd: Array<u8, 1378> = "local up\nlocal t = {}\nlocal function e1() return up.x end\nlocal function e2() local l; return l.x end\nlocal function e3() local r = undefinedfn() return r end\nlocal function e4() return t.a.b end\nlocal function e5() local r = t:m() return r end\nlocal function e6() local s = {} return s + 1 end\nlocal function e7() local n; return 'a' .. n end\nlocal function e8() return {} < {} end\nlocal function e9() return undefinedtab.x end\nlocal function thrower() error('lvl2', 2) end\nlocal function caller() thrower() end\nlocal first = 0\nlocal k = 0\nlocal function chk(f, want) k = k + 1 local ok, m = pcall(f) if (ok or m ~= want) and first == 0 then first = k end end\nchk(e1, [[user_script:3: attempt to index upvalue 'up' (a nil value)]])\nchk(e2, [[user_script:4: attempt to index local 'l' (a nil value)]])\nchk(e3, [[user_script:5: attempt to call global 'undefinedfn' (a nil value)]])\nchk(e4, [[user_script:6: attempt to index field 'a' (a nil value)]])\nchk(e5, [[user_script:7: attempt to call method 'm' (a nil value)]])\nchk(e6, [[user_script:8: attempt to perform arithmetic on local 's' (a table value)]])\nchk(e7, [[user_script:9: attempt to concatenate local 'n' (a nil value)]])\nchk(e8, [[user_script:10: attempt to compare two table values]])\nchk(e9, [[user_script:11: attempt to index global 'undefinedtab' (a nil value)]])\nchk(caller, [[user_script:13: lvl2]])\nreturn first";
